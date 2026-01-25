@@ -86,8 +86,8 @@ changelog:
 
 release:
   github:
-    owner: kube-ai-dashbaord
-    name: kube-ai-dashboard-cli
+    owner: cloudbro-kube-ai
+    name: k13d
   draft: false
   prerelease: auto
   mode: replace
@@ -100,7 +100,7 @@ release:
 
     **Homebrew (macOS/Linux):**
     ```bash
-    brew install kube-ai-dashbaord/tap/k13d
+    brew install cloudbro-kube-ai/tap/k13d
     ```
 
     **Direct Download:**
@@ -136,9 +136,9 @@ release:
     k13d --embedded-llm -web
     ```
 
-    See [README - Air-Gapped Installation](https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli#air-gapped--offline-installation) for detailed instructions.
+    See [README - Air-Gapped Installation](https://github.com/cloudbro-kube-ai/k13d#air-gapped--offline-installation) for detailed instructions.
 
-    **Full Changelog**: https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/cloudbro-kube-ai/k13d/compare/{{ .PreviousTag }}...{{ .Tag }}
   name_template: "v{{.Version}}"
 
 # Source code archive
