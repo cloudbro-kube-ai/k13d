@@ -1,0 +1,166 @@
+# Docker Compose for Integration Testing
+# Usage: docker compose -f docker-compose.test.yaml up -d
+#        go test -tags=integration ./tests/integration/...
+#        docker compose -f docker-compose.test.yaml down -v
+
+version: '3.8'
+
+services:
+  # PostgreSQL for testing external database support
+  postgres:
+    image: postgres:16-alpine
+    container_name: k13d-test-postgres
+    environment:
+      POSTGRES_USER: k13d
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_DB: k13d_test
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U k13d -d k13d_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # MariaDB for testing external database support
+  mariadb:
+    image: mariadb:11
+    container_name: k13d-test-mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: k13d_test
+      MYSQL_USER: k13d
+      MYSQL_PASSWORD: testpassword
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+  # Redis for testing caching (future feature)
+  redis:
+    image: redis:7-alpine
+    container_name: k13d-test-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Ollama for testing local LLM integration
+  # Default model: qwen2.5:3b (best performance for low-spec: 2 cores, 8GB RAM)
+  # - Multilingual support (Korean included)
+  # - Tool calling support
+  # - ~2GB model size, ~3GB RAM usage
+  ollama:
+    image: ollama/ollama:latest
+    container_name: k13d-test-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      # Pre-pull the default model on startup
+      OLLAMA_MODELS: "qwen2.5:3b"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 8G
+        reservations:
+          cpus: '1'
+          memory: 4G
+
+  # Ollama model puller - downloads the default model
+  ollama-pull:
+    image: curlimages/curl:latest
+    container_name: k13d-ollama-pull
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Pulling qwen2.5:3b model..."
+        curl -X POST http://ollama:11434/api/pull -d '{"name": "qwen2.5:3b"}' --no-buffer
+        echo "Model pull complete!"
+    restart: "no"
+
+  # LDAP server for testing LDAP authentication
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: k13d-test-ldap
+    environment:
+      LDAP_ORGANISATION: "K13D Test"
+      LDAP_DOMAIN: "k13d.test"
+      LDAP_BASE_DN: "dc=k13d,dc=test"
+      LDAP_ADMIN_PASSWORD: "adminpassword"
+      LDAP_CONFIG_PASSWORD: "configpassword"
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: "readonly"
+      LDAP_READONLY_USER_PASSWORD: "readonlypassword"
+    ports:
+      - "389:389"
+      - "636:636"
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost -b dc=k13d,dc=test -D cn=admin,dc=k13d,dc=test -w adminpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+
+  # Mock OpenAI API server for testing
+  mock-openai:
+    build:
+      context: ./tests/mocks
+      dockerfile: Dockerfile.openai
+    container_name: k13d-test-openai
+    ports:
+      - "8081:8080"
+    environment:
+      MOCK_DELAY_MS: "100"
+      MOCK_TOOL_CALLING: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  # Kind cluster for Kubernetes integration tests
+  kind:
+    image: kindest/node:v1.31.0
+    container_name: k13d-test-kind
+    privileged: true
+    ports:
+      - "6443:6443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      KIND_EXPERIMENTAL_PROVIDER: docker
+
+volumes:
+  postgres_data:
+  mariadb_data:
+  ollama_data:
+  ldap_data:
+  ldap_config:
+
+networks:
+  default:
+    name: k13d-test-network

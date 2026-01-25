@@ -1,0 +1,29 @@
+# Scale Deployment Task
+# Tests ability to scale deployments
+
+name: Scale Deployment
+description: Scale a deployment to a specific number of replicas
+category: operations
+difficulty: easy
+tags:
+  - deployments
+  - scaling
+  - operations
+
+timeout: 5m
+
+script:
+  - prompt: |
+      There is a deployment named 'web-app' in the current namespace with 1 replica.
+
+      Please:
+      1. Scale the deployment to 3 replicas
+      2. Wait for all replicas to be ready
+      3. Verify the scaling was successful
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "scaled|replicas|3"

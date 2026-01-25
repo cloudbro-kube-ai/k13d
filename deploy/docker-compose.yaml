@@ -1,0 +1,55 @@
+# Docker Compose for k13d
+# Use cases:
+# 1. Web UI mode: docker-compose up k13d-web
+# 2. TUI mode: docker-compose run --rm k13d-tui
+# 3. Air-gapped: docker-compose -f docker-compose.yaml -f docker-compose.airgapped.yaml up
+
+version: '3.8'
+
+services:
+  # Web UI mode (default)
+  k13d-web:
+    image: ghcr.io/kube-ai-dashboard/k13d:latest
+    # For local build:
+    # build:
+    #   context: ..
+    #   dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - K13D_AUTH_MODE=local
+      - K13D_LLM_PROVIDER=openai
+      - K13D_LLM_MODEL=gpt-4o-mini
+      - K13D_LLM_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - ~/.kube/config:/home/k13d/.kube/config:ro
+      - k13d-data:/home/k13d/.config/k13d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # TUI mode (interactive terminal)
+  # Usage: docker-compose run --rm k13d-tui
+  k13d-tui:
+    image: ghcr.io/kube-ai-dashboard/k13d:latest
+    # For local build:
+    # build:
+    #   context: ..
+    #   dockerfile: Dockerfile
+    stdin_open: true    # -i: Keep STDIN open
+    tty: true           # -t: Allocate a pseudo-TTY
+    command: ["-tui"]   # Explicitly run in TUI mode
+    environment:
+      - TERM=xterm-256color
+      - K13D_LLM_PROVIDER=openai
+      - K13D_LLM_MODEL=gpt-4o-mini
+      - K13D_LLM_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - ~/.kube/config:/home/k13d/.kube/config:ro
+      - k13d-data:/home/k13d/.config/k13d
+
+volumes:
+  k13d-data:

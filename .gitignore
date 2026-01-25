@@ -1,0 +1,38 @@
+# Binaries for programs and plugins
+k13d
+k13d_test
+k13d-bench
+k13d-eval
+build/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with 'go test -c'
+*.test
+
+# Logs and Reports
+*.log
+report.md
+report-*.html
+
+# Output of the go coverage tool, specifically when used with Litmus
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# SQLite databases
+*.db
+*.db-journal
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# Benchmark results
+.build/
+k13d_test

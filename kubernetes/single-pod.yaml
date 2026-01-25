@@ -1,0 +1,377 @@
+# k13d Single Pod Deployment (Air-gapped / No External Dependencies)
+#
+# This manifest deploys k13d as a single Pod without any external internet
+# dependencies. It uses Kubernetes ServiceAccount token for authentication
+# and does not require an external LLM service.
+#
+# Prerequisites:
+# 1. Build and push image to your private registry:
+#    docker build -t your-registry/k13d:latest .
+#    docker push your-registry/k13d:latest
+#
+# 2. Or for air-gapped environments, save and load image:
+#    docker save your-registry/k13d:latest | gzip > k13d.tar.gz
+#    # Transfer to air-gapped cluster nodes
+#    docker load < k13d.tar.gz
+#
+# Usage:
+#   kubectl apply -f single-pod.yaml
+#   kubectl port-forward -n k13d pod/k13d 8080:8080
+#   # Open http://localhost:8080 in browser
+#
+# For NodePort access:
+#   kubectl get svc -n k13d k13d -o jsonpath='{.spec.ports[0].nodePort}'
+#   # Access via http://<node-ip>:<nodeport>
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: k13d
+  labels:
+    app.kubernetes.io/name: k13d
+    app.kubernetes.io/component: dashboard
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k13d
+  namespace: k13d
+  labels:
+    app.kubernetes.io/name: k13d
+
+---
+# ClusterRole with read permissions for all resources
+# and write permissions for common operations
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k13d
+  labels:
+    app.kubernetes.io/name: k13d
+rules:
+  # Core resources - read
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - services
+      - endpoints
+      - configmaps
+      - secrets
+      - namespaces
+      - nodes
+      - persistentvolumes
+      - persistentvolumeclaims
+      - events
+      - serviceaccounts
+      - resourcequotas
+      - limitranges
+    verbs: ["get", "list", "watch"]
+
+  # Core resources - write (for management operations)
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/exec
+      - pods/portforward
+      - services
+      - configmaps
+      - secrets
+    verbs: ["create", "update", "patch", "delete"]
+
+  # Apps resources
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - deployments/scale
+      - daemonsets
+      - replicasets
+      - statefulsets
+      - statefulsets/scale
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Batch resources
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Networking resources
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+      - ingressclasses
+      - networkpolicies
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # RBAC resources (read-only)
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources:
+      - roles
+      - rolebindings
+      - clusterroles
+      - clusterrolebindings
+    verbs: ["get", "list", "watch"]
+
+  # Storage resources
+  - apiGroups: ["storage.k8s.io"]
+    resources:
+      - storageclasses
+      - volumeattachments
+    verbs: ["get", "list", "watch"]
+
+  # Autoscaling resources
+  - apiGroups: ["autoscaling"]
+    resources:
+      - horizontalpodautoscalers
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Policy resources
+  - apiGroups: ["policy"]
+    resources:
+      - poddisruptionbudgets
+    verbs: ["get", "list", "watch"]
+
+  # Metrics API (for resource usage)
+  - apiGroups: ["metrics.k8s.io"]
+    resources:
+      - pods
+      - nodes
+    verbs: ["get", "list"]
+
+  # CRDs - read
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources:
+      - customresourcedefinitions
+    verbs: ["get", "list", "watch"]
+
+  # Dynamic access to all CRs (read-only)
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k13d
+  labels:
+    app.kubernetes.io/name: k13d
+subjects:
+  - kind: ServiceAccount
+    name: k13d
+    namespace: k13d
+roleRef:
+  kind: ClusterRole
+  name: k13d
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# ConfigMap for k13d configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k13d-config
+  namespace: k13d
+  labels:
+    app.kubernetes.io/name: k13d
+data:
+  # Configuration options
+  config.yaml: |
+    # k13d configuration
+
+    # Authentication mode: "token" uses K8s ServiceAccount token (recommended)
+    # "local" uses username/password from secrets
+    authMode: token
+
+    # Enable audit logging
+    enableAudit: true
+
+    # Default namespace (empty = all namespaces)
+    defaultNamespace: ""
+
+    # Refresh interval in seconds
+    refreshInterval: 5
+
+    # LLM Configuration (optional - set to enable AI features)
+    # For air-gapped environments, leave llm section empty or configure
+    # an internal Ollama/vLLM server
+    # llm:
+    #   provider: ollama
+    #   endpoint: http://ollama.k13d.svc:11434
+    #   model: llama3.2
+
+    # Web UI settings
+    web:
+      # Read-only mode: disables all write operations
+      readOnly: false
+
+      # Hide secrets content by default
+      hideSecrets: true
+
+---
+# Optional: Secret for local authentication mode
+# Uncomment if using authMode: local
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: k13d-credentials
+#   namespace: k13d
+#   labels:
+#     app.kubernetes.io/name: k13d
+# type: Opaque
+# stringData:
+#   username: admin
+#   password: changeme  # CHANGE THIS IN PRODUCTION!
+
+---
+# Single Pod deployment
+apiVersion: v1
+kind: Pod
+metadata:
+  name: k13d
+  namespace: k13d
+  labels:
+    app.kubernetes.io/name: k13d
+    app.kubernetes.io/component: dashboard
+spec:
+  serviceAccountName: k13d
+
+  # Security context for the pod
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+
+  containers:
+    - name: k13d
+      # Change to your private registry
+      image: youngjukim/k13d:latest
+      # For air-gapped: use IfNotPresent or Never
+      imagePullPolicy: IfNotPresent
+
+      ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+
+      # Environment variables
+      env:
+        # Use ServiceAccount token for K8s authentication (no external kubeconfig needed)
+        - name: K13D_AUTH_MODE
+          value: "token"
+
+        # Disable LLM for air-gapped deployment (AI features will be disabled)
+        # Uncomment and configure these for internal LLM server
+        # - name: K13D_LLM_PROVIDER
+        #   value: "ollama"
+        # - name: K13D_LLM_ENDPOINT
+        #   value: "http://ollama.k13d.svc:11434"
+        # - name: K13D_LLM_MODEL
+        #   value: "llama3.2"
+
+      # Resource limits
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+
+      # Probes
+      livenessProbe:
+        httpGet:
+          path: /api/health
+          port: http
+        initialDelaySeconds: 5
+        periodSeconds: 30
+        timeoutSeconds: 5
+        failureThreshold: 3
+
+      readinessProbe:
+        httpGet:
+          path: /api/health
+          port: http
+        initialDelaySeconds: 3
+        periodSeconds: 10
+        timeoutSeconds: 3
+        failureThreshold: 3
+
+      # Security context for container
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false  # Needed for SQLite audit DB
+        runAsNonRoot: true
+        runAsUser: 1000
+        capabilities:
+          drop:
+            - ALL
+
+      # Volume mounts
+      volumeMounts:
+        - name: config
+          mountPath: /home/k13d/.config/k13d
+          readOnly: true
+        - name: data
+          mountPath: /home/k13d/data
+
+  # Volumes
+  volumes:
+    - name: config
+      configMap:
+        name: k13d-config
+    - name: data
+      emptyDir: {}
+
+  # Restart policy
+  restartPolicy: Always
+
+  # DNS config (optional - for air-gapped with custom DNS)
+  # dnsPolicy: ClusterFirst
+
+---
+# Service for accessing k13d
+apiVersion: v1
+kind: Service
+metadata:
+  name: k13d
+  namespace: k13d
+  labels:
+    app.kubernetes.io/name: k13d
+spec:
+  # Change to NodePort or LoadBalancer if needed
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: k13d
+
+---
+# Optional: NodePort service for direct access without ingress
+apiVersion: v1
+kind: Service
+metadata:
+  name: k13d-nodeport
+  namespace: k13d
+  labels:
+    app.kubernetes.io/name: k13d
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+      nodePort: 30080  # Change if port is already in use
+  selector:
+    app.kubernetes.io/name: k13d

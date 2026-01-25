@@ -1,0 +1,48 @@
+# Docker Compose override for air-gapped/offline environments
+# Usage:
+#   Web UI: docker-compose -f docker-compose.yaml -f docker-compose.airgapped.yaml up k13d-web
+#   TUI:    docker-compose -f docker-compose.yaml -f docker-compose.airgapped.yaml run --rm k13d-tui
+#
+# Pre-requisites:
+# 1. Load k13d image: docker load < k13d.tar.gz
+# 2. Load ollama image: docker load < ollama.tar.gz
+# 3. Load Llama model into Ollama volume
+
+version: '3.8'
+
+services:
+  # Web UI mode override for air-gapped
+  k13d-web:
+    image: k13d:latest  # Local image
+    environment:
+      - K13D_AUTH_MODE=token
+      - K13D_LLM_PROVIDER=ollama
+      - K13D_LLM_MODEL=llama3
+      - K13D_LLM_ENDPOINT=http://ollama:11434
+    depends_on:
+      - ollama
+
+  # TUI mode override for air-gapped
+  k13d-tui:
+    image: k13d:latest  # Local image
+    environment:
+      - K13D_LLM_PROVIDER=ollama
+      - K13D_LLM_MODEL=llama3
+      - K13D_LLM_ENDPOINT=http://ollama:11434
+    depends_on:
+      - ollama
+
+  # Local Ollama instance for air-gapped AI functionality
+  ollama:
+    image: ollama/ollama:latest  # Pre-loaded image
+    volumes:
+      - ollama-data:/root/.ollama
+    ports:
+      - "11434:11434"
+    # To pre-load models:
+    # 1. On a connected machine: docker run -v ollama-data:/root/.ollama ollama/ollama pull llama3
+    # 2. Export volume: docker run -v ollama-data:/data -v $(pwd):/backup alpine tar cvf /backup/ollama-models.tar /data
+    # 3. Transfer and import on air-gapped: docker run -v ollama-data:/data -v $(pwd):/backup alpine tar xvf /backup/ollama-models.tar -C /
+
+volumes:
+  ollama-data:

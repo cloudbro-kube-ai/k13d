@@ -1,0 +1,25 @@
+# Fix Pending Pod Task
+# Tests troubleshooting capabilities for scheduling issues
+
+name: Fix Pending Pod
+description: Diagnose and fix a pod stuck in Pending state
+category: troubleshooting
+difficulty: easy
+tags:
+  - pods
+  - troubleshooting
+  - scheduling
+
+timeout: 5m
+
+script:
+  - prompt: |
+      My pod 'homepage-pod' in namespace 'homepage-ns' is stuck in Pending state.
+      Can you diagnose the issue and fix it so the pod is in Running state?
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "describe|events|pending"

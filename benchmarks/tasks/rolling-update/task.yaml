@@ -1,0 +1,25 @@
+# Rolling Update Task
+# Tests ability to perform deployment rolling updates
+
+name: Rolling Update Deployment
+description: Update deployment image with rolling update strategy
+category: operations
+difficulty: medium
+tags:
+  - deployments
+  - rolling-update
+  - operations
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Update the deployment 'web-app' in namespace 'rolling' from nginx:1.14 to nginx:1.25.
+      Use a rolling update strategy and verify the rollout completes successfully.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "image|nginx:1.25|rollout"

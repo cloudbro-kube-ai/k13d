@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  k13d:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: k13d:latest
+    container_name: k13d
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount kubeconfig for Kubernetes access
+      - ~/.kube:/home/k13d/.kube:ro
+      # Mount config directory for persistence
+      - k13d-config:/home/k13d/.config/k13d
+      # Mount data directory for SQLite database
+      - k13d-data:/home/k13d/.local/share/k13d
+    environment:
+      - K13D_LOG_LEVEL=info
+      # LDAP configuration (optional)
+      # - K13D_LDAP_ENABLED=true
+      # - K13D_LDAP_HOST=ldap.example.com
+      # - K13D_LDAP_PORT=389
+      # - K13D_LDAP_BASE_DN=dc=example,dc=com
+      # - K13D_LDAP_BIND_DN=cn=admin,dc=example,dc=com
+      # - K13D_LDAP_BIND_PASSWORD=secret
+      # LLM configuration
+      # - K13D_LLM_PROVIDER=openai
+      # - K13D_LLM_ENDPOINT=http://ollama:11434/v1
+      # - K13D_LLM_MODEL=gpt-4
+      # - K13D_LLM_API_KEY=your-api-key
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Local Ollama for AI
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: k13d-ollama
+  #   ports:
+  #     - "11434:11434"
+  #   volumes:
+  #     - ollama-data:/root/.ollama
+  #   restart: unless-stopped
+
+  # Optional: OpenLDAP for testing LDAP auth
+  # ldap:
+  #   image: osixia/openldap:1.5.0
+  #   container_name: k13d-ldap
+  #   environment:
+  #     LDAP_ORGANISATION: "k13d"
+  #     LDAP_DOMAIN: "k13d.local"
+  #     LDAP_ADMIN_PASSWORD: "admin"
+  #   ports:
+  #     - "389:389"
+  #     - "636:636"
+  #   volumes:
+  #     - ldap-data:/var/lib/ldap
+  #     - ldap-config:/etc/ldap/slapd.d
+  #   restart: unless-stopped
+
+volumes:
+  k13d-config:
+  k13d-data:
+  # ollama-data:
+  # ldap-data:
+  # ldap-config:

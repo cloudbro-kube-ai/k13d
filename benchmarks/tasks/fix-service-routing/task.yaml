@@ -1,0 +1,25 @@
+# Fix Service Routing Task
+# Tests troubleshooting Service selector mismatch
+
+name: Fix Service Routing
+description: Diagnose and fix Service not routing to Pods
+category: troubleshooting
+difficulty: medium
+tags:
+  - services
+  - troubleshooting
+  - networking
+
+timeout: 5m
+
+script:
+  - prompt: |
+      The 'nginx-service' in namespace 'web' isn't accessible.
+      Please diagnose why the service has no endpoints and fix it.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "service|endpoint|selector"

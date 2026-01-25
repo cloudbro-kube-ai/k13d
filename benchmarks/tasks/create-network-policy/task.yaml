@@ -1,0 +1,29 @@
+# Create Network Policy Task
+# Tests ability to create network policies for pod isolation
+
+name: Create Network Policy
+description: Create a NetworkPolicy to restrict pod traffic
+category: networking
+difficulty: medium
+tags:
+  - networkpolicy
+  - security
+  - networking
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a NetworkPolicy named 'api-allow' in namespace 'secure-app'.
+
+      Requirements:
+      - Apply to pods with label 'app=api'
+      - Allow ingress traffic only from pods labeled 'app=frontend'
+      - Allow traffic only on port 8080
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "networkpolicy|ingress|8080"

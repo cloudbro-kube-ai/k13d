@@ -1,0 +1,31 @@
+# Create Service Task
+# Tests service creation and pod connectivity
+
+name: Create Service for Deployment
+description: Create a ClusterIP service to expose a deployment
+category: networking
+difficulty: easy
+tags:
+  - services
+  - networking
+  - creation
+
+timeout: 5m
+
+script:
+  - prompt: |
+      There is a deployment named 'backend-app' in the current namespace running nginx.
+
+      Please:
+      1. Create a ClusterIP service named 'backend-service' that exposes the deployment
+      2. The service should expose port 80 and target the pods on port 80
+      3. Use selector: app=backend-app
+
+      After creating the service, verify it has endpoints.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "service.*created|ClusterIP|endpoint"

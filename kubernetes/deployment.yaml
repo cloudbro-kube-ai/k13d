@@ -1,0 +1,354 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: k13d
+  labels:
+    app: k13d
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k13d
+  namespace: k13d
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k13d
+rules:
+  # Core resources - read
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - pods/exec
+      - pods/portforward
+      - services
+      - configmaps
+      - secrets
+      - namespaces
+      - nodes
+      - persistentvolumes
+      - persistentvolumeclaims
+      - events
+      - serviceaccounts
+    verbs: ["get", "list", "watch"]
+
+  # Core resources - write (for AI assistant actions)
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/exec
+      - pods/portforward
+      - services
+      - configmaps
+      - secrets
+    verbs: ["create", "update", "patch", "delete"]
+
+  # Apps resources
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - daemonsets
+      - replicasets
+      - statefulsets
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Batch resources
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Networking resources
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+      - networkpolicies
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # RBAC resources
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources:
+      - roles
+      - rolebindings
+      - clusterroles
+      - clusterrolebindings
+    verbs: ["get", "list", "watch"]
+
+  # Storage resources
+  - apiGroups: ["storage.k8s.io"]
+    resources:
+      - storageclasses
+    verbs: ["get", "list", "watch"]
+
+  # Autoscaling resources
+  - apiGroups: ["autoscaling"]
+    resources:
+      - horizontalpodautoscalers
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Policy resources
+  - apiGroups: ["policy"]
+    resources:
+      - poddisruptionbudgets
+    verbs: ["get", "list", "watch"]
+
+  # Metrics
+  - apiGroups: ["metrics.k8s.io"]
+    resources:
+      - pods
+      - nodes
+    verbs: ["get", "list"]
+
+  # CRDs
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources:
+      - customresourcedefinitions
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k13d
+subjects:
+  - kind: ServiceAccount
+    name: k13d
+    namespace: k13d
+roleRef:
+  kind: ClusterRole
+  name: k13d
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: k13d-credentials
+  namespace: k13d
+type: Opaque
+stringData:
+  username: admin
+  password: admin  # Change this in production!
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: k13d-llm-config
+  namespace: k13d
+type: Opaque
+stringData:
+  # Uncomment and configure for your LLM provider
+  # provider: openai
+  # model: gpt-4
+  # api-key: sk-xxxxx
+  # endpoint: https://api.openai.com/v1
+
+  # For Ollama (air-gapped)
+  provider: ollama
+  model: llama3.2
+  endpoint: http://ollama.k13d.svc:11434
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k13d
+  namespace: k13d
+  labels:
+    app: k13d
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k13d
+  template:
+    metadata:
+      labels:
+        app: k13d
+    spec:
+      serviceAccountName: k13d
+      containers:
+        - name: k13d
+          image: youngjukim/k13d:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: K13D_AUTH_MODE
+              value: "local"
+            - name: K13D_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: k13d-credentials
+                  key: username
+            - name: K13D_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: k13d-credentials
+                  key: password
+            - name: K13D_LLM_PROVIDER
+              valueFrom:
+                secretKeyRef:
+                  name: k13d-llm-config
+                  key: provider
+                  optional: true
+            - name: K13D_LLM_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: k13d-llm-config
+                  key: model
+                  optional: true
+            - name: K13D_LLM_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: k13d-llm-config
+                  key: endpoint
+                  optional: true
+            - name: K13D_LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: k13d-llm-config
+                  key: api-key
+                  optional: true
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k13d
+  namespace: k13d
+  labels:
+    app: k13d
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: k13d
+
+---
+# Optional: Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: k13d
+  namespace: k13d
+  annotations:
+    # Adjust based on your ingress controller
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  rules:
+    - host: k13d.example.com  # Change to your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: k13d
+                port:
+                  name: http
+
+---
+# Optional: Ollama deployment for air-gapped environments
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: k13d
+  labels:
+    app: ollama
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          ports:
+            - containerPort: 11434
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              cpu: 4
+              memory: 8Gi
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /root/.ollama
+      volumes:
+        - name: ollama-data
+          persistentVolumeClaim:
+            claimName: ollama-data
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-data
+  namespace: k13d
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: k13d
+spec:
+  selector:
+    app: ollama
+  ports:
+    - port: 11434
+      targetPort: 11434

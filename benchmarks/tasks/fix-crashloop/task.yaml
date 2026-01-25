@@ -1,0 +1,31 @@
+# Fix CrashLoopBackOff Task
+# Tests troubleshooting capabilities for crashing pods
+
+name: Fix CrashLoopBackOff
+description: Diagnose and fix a pod that is in CrashLoopBackOff state
+category: troubleshooting
+difficulty: medium
+tags:
+  - pods
+  - troubleshooting
+  - debugging
+
+timeout: 10m
+
+script:
+  - prompt: |
+      There is a deployment named 'broken-app' in the current namespace that has pods in CrashLoopBackOff state.
+
+      Please:
+      1. Diagnose why the pods are crashing
+      2. Fix the issue so the pods run successfully
+      3. Verify the fix worked
+
+      Hint: Check the container command and arguments.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "command|args|entrypoint|fixed|running"

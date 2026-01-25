@@ -1,0 +1,117 @@
+# Docker Compose for AI Benchmarking
+# Usage:
+#   docker compose -f docker-compose.bench.yaml up -d
+#   docker compose -f docker-compose.bench.yaml exec bench k13d-bench run --llm-provider ollama --llm-model qwen2.5:3b
+#   docker compose -f docker-compose.bench.yaml down -v
+
+services:
+  # Ollama LLM server for AI benchmarks
+  ollama:
+    image: ollama/ollama:latest
+    container_name: k13d-bench-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 16G
+        reservations:
+          cpus: '2'
+          memory: 8G
+
+  # Model puller - downloads the benchmark model
+  ollama-init:
+    image: curlimages/curl:latest
+    container_name: k13d-bench-ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Pulling qwen2.5:3b model for benchmarking..."
+        curl -X POST http://ollama:11434/api/pull -d '{"name": "qwen2.5:3b"}' --no-buffer
+        echo ""
+        echo "Model pull complete!"
+    restart: "no"
+
+  # k13d benchmark runner
+  bench:
+    build:
+      context: .
+      dockerfile: Dockerfile.bench
+    container_name: k13d-bench-runner
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ./benchmarks:/app/benchmarks:ro
+      - ./.build/bench-results:/app/results
+      - ${KUBECONFIG:-~/.kube/config}:/home/k13d/.kube/config:ro
+    environment:
+      K13S_LLM_PROVIDER: ollama
+      K13S_LLM_ENDPOINT: http://ollama:11434
+      K13S_LLM_MODEL: qwen2.5:3b
+      KUBECONFIG: /home/k13d/.kube/config
+    working_dir: /app
+    command: ["sleep", "infinity"]  # Keep container running for interactive use
+    networks:
+      - bench-network
+
+  # Alternative: vLLM for faster inference (requires GPU)
+  # vllm:
+  #   image: vllm/vllm-openai:latest
+  #   container_name: k13d-bench-vllm
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - vllm_data:/root/.cache/huggingface
+  #   environment:
+  #     HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+  #   command: ["--model", "Qwen/Qwen2.5-3B-Instruct", "--dtype", "auto"]
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+
+  # Kind cluster for Kubernetes benchmarks (optional)
+  # Requires privileged mode and docker socket mount
+  kind:
+    image: docker:dind
+    container_name: k13d-bench-kind
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - kind_data:/var/lib/docker
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    healthcheck:
+      test: ["CMD", "docker", "info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bench-network
+    profiles:
+      - with-cluster  # Only start with: docker compose --profile with-cluster up
+
+volumes:
+  ollama_data:
+  kind_data:
+  # vllm_data:
+
+networks:
+  bench-network:
+    name: k13d-bench-network

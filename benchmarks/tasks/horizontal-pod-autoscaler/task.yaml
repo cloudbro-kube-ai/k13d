@@ -1,0 +1,29 @@
+# Horizontal Pod Autoscaler Task
+# Tests ability to create HPA for automatic scaling
+
+name: Create HPA
+description: Create Horizontal Pod Autoscaler for deployment
+category: operations
+difficulty: hard
+tags:
+  - hpa
+  - autoscaling
+  - operations
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a Horizontal Pod Autoscaler for deployment 'web-app' in namespace 'autoscale-ns'.
+
+      Requirements:
+      - Minimum replicas: 2
+      - Maximum replicas: 10
+      - Target CPU utilization: 50%
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "hpa|autoscal|cpu"

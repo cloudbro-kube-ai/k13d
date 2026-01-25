@@ -1,0 +1,26 @@
+# Create ConfigMap Mount Task
+# Tests ability to create pods with ConfigMap volume mounts
+
+name: Create Pod with ConfigMap Mount
+description: Create a pod that mounts a ConfigMap as a volume
+category: creation
+difficulty: medium
+tags:
+  - pods
+  - configmap
+  - volumes
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'config-test', create:
+      1. A ConfigMap named 'app-config' with key 'app.properties' containing 'debug=true'
+      2. A pod named 'config-pod' using nginx:1.25 that mounts this ConfigMap at /etc/config
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "configmap|volume|mount"

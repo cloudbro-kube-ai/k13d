@@ -1,0 +1,391 @@
+# k13d Single Pod with Ollama (Air-gapped / Complete AI Features)
+#
+# This manifest deploys k13d with an internal Ollama LLM server
+# for AI features without external internet dependencies.
+#
+# Prerequisites:
+# 1. Pre-download Ollama model and bake into image, OR
+# 2. Use PVC with pre-loaded model data
+#
+# To prepare Ollama model for air-gapped:
+#   # On internet-connected machine:
+#   docker run -v ollama-data:/root/.ollama ollama/ollama pull llama3.2
+#   docker save ollama/ollama:latest | gzip > ollama.tar.gz
+#   # Export volume data
+#   docker run --rm -v ollama-data:/data -v $(pwd):/backup alpine tar cvf /backup/ollama-models.tar /data
+#
+#   # Transfer ollama.tar.gz and ollama-models.tar to air-gapped environment
+#
+# Usage:
+#   kubectl apply -f single-pod-with-ollama.yaml
+#   # Wait for Ollama to be ready and model to load
+#   kubectl port-forward -n k13d pod/k13d 8080:8080
+#   # Open http://localhost:8080
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: k13d
+  labels:
+    app.kubernetes.io/name: k13d
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k13d
+  namespace: k13d
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k13d
+rules:
+  # Core resources - read
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - services
+      - endpoints
+      - configmaps
+      - secrets
+      - namespaces
+      - nodes
+      - persistentvolumes
+      - persistentvolumeclaims
+      - events
+      - serviceaccounts
+      - resourcequotas
+      - limitranges
+    verbs: ["get", "list", "watch"]
+
+  # Core resources - write
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/exec
+      - pods/portforward
+      - services
+      - configmaps
+      - secrets
+    verbs: ["create", "update", "patch", "delete"]
+
+  # Apps resources
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - deployments/scale
+      - daemonsets
+      - replicasets
+      - statefulsets
+      - statefulsets/scale
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Batch resources
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Networking resources
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+      - ingressclasses
+      - networkpolicies
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # RBAC resources (read-only)
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources:
+      - roles
+      - rolebindings
+      - clusterroles
+      - clusterrolebindings
+    verbs: ["get", "list", "watch"]
+
+  # Storage resources
+  - apiGroups: ["storage.k8s.io"]
+    resources:
+      - storageclasses
+      - volumeattachments
+    verbs: ["get", "list", "watch"]
+
+  # Autoscaling resources
+  - apiGroups: ["autoscaling"]
+    resources:
+      - horizontalpodautoscalers
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+  # Policy resources
+  - apiGroups: ["policy"]
+    resources:
+      - poddisruptionbudgets
+    verbs: ["get", "list", "watch"]
+
+  # Metrics API
+  - apiGroups: ["metrics.k8s.io"]
+    resources:
+      - pods
+      - nodes
+    verbs: ["get", "list"]
+
+  # CRDs
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources:
+      - customresourcedefinitions
+    verbs: ["get", "list", "watch"]
+
+  # Dynamic access to all CRs (read-only)
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k13d
+subjects:
+  - kind: ServiceAccount
+    name: k13d
+    namespace: k13d
+roleRef:
+  kind: ClusterRole
+  name: k13d
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k13d-config
+  namespace: k13d
+data:
+  config.yaml: |
+    authMode: token
+    enableAudit: true
+    defaultNamespace: ""
+    refreshInterval: 5
+
+    llm:
+      provider: ollama
+      endpoint: http://localhost:11434
+      model: llama3.2
+
+    web:
+      readOnly: false
+      hideSecrets: true
+
+---
+# Single Pod with both k13d and Ollama containers
+apiVersion: v1
+kind: Pod
+metadata:
+  name: k13d
+  namespace: k13d
+  labels:
+    app.kubernetes.io/name: k13d
+    app.kubernetes.io/component: dashboard
+spec:
+  serviceAccountName: k13d
+
+  securityContext:
+    fsGroup: 1000
+
+  # Init container to prepare Ollama model (optional)
+  # Uncomment if you have pre-loaded models in a PVC
+  # initContainers:
+  #   - name: load-model
+  #     image: busybox
+  #     command: ['sh', '-c', 'cp -r /model-source/* /root/.ollama/ || true']
+  #     volumeMounts:
+  #       - name: model-source
+  #         mountPath: /model-source
+  #       - name: ollama-data
+  #         mountPath: /root/.ollama
+
+  containers:
+    # k13d dashboard
+    - name: k13d
+      image: youngjukim/k13d:latest
+      imagePullPolicy: IfNotPresent
+
+      ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+
+      env:
+        - name: K13D_AUTH_MODE
+          value: "token"
+        - name: K13D_LLM_PROVIDER
+          value: "ollama"
+        - name: K13D_LLM_ENDPOINT
+          value: "http://localhost:11434"
+        - name: K13D_LLM_MODEL
+          value: "llama3.2"
+
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+
+      livenessProbe:
+        httpGet:
+          path: /api/health
+          port: http
+        initialDelaySeconds: 10
+        periodSeconds: 30
+        timeoutSeconds: 5
+
+      readinessProbe:
+        httpGet:
+          path: /api/health
+          port: http
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        timeoutSeconds: 3
+
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1000
+        capabilities:
+          drop:
+            - ALL
+
+      volumeMounts:
+        - name: config
+          mountPath: /home/k13d/.config/k13d
+          readOnly: true
+        - name: k13d-data
+          mountPath: /home/k13d/data
+
+    # Ollama LLM server (sidecar)
+    - name: ollama
+      image: ollama/ollama:latest
+      imagePullPolicy: IfNotPresent
+
+      ports:
+        - name: ollama
+          containerPort: 11434
+          protocol: TCP
+
+      # Ollama startup - pull model if not present
+      # For air-gapped: comment this out and use pre-loaded model PVC
+      lifecycle:
+        postStart:
+          exec:
+            command:
+              - /bin/sh
+              - -c
+              - |
+                # Wait for Ollama to start
+                sleep 5
+                # Pull model (skip if already present or air-gapped)
+                ollama pull llama3.2 2>/dev/null || true
+
+      resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+        limits:
+          cpu: 4
+          memory: 8Gi
+          # Uncomment for GPU support
+          # nvidia.com/gpu: 1
+
+      livenessProbe:
+        httpGet:
+          path: /
+          port: ollama
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        timeoutSeconds: 5
+
+      readinessProbe:
+        httpGet:
+          path: /
+          port: ollama
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        timeoutSeconds: 5
+
+      volumeMounts:
+        - name: ollama-data
+          mountPath: /root/.ollama
+
+  volumes:
+    - name: config
+      configMap:
+        name: k13d-config
+    - name: k13d-data
+      emptyDir: {}
+    - name: ollama-data
+      emptyDir:
+        sizeLimit: 20Gi
+    # For pre-loaded models (air-gapped), use PVC:
+    # - name: ollama-data
+    #   persistentVolumeClaim:
+    #     claimName: ollama-models
+
+  restartPolicy: Always
+
+---
+# Service for k13d
+apiVersion: v1
+kind: Service
+metadata:
+  name: k13d
+  namespace: k13d
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: k13d
+
+---
+# NodePort for direct access
+apiVersion: v1
+kind: Service
+metadata:
+  name: k13d-nodeport
+  namespace: k13d
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+      nodePort: 30080
+  selector:
+    app.kubernetes.io/name: k13d
+
+---
+# Optional: PVC for pre-loaded Ollama models (air-gapped)
+# Uncomment and pre-populate with model data
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: ollama-models
+#   namespace: k13d
+# spec:
+#   accessModes:
+#     - ReadWriteOnce
+#   resources:
+#     requests:
+#       storage: 20Gi
+#   # storageClassName: your-storage-class

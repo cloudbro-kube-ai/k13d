@@ -1,0 +1,43 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Build artifacts (keep k13d for Dockerfile.prebuilt)
+# k13d  # Needed for prebuilt Docker image
+k13d-eval
+*.exe
+*.out
+coverage.out
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+*_test.go
+testdata/
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Skills and reference files
+skills/
+
+# Development files
+.env
+.env.local
+*.log
+
+# Docker files (don't include in context)
+Dockerfile
+docker-compose*.yml
+.dockerignore

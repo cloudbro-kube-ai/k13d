@@ -1,0 +1,32 @@
+# Fix ImagePullBackOff Task
+# Tests troubleshooting image pull issues
+
+name: Fix ImagePullBackOff
+description: Diagnose and fix a pod with image pull errors
+category: troubleshooting
+difficulty: medium
+tags:
+  - pods
+  - troubleshooting
+  - images
+  - debugging
+
+timeout: 10m
+
+script:
+  - prompt: |
+      There is a deployment named 'image-app' in the current namespace with pods stuck in ImagePullBackOff state.
+
+      Please:
+      1. Diagnose why the image cannot be pulled
+      2. Fix the issue by updating the deployment with a valid image
+      3. Verify the fix worked and pods are running
+
+      Note: Use a standard nginx image that can be pulled from Docker Hub.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "image|fixed|nginx|running|updated"

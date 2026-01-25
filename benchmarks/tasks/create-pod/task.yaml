@@ -1,0 +1,31 @@
+# Create Pod Task
+# Tests basic pod creation capabilities
+
+name: Create Nginx Pod
+description: Create a simple nginx pod with specific configurations
+category: creation
+difficulty: easy
+tags:
+  - pods
+  - basics
+  - creation
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a pod named 'web-server' in the current namespace with the following specifications:
+      - Image: nginx:1.25
+      - Container port: 80
+      - Labels: app=web, tier=frontend
+      - Resource requests: cpu=100m, memory=128Mi
+      - Resource limits: cpu=200m, memory=256Mi
+
+      After creating the pod, verify it is running.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "pod.*created|pod.*running|successfully"

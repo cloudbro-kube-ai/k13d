@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  k13d:
+    image: youngjukim/k13d:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: k13d
+    ports:
+      - "8080:8080"
+    environment:
+      # Authentication settings
+      - K13D_AUTH_MODE=local
+      - K13D_USERNAME=admin
+      - K13D_PASSWORD=${K13D_PASSWORD:-admin}
+
+      # LLM Configuration (optional)
+      # Supported providers: openai, anthropic, ollama, local
+      - K13D_LLM_PROVIDER=${K13D_LLM_PROVIDER:-}
+      - K13D_LLM_MODEL=${K13D_LLM_MODEL:-}
+      - K13D_LLM_ENDPOINT=${K13D_LLM_ENDPOINT:-}
+      - K13D_LLM_API_KEY=${K13D_LLM_API_KEY:-}
+
+      # Kubernetes config
+      - KUBECONFIG=/home/k13d/.kube/config
+    volumes:
+      # Mount kubeconfig for cluster access
+      - ${KUBECONFIG:-~/.kube/config}:/home/k13d/.kube/config:ro
+
+      # Optional: persist k13d configuration
+      - k13d-config:/home/k13d/.config/k13d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # Optional: Ollama for local LLM (air-gapped environment)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: k13d-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    profiles:
+      - with-ollama
+    restart: unless-stopped
+
+volumes:
+  k13d-config:
+  ollama-data:
+
+# Usage examples:
+#
+# 1. Basic usage (with existing kubeconfig):
+#    docker-compose up -d
+#
+# 2. With custom password:
+#    K13D_PASSWORD=mysecurepassword docker-compose up -d
+#
+# 3. With OpenAI:
+#    K13D_LLM_PROVIDER=openai K13D_LLM_API_KEY=sk-xxx docker-compose up -d
+#
+# 4. With local Ollama (air-gapped):
+#    docker-compose --profile with-ollama up -d
+#    Then configure: K13D_LLM_PROVIDER=ollama K13D_LLM_ENDPOINT=http://ollama:11434
+#
+# 5. In-cluster deployment (mount service account token):
+#    See kubernetes/deployment.yaml for Kubernetes-native deployment

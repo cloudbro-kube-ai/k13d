@@ -1,0 +1,60 @@
+# Dockerfile for AI Benchmark Runner
+# Build: docker build -f Dockerfile.bench -t k13d-bench .
+# Run:   docker run --rm -v ~/.kube/config:/home/k13d/.kube/config:ro k13d-bench list
+
+FROM golang:1.25-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates
+
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+ENV GOTOOLCHAIN=auto
+RUN go mod download
+
+# Copy source
+COPY . .
+
+# Build benchmark binary
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-w -s" \
+    -o /k13d-bench ./cmd/bench/main.go
+
+# Build main binary for agent testing
+RUN CGO_ENABLED=0 go build \
+    -ldflags="-w -s" \
+    -o /k13d ./cmd/kube-ai-dashboard-cli/main.go
+
+# Final stage
+FROM alpine:3.21
+
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata curl bash kubectl
+
+# Create user
+RUN adduser -D -g '' k13d
+
+# Copy binaries
+COPY --from=builder /k13d-bench /usr/local/bin/k13d-bench
+COPY --from=builder /k13d /usr/local/bin/k13d
+
+# Copy benchmark tasks
+COPY benchmarks /app/benchmarks
+
+# Create directories
+RUN mkdir -p /app/results /home/k13d/.kube && \
+    chown -R k13d:k13d /app /home/k13d
+
+USER k13d
+WORKDIR /app
+
+# Default environment
+ENV K13S_LLM_PROVIDER=ollama \
+    K13S_LLM_MODEL=qwen2.5:3b \
+    K13S_LLM_ENDPOINT=http://localhost:11434
+
+# Default command: show help
+ENTRYPOINT ["/usr/local/bin/k13d-bench"]
+CMD ["--help"]

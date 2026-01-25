@@ -1,0 +1,148 @@
+# .goreleaser.yaml
+# k9s-style release configuration for k13d
+version: 2
+
+project_name: k13d
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: k13d
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    goarm:
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm64
+    main: ./cmd/kube-ai-dashboard-cli/main.go
+    binary: k13d
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+
+archives:
+  - id: k13d-archive
+    builds:
+      - k13d
+    format: tar.gz
+    # k9s-style naming: k13d_v0.1.0_darwin_amd64.tar.gz, k13d_v0.1.0_darwin_arm64.tar.gz
+    name_template: >-
+      {{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+      - docs/*
+    # Wrap in directory for easier extraction
+    wrap_in_directory: true
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Performance
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Documentation
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      order: 3
+    - title: Others
+      order: 999
+  filters:
+    exclude:
+      - '^test:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+
+release:
+  github:
+    owner: kube-ai-dashbaord
+    name: kube-ai-dashboard-cli
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## k13d {{ .Tag }}
+
+    Kubernetes AI Dashboard CLI - A comprehensive Kubernetes management tool with AI assistant.
+
+    ### Installation
+
+    **Homebrew (macOS/Linux):**
+    ```bash
+    brew install kube-ai-dashbaord/tap/k13d
+    ```
+
+    **Direct Download:**
+    Download the appropriate archive for your OS/architecture below.
+  footer: |
+    ---
+
+    ### Embedded LLM Bundle (Optional)
+
+    For offline or air-gapped environments, you can use the embedded LLM feature with manually downloaded files.
+
+    **Required Downloads:**
+
+    | File | Size | Link |
+    |------|------|------|
+    | Model (Qwen2.5-0.5B-Instruct Q4_K_M) | ~350MB | [Download from HuggingFace](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf) |
+    | llama-server (macOS ARM64) | ~5MB | [llama-b4547-bin-macos-arm64.zip](https://github.com/ggerganov/llama.cpp/releases/download/b4547/llama-b4547-bin-macos-arm64.zip) |
+    | llama-server (macOS x64) | ~5MB | [llama-b4547-bin-macos-x64.zip](https://github.com/ggerganov/llama.cpp/releases/download/b4547/llama-b4547-bin-macos-x64.zip) |
+    | llama-server (Linux x64) | ~5MB | [llama-b4547-bin-ubuntu-x64.zip](https://github.com/ggerganov/llama.cpp/releases/download/b4547/llama-b4547-bin-ubuntu-x64.zip) |
+    | llama-server (Linux ARM64) | ~5MB | [llama-b4547-bin-ubuntu-arm64.zip](https://github.com/ggerganov/llama.cpp/releases/download/b4547/llama-b4547-bin-ubuntu-arm64.zip) |
+
+    **Air-Gapped Installation:**
+    ```bash
+    # Place files in these locations:
+    mkdir -p ~/.local/share/k13d/llm/{models,bin}
+    cp qwen2.5-0.5b-instruct-q4_k_m.gguf ~/.local/share/k13d/llm/models/
+    unzip llama-b4547-bin-*.zip -d /tmp/llama
+    cp /tmp/llama/build/bin/llama-server ~/.local/share/k13d/llm/bin/
+    chmod +x ~/.local/share/k13d/llm/bin/llama-server
+
+    # Verify and run
+    k13d --embedded-llm-status
+    k13d --embedded-llm -web
+    ```
+
+    See [README - Air-Gapped Installation](https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli#air-gapped--offline-installation) for detailed instructions.
+
+    **Full Changelog**: https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/compare/{{ .PreviousTag }}...{{ .Tag }}
+  name_template: "v{{.Version}}"
+
+# Source code archive
+source:
+  enabled: true
+  name_template: "{{ .ProjectName }}_v{{ .Version }}_source"
+  format: tar.gz
