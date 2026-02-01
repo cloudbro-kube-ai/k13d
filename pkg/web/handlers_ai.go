@@ -12,6 +12,7 @@ import (
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/session"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/log"
 )
 
 // LLMCapabilities represents the capabilities of the configured LLM
@@ -431,42 +432,50 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 	var currentSessionID string
 
 	// Handle session-based conversation
+	log.Debugf("[Session] sessionStore=%v, req.SessionID=%q", s.sessionStore != nil, req.SessionID)
 	if s.sessionStore != nil {
 		if req.SessionID != "" {
 			currentSessionID = req.SessionID
 			// Load conversation history
 			history, err := s.sessionStore.GetContextMessages(req.SessionID, 20)
+			log.Debugf("[Session] Loaded %d messages from session %s (err=%v)", len(history), req.SessionID, err)
 			if err == nil && len(history) > 0 {
 				var historyBuilder strings.Builder
-				historyBuilder.WriteString("Previous conversation:\n")
-				for _, msg := range history {
+				historyBuilder.WriteString("IMPORTANT: This is a continuation of an ongoing conversation. You MUST maintain context from the previous messages below.\n\n")
+				historyBuilder.WriteString("=== CONVERSATION HISTORY ===\n")
+				for i, msg := range history {
 					if msg.Role == "user" {
-						historyBuilder.WriteString(fmt.Sprintf("User: %s\n", msg.Content))
+						historyBuilder.WriteString(fmt.Sprintf("[%d] USER: %s\n", i+1, msg.Content))
 					} else if msg.Role == "assistant" {
-						historyBuilder.WriteString(fmt.Sprintf("Assistant: %s\n", msg.Content))
+						historyBuilder.WriteString(fmt.Sprintf("[%d] ASSISTANT: %s\n", i+1, msg.Content))
 					}
 				}
-				historyBuilder.WriteString("\nCurrent message:\n")
+				historyBuilder.WriteString("=== END OF HISTORY ===\n\n")
+				historyBuilder.WriteString("Now respond to the user's NEW message below. Remember all context from the conversation history above.\n\n")
+				historyBuilder.WriteString("NEW USER MESSAGE: ")
 				message = historyBuilder.String() + req.Message
 			}
 		} else {
 			// Create new session
 			newSession, err := s.sessionStore.Create(s.cfg.LLM.Provider, s.cfg.LLM.Model)
+			log.Debugf("[Session] Created new session: %s (err=%v)", newSession.ID, err)
 			if err == nil {
 				currentSessionID = newSession.ID
 				// Send session ID to client
 				sessionJSON, _ := json.Marshal(map[string]string{"session_id": currentSessionID})
 				sse.WriteEvent("session", string(sessionJSON))
+				log.Debugf("[Session] Sent session ID to client: %s", currentSessionID)
 			}
 		}
 
 		// Save user message to session
 		if currentSessionID != "" {
-			s.sessionStore.AddMessage(currentSessionID, session.Message{
+			err := s.sessionStore.AddMessage(currentSessionID, session.Message{
 				Role:      "user",
 				Content:   req.Message,
 				Timestamp: time.Now(),
 			})
+			log.Debugf("[Session] Saved user message to session %s (err=%v)", currentSessionID, err)
 		}
 	}
 
@@ -495,11 +504,13 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 
 	// Save assistant response to session
 	if s.sessionStore != nil && currentSessionID != "" {
-		s.sessionStore.AddMessage(currentSessionID, session.Message{
+		responseContent := responseBuilder.String()
+		err := s.sessionStore.AddMessage(currentSessionID, session.Message{
 			Role:      "assistant",
-			Content:   responseBuilder.String(),
+			Content:   responseContent,
 			Timestamp: time.Now(),
 		})
+		log.Debugf("[Session] Saved assistant message to session %s (len=%d, err=%v)", currentSessionID, len(responseContent), err)
 	}
 
 	sse.Write("[DONE]")

@@ -1,0 +1,28 @@
+# Grafana datasource provisioning
+# https://grafana.com/docs/grafana/latest/administration/provisioning/#datasources
+
+apiVersion: 1
+
+datasources:
+  # Prometheus datasource
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+
+    # Optional settings
+    jsonData:
+      httpMethod: POST
+      timeInterval: "15s"
+      # Manage alerts via Alerting UI
+      manageAlerts: true
+      # Prometheus type (prometheus, mimir, thanos, etc.)
+      prometheusType: Prometheus
+      # Default query timeout
+      timeout: 60
+
+    # Optional: secure JSON data for authentication
+    # secureJsonData:
+    #   basicAuthPassword: "password"

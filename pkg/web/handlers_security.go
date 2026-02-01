@@ -245,3 +245,91 @@ func (s *Server) handleSecurityScanDetail(w http.ResponseWriter, r *http.Request
 
 	json.NewEncoder(w).Encode(scan)
 }
+
+// ==========================================
+// Trivy Management Handlers
+// ==========================================
+
+func (s *Server) handleTrivyStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	downloader := security.NewTrivyDownloader()
+	status := downloader.GetStatus(r.Context())
+
+	json.NewEncoder(w).Encode(status)
+}
+
+func (s *Server) handleTrivyInstall(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	downloader := security.NewTrivyDownloader()
+
+	// Check if already installed
+	status := downloader.GetStatus(r.Context())
+	if status.Installed {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Trivy is already installed",
+			"path":    status.Path,
+			"version": status.Version,
+		})
+		return
+	}
+
+	// Download and install
+	err := downloader.Download(r.Context(), func(progress int, msg string) {
+		// Progress callback - could use SSE for real-time updates
+	})
+
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Verify installation
+	newStatus := downloader.GetStatus(r.Context())
+	if newStatus.Installed {
+		// Update scanner with new trivy path
+		if s.securityScanner != nil {
+			s.securityScanner.SetTrivyPath(downloader.GetTrivyPath())
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Trivy installed successfully",
+			"path":    newStatus.Path,
+			"version": newStatus.Version,
+		})
+	} else {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   "Installation completed but verification failed",
+		})
+	}
+}
+
+func (s *Server) handleTrivyInstructions(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"instructions": security.GetInstallInstructions(),
+	})
+}

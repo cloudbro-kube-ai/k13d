@@ -3403,6 +3403,192 @@
         .summary-card .value.pods { color: var(--accent-green); }
         .summary-card .value.llm { color: var(--accent-yellow); }
 
+        /* Metrics Dashboard Grid - New Design */
+        .metrics-dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .metrics-dashboard-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .metrics-stat-card {
+            background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .metrics-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        .metrics-stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 80px;
+            height: 80px;
+            background: var(--accent-blue);
+            opacity: 0.08;
+            border-radius: 0 12px 0 100%;
+        }
+
+        .metrics-stat-card .stat-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .metrics-stat-card .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+        }
+
+        .metrics-stat-card .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metrics-stat-card .stat-trend {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .metrics-stat-card .stat-trend.up { color: var(--accent-green); }
+        .metrics-stat-card .stat-trend.down { color: var(--accent-red); }
+        .metrics-stat-card .stat-trend.neutral { color: var(--text-secondary); }
+
+        /* Node Health Grid */
+        .node-health-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        .node-health-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            transition: border-color 0.2s;
+        }
+
+        .node-health-card:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .node-health-card .node-name {
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .node-health-card .node-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .node-health-card .node-status.healthy { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+        .node-health-card .node-status.warning { background: var(--accent-yellow); box-shadow: 0 0 8px var(--accent-yellow); }
+        .node-health-card .node-status.critical { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+
+        .usage-bar-container {
+            margin-top: 6px;
+        }
+
+        .usage-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 3px;
+        }
+
+        .usage-bar {
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .usage-bar .fill {
+            height: 100%;
+            transition: width 0.5s ease;
+            border-radius: 3px;
+        }
+
+        .usage-bar .fill.cpu { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); }
+        .usage-bar .fill.memory { background: linear-gradient(90deg, var(--accent-purple), #e879f9); }
+        .usage-bar .fill.high { background: linear-gradient(90deg, var(--accent-yellow), var(--accent-red)); }
+
+        /* Prometheus Status Indicator */
+        .prometheus-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: var(--bg-primary);
+            border-radius: 20px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-left: 12px;
+        }
+
+        .prometheus-status .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+        }
+
+        .prometheus-status.connected .status-dot {
+            background: var(--accent-green);
+            box-shadow: 0 0 6px var(--accent-green);
+        }
+
+        .prometheus-status.disconnected .status-dot {
+            background: var(--text-secondary);
+        }
+
+        /* Auto refresh control */
+        .auto-refresh-control {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-right: 8px;
+        }
+
+        .auto-refresh-control input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+        }
+
         /* Time Range Selector */
         .time-range-selector {
             display: flex;
@@ -4203,17 +4389,19 @@
 
         .chat-history-delete {
             position: absolute;
-            top: 8px;
+            top: 50%;
             right: 8px;
-            background: transparent;
-            border: none;
+            transform: translateY(-50%);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
             color: var(--text-secondary);
             cursor: pointer;
             opacity: 0;
-            transition: opacity 0.2s ease;
+            transition: all 0.2s ease;
             font-size: 12px;
-            padding: 2px 6px;
-            border-radius: 3px;
+            padding: 4px 6px;
+            border-radius: 4px;
+            line-height: 1;
         }
 
         .chat-history-item:hover .chat-history-delete {
@@ -4222,15 +4410,19 @@
 
         .chat-history-delete:hover {
             background: var(--accent-red);
+            border-color: var(--accent-red);
             color: white;
         }
 
         .chat-history-item.active .chat-history-delete {
-            color: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.9);
         }
 
         .chat-history-item.active .chat-history-delete:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--accent-red);
+            border-color: var(--accent-red);
             color: white;
         }
 
@@ -4266,17 +4458,19 @@
         /* Chat history item edit button */
         .chat-history-edit {
             position: absolute;
-            right: 28px;
+            right: 36px;
             top: 50%;
             transform: translateY(-50%);
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
             cursor: pointer;
             opacity: 0;
-            transition: opacity 0.2s;
-            font-size: 11px;
-            padding: 2px 4px;
+            transition: all 0.2s ease;
+            font-size: 12px;
+            padding: 4px 6px;
+            border-radius: 4px;
+            line-height: 1;
         }
 
         .chat-history-item:hover .chat-history-edit {
@@ -4284,7 +4478,21 @@
         }
 
         .chat-history-edit:hover {
-            color: var(--accent-blue);
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .chat-history-item.active .chat-history-edit {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .chat-history-item.active .chat-history-edit:hover {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
         }
 
         /* Rename input style */
@@ -4775,6 +4983,8 @@
                     <div class="tab active" onclick="switchSettingsTab('general')">General</div>
                     <div class="tab" onclick="switchSettingsTab('ai')">AI</div>
                     <div class="tab" onclick="switchSettingsTab('mcp')">MCP</div>
+                    <div class="tab" onclick="switchSettingsTab('security')">Security</div>
+                    <div class="tab" onclick="switchSettingsTab('metrics')">Metrics</div>
                     <div class="tab" id="admin-tab" onclick="switchSettingsTab('admin')" style="display:none;">Admin</div>
                     <div class="tab" onclick="switchSettingsTab('about')">About</div>
                 </div>
@@ -5135,6 +5345,190 @@
                             <strong>Command:</strong> npx<br>
                             <strong>Args:</strong> -y, @anthropic/mcp-server-kubernetes<br>
                         </p>
+                    </div>
+                </div>
+
+                <!-- Security/Trivy Settings Tab -->
+                <div id="settings-security" class="settings-content" style="display:none;">
+                    <div class="settings-section">
+                        <h4>Trivy CVE Scanner</h4>
+                        <p class="settings-description" style="margin-bottom:16px;">Trivy is used to scan container images for known vulnerabilities (CVEs). For air-gapped environments, you can download Trivy manually.</p>
+
+                        <div id="trivy-status-card" style="padding:16px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);margin-bottom:16px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;">
+                                <div>
+                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                                        <span id="trivy-status-indicator" style="width:10px;height:10px;border-radius:50%;background:var(--text-secondary);"></span>
+                                        <span id="trivy-status-text" style="font-weight:600;">Checking...</span>
+                                    </div>
+                                    <div id="trivy-version" style="font-size:12px;color:var(--text-secondary);"></div>
+                                    <div id="trivy-path" style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-top:4px;"></div>
+                                </div>
+                                <div id="trivy-actions">
+                                    <button class="btn btn-primary" id="trivy-install-btn" onclick="installTrivy()" style="display:none;">Install Trivy</button>
+                                    <button class="btn btn-secondary" onclick="checkTrivyStatus()">Refresh</button>
+                                </div>
+                            </div>
+                            <div id="trivy-install-progress" style="display:none;margin-top:12px;">
+                                <div style="height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden;">
+                                    <div id="trivy-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));transition:width 0.3s;"></div>
+                                </div>
+                                <div id="trivy-progress-text" style="font-size:11px;color:var(--text-secondary);margin-top:4px;"></div>
+                            </div>
+                        </div>
+
+                        <div id="trivy-instructions" style="display:none;padding:16px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
+                            <h5 style="margin-bottom:12px;color:var(--text-primary);">Manual Installation (Air-gapped)</h5>
+                            <pre id="trivy-install-commands" style="padding:12px;background:var(--bg-tertiary);border-radius:6px;font-size:12px;overflow-x:auto;white-space:pre-wrap;"></pre>
+                            <p style="margin-top:12px;font-size:12px;color:var(--text-secondary);">
+                                After manual installation, click "Refresh" to detect Trivy.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="settings-section" style="margin-top:20px;">
+                        <h4>Security Scanning</h4>
+
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-label">Enable Image Vulnerability Scanning</div>
+                                <div class="settings-description">Scan container images for CVEs during security reports (requires Trivy)</div>
+                            </div>
+                            <input type="checkbox" id="security-scan-images" checked>
+                        </div>
+
+                        <div class="settings-row" style="margin-top:12px;">
+                            <div>
+                                <div class="settings-label">Minimum Severity</div>
+                                <div class="settings-description">Only report vulnerabilities at or above this level</div>
+                            </div>
+                            <select id="security-min-severity">
+                                <option value="CRITICAL">Critical only</option>
+                                <option value="HIGH" selected>High and above</option>
+                                <option value="MEDIUM">Medium and above</option>
+                                <option value="LOW">All severities</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-section" style="margin-top:20px;">
+                        <h4>Quick Actions</h4>
+                        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                            <button class="btn btn-secondary" onclick="runSecurityScan()">Run Full Security Scan</button>
+                            <button class="btn btn-secondary" onclick="runQuickSecurityScan()">Quick Scan</button>
+                        </div>
+                        <div id="security-scan-result" style="margin-top:12px;display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- Metrics/Prometheus Settings Tab -->
+                <div id="settings-metrics" class="settings-content" style="display:none;">
+                    <div class="settings-section">
+                        <h4>Prometheus Integration</h4>
+                        <p class="settings-description" style="margin-bottom:16px;">Expose metrics for Prometheus scraping and connect to external Prometheus servers.</p>
+
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-label">Expose /metrics Endpoint</div>
+                                <div class="settings-description">Allow Prometheus to scrape metrics from k13d</div>
+                            </div>
+                            <input type="checkbox" id="prometheus-expose-metrics" onchange="updatePrometheusExposeInfo()">
+                        </div>
+
+                        <div id="prometheus-expose-info" style="margin-top:12px;padding:12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);display:none;">
+                            <div style="font-size:12px;color:var(--text-secondary);">
+                                Prometheus can scrape metrics at: <code style="background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;font-family:var(--font-mono);">http://&lt;host&gt;:&lt;port&gt;/metrics</code>
+                            </div>
+                            <div style="margin-top:12px;font-size:11px;color:var(--text-secondary);">
+                                <strong>Example prometheus.yml:</strong>
+                                <pre style="margin-top:6px;padding:10px;background:var(--bg-tertiary);border-radius:4px;font-size:11px;overflow-x:auto;font-family:var(--font-mono);">scrape_configs:
+  - job_name: 'k13d'
+    static_configs:
+      - targets: ['k13d:8080']</pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section" style="margin-top:20px;">
+                        <h4>External Prometheus Server</h4>
+                        <p class="settings-description" style="margin-bottom:12px;">Connect to an external Prometheus server for advanced queries.</p>
+
+                        <div class="form-group">
+                            <label>Prometheus URL</label>
+                            <input type="text" id="prometheus-external-url" placeholder="http://prometheus:9090">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Username (optional)</label>
+                            <input type="text" id="prometheus-username" placeholder="admin">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Password (optional)</label>
+                            <input type="password" id="prometheus-password" placeholder="••••••••">
+                        </div>
+
+                        <div style="display:flex;gap:8px;margin-top:12px;">
+                            <button class="btn btn-secondary" onclick="testPrometheusConnection()">Test Connection</button>
+                        </div>
+
+                        <div id="prometheus-test-result" style="margin-top:12px;padding:10px;border-radius:6px;display:none;"></div>
+                    </div>
+
+                    <div class="settings-section" style="margin-top:20px;">
+                        <h4>Metrics Collection</h4>
+
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-label">Enable K8s Metrics Collection</div>
+                                <div class="settings-description">Collect metrics from Kubernetes metrics-server</div>
+                            </div>
+                            <input type="checkbox" id="prometheus-collect-k8s" checked>
+                        </div>
+
+                        <div class="settings-row" style="margin-top:12px;">
+                            <div>
+                                <div class="settings-label">Collection Interval</div>
+                                <div class="settings-description">How often to collect metrics</div>
+                            </div>
+                            <select id="prometheus-collection-interval">
+                                <option value="30">30 seconds</option>
+                                <option value="60" selected>1 minute</option>
+                                <option value="120">2 minutes</option>
+                                <option value="300">5 minutes</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-section" style="margin-top:20px;">
+                        <h4>Data Retention</h4>
+
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-label">Metrics Retention Period</div>
+                                <div class="settings-description">How long to keep historical metrics</div>
+                            </div>
+                            <select id="prometheus-retention-days">
+                                <option value="7">7 days</option>
+                                <option value="14">14 days</option>
+                                <option value="30" selected>30 days</option>
+                                <option value="90">90 days</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-top:16px;padding:12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <div>
+                                    <div style="font-weight:500;font-size:13px;">Storage Info</div>
+                                    <div id="metrics-storage-info" style="font-size:12px;color:var(--text-secondary);margin-top:4px;">Calculating...</div>
+                                </div>
+                                <button class="btn btn-secondary" onclick="cleanupOldMetrics()" style="font-size:12px;padding:6px 12px;">Cleanup Now</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-color);">
+                        <button class="btn btn-primary" onclick="savePrometheusSettings()">Save Prometheus Settings</button>
                     </div>
                 </div>
 
@@ -5679,7 +6073,11 @@ spec:
     <div class="metrics-modal" id="metrics-modal">
         <div class="metrics-header">
             <div class="terminal-title">
-                <span>Cluster Metrics</span>
+                <span>Cluster Metrics Dashboard</span>
+                <div class="prometheus-status" id="prometheus-status">
+                    <div class="status-dot"></div>
+                    <span>Prometheus</span>
+                </div>
             </div>
             <div class="log-controls">
                 <div class="time-range-selector">
@@ -5693,73 +6091,99 @@ spec:
                 <select id="metrics-namespace-select" onchange="loadMetrics()">
                     <option value="">All Namespaces</option>
                 </select>
+                <div class="auto-refresh-control">
+                    <input type="checkbox" id="metrics-auto-refresh" checked onchange="toggleMetricsAutoRefresh()">
+                    <label for="metrics-auto-refresh" style="font-size:11px;color:var(--text-secondary);cursor:pointer;">Auto</label>
+                </div>
                 <button onclick="loadMetrics()">Refresh</button>
                 <button class="terminal-close" onclick="closeMetrics()">&times;</button>
             </div>
         </div>
         <div class="metrics-body">
-            <div class="metrics-summary">
-                <div class="summary-card">
-                    <div class="label">Total CPU Usage</div>
-                    <div class="value cpu" id="metrics-total-cpu">-</div>
+            <!-- Summary Stats Grid -->
+            <div class="metrics-dashboard-grid">
+                <div class="metrics-stat-card">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-value" id="metrics-cpu-value">-</div>
+                    <div class="stat-label">CPU Usage</div>
+                    <div class="stat-trend" id="metrics-cpu-trend"></div>
                 </div>
-                <div class="summary-card">
-                    <div class="label">Total Memory Usage</div>
-                    <div class="value memory" id="metrics-total-memory">-</div>
+                <div class="metrics-stat-card">
+                    <div class="stat-icon">💾</div>
+                    <div class="stat-value" id="metrics-mem-value">-</div>
+                    <div class="stat-label">Memory Usage</div>
+                    <div class="stat-trend" id="metrics-mem-trend"></div>
                 </div>
-                <div class="summary-card">
-                    <div class="label">Running Pods</div>
-                    <div class="value pods" id="metrics-total-pods">-</div>
+                <div class="metrics-stat-card">
+                    <div class="stat-icon">🖥️</div>
+                    <div class="stat-value" id="metrics-nodes-value">-/-</div>
+                    <div class="stat-label">Nodes Ready</div>
+                </div>
+                <div class="metrics-stat-card">
+                    <div class="stat-icon">📦</div>
+                    <div class="stat-value" id="metrics-pods-value">-</div>
+                    <div class="stat-label">Running Pods</div>
+                    <div class="stat-trend" id="metrics-pods-trend"></div>
                 </div>
             </div>
-            <div class="metrics-grid">
-                <div class="metric-card">
+
+            <!-- Charts Section -->
+            <div class="metrics-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px;">
+                <div class="metric-card" style="grid-column: span 1;">
                     <h4>CPU Usage Over Time</h4>
-                    <div class="metric-chart">
+                    <div class="metric-chart" style="height: 220px;">
                         <canvas id="cpu-chart"></canvas>
                     </div>
                 </div>
-                <div class="metric-card">
+                <div class="metric-card" style="grid-column: span 1;">
                     <h4>Memory Usage Over Time</h4>
-                    <div class="metric-chart">
+                    <div class="metric-chart" style="height: 220px;">
                         <canvas id="memory-chart"></canvas>
                     </div>
                 </div>
+            </div>
+
+            <!-- Node Health Section -->
+            <div class="metric-card" style="margin-bottom: 20px;">
+                <h4>Node Health Overview</h4>
+                <div class="node-health-grid" id="node-health-grid">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Top Consumers & LLM Usage -->
+            <div class="metrics-grid" style="grid-template-columns: repeat(3, 1fr);">
                 <div class="metric-card">
                     <h4>Top CPU Consumers</h4>
-                    <div id="top-cpu-list" style="max-height: 200px; overflow-y: auto;"></div>
+                    <div id="top-cpu-list" style="max-height: 180px; overflow-y: auto;"></div>
                 </div>
                 <div class="metric-card">
                     <h4>Top Memory Consumers</h4>
-                    <div id="top-memory-list" style="max-height: 200px; overflow-y: auto;"></div>
+                    <div id="top-memory-list" style="max-height: 180px; overflow-y: auto;"></div>
                 </div>
                 <div class="metric-card llm-usage-widget">
                     <h4>LLM Token Usage</h4>
                     <div class="llm-stats-grid">
                         <div class="llm-stat">
-                            <div class="label">Total Requests</div>
+                            <div class="label">Requests</div>
                             <div class="value" id="llm-total-requests">-</div>
                         </div>
                         <div class="llm-stat">
-                            <div class="label">Total Tokens</div>
+                            <div class="label">Tokens</div>
                             <div class="value tokens" id="llm-total-tokens">-</div>
                         </div>
                         <div class="llm-stat">
-                            <div class="label">Prompt Tokens</div>
+                            <div class="label">Prompt</div>
                             <div class="value" id="llm-prompt-tokens">-</div>
                         </div>
                         <div class="llm-stat">
-                            <div class="label">Completion Tokens</div>
+                            <div class="label">Completion</div>
                             <div class="value" id="llm-completion-tokens">-</div>
                         </div>
                     </div>
-                    <div class="metric-chart">
+                    <div class="metric-chart" style="height: 100px;">
                         <canvas id="llm-usage-chart"></canvas>
                     </div>
-                </div>
-                <div class="metric-card">
-                    <h4>LLM Usage by Model</h4>
-                    <div id="llm-model-list" style="max-height: 200px; overflow-y: auto;"></div>
                 </div>
             </div>
         </div>
@@ -5811,6 +6235,7 @@ spec:
         let currentLanguage = 'ko'; // Default language (Korean)
         let currentLLMModel = ''; // Current LLM model name
         let llmConnected = false; // LLM connection status
+        let currentSessionId = sessionStorage.getItem('k13d_session_id') || ''; // AI conversation session ID
 
         // i18n Translations
         const translations = {
@@ -8029,7 +8454,7 @@ spec:
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
-                    body: JSON.stringify({ message, language: currentLanguage })
+                    body: JSON.stringify({ message, language: currentLanguage, session_id: currentSessionId })
                 });
 
                 if (!response.ok) {
@@ -8061,6 +8486,21 @@ spec:
 
                             if (data === '[DONE]') {
                                 break;
+                            }
+
+                            // Handle session events - save session_id for conversation continuity
+                            if (currentEventType === 'session') {
+                                try {
+                                    const sessionInfo = JSON.parse(data);
+                                    if (sessionInfo.session_id) {
+                                        currentSessionId = sessionInfo.session_id;
+                                        sessionStorage.setItem('k13d_session_id', currentSessionId);
+                                    }
+                                } catch (e) {
+                                    console.error('Failed to parse session:', e);
+                                }
+                                currentEventType = null;
+                                continue;
                             }
 
                             // Handle tool_execution events - insert before the AI response text
@@ -8452,6 +8892,205 @@ ${escapeHtml(execInfo.result)}</div>
             } else if (tab === 'admin') {
                 loadAdminUsers();
                 loadAuthStatus();
+            } else if (tab === 'security') {
+                checkTrivyStatus();
+                loadTrivyInstructions();
+            } else if (tab === 'metrics') {
+                loadPrometheusSettings();
+            }
+        }
+
+        // ==========================================
+        // Trivy/Security Functions
+        // ==========================================
+        async function checkTrivyStatus() {
+            const indicator = document.getElementById('trivy-status-indicator');
+            const statusText = document.getElementById('trivy-status-text');
+            const versionEl = document.getElementById('trivy-version');
+            const pathEl = document.getElementById('trivy-path');
+            const installBtn = document.getElementById('trivy-install-btn');
+            const instructionsDiv = document.getElementById('trivy-instructions');
+
+            try {
+                const resp = await fetchWithAuth('/api/security/trivy/status');
+                const status = await resp.json();
+
+                if (status.installed) {
+                    indicator.style.background = 'var(--accent-green)';
+                    indicator.style.boxShadow = '0 0 8px var(--accent-green)';
+                    statusText.textContent = 'Installed';
+                    versionEl.textContent = status.version ? `Version: ${status.version}` : '';
+                    pathEl.textContent = status.path || '';
+                    installBtn.style.display = 'none';
+                    instructionsDiv.style.display = 'none';
+
+                    if (status.update_available) {
+                        versionEl.innerHTML += ` <span style="color:var(--accent-yellow);">(Update available: ${status.latest_version})</span>`;
+                    }
+                } else {
+                    indicator.style.background = 'var(--accent-red)';
+                    indicator.style.boxShadow = '0 0 8px var(--accent-red)';
+                    statusText.textContent = 'Not Installed';
+                    versionEl.textContent = status.latest_version ? `Latest: ${status.latest_version}` : '';
+                    pathEl.textContent = '';
+                    installBtn.style.display = 'inline-block';
+                    instructionsDiv.style.display = 'block';
+                }
+            } catch (e) {
+                indicator.style.background = 'var(--text-secondary)';
+                statusText.textContent = 'Unknown';
+                versionEl.textContent = '';
+                pathEl.textContent = '';
+                console.error('Failed to check Trivy status:', e);
+            }
+        }
+
+        async function loadTrivyInstructions() {
+            try {
+                const resp = await fetchWithAuth('/api/security/trivy/instructions');
+                const data = await resp.json();
+                document.getElementById('trivy-install-commands').textContent = data.instructions || '';
+            } catch (e) {
+                console.error('Failed to load Trivy instructions:', e);
+            }
+        }
+
+        async function installTrivy() {
+            const btn = document.getElementById('trivy-install-btn');
+            const progressDiv = document.getElementById('trivy-install-progress');
+            const progressBar = document.getElementById('trivy-progress-bar');
+            const progressText = document.getElementById('trivy-progress-text');
+
+            btn.disabled = true;
+            btn.textContent = 'Installing...';
+            progressDiv.style.display = 'block';
+            progressBar.style.width = '10%';
+            progressText.textContent = 'Starting download...';
+
+            try {
+                const resp = await fetchWithAuth('/api/security/trivy/install', { method: 'POST' });
+                const result = await resp.json();
+
+                if (result.success) {
+                    progressBar.style.width = '100%';
+                    progressText.textContent = result.message;
+                    showToast('Trivy installed successfully', 'success');
+                    setTimeout(() => {
+                        checkTrivyStatus();
+                        progressDiv.style.display = 'none';
+                    }, 1500);
+                } else {
+                    progressBar.style.background = 'var(--accent-red)';
+                    progressText.textContent = 'Error: ' + result.error;
+                    showToast('Failed to install Trivy: ' + result.error, 'error');
+                }
+            } catch (e) {
+                progressBar.style.background = 'var(--accent-red)';
+                progressText.textContent = 'Installation failed';
+                showToast('Failed to install Trivy', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Install Trivy';
+            }
+        }
+
+        async function runSecurityScan() {
+            const resultDiv = document.getElementById('security-scan-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div style="color:var(--text-secondary);"><span class="loading-spinner"></span> Running full security scan...</div>';
+
+            try {
+                const resp = await fetchWithAuth('/api/security/scan', { method: 'POST' });
+                const result = await resp.json();
+
+                if (result.error) {
+                    resultDiv.innerHTML = `<div style="color:var(--accent-red);">Error: ${escapeHtml(result.error)}</div>`;
+                    return;
+                }
+
+                // Display summary
+                const critical = result.image_vulns?.severity_counts?.CRITICAL || 0;
+                const high = result.image_vulns?.severity_counts?.HIGH || 0;
+                const podIssues = result.pod_security_issues?.length || 0;
+                const rbacIssues = result.rbac_issues?.length || 0;
+
+                resultDiv.innerHTML = `
+                    <div style="padding:12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
+                        <div style="font-weight:600;margin-bottom:8px;">Scan Complete</div>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                            <div style="text-align:center;padding:8px;background:var(--bg-tertiary);border-radius:4px;">
+                                <div style="font-size:18px;font-weight:600;color:var(--accent-red);">${critical}</div>
+                                <div style="font-size:11px;color:var(--text-secondary);">Critical CVEs</div>
+                            </div>
+                            <div style="text-align:center;padding:8px;background:var(--bg-tertiary);border-radius:4px;">
+                                <div style="font-size:18px;font-weight:600;color:var(--accent-yellow);">${high}</div>
+                                <div style="font-size:11px;color:var(--text-secondary);">High CVEs</div>
+                            </div>
+                            <div style="text-align:center;padding:8px;background:var(--bg-tertiary);border-radius:4px;">
+                                <div style="font-size:18px;font-weight:600;color:var(--accent-purple);">${podIssues}</div>
+                                <div style="font-size:11px;color:var(--text-secondary);">Pod Issues</div>
+                            </div>
+                            <div style="text-align:center;padding:8px;background:var(--bg-tertiary);border-radius:4px;">
+                                <div style="font-size:18px;font-weight:600;color:var(--accent-cyan);">${rbacIssues}</div>
+                                <div style="font-size:11px;color:var(--text-secondary);">RBAC Issues</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:8px;font-size:11px;color:var(--text-secondary);">
+                            Duration: ${result.duration || 'N/A'} | Score: ${(result.overall_score || 0).toFixed(1)}/100
+                        </div>
+                    </div>
+                `;
+                showToast('Security scan completed', 'success');
+            } catch (e) {
+                resultDiv.innerHTML = `<div style="color:var(--accent-red);">Failed to run security scan</div>`;
+                showToast('Security scan failed', 'error');
+            }
+        }
+
+        async function runQuickSecurityScan() {
+            const resultDiv = document.getElementById('security-scan-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div style="color:var(--text-secondary);"><span class="loading-spinner"></span> Running quick scan...</div>';
+
+            try {
+                const resp = await fetchWithAuth('/api/security/scan/quick', { method: 'POST' });
+                const result = await resp.json();
+
+                if (result.error) {
+                    resultDiv.innerHTML = `<div style="color:var(--accent-red);">Error: ${escapeHtml(result.error)}</div>`;
+                    return;
+                }
+
+                const podIssues = result.pod_security_issues?.length || 0;
+                const rbacIssues = result.rbac_issues?.length || 0;
+                const networkIssues = result.network_issues?.length || 0;
+
+                resultDiv.innerHTML = `
+                    <div style="padding:12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
+                        <div style="font-weight:600;margin-bottom:8px;">Quick Scan Complete</div>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                            <div style="text-align:center;padding:8px;background:var(--bg-tertiary);border-radius:4px;">
+                                <div style="font-size:18px;font-weight:600;color:var(--accent-purple);">${podIssues}</div>
+                                <div style="font-size:11px;color:var(--text-secondary);">Pod Issues</div>
+                            </div>
+                            <div style="text-align:center;padding:8px;background:var(--bg-tertiary);border-radius:4px;">
+                                <div style="font-size:18px;font-weight:600;color:var(--accent-cyan);">${rbacIssues}</div>
+                                <div style="font-size:11px;color:var(--text-secondary);">RBAC Issues</div>
+                            </div>
+                            <div style="text-align:center;padding:8px;background:var(--bg-tertiary);border-radius:4px;">
+                                <div style="font-size:18px;font-weight:600;color:var(--accent-yellow);">${networkIssues}</div>
+                                <div style="font-size:11px;color:var(--text-secondary);">Network Issues</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:8px;font-size:11px;color:var(--text-secondary);">
+                            Score: ${(result.overall_score || 0).toFixed(1)}/100
+                        </div>
+                    </div>
+                `;
+                showToast('Quick scan completed', 'success');
+            } catch (e) {
+                resultDiv.innerHTML = `<div style="color:var(--accent-red);">Failed to run quick scan</div>`;
+                showToast('Quick scan failed', 'error');
             }
         }
 
@@ -9183,8 +9822,140 @@ ${escapeHtml(execInfo.result)}</div>
                 updateAIStatus();
                 // Update UI language based on loaded settings
                 updateUILanguage();
+                // Load Prometheus settings
+                loadPrometheusSettings();
             } catch (e) {
                 console.error('Failed to load settings:', e);
+            }
+        }
+
+        // Prometheus Settings Functions
+        async function loadPrometheusSettings() {
+            try {
+                const resp = await fetchWithAuth('/api/prometheus/settings');
+                const data = await resp.json();
+
+                document.getElementById('prometheus-expose-metrics').checked = data.expose_metrics || false;
+                document.getElementById('prometheus-external-url').value = data.external_url || '';
+                document.getElementById('prometheus-collect-k8s').checked = data.collect_k8s_metrics !== false;
+                document.getElementById('prometheus-collection-interval').value = data.collection_interval || 60;
+
+                updatePrometheusExposeInfo();
+                updatePrometheusStatus(data.expose_metrics, data.external_url);
+            } catch (e) {
+                console.error('Failed to load Prometheus settings:', e);
+            }
+        }
+
+        function updatePrometheusExposeInfo() {
+            const isChecked = document.getElementById('prometheus-expose-metrics').checked;
+            document.getElementById('prometheus-expose-info').style.display = isChecked ? 'block' : 'none';
+        }
+
+        function updatePrometheusStatus(exposeEnabled, externalUrl) {
+            const statusEl = document.getElementById('prometheus-status');
+            if (!statusEl) return;
+
+            if (externalUrl) {
+                statusEl.classList.add('connected');
+                statusEl.classList.remove('disconnected');
+                statusEl.querySelector('span').textContent = 'Prometheus Connected';
+            } else if (exposeEnabled) {
+                statusEl.classList.remove('connected', 'disconnected');
+                statusEl.querySelector('span').textContent = 'Prometheus: Exposing';
+            } else {
+                statusEl.classList.remove('connected');
+                statusEl.classList.add('disconnected');
+                statusEl.querySelector('span').textContent = 'Prometheus';
+            }
+        }
+
+        async function testPrometheusConnection() {
+            const url = document.getElementById('prometheus-external-url').value;
+            const username = document.getElementById('prometheus-username').value;
+            const password = document.getElementById('prometheus-password').value;
+            const resultEl = document.getElementById('prometheus-test-result');
+
+            if (!url) {
+                resultEl.style.display = 'block';
+                resultEl.style.background = 'rgba(247, 118, 142, 0.1)';
+                resultEl.style.color = 'var(--accent-red)';
+                resultEl.innerHTML = 'Please enter a Prometheus URL';
+                return;
+            }
+
+            resultEl.style.display = 'block';
+            resultEl.style.background = 'var(--bg-primary)';
+            resultEl.style.color = 'var(--text-secondary)';
+            resultEl.innerHTML = 'Testing connection...';
+
+            try {
+                const resp = await fetchWithAuth('/api/prometheus/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, username, password })
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    resultEl.style.background = 'rgba(158, 206, 106, 0.1)';
+                    resultEl.style.color = 'var(--accent-green)';
+                    resultEl.innerHTML = `✓ Connected successfully! Prometheus version: ${data.version || 'unknown'}`;
+                } else {
+                    resultEl.style.background = 'rgba(247, 118, 142, 0.1)';
+                    resultEl.style.color = 'var(--accent-red)';
+                    resultEl.innerHTML = `✗ Connection failed: ${data.error}`;
+                }
+            } catch (e) {
+                resultEl.style.background = 'rgba(247, 118, 142, 0.1)';
+                resultEl.style.color = 'var(--accent-red)';
+                resultEl.innerHTML = `✗ Error: ${e.message}`;
+            }
+        }
+
+        async function savePrometheusSettings() {
+            const settings = {
+                expose_metrics: document.getElementById('prometheus-expose-metrics').checked,
+                external_url: document.getElementById('prometheus-external-url').value,
+                username: document.getElementById('prometheus-username').value,
+                password: document.getElementById('prometheus-password').value,
+                collect_k8s_metrics: document.getElementById('prometheus-collect-k8s').checked,
+                collection_interval: parseInt(document.getElementById('prometheus-collection-interval').value)
+            };
+
+            try {
+                await fetchWithAuth('/api/prometheus/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                showToast(t('msg_settings_saved') || 'Settings saved');
+                updatePrometheusStatus(settings.expose_metrics, settings.external_url);
+            } catch (e) {
+                showToast('Failed to save Prometheus settings', 'error');
+            }
+        }
+
+        async function cleanupOldMetrics() {
+            try {
+                await fetchWithAuth('/api/metrics/collect', { method: 'POST' });
+                showToast('Metrics cleanup initiated');
+            } catch (e) {
+                showToast('Failed to cleanup metrics', 'error');
+            }
+        }
+
+        function toggleMetricsAutoRefresh() {
+            const checkbox = document.getElementById('metrics-auto-refresh');
+            if (checkbox.checked) {
+                if (!metricsInterval) {
+                    metricsInterval = setInterval(loadMetrics, 30000);
+                }
+            } else {
+                if (metricsInterval) {
+                    clearInterval(metricsInterval);
+                    metricsInterval = null;
+                }
             }
         }
 
@@ -13322,11 +14093,27 @@ spec:
             const metricsNsSelect = document.getElementById('metrics-namespace-select');
             metricsNsSelect.innerHTML = document.getElementById('namespace-select').innerHTML;
 
+            // Load Prometheus status
+            try {
+                const resp = await fetchWithAuth('/api/prometheus/settings');
+                const data = await resp.json();
+                if (!data.error) {
+                    updatePrometheusStatus(data.expose_metrics, data.external_url);
+                }
+            } catch (e) {
+                console.error('Failed to load Prometheus status:', e);
+            }
+
             // Load historical metrics first, then real-time
             await loadHistoricalMetrics();
             await loadMetrics();
             await loadLLMUsageStats();
-            metricsInterval = setInterval(loadMetrics, 30000);
+
+            // Set up auto-refresh interval if checkbox is checked
+            const autoRefresh = document.getElementById('metrics-auto-refresh');
+            if (autoRefresh && autoRefresh.checked) {
+                metricsInterval = setInterval(loadMetrics, 30000);
+            }
         }
 
         async function loadHistoricalMetrics() {
@@ -13364,23 +14151,41 @@ spec:
         async function loadMetrics() {
             const namespace = document.getElementById('metrics-namespace-select').value;
             try {
+                // Load pod metrics
                 const url = namespace ? `/api/metrics/pods?namespace=${namespace}` : '/api/metrics/pods';
                 const resp = await fetchWithAuth(url);
                 const data = await resp.json();
 
                 if (data.error) {
-                    document.getElementById('metrics-total-cpu').textContent = 'N/A';
-                    document.getElementById('metrics-total-memory').textContent = 'N/A';
-                    document.getElementById('metrics-total-pods').textContent = 'N/A';
+                    document.getElementById('metrics-cpu-value').textContent = 'N/A';
+                    document.getElementById('metrics-mem-value').textContent = 'N/A';
+                    document.getElementById('metrics-pods-value').textContent = 'N/A';
+                    // Also update legacy elements for backward compatibility
+                    const legacyCpu = document.getElementById('metrics-total-cpu');
+                    const legacyMem = document.getElementById('metrics-total-memory');
+                    const legacyPods = document.getElementById('metrics-total-pods');
+                    if (legacyCpu) legacyCpu.textContent = 'N/A';
+                    if (legacyMem) legacyMem.textContent = 'N/A';
+                    if (legacyPods) legacyPods.textContent = 'N/A';
                     return;
                 }
 
                 const totalCpu = data.items?.reduce((sum, p) => sum + (p.cpu || 0), 0) || 0;
                 const totalMem = data.items?.reduce((sum, p) => sum + (p.memory || 0), 0) || 0;
+                const podCount = data.items?.length || 0;
 
-                document.getElementById('metrics-total-cpu').textContent = `${totalCpu.toFixed(0)}m`;
-                document.getElementById('metrics-total-memory').textContent = formatBytes(totalMem * 1024 * 1024);
-                document.getElementById('metrics-total-pods').textContent = data.items?.length || 0;
+                // Update new dashboard stat cards
+                document.getElementById('metrics-cpu-value').textContent = `${totalCpu.toFixed(0)}m`;
+                document.getElementById('metrics-mem-value').textContent = formatBytes(totalMem * 1024 * 1024);
+                document.getElementById('metrics-pods-value').textContent = podCount;
+
+                // Also update legacy elements for backward compatibility
+                const legacyCpu = document.getElementById('metrics-total-cpu');
+                const legacyMem = document.getElementById('metrics-total-memory');
+                const legacyPods = document.getElementById('metrics-total-pods');
+                if (legacyCpu) legacyCpu.textContent = `${totalCpu.toFixed(0)}m`;
+                if (legacyMem) legacyMem.textContent = formatBytes(totalMem * 1024 * 1024);
+                if (legacyPods) legacyPods.textContent = podCount;
 
                 // Only append to history if we haven't loaded historical data, or for real-time updates
                 metricsHistory.timestamps.push(new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
@@ -13391,7 +14196,111 @@ spec:
                 }
                 updateMetricsCharts();
                 updateTopConsumers(data.items || []);
+
+                // Load node health info
+                await loadNodeHealth();
             } catch (e) { console.error('Failed to load metrics:', e); }
+        }
+
+        async function loadNodeHealth() {
+            try {
+                const resp = await fetchWithAuth('/api/metrics/nodes');
+                const data = await resp.json();
+
+                // Also get node list for status info
+                const nodesResp = await fetchWithAuth('/api/nodes');
+                const nodesData = await nodesResp.json();
+
+                const nodeHealthGrid = document.getElementById('node-health-grid');
+                if (!nodeHealthGrid) return;
+
+                // Build node info map
+                const nodeInfo = {};
+                if (nodesData.items) {
+                    nodesData.items.forEach(node => {
+                        const readyCondition = node.status?.conditions?.find(c => c.type === 'Ready');
+                        nodeInfo[node.metadata.name] = {
+                            ready: readyCondition?.status === 'True',
+                            capacity: {
+                                cpu: parseCpuToMillicores(node.status?.capacity?.cpu || '0'),
+                                memory: parseMemoryToMB(node.status?.capacity?.memory || '0')
+                            }
+                        };
+                    });
+                }
+
+                // Update nodes stat card
+                const totalNodes = nodesData.items?.length || 0;
+                const readyNodes = Object.values(nodeInfo).filter(n => n.ready).length;
+                document.getElementById('metrics-nodes-value').textContent = `${readyNodes}/${totalNodes}`;
+
+                // Build node health cards
+                if (data.items && data.items.length > 0) {
+                    const cards = data.items.map(node => {
+                        const info = nodeInfo[node.name] || { ready: true, capacity: { cpu: 4000, memory: 8192 } };
+                        const cpuPercent = Math.min(100, (node.cpu / info.capacity.cpu) * 100);
+                        const memPercent = Math.min(100, (node.memory / info.capacity.memory) * 100);
+                        const status = !info.ready ? 'critical' : (cpuPercent > 80 || memPercent > 80) ? 'warning' : 'healthy';
+
+                        return `
+                            <div class="node-health-card">
+                                <div class="node-name">
+                                    <span class="node-status ${status}"></span>
+                                    <span>${escapeHtml(node.name)}</span>
+                                </div>
+                                <div class="usage-bar-container">
+                                    <div class="usage-bar-label">
+                                        <span>CPU</span>
+                                        <span>${node.cpu}m / ${info.capacity.cpu}m (${cpuPercent.toFixed(0)}%)</span>
+                                    </div>
+                                    <div class="usage-bar">
+                                        <div class="fill cpu ${cpuPercent > 80 ? 'high' : ''}" style="width: ${cpuPercent}%"></div>
+                                    </div>
+                                </div>
+                                <div class="usage-bar-container">
+                                    <div class="usage-bar-label">
+                                        <span>Memory</span>
+                                        <span>${formatBytes(node.memory * 1024 * 1024)} / ${formatBytes(info.capacity.memory * 1024 * 1024)} (${memPercent.toFixed(0)}%)</span>
+                                    </div>
+                                    <div class="usage-bar">
+                                        <div class="fill memory ${memPercent > 80 ? 'high' : ''}" style="width: ${memPercent}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    nodeHealthGrid.innerHTML = cards;
+                } else {
+                    nodeHealthGrid.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No node metrics available</p>';
+                }
+            } catch (e) {
+                console.error('Failed to load node health:', e);
+                const nodeHealthGrid = document.getElementById('node-health-grid');
+                if (nodeHealthGrid) {
+                    nodeHealthGrid.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">Failed to load node health</p>';
+                }
+            }
+        }
+
+        function parseCpuToMillicores(cpuStr) {
+            if (!cpuStr) return 0;
+            if (cpuStr.endsWith('m')) {
+                return parseInt(cpuStr) || 0;
+            }
+            // Assume it's in cores, convert to millicores
+            return (parseFloat(cpuStr) || 0) * 1000;
+        }
+
+        function parseMemoryToMB(memStr) {
+            if (!memStr) return 0;
+            const units = { 'Ki': 1/1024, 'Mi': 1, 'Gi': 1024, 'Ti': 1024*1024, 'K': 1/1000, 'M': 1, 'G': 1000, 'T': 1000000 };
+            for (const [unit, multiplier] of Object.entries(units)) {
+                if (memStr.endsWith(unit)) {
+                    return (parseFloat(memStr) || 0) * multiplier;
+                }
+            }
+            // Assume bytes
+            return (parseInt(memStr) || 0) / (1024 * 1024);
         }
 
         function updateMetricsCharts() {

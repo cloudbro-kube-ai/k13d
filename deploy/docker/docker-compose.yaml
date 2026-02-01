@@ -50,9 +50,58 @@ services:
       - with-ollama
     restart: unless-stopped
 
+  # Optional: Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: k13d-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=15d'
+    profiles:
+      - with-prometheus
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: Grafana for visualization
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: k13d-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    profiles:
+      - with-prometheus
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
   k13d-config:
   ollama-data:
+  prometheus-data:
+  grafana-data:
 
 # Usage examples:
 #
@@ -69,5 +118,14 @@ volumes:
 #    docker-compose --profile with-ollama up -d
 #    Then configure: K13D_LLM_PROVIDER=ollama K13D_LLM_ENDPOINT=http://ollama:11434
 #
-# 5. In-cluster deployment (mount service account token):
+# 5. With Prometheus & Grafana monitoring:
+#    docker-compose --profile with-prometheus up -d
+#    - Prometheus: http://localhost:9090
+#    - Grafana: http://localhost:3000 (admin/admin)
+#    - Enable /metrics in k13d Settings > Metrics
+#
+# 6. Full stack (Ollama + Prometheus + Grafana):
+#    docker-compose --profile with-ollama --profile with-prometheus up -d
+#
+# 7. In-cluster deployment (mount service account token):
 #    See kubernetes/deployment.yaml for Kubernetes-native deployment

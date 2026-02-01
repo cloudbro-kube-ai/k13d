@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/v1.29.0/_definitions.json
 # k13d Single Pod Deployment (Air-gapped / No External Dependencies)
 #
 # This manifest deploys k13d as a single Pod without any external internet
@@ -358,6 +359,8 @@ spec:
 
 ---
 # Optional: NodePort service for direct access without ingress
+# Note: nodePort is not specified, Kubernetes will auto-assign an available port
+# Run: kubectl get svc -n k13d k13d-nodeport -o jsonpath='{.spec.ports[0].nodePort}'
 apiVersion: v1
 kind: Service
 metadata:
@@ -372,6 +375,8 @@ spec:
       port: 8080
       targetPort: http
       protocol: TCP
-      nodePort: 30080  # Change if port is already in use
+      # nodePort is omitted - Kubernetes will auto-assign from range 30000-32767
+      # To specify a port, uncomment and change if needed:
+      # nodePort: 30080
   selector:
     app.kubernetes.io/name: k13d

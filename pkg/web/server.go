@@ -422,12 +422,25 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/metrics/history/aggregated", s.authManager.AuthMiddleware(s.handleAggregatedMetrics))
 	mux.HandleFunc("/api/metrics/collect", s.authManager.AuthMiddleware(s.handleMetricsCollectNow))
 
+	// Prometheus integration endpoints
+	if s.cfg.Prometheus.ExposeMetrics {
+		mux.HandleFunc("/metrics", s.handlePrometheusMetrics) // No auth for Prometheus scraping
+	}
+	mux.HandleFunc("/api/prometheus/settings", s.authManager.AuthMiddleware(s.handlePrometheusSettings))
+	mux.HandleFunc("/api/prometheus/test", s.authManager.AuthMiddleware(s.handlePrometheusTest))
+	mux.HandleFunc("/api/prometheus/query", s.authManager.AuthMiddleware(s.handlePrometheusQuery))
+
 	// Security scanning endpoints
 	mux.HandleFunc("/api/security/scan", s.authManager.AuthMiddleware(s.handleSecurityScan))
 	mux.HandleFunc("/api/security/scan/quick", s.authManager.AuthMiddleware(s.handleSecurityQuickScan))
 	mux.HandleFunc("/api/security/scans", s.authManager.AuthMiddleware(s.handleSecurityScanHistory))
 	mux.HandleFunc("/api/security/scans/stats", s.authManager.AuthMiddleware(s.handleSecurityScanStats))
 	mux.HandleFunc("/api/security/scan/", s.authManager.AuthMiddleware(s.handleSecurityScanDetail))
+
+	// Trivy CVE scanner management
+	mux.HandleFunc("/api/security/trivy/status", s.authManager.AuthMiddleware(s.handleTrivyStatus))
+	mux.HandleFunc("/api/security/trivy/install", s.authManager.AuthMiddleware(s.handleTrivyInstall))
+	mux.HandleFunc("/api/security/trivy/instructions", s.authManager.AuthMiddleware(s.handleTrivyInstructions))
 
 	// Port forwarding endpoints
 	mux.HandleFunc("/api/portforward/start", s.authManager.AuthMiddleware(s.handlePortForwardStart))

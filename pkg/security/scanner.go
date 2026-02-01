@@ -1139,6 +1139,16 @@ func (s *Scanner) TrivyAvailable() bool {
 	return s.trivyPath != ""
 }
 
+// SetTrivyPath sets the path to trivy binary (used after download)
+func (s *Scanner) SetTrivyPath(path string) {
+	s.trivyPath = path
+}
+
+// GetTrivyPath returns the current trivy path
+func (s *Scanner) GetTrivyPath() string {
+	return s.trivyPath
+}
+
 // KubeBenchAvailable returns whether kube-bench is available
 func (s *Scanner) KubeBenchAvailable() bool {
 	return s.kubeBenchAvailable

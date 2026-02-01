@@ -9,16 +9,33 @@ import (
 )
 
 type Config struct {
-	LLM          LLMConfig      `yaml:"llm" json:"llm"`
-	Models       []ModelProfile `yaml:"models" json:"models"`             // Multiple LLM model profiles
-	ActiveModel  string         `yaml:"active_model" json:"active_model"` // Currently active model profile name
-	MCP          MCPConfig      `yaml:"mcp" json:"mcp"`                   // MCP server configuration
-	Storage      StorageConfig  `yaml:"storage" json:"storage"`           // Data storage configuration
-	ReportPath   string         `yaml:"report_path" json:"report_path"`
-	EnableAudit  bool           `yaml:"enable_audit" json:"enable_audit"`
-	Language     string         `yaml:"language" json:"language"`
-	BeginnerMode bool           `yaml:"beginner_mode" json:"beginner_mode"`
-	LogLevel     string         `yaml:"log_level" json:"log_level"`
+	LLM          LLMConfig        `yaml:"llm" json:"llm"`
+	Models       []ModelProfile   `yaml:"models" json:"models"`             // Multiple LLM model profiles
+	ActiveModel  string           `yaml:"active_model" json:"active_model"` // Currently active model profile name
+	MCP          MCPConfig        `yaml:"mcp" json:"mcp"`                   // MCP server configuration
+	Storage      StorageConfig    `yaml:"storage" json:"storage"`           // Data storage configuration
+	Prometheus   PrometheusConfig `yaml:"prometheus" json:"prometheus"`     // Prometheus integration configuration
+	ReportPath   string           `yaml:"report_path" json:"report_path"`
+	EnableAudit  bool             `yaml:"enable_audit" json:"enable_audit"`
+	Language     string           `yaml:"language" json:"language"`
+	BeginnerMode bool             `yaml:"beginner_mode" json:"beginner_mode"`
+	LogLevel     string           `yaml:"log_level" json:"log_level"`
+}
+
+// PrometheusConfig holds Prometheus integration settings
+type PrometheusConfig struct {
+	// ExposeMetrics enables the /metrics endpoint for Prometheus scraping
+	ExposeMetrics bool `yaml:"expose_metrics" json:"expose_metrics"`
+	// ExternalURL is the URL of an external Prometheus server for querying
+	ExternalURL string `yaml:"external_url" json:"external_url"`
+	// Username for basic auth to external Prometheus
+	Username string `yaml:"username" json:"username"`
+	// Password for basic auth to external Prometheus
+	Password string `yaml:"password" json:"password"`
+	// CollectK8sMetrics enables Kubernetes metrics collection
+	CollectK8sMetrics bool `yaml:"collect_k8s_metrics" json:"collect_k8s_metrics"`
+	// CollectionInterval in seconds (default: 60)
+	CollectionInterval int `yaml:"collection_interval" json:"collection_interval"`
 }
 
 // StorageConfig holds data persistence configuration
@@ -193,7 +210,12 @@ func NewDefaultConfig() *Config {
 		MCP: MCPConfig{
 			Servers: []MCPServer{},
 		},
-		Language:     "ko",
+		Prometheus: PrometheusConfig{
+			ExposeMetrics:      false,
+			CollectK8sMetrics:  true,
+			CollectionInterval: 60,
+		},
+		Language: "ko",
 		BeginnerMode: true,
 		LogLevel:     "debug",
 		ReportPath:   "report.md",

@@ -148,8 +148,12 @@ func (a *Agent) callLLM() error {
 	// Build prompt with conversation history
 	prompt := a.buildPromptWithHistory()
 
-	// Streaming callback
+	// Collect response for session history
+	var responseBuilder strings.Builder
+
+	// Streaming callback - collect response and emit
 	streamCallback := func(chunk string) {
+		responseBuilder.WriteString(chunk)
 		a.emitStreamChunk(chunk)
 	}
 
@@ -171,6 +175,14 @@ func (a *Agent) callLLM() error {
 		err := a.provider.Ask(a.ctx, prompt, streamCallback)
 		if err != nil {
 			return err
+		}
+	}
+
+	// Save assistant response to session history
+	if a.session != nil {
+		response := responseBuilder.String()
+		if response != "" {
+			a.session.AddMessage("assistant", response)
 		}
 	}
 
