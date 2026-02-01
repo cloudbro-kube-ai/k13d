@@ -1,0 +1,68 @@
+# Helm-like Templating Task
+# Tests understanding of ConfigMap-based configuration templating
+
+name: Helm-like Configuration Templating
+description: Implement configuration templating using ConfigMaps and environment variable substitution
+category: deployment
+difficulty: hard
+tags:
+  - configuration
+  - templating
+  - configmap
+  - envsubst
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Implement a Helm-like configuration system using ConfigMaps.
+
+      Goal: Create a reusable deployment pattern where configuration values
+      are stored separately and injected into deployments.
+
+      Requirements:
+      1. Create namespace 'templating-demo'
+
+      2. Create ConfigMap 'app-values' with deployment parameters:
+         - APP_NAME: "mywebapp"
+         - APP_VERSION: "2.1.0"
+         - REPLICAS: "3"
+         - IMAGE: "nginx:1.25-alpine"
+         - PORT: "8080"
+         - ENV: "production"
+         - LOG_LEVEL: "info"
+         - MEMORY_LIMIT: "128Mi"
+         - CPU_LIMIT: "200m"
+
+      3. Create ConfigMap 'app-config' with application configuration:
+         - config.yaml content with placeholder references:
+           ```
+           app:
+             name: $(APP_NAME)
+             version: $(APP_VERSION)
+             environment: $(ENV)
+           logging:
+             level: $(LOG_LEVEL)
+           server:
+             port: $(PORT)
+           ```
+
+      4. Create a Deployment 'templated-app' that:
+         - Uses valueFrom to inject values from 'app-values' ConfigMap
+         - Mounts 'app-config' ConfigMap as a volume at /etc/config
+         - Has replicas based on REPLICAS from ConfigMap (3)
+         - Uses the IMAGE from ConfigMap
+         - Has resource limits from ConfigMap values
+         - Has labels reflecting the template values:
+           * app.kubernetes.io/name: mywebapp
+           * app.kubernetes.io/version: 2.1.0
+           * app.kubernetes.io/env: production
+
+      5. Create Service 'templated-app' using port from ConfigMap
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "configmap|template|envfrom|values"

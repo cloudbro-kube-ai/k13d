@@ -1,0 +1,10 @@
+name: create-pod-args
+description: Create a pod with command arguments
+difficulty: easy
+prompt: |
+  Create a pod named 'args-pod' using the image 'busybox:1.35' in the 'benchmark' namespace.
+  The pod should run 'echo' command with the arguments 'Hello Kubernetes Benchmark'.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

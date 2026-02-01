@@ -1,0 +1,33 @@
+# Blue-Green Switch Task
+# Tests ability to switch traffic between blue and green deployments
+
+name: Blue-Green Deployment Switch
+description: Switch service traffic from blue deployment to green deployment
+category: deployments
+difficulty: medium
+tags:
+  - deployments
+  - blue-green
+  - service
+  - traffic-switch
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'deploy-test', there are two deployments:
+      - 'app-blue' running nginx:1.24 with label version=blue
+      - 'app-green' running nginx:1.25 with label version=green
+
+      There is a service 'app-service' currently pointing to the blue deployment (selector: version=blue).
+
+      Switch the service to point to the green deployment by updating the service selector.
+
+      Verify the service now routes traffic to the green pods.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "service|selector|green|switch"

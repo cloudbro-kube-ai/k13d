@@ -1,0 +1,9 @@
+name: delete-secret
+description: Delete a Secret
+difficulty: easy
+prompt: |
+  Delete the Secret named 'deprecated-secret' in the 'benchmark' namespace.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

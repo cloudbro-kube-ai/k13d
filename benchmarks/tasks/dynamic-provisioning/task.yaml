@@ -1,0 +1,53 @@
+# Dynamic Provisioning Task
+# Tests understanding of StorageClass and dynamic volume provisioning
+
+name: Dynamic Volume Provisioning
+description: Configure StorageClass for dynamic provisioning with specific parameters
+category: storage
+difficulty: hard
+tags:
+  - storage
+  - storageclass
+  - pvc
+  - dynamic-provisioning
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Set up dynamic volume provisioning for our application tier.
+
+      Requirements:
+      1. Create a StorageClass named 'fast-storage' with:
+         - Provisioner: kubernetes.io/no-provisioner (for testing) or rancher.io/local-path (if available)
+         - VolumeBindingMode: WaitForFirstConsumer
+         - ReclaimPolicy: Delete
+         - AllowVolumeExpansion: true
+         - Parameters should include type: local (or appropriate for your provisioner)
+
+      2. Create namespace 'storage-demo'
+
+      3. Create a PersistentVolumeClaim named 'app-data' in storage-demo:
+         - StorageClassName: fast-storage
+         - AccessModes: ReadWriteOnce
+         - Storage request: 1Gi
+
+      4. Create a Pod named 'storage-test' that:
+         - Uses image alpine
+         - Mounts the PVC at /data
+         - Runs command: sleep infinity
+         - Writes a test file to verify the mount works
+
+      5. If using local-path provisioner, the PVC should bind automatically.
+         Otherwise, create a matching PV named 'fast-pv-1' with:
+         - Capacity: 2Gi
+         - AccessModes: ReadWriteOnce
+         - StorageClassName: fast-storage
+         - hostPath: /tmp/k13d-storage
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "storageclass|pvc|provisioning"

@@ -1,0 +1,35 @@
+# Recreate Strategy Task
+# Tests ability to configure deployment with Recreate strategy
+
+name: Configure Recreate Deployment Strategy
+description: Create a deployment using Recreate update strategy instead of RollingUpdate
+category: deployments
+difficulty: medium
+tags:
+  - deployments
+  - strategy
+  - recreate
+  - update
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a deployment named 'stateful-app' in namespace 'deploy-test' with:
+
+      1. Image: redis:7
+      2. Replicas: 3
+      3. Strategy type: Recreate (not RollingUpdate)
+      4. Labels: app=stateful-app
+
+      The Recreate strategy terminates all existing pods before creating new ones,
+      which is useful for stateful applications that cannot run multiple versions simultaneously.
+
+      Verify the deployment uses Recreate strategy.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "deployment|recreate|strategy"

@@ -1,0 +1,31 @@
+# Drop Capabilities Task
+# Tests ability to drop Linux capabilities from containers
+
+name: Drop Capabilities
+description: Create a pod that drops unnecessary Linux capabilities for security
+category: security
+difficulty: medium
+tags:
+  - pods
+  - security
+  - capabilities
+  - securitycontext
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'drop-cap-test':
+      1. Create a Pod named 'secure-pod' using alpine:3.19 with command "sleep 3600"
+      2. Configure the container security context to:
+         - Drop ALL capabilities
+         - Add back only NET_BIND_SERVICE capability (if needed)
+      3. Set allowPrivilegeEscalation to false
+      4. The pod should start successfully with minimal capabilities
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "security|capabilities|drop|ALL"

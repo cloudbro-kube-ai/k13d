@@ -1,0 +1,9 @@
+name: remove-label
+description: Remove a label from an existing pod
+difficulty: easy
+prompt: |
+  Remove the label 'deprecated' from the pod named 'legacy-pod' in the 'benchmark' namespace.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

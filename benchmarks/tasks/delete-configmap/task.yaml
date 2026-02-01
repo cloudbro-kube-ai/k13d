@@ -1,0 +1,9 @@
+name: delete-configmap
+description: Delete a ConfigMap
+difficulty: easy
+prompt: |
+  Delete the ConfigMap named 'old-config' in the 'benchmark' namespace.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

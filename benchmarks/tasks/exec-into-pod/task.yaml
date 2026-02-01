@@ -1,0 +1,32 @@
+# Exec Into Pod Task
+# Tests ability to execute commands inside running containers
+
+name: Exec Into Pod
+description: Execute commands inside a running container for debugging
+category: debugging
+difficulty: medium
+tags:
+  - pods
+  - exec
+  - debugging
+  - interactive
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'exec-test':
+      1. A pod named 'debug-target' is running with nginx
+      2. Use kubectl exec to:
+         - Check the nginx process is running (ps aux or similar)
+         - View the nginx configuration file at /etc/nginx/nginx.conf
+         - Check the current working directory and user
+         - Test network connectivity by checking if localhost:80 responds
+      3. For multi-container pods, specify the container with -c flag
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "kubectl exec|nginx|/etc/nginx"

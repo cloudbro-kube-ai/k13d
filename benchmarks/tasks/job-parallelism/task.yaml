@@ -1,0 +1,36 @@
+# Job Parallelism Task
+# Tests ability to configure Jobs with parallelism
+
+name: Configure Job Parallelism
+description: Create a Job with parallel execution of multiple pods
+category: jobs
+difficulty: medium
+tags:
+  - jobs
+  - parallelism
+  - batch
+  - workload
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a Job named 'parallel-job' in namespace 'job-test' with:
+
+      1. Container: using busybox image
+      2. Command: echo "Processing item $JOB_COMPLETION_INDEX" && sleep 5
+      3. completions: 6 (total tasks to complete)
+      4. parallelism: 3 (run 3 pods concurrently)
+      5. completionMode: Indexed (each pod gets a unique index)
+      6. restartPolicy: Never
+
+      This Job will process 6 items with 3 running in parallel at a time.
+
+      Verify the Job is configured with correct parallelism.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "job|parallelism|3|completions|6"

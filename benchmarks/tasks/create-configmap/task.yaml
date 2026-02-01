@@ -1,0 +1,12 @@
+name: create-configmap
+description: Create a ConfigMap with literal key-value pairs
+difficulty: easy
+prompt: |
+  Create a ConfigMap named 'app-config' in the 'benchmark' namespace with the following key-value pairs:
+  - DATABASE_HOST=mysql.default.svc.cluster.local
+  - DATABASE_PORT=3306
+  - LOG_LEVEL=info
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

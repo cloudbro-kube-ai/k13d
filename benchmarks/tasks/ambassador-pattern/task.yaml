@@ -1,0 +1,30 @@
+# Ambassador Pattern Task
+# Tests ability to implement the ambassador sidecar pattern
+
+name: Ambassador Pattern
+description: Create a pod with an ambassador container that handles external communication
+category: creation
+difficulty: medium
+tags:
+  - pods
+  - sidecar
+  - ambassador
+  - networking
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'ambassador-test':
+      1. Create a Pod named 'ambassador-pod' with two containers:
+         - Main container 'app' using busybox:1.36 that simulates an app connecting to localhost:6379 (use: sh -c "while true; do echo 'Connecting to redis via ambassador' && nc -z localhost 6379 && echo 'Connection successful'; sleep 10; done")
+         - Ambassador container 'redis-ambassador' using redis:7-alpine that provides a Redis instance on localhost
+      2. The app container should connect to Redis through the ambassador on localhost:6379
+      3. The containers share the network namespace (localhost), so the app can reach Redis at localhost:6379
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "ambassador|redis|localhost|sidecar"

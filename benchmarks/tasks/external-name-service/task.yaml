@@ -1,0 +1,35 @@
+# ExternalName Service Task
+# Tests ability to create ExternalName type services
+
+name: Create ExternalName Service
+description: Create an ExternalName service that maps to an external DNS name
+category: services
+difficulty: medium
+tags:
+  - services
+  - externalname
+  - dns
+  - external
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a service named 'external-db' in namespace 'service-test' with:
+
+      1. type: ExternalName
+      2. externalName: database.example.com
+
+      ExternalName services map a service to a DNS name rather than to pods.
+      When a client connects to this service, the DNS name resolves to the
+      external hostname, allowing pods to access external services through
+      Kubernetes service discovery.
+
+      Verify the service is created with the correct ExternalName configuration.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "service|externalname|database.example.com"

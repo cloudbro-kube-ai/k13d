@@ -1,0 +1,11 @@
+name: filter-pods-by-label
+description: List pods filtered by a specific label
+difficulty: easy
+prompt: |
+  In the 'benchmark' namespace, there are several pods with different labels.
+  List all pods that have the label 'tier=frontend' and save the output to a file at '/tmp/frontend-pods.txt'.
+  The file should contain the names of the matching pods, one per line.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

@@ -1,0 +1,33 @@
+# Mount EmptyDir Volume Task
+# Tests ability to create pods with emptyDir volumes for inter-container communication
+
+name: Mount EmptyDir Volume
+description: Create a multi-container pod with emptyDir volume shared between containers
+category: storage
+difficulty: medium
+tags:
+  - volumes
+  - emptydir
+  - multi-container
+  - storage
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a pod named 'shared-data' in namespace 'volume-test' with the following specifications:
+
+      1. Two containers:
+         - Container 1: named 'writer', using busybox image, runs command that writes "Hello from writer" to /data/message.txt every 5 seconds
+         - Container 2: named 'reader', using busybox image, runs command that reads /data/message.txt every 10 seconds
+
+      2. An emptyDir volume named 'shared-volume' mounted at /data in both containers
+
+      Verify the pod is running and both containers can access the shared volume.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "pod.*created|emptydir|shared"

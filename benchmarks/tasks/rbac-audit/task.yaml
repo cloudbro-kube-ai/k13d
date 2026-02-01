@@ -1,0 +1,42 @@
+# RBAC Audit Task
+# Tests understanding of RBAC review and audit capabilities
+
+name: RBAC Audit and Review
+description: Diagnose and fix overly permissive RBAC configurations using audit techniques
+category: rbac
+difficulty: hard
+tags:
+  - rbac
+  - security
+  - audit
+  - troubleshooting
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Security audit found that our 'developer-role' has overly permissive access.
+      The role is in namespace 'dev-team' and is bound to ServiceAccount 'dev-sa'.
+
+      Current issues found:
+      1. The role grants wildcard (*) verbs on secrets - should only allow get, list
+      2. The role grants delete on deployments - should only allow get, list, watch, update
+      3. The role grants access to all resources (*) - should be scoped to specific resources
+
+      Tasks:
+      1. Identify what the current role can access using 'kubectl auth can-i --list'
+      2. Fix the Role 'developer-role' to:
+         - Allow get, list on secrets (remove wildcard verbs)
+         - Allow get, list, watch, update on deployments (remove delete)
+         - Only grant access to: pods, deployments, services, configmaps, secrets
+         (remove wildcard resources)
+      3. Ensure the RoleBinding still connects dev-sa to the fixed role
+
+      After fixing, the dev-sa should NOT be able to delete deployments or delete secrets.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "role|permission|secret|deployment"

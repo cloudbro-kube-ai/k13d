@@ -1,0 +1,33 @@
+# Sidecar Proxy Task
+# Tests ability to implement a sidecar proxy pattern
+
+name: Sidecar Proxy
+description: Create a pod with a sidecar container that acts as a proxy
+category: creation
+difficulty: medium
+tags:
+  - pods
+  - sidecar
+  - proxy
+  - networking
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'sidecar-proxy-test':
+      1. Create a Pod named 'proxy-pod' with two containers:
+         - Main container 'backend' using python:3.11-alpine that runs a simple HTTP server on port 8000 (use: python -m http.server 8000)
+         - Sidecar container 'proxy' using nginx:1.25 that acts as a reverse proxy to the backend
+      2. Create a ConfigMap named 'nginx-proxy-config' with an nginx.conf that:
+         - Listens on port 80
+         - Proxies requests to localhost:8000
+      3. Mount the ConfigMap at '/etc/nginx/conf.d' in the proxy container
+      4. Create a Service named 'proxy-service' of type ClusterIP that exposes port 80
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "sidecar|proxy|nginx|backend"

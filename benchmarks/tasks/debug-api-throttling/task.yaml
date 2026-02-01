@@ -1,0 +1,59 @@
+# Debug API Throttling Task
+# Tests understanding of API server throttling and client-side rate limiting
+
+name: Debug API Throttling Issues
+description: Diagnose and mitigate Kubernetes API server throttling issues
+category: debugging
+difficulty: hard
+tags:
+  - debugging
+  - api-server
+  - throttling
+  - rate-limiting
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Our cluster is experiencing API server throttling, causing slow responses
+      and failed operations.
+
+      Scenario in namespace 'api-stress':
+      - A deployment 'api-heavy-client' is making excessive API calls
+      - Legitimate workloads are being affected
+      - You see "rate: Wait(n=1) took Xs" errors in logs
+
+      Tasks:
+      1. Diagnose the throttling:
+         - Check if pods are experiencing API throttling
+         - Look for rate limit related events
+         - Identify the problematic workload
+
+      2. Fix the issues:
+         a) Create a ResourceQuota 'api-limits' that limits:
+            - count/pods: 10
+            - count/services: 5
+            - count/configmaps: 20
+            - count/secrets: 10
+
+         b) Update 'api-heavy-client' deployment:
+            - Reduce replicas from 5 to 1
+            - Add annotation: rate-limiter.k13d.io/enabled: "true"
+            - Add annotation: rate-limiter.k13d.io/qps: "5"
+            - Add annotation: rate-limiter.k13d.io/burst: "10"
+
+         c) Create a LimitRange 'api-protection' that:
+            - Limits pod count per container to reasonable values
+            - Sets default CPU to 100m, memory to 64Mi
+
+         d) Scale down the 'monitor-spam' deployment to 0 replicas
+            (it's making unnecessary API calls)
+
+      3. Verify API operations are no longer being throttled.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "throttling|rate|quota|limit"

@@ -1,0 +1,37 @@
+# Volume SubPath Task
+# Tests ability to mount specific subdirectories from a volume
+
+name: Volume SubPath Mount
+description: Create a pod that mounts a volume using subPath for specific files
+category: storage
+difficulty: medium
+tags:
+  - volumes
+  - subpath
+  - configmap
+  - storage
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a pod that uses subPath to mount specific ConfigMap keys to different locations:
+
+      1. Create a ConfigMap named 'app-files' in namespace 'volume-test' with:
+         - nginx.conf: "server { listen 80; }"
+         - app.properties: "debug=true"
+
+      2. Create a pod named 'subpath-pod' with:
+         - Container: named 'web', using nginx image
+         - Mount the ConfigMap volume using subPath:
+           - Mount nginx.conf to /etc/nginx/conf.d/custom.conf (subPath: nginx.conf)
+           - Mount app.properties to /app/config/app.properties (subPath: app.properties)
+
+      Verify the pod is running and files are mounted at the correct paths.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "subpath|configmap|mount"

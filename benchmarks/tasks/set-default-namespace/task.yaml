@@ -1,0 +1,10 @@
+name: set-default-namespace
+description: Set the default namespace for kubectl context
+difficulty: easy
+prompt: |
+  Set the default namespace for the current kubectl context to 'development'.
+  After this change, kubectl commands should use 'development' namespace by default.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

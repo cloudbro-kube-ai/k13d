@@ -1,0 +1,39 @@
+# CronJob Concurrency Policy Task
+# Tests ability to configure CronJob concurrency behavior
+
+name: Configure CronJob Concurrency Policy
+description: Create a CronJob with specific concurrency policy
+category: jobs
+difficulty: medium
+tags:
+  - cronjob
+  - concurrency
+  - scheduling
+  - configuration
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a CronJob named 'report-job' in namespace 'job-test' with:
+
+      1. schedule: "*/10 * * * *" (every 10 minutes)
+      2. concurrencyPolicy: Forbid (skip new run if previous is still running)
+      3. successfulJobsHistoryLimit: 3
+      4. failedJobsHistoryLimit: 1
+      5. Container: using busybox image
+      6. Command: echo "Generating report..." && sleep 30
+
+      The concurrencyPolicy options are:
+      - Allow: concurrent Jobs are allowed (default)
+      - Forbid: skip if previous is running
+      - Replace: cancel previous and start new
+
+      Verify the CronJob has correct concurrency configuration.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "cronjob|concurrencypolicy|forbid"

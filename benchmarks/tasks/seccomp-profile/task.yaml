@@ -1,0 +1,32 @@
+# Seccomp Profile Task
+# Tests ability to configure seccomp profiles for pods
+
+name: Seccomp Profile
+description: Create a pod with a seccomp profile for enhanced security
+category: security
+difficulty: medium
+tags:
+  - pods
+  - security
+  - seccomp
+  - securitycontext
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'seccomp-test':
+      1. Create a Pod named 'seccomp-pod' using alpine:3.19 with command "sleep 3600"
+      2. Configure the pod security context to use the RuntimeDefault seccomp profile:
+         - seccompProfile.type: RuntimeDefault
+      3. Also set:
+         - runAsNonRoot: true
+         - runAsUser: 1000
+      4. The pod should start successfully with the seccomp profile applied
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "security|seccomp|RuntimeDefault|profile"

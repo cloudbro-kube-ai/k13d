@@ -1,0 +1,43 @@
+# Mount Projected Volume Task
+# Tests ability to create pods with projected volumes combining multiple sources
+
+name: Mount Projected Volume
+description: Create a pod with projected volume combining ConfigMap and Secret
+category: storage
+difficulty: medium
+tags:
+  - volumes
+  - projected
+  - configmap
+  - secret
+  - storage
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a pod named 'projected-pod' in namespace 'volume-test' with a projected volume that combines multiple sources:
+
+      1. First, create a ConfigMap named 'app-config' with:
+         - key: config.properties
+         - value: "app.name=myapp\napp.version=1.0"
+
+      2. Create a Secret named 'app-secret' with:
+         - key: api-key
+         - value: "secret123"
+
+      3. Create the pod with:
+         - Container: named 'app', using busybox image, command to sleep infinity
+         - A projected volume named 'combined-volume' containing:
+           - The ConfigMap 'app-config'
+           - The Secret 'app-secret'
+         - Mount at /etc/config
+
+      Verify all sources are accessible in the pod at /etc/config.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "projected|configmap|secret|volume"

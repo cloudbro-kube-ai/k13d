@@ -1,0 +1,57 @@
+# Ordered Rolling Update Task
+# Tests understanding of StatefulSet rolling update strategies
+
+name: Ordered Rolling Update Strategy
+description: Configure and execute ordered rolling updates with partition-based control
+category: deployment
+difficulty: hard
+tags:
+  - statefulset
+  - rolling-update
+  - partition
+  - ordered
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Implement controlled rolling updates using StatefulSet partitions.
+
+      Setup in namespace 'ordered-update':
+      - 'app-cluster' StatefulSet with 5 replicas
+      - Need to perform staged rollout: update pods 4,3 first, verify, then 2,1,0
+
+      Tasks:
+      1. Configure the StatefulSet update strategy:
+         - Set updateStrategy.type: RollingUpdate
+         - Set partition: 3 (only pods >= 3 will be updated initially)
+
+      2. Update the StatefulSet with:
+         - New image: nginx:1.25-alpine (from nginx:1.24-alpine)
+         - Add annotation: update.k13d.io/phase: "1"
+         - Add annotation: update.k13d.io/partition: "3"
+
+      3. Wait for pods 4 and 3 to be updated, verify they're running the new image
+
+      4. Lower the partition to 1:
+         - Patch partition to 1
+         - Update annotation: update.k13d.io/phase: "2"
+         - Update annotation: update.k13d.io/partition: "1"
+
+      5. Finally, remove partition (set to 0) to update remaining pods:
+         - Patch partition to 0
+         - Update annotation: update.k13d.io/phase: "3"
+         - Update annotation: update.k13d.io/partition: "0"
+
+      6. Create ConfigMap 'rollout-status' with:
+         - INITIAL_IMAGE: nginx:1.24-alpine
+         - FINAL_IMAGE: nginx:1.25-alpine
+         - STRATEGY: "partitioned-rollout"
+         - PHASES: "3"
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "statefulset|partition|rollingupdate|phase"

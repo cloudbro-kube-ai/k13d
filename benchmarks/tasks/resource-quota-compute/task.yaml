@@ -1,0 +1,35 @@
+# ResourceQuota Compute Task
+# Tests ability to create ResourceQuota for compute resources
+
+name: ResourceQuota Compute
+description: Create a ResourceQuota that limits compute resources in a namespace
+category: creation
+difficulty: medium
+tags:
+  - resourcequota
+  - resources
+  - compute
+  - limits
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'quota-compute-test':
+      1. Create a ResourceQuota named 'compute-quota' with the following limits:
+         - requests.cpu: 2
+         - requests.memory: 2Gi
+         - limits.cpu: 4
+         - limits.memory: 4Gi
+         - pods: 10
+      2. Create a Deployment named 'quota-test-deploy' with 2 replicas using nginx:1.25
+      3. Set container resources:
+         - CPU request: 100m, limit: 200m
+         - Memory request: 128Mi, limit: 256Mi
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "resourcequota|compute|cpu|memory|pods"

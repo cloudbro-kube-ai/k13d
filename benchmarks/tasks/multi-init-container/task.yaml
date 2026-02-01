@@ -1,0 +1,31 @@
+# Multi Init Container Task
+# Tests ability to create pods with multiple init containers that run sequentially
+
+name: Multi Init Container
+description: Create a pod with multiple init containers that run in sequence
+category: creation
+difficulty: medium
+tags:
+  - pods
+  - init-containers
+  - sequential
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'multi-init-test':
+      1. Create a Pod named 'multi-init-pod' with nginx:1.25 as the main container
+      2. Add three init containers that run in sequence:
+         - 'init-first' using busybox:1.36: creates file '/shared/step1.txt' with content 'Step 1 complete'
+         - 'init-second' using busybox:1.36: reads '/shared/step1.txt' and creates '/shared/step2.txt' with content 'Step 2 complete'
+         - 'init-third' using alpine:3.19: creates '/shared/ready.txt' with content 'All steps complete'
+      3. Use an emptyDir volume named 'shared' mounted at '/shared' in all containers
+      4. The main nginx container should also mount the volume at '/usr/share/nginx/html'
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "init|container|sequence|multiple"

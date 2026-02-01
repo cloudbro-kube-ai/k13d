@@ -1,0 +1,31 @@
+# Pod DNS Search Task
+# Tests ability to configure DNS search domains for pods
+
+name: Pod DNS Search
+description: Create a pod with custom DNS search domains for service discovery
+category: networking
+difficulty: medium
+tags:
+  - pods
+  - dns
+  - networking
+  - search
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'dns-search-test':
+      1. Create a Service named 'backend-svc' exposing port 80 (can be headless or with selector)
+      2. Create a Pod named 'dns-search-pod' using busybox:1.36 with command "sleep 3600"
+      3. Configure dnsConfig to add custom search domains:
+         - searches: ["dns-search-test.svc.cluster.local", "prod.svc.cluster.local", "staging.svc.cluster.local"]
+      4. Keep dnsPolicy as ClusterFirst
+      5. The pod should be able to resolve 'backend-svc' using the DNS search paths
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "dns|search|dnsConfig|ClusterFirst"

@@ -1,0 +1,45 @@
+# Namespace Isolation Task
+# Tests understanding of namespace-based network isolation
+
+name: Namespace Network Isolation
+description: Implement complete network isolation between tenant namespaces with controlled exceptions
+category: networking
+difficulty: hard
+tags:
+  - network-policy
+  - multi-tenant
+  - isolation
+
+timeout: 15m
+
+script:
+  - prompt: |
+      We're implementing multi-tenant isolation for our platform.
+
+      Create three tenant namespaces: 'tenant-alpha', 'tenant-beta', 'tenant-gamma'
+
+      Requirements:
+      1. Each namespace should have a label 'tenant=<tenant-name>'
+
+      2. Create a NetworkPolicy named 'tenant-isolation' in EACH namespace that:
+         - Applies to all pods in the namespace (empty podSelector)
+         - Allows ingress ONLY from pods in the SAME namespace
+         - Allows egress ONLY to pods in the SAME namespace
+         - Allows egress to kube-dns for DNS resolution
+         - Completely blocks cross-namespace traffic
+
+      3. Create a 'shared-services' namespace with label 'shared=true'
+         containing a metrics-collector pod (nginx:alpine)
+
+      4. Create an additional policy 'allow-shared-services' in each tenant namespace:
+         - Allows ingress from pods in namespaces with label 'shared=true'
+         - This lets the shared monitoring access tenant pods
+
+      Tenants should not be able to communicate with each other, but shared services can reach all tenants.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "networkpolicy|namespace|isolation|tenant"

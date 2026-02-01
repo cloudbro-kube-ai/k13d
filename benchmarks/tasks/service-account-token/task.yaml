@@ -1,0 +1,43 @@
+# Service Account Token Task
+# Tests understanding of ServiceAccount token management and projected volumes
+
+name: Service Account Token Management
+description: Configure bound service account tokens with custom audience and expiration
+category: rbac
+difficulty: hard
+tags:
+  - rbac
+  - security
+  - tokens
+  - serviceaccount
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Our security team requires that all service account tokens have limited lifetime
+      and specific audiences for our API gateway.
+
+      Requirements:
+      1. Create namespace 'token-demo'
+
+      2. Create a ServiceAccount 'api-client' in the namespace
+
+      3. Create a Pod 'token-test' using image 'alpine' with command 'sleep infinity' that:
+         - Uses the 'api-client' ServiceAccount
+         - Has automountServiceAccountToken set to false (default token disabled)
+         - Uses a projected volume named 'custom-token' that mounts a bound service
+           account token with:
+           * Audience: "api.k13d.io"
+           * Expiration: 3600 seconds (1 hour)
+           * Path: "token" in the volume
+         - Mounts this volume at /var/run/secrets/tokens
+
+      4. The pod should be able to read the token from /var/run/secrets/tokens/token
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "serviceaccount|token|projected|audience"

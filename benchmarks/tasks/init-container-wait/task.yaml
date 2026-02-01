@@ -1,0 +1,28 @@
+# Init Container Wait Task
+# Tests ability to create pods with init containers that wait for a service
+
+name: Init Container Wait
+description: Create a pod with an init container that waits for a service to be available
+category: creation
+difficulty: medium
+tags:
+  - pods
+  - init-containers
+  - services
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'init-wait-test':
+      1. Create a Service named 'myservice' that exposes port 80
+      2. Create a Pod named 'init-wait-pod' using nginx:1.25 as main container
+      3. The pod must have an init container named 'wait-for-service' using busybox:1.36 that waits until 'myservice' is resolvable via DNS before the main container starts
+      4. The init container should use nslookup to check DNS resolution
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "init|container|wait|service"

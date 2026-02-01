@@ -1,0 +1,9 @@
+name: add-pod-label
+description: Add a label to an existing pod
+difficulty: easy
+prompt: |
+  Add the label 'environment=staging' to the existing pod named 'target-pod' in the 'benchmark' namespace.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

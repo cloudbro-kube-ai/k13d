@@ -1,0 +1,30 @@
+# Previous Container Logs Task
+# Tests ability to retrieve logs from previous container instances
+
+name: Previous Container Logs
+description: Retrieve logs from a crashed/restarted container using --previous flag
+category: debugging
+difficulty: medium
+tags:
+  - pods
+  - logs
+  - debugging
+  - previous
+  - crash
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'prev-logs-test':
+      1. A pod named 'crash-loop-pod' has been created that crashes and restarts
+      2. The pod has already crashed at least once
+      3. Use kubectl logs with the --previous flag to retrieve logs from the previous container instance
+      4. Display the logs from the previous (crashed) container to help diagnose why it crashed
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "kubectl logs|--previous|-p"

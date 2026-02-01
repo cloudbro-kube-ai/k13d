@@ -1,0 +1,43 @@
+# Cross-Namespace RBAC Task
+# Tests understanding of ClusterRole/RoleBinding combinations for cross-namespace access
+
+name: Cross-Namespace RBAC
+description: Configure RBAC to allow a service account to access resources across multiple namespaces
+category: rbac
+difficulty: hard
+tags:
+  - rbac
+  - security
+  - multi-namespace
+  - clusterrole
+
+timeout: 15m
+
+script:
+  - prompt: |
+      We have a monitoring service that needs to read pods from multiple namespaces
+      but should not have cluster-wide access.
+
+      Requirements:
+      1. Create three namespaces: 'monitoring', 'app-frontend', 'app-backend'
+
+      2. Create a ServiceAccount 'metrics-collector' in the 'monitoring' namespace
+
+      3. Create a ClusterRole 'pod-reader' that allows get, list, watch on pods
+
+      4. Create RoleBindings in EACH of 'app-frontend' and 'app-backend' namespaces
+         that bind the 'pod-reader' ClusterRole to the 'metrics-collector' ServiceAccount
+         from the 'monitoring' namespace
+         - Name them: 'metrics-collector-frontend' and 'metrics-collector-backend'
+
+      5. Do NOT create a ClusterRoleBinding (we want namespace-scoped access only)
+
+      The metrics-collector should be able to list pods in app-frontend and app-backend,
+      but NOT in kube-system or other namespaces.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "clusterrole|rolebinding|namespace|pod-reader"

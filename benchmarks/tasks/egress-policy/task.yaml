@@ -1,0 +1,43 @@
+# Egress Network Policy Task
+# Tests understanding of egress network policies with DNS and external access
+
+name: Complex Egress Network Policy
+description: Configure network policies to control outbound traffic including DNS access
+category: networking
+difficulty: hard
+tags:
+  - network-policy
+  - security
+  - egress
+
+timeout: 15m
+
+script:
+  - prompt: |
+      We need to restrict outbound network access for pods in a secure namespace.
+
+      Setup in namespace 'secure-apps':
+      - A worker pod labeled 'app=worker,security=high'
+      - An api pod labeled 'app=api,security=medium'
+
+      Requirements:
+      1. Create a NetworkPolicy named 'worker-egress' for pods with label 'security=high':
+         - Allow egress ONLY to pods labeled 'app=api' in the same namespace
+         - Allow egress to kube-dns (port 53 UDP and TCP) in kube-system namespace
+           for DNS resolution
+         - Block all other egress traffic
+
+      2. Create a NetworkPolicy named 'api-egress' for pods with label 'app=api':
+         - Allow egress to any pod in the same namespace
+         - Allow egress to DNS (port 53) in kube-system
+         - Allow egress to external HTTPS (port 443) to any destination
+         - Block other egress
+
+      The high-security worker should not be able to reach external services directly.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "networkpolicy|egress|dns"

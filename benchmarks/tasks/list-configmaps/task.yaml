@@ -1,0 +1,10 @@
+name: list-configmaps
+description: List all ConfigMaps in a namespace
+difficulty: easy
+prompt: |
+  List all ConfigMaps in the 'benchmark' namespace and save the names to '/tmp/configmaps.txt'.
+  Each ConfigMap name should be on a separate line.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

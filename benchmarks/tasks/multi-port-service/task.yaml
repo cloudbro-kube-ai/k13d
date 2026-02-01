@@ -1,0 +1,36 @@
+# Multi-Port Service Task
+# Tests ability to create services exposing multiple ports
+
+name: Create Multi-Port Service
+description: Create a service exposing multiple ports with named port references
+category: services
+difficulty: medium
+tags:
+  - services
+  - multi-port
+  - networking
+  - configuration
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a service named 'web-service' in namespace 'service-test' with:
+
+      1. Selector: app=web-app
+      2. Multiple ports:
+         - name: http, port: 80, targetPort: 8080
+         - name: https, port: 443, targetPort: 8443
+         - name: metrics, port: 9090, targetPort: 9090
+
+      Also create a deployment 'web-app' with 2 replicas using nginx image
+      with labels app=web-app.
+
+      Verify the service exposes all three ports correctly.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "service|multi.*port|80|443|9090"

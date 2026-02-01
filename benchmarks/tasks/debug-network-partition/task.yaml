@@ -1,0 +1,54 @@
+# Debug Network Partition Task
+# Tests understanding of network connectivity debugging
+
+name: Debug Network Partition Issues
+description: Diagnose and fix network connectivity problems between services
+category: debugging
+difficulty: hard
+tags:
+  - debugging
+  - networking
+  - dns
+  - service
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Services in namespace 'network-debug' cannot communicate with each other.
+
+      Current setup:
+      - 'frontend' deployment cannot reach 'backend' service
+      - 'backend' deployment cannot reach 'database' service
+      - DNS resolution may be affected
+
+      Tasks:
+      1. Diagnose connectivity issues:
+         - Test DNS resolution from pods
+         - Check service endpoints
+         - Verify network policies aren't blocking traffic
+         - Examine service selectors and labels
+
+      2. Fix the issues:
+         a) The 'backend' service has wrong selector labels - fix it to match
+            pods with label 'app=backend-api' (currently set to 'app=backend')
+
+         b) The 'database' service is missing - create it:
+            - Name: database
+            - Port: 5432, targetPort: 5432
+            - Selector: app=postgres
+
+         c) Create a NetworkPolicy 'allow-internal' that:
+            - Allows all ingress traffic within the namespace
+            - Applies to all pods (empty podSelector)
+
+         d) Ensure DNS is working by verifying CoreDNS pods are running
+
+      3. Verify frontend can reach backend, and backend can reach database.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "service|network|dns|connectivity"

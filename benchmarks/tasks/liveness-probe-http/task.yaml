@@ -1,0 +1,40 @@
+# HTTP Liveness Probe Task
+# Tests ability to configure HTTP liveness probes
+
+name: Configure HTTP Liveness Probe
+description: Create a pod with HTTP liveness probe for health checking
+category: probes
+difficulty: medium
+tags:
+  - probes
+  - liveness
+  - http
+  - health-check
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a pod named 'liveness-http' in namespace 'probe-test' with:
+
+      1. Container: using nginx image
+      2. Container port: 80
+      3. Liveness probe configuration:
+         - httpGet path: /
+         - httpGet port: 80
+         - initialDelaySeconds: 10
+         - periodSeconds: 5
+         - timeoutSeconds: 3
+         - failureThreshold: 3
+
+      The liveness probe checks if the container is alive. If the probe fails
+      consecutively (failureThreshold times), Kubernetes restarts the container.
+
+      Verify the pod has correct liveness probe configuration.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "pod|livenessprobe|http|path"

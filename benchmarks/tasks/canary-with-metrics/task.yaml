@@ -1,0 +1,55 @@
+# Canary with Metrics Task
+# Tests understanding of canary deployments with metrics-based validation
+
+name: Canary Deployment with Metrics
+description: Implement a canary deployment with metrics-based traffic splitting
+category: deployment
+difficulty: hard
+tags:
+  - deployment
+  - canary
+  - metrics
+  - traffic-split
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Implement a canary deployment strategy with metrics annotations.
+
+      Setup in namespace 'canary-metrics':
+      - 'app-stable' deployment (v1.0) currently serving all traffic
+      - Need to deploy 'app-canary' (v2.0) with gradual rollout
+
+      Requirements:
+      1. Keep 'app-stable' deployment running with 3 replicas and:
+         - Label: version=v1
+         - Annotation: deployment.k13d.io/version: "1.0.0"
+         - Annotation: deployment.k13d.io/role: "stable"
+
+      2. Create 'app-canary' deployment with 1 replica:
+         - Same image but tagged v2.0 (use nginx:1.25-alpine as v2)
+         - Label: version=v2
+         - Annotation: deployment.k13d.io/version: "2.0.0"
+         - Annotation: deployment.k13d.io/role: "canary"
+         - Annotation: deployment.k13d.io/traffic-weight: "10"
+
+      3. Update Service 'app-service' to:
+         - Select pods with 'app=myapp' (matches both stable and canary)
+         - Add annotations for traffic management:
+           * service.k13d.io/canary-enabled: "true"
+           * service.k13d.io/canary-weight: "10"
+           * service.k13d.io/stable-deployment: "app-stable"
+           * service.k13d.io/canary-deployment: "app-canary"
+
+      4. Create ConfigMap 'canary-config' with:
+         - CANARY_THRESHOLD: "5"  (error rate threshold %)
+         - CANARY_EVAL_PERIOD: "60"  (seconds)
+         - CANARY_SUCCESS_RATE: "95"  (required success rate %)
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "canary|metrics|traffic|deployment"

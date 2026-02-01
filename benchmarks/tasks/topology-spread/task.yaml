@@ -1,0 +1,39 @@
+# Topology Spread Constraints Task
+# Tests ability to configure pod topology spread for even distribution
+
+name: Configure Topology Spread Constraints
+description: Create a deployment with topology spread constraints for even distribution
+category: scheduling
+difficulty: medium
+tags:
+  - scheduling
+  - topology-spread
+  - distribution
+  - constraints
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a deployment named 'spread-app' in namespace 'schedule-test' with:
+
+      1. Replicas: 6
+      2. Container: using nginx image
+      3. Labels: app=spread-app
+      4. Topology spread constraints:
+         - maxSkew: 1
+         - topologyKey: kubernetes.io/hostname
+         - whenUnsatisfiable: DoNotSchedule
+         - labelSelector matching app=spread-app
+
+      This ensures pods are evenly distributed across nodes with at most
+      1 pod difference between nodes.
+
+      Verify the deployment has correct topology spread configuration.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "deployment|topologyspread|maxskew"

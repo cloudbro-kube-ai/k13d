@@ -1,0 +1,32 @@
+# Run as Non-Root Task
+# Tests ability to configure pods to run as non-root user
+
+name: Run as Non-Root
+description: Create a pod that runs as a non-root user with security context
+category: security
+difficulty: medium
+tags:
+  - pods
+  - security
+  - securitycontext
+  - non-root
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'nonroot-test':
+      1. Create a Pod named 'nonroot-pod' using nginx:1.25 image
+      2. Configure the pod security context to:
+         - Run as non-root user (runAsNonRoot: true)
+         - Run as user ID 1000 (runAsUser: 1000)
+         - Run as group ID 3000 (runAsGroup: 3000)
+         - Set fsGroup to 2000
+      3. The pod should start successfully with these security constraints
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "security|nonroot|runAsUser|runAsGroup"

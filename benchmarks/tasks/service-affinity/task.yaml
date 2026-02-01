@@ -1,0 +1,38 @@
+# Service Session Affinity Task
+# Tests ability to configure session affinity on services
+
+name: Configure Service Session Affinity
+description: Configure service with session affinity (sticky sessions)
+category: services
+difficulty: medium
+tags:
+  - services
+  - session-affinity
+  - sticky-sessions
+  - networking
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a service named 'sticky-svc' in namespace 'service-test' with:
+
+      1. Selector: app=sticky-app
+      2. Port: 80, targetPort: 8080
+      3. sessionAffinity: ClientIP
+      4. sessionAffinityConfig:
+         - clientIP:
+             timeoutSeconds: 3600
+
+      Session affinity ensures that requests from the same client IP are always
+      directed to the same pod, useful for applications that store session state.
+
+      Also create a deployment 'sticky-app' with 3 replicas using nginx image
+      with labels app=sticky-app.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "service|sessionaffinity|clientip"

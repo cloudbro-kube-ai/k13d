@@ -1,0 +1,36 @@
+# MaxSurge Configuration Task
+# Tests ability to configure maxSurge for rolling update strategy
+
+name: Configure MaxSurge Rolling Update
+description: Configure deployment rolling update with specific maxSurge setting
+category: deployments
+difficulty: medium
+tags:
+  - deployments
+  - rolling-update
+  - maxsurge
+  - strategy
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a deployment named 'web-surge' in namespace 'deploy-test' with:
+
+      1. Image: nginx:1.25
+      2. Replicas: 4
+      3. Rolling update strategy with:
+         - maxSurge: 2 (or 50%)
+         - maxUnavailable: 0
+
+      This configuration allows creating 2 extra pods during updates while ensuring
+      no pods are unavailable, which is useful for zero-downtime deployments.
+
+      Verify the deployment has the correct rolling update configuration.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "deployment|maxsurge|rolling"

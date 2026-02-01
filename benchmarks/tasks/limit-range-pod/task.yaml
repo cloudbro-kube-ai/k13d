@@ -1,0 +1,32 @@
+# LimitRange Pod Task
+# Tests ability to create LimitRange for Pod-level constraints
+
+name: LimitRange Pod
+description: Create a LimitRange that sets min/max constraints at the Pod level
+category: creation
+difficulty: medium
+tags:
+  - limitrange
+  - resources
+  - pod
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'limitrange-pod-test':
+      1. Create a LimitRange named 'pod-limits' with Pod type constraints:
+         - Min CPU: 100m
+         - Min Memory: 64Mi
+         - Max CPU: 2
+         - Max Memory: 1Gi
+      2. Create a test Pod named 'test-pod' using nginx:1.25 with resources that fit within the limits:
+         - CPU request: 200m, limit: 500m
+         - Memory request: 128Mi, limit: 512Mi
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "limitrange|pod|min|max"

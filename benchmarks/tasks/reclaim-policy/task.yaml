@@ -1,0 +1,59 @@
+# Reclaim Policy Task
+# Tests understanding of PV reclaim policies and data lifecycle
+
+name: PV Reclaim Policy Management
+description: Configure and manage different PV reclaim policies for data lifecycle management
+category: storage
+difficulty: hard
+tags:
+  - storage
+  - pv
+  - reclaim-policy
+  - lifecycle
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Manage PV reclaim policies for different data retention requirements.
+
+      Requirements:
+      1. Create namespace 'reclaim-demo'
+
+      2. Create three PersistentVolumes with different reclaim policies:
+
+         a) 'pv-retain' (2Gi):
+            - ReclaimPolicy: Retain
+            - StorageClassName: manual
+            - hostPath: /tmp/pv-retain
+            - AccessModes: ReadWriteOnce
+
+         b) 'pv-delete' (2Gi):
+            - ReclaimPolicy: Delete
+            - StorageClassName: manual
+            - hostPath: /tmp/pv-delete
+            - AccessModes: ReadWriteOnce
+
+         c) 'pv-recycle' (2Gi):
+            - ReclaimPolicy: Recycle (note: deprecated, but test knowledge)
+            - StorageClassName: manual
+            - hostPath: /tmp/pv-recycle
+            - AccessModes: ReadWriteOnce
+
+      3. Create PVCs that bind to each PV:
+         - 'pvc-retain' bound to 'pv-retain'
+         - 'pvc-delete' bound to 'pv-delete'
+         - 'pvc-recycle' bound to 'pv-recycle'
+
+      4. Create a Pod 'policy-demo' that mounts all three PVCs and writes
+         test data to each
+
+      5. After understanding: patch 'pv-delete' to change its reclaimPolicy
+         to Retain (show you know how to change policy on existing PV)
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "persistentvolume|reclaimpolicy|retain|delete"

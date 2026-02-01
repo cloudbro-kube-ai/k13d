@@ -1,0 +1,54 @@
+# Leader Election Task
+# Tests understanding of leader election patterns in Kubernetes
+
+name: Leader Election Configuration
+description: Configure leader election for singleton services to ensure high availability
+category: high-availability
+difficulty: hard
+tags:
+  - ha
+  - leader-election
+  - coordination
+  - lease
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Configure leader election for our controller/operator pattern services.
+
+      Setup in namespace 'leader-election':
+      - 'controller-manager' deployment needs leader election
+      - Multiple replicas should run but only one should be active
+
+      Requirements:
+      1. Create a Lease object named 'controller-leader-lock' in the namespace:
+         - This will be used as the leader election lock
+         - Set holderIdentity to empty (will be set by the leader)
+         - Set leaseDurationSeconds: 15
+         - Set renewDeadlineSeconds: 10
+         - Set acquireRetryPeriodSeconds: 2
+
+      2. Create a Role 'leader-election-role' that allows:
+         - get, create, update on leases
+         - This is needed for the controller to perform leader election
+
+      3. Create a ServiceAccount 'controller-sa' and bind the role
+
+      4. Update 'controller-manager' deployment:
+         - Use ServiceAccount 'controller-sa'
+         - Set replicas to 3 (for HA)
+         - Add environment variables:
+           * LEADER_ELECTION_ENABLED: "true"
+           * LEADER_ELECTION_LEASE_NAME: "controller-leader-lock"
+           * LEADER_ELECTION_NAMESPACE: "leader-election"
+         - Add annotation: leader-election.k13d.io/enabled: "true"
+
+      5. Create a ConfigMap 'leader-election-config' with the election parameters.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "lease|leader|election|role"

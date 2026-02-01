@@ -1,0 +1,47 @@
+# Debug OOM Killer Task
+# Tests understanding of memory management and OOM debugging
+
+name: Debug OOM Killer Issues
+description: Diagnose and fix pods being killed by the OOM killer
+category: debugging
+difficulty: hard
+tags:
+  - debugging
+  - oom
+  - memory
+  - resources
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Multiple pods in namespace 'memory-issues' are experiencing OOM kills.
+      The deployment 'memory-app' keeps restarting with OOMKilled status.
+
+      Tasks:
+      1. Diagnose the OOM issue:
+         - Check pod events for OOMKilled events
+         - Examine current memory limits vs actual usage
+         - Look at container restart counts and exit codes
+
+      2. Identify the root cause:
+         - The application allocates memory during startup
+         - Current limits are too restrictive for the workload
+
+      3. Fix the deployment by:
+         - Increasing memory limits appropriately (at least 256Mi)
+         - Setting memory requests to a reasonable value (at least 128Mi)
+         - Ensure the pod runs successfully without OOM kills
+
+      4. Add a VPA (Vertical Pod Autoscaler) recommendation annotation to
+         indicate the optimal memory settings discovered:
+         - Add annotation: vpa.k13d.io/recommended-memory-limit: "<your-value>"
+
+      After fixing, the deployment should be stable with no OOM restarts.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "oomkilled|memory|limit|resources"

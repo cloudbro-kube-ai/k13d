@@ -1,0 +1,55 @@
+# Debug Evicted Pods Task
+# Tests understanding of pod eviction and resource pressure
+
+name: Debug Evicted Pods
+description: Diagnose and resolve pod evictions caused by resource pressure
+category: debugging
+difficulty: hard
+tags:
+  - debugging
+  - eviction
+  - resources
+  - priority
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Pods in namespace 'eviction-demo' are being evicted, causing service disruption.
+
+      Current situation:
+      - The deployment 'critical-app' pods keep getting evicted
+      - Lower priority workloads are consuming resources
+      - The namespace has a ResourceQuota that may be contributing
+
+      Tasks:
+      1. Diagnose the eviction issue:
+         - Check for eviction events and reasons
+         - Examine resource usage and quotas
+         - Review pod priority classes
+
+      2. Fix the issues by:
+         a) Create a PriorityClass 'critical-priority' with:
+            - Value: 1000000 (high priority)
+            - GlobalDefault: false
+            - Description: "Critical production workloads"
+
+         b) Update 'critical-app' deployment to use this PriorityClass
+
+         c) Create a PriorityClass 'low-priority' with value 100
+            and update the 'background-job' deployment to use it
+
+         d) Add resource requests/limits to 'critical-app' to ensure
+            guaranteed QoS class (requests = limits):
+            - Memory: 128Mi
+            - CPU: 100m
+
+      3. Verify critical pods are no longer being evicted in favor of lower
+         priority workloads.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "evicted|priority|qos|resources"

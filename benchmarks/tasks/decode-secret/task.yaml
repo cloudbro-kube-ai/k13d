@@ -1,0 +1,10 @@
+name: decode-secret
+description: Decode a Secret value and save to file
+difficulty: easy
+prompt: |
+  Decode the 'password' key from the Secret named 'encoded-secret' in the 'benchmark' namespace.
+  Save the decoded password to '/tmp/decoded-password.txt'.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

@@ -1,0 +1,9 @@
+name: add-deployment-annotation
+description: Add an annotation to an existing deployment
+difficulty: easy
+prompt: |
+  Add the annotation 'description=Web application frontend' to the existing deployment named 'web-app' in the 'benchmark' namespace.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

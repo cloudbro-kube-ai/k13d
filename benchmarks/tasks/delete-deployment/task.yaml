@@ -1,0 +1,9 @@
+name: delete-deployment
+description: Delete a Deployment
+difficulty: easy
+prompt: |
+  Delete the Deployment named 'old-deployment' in the 'benchmark' namespace.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

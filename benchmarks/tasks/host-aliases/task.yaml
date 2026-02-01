@@ -1,0 +1,31 @@
+# Host Aliases Task
+# Tests ability to add custom host entries to pods
+
+name: Host Aliases
+description: Create a pod with custom host aliases in /etc/hosts
+category: networking
+difficulty: medium
+tags:
+  - pods
+  - dns
+  - networking
+  - hostAliases
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'host-alias-test':
+      1. Create a Pod named 'host-alias-pod' using busybox:1.36 with command "sleep 3600"
+      2. Configure hostAliases to add custom entries to /etc/hosts:
+         - IP: 10.0.0.1, hostnames: ["db.local", "database.local"]
+         - IP: 10.0.0.2, hostnames: ["cache.local", "redis.local"]
+         - IP: 10.0.0.3, hostnames: ["api.local"]
+      3. The pod should start and the entries should be visible in /etc/hosts
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "hostAliases|/etc/hosts|ip|hostnames"

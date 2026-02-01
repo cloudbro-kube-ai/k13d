@@ -1,0 +1,13 @@
+name: create-pod-env
+description: Create a pod with environment variables
+difficulty: easy
+prompt: |
+  Create a pod named 'env-pod' using the image 'nginx:alpine' in the 'benchmark' namespace.
+  The pod should have the following environment variables:
+  - APP_ENV=production
+  - APP_DEBUG=false
+  - APP_PORT=8080
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

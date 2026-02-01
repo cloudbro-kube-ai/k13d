@@ -1,0 +1,10 @@
+name: list-namespaces
+description: List all namespaces in the cluster
+difficulty: easy
+prompt: |
+  List all namespaces in the cluster and save their names to '/tmp/namespaces.txt'.
+  Each namespace name should be on a separate line.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

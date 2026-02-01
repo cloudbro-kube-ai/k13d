@@ -1,0 +1,45 @@
+# Ingress Network Policy Task
+# Tests understanding of ingress network policies with multiple selectors
+
+name: Complex Ingress Network Policy
+description: Configure network policies to allow specific ingress traffic based on pod and namespace selectors
+category: networking
+difficulty: hard
+tags:
+  - network-policy
+  - security
+  - ingress
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Our microservices architecture requires fine-grained network ingress control.
+
+      Current setup in namespace 'microservices':
+      - A backend API pod labeled 'app=api,tier=backend'
+      - A frontend pod labeled 'app=web,tier=frontend'
+      - A database pod labeled 'app=db,tier=data'
+
+      Requirements:
+      1. Create a NetworkPolicy named 'api-ingress' that:
+         - Applies to pods with label 'app=api'
+         - Allows ingress from pods with label 'tier=frontend' in the same namespace
+         - Allows ingress from any pod in namespaces labeled 'access=api-allowed'
+         - Allows ingress on port 8080 only
+
+      2. Create a NetworkPolicy named 'db-ingress' that:
+         - Applies to pods with label 'app=db'
+         - ONLY allows ingress from pods with label 'app=api' (backend only)
+         - Allows ingress on port 5432 only
+         - Blocks all other ingress traffic
+
+      3. Create namespace 'external-service' with label 'access=api-allowed'
+         and deploy a test pod there to verify cross-namespace access
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "networkpolicy|ingress|selector"

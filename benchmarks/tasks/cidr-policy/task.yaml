@@ -1,0 +1,48 @@
+# CIDR-based Network Policy Task
+# Tests understanding of ipBlock CIDR selectors in network policies
+
+name: CIDR-based Network Policy
+description: Configure network policies using IP CIDR blocks for external service access control
+category: networking
+difficulty: hard
+tags:
+  - network-policy
+  - cidr
+  - security
+  - external-access
+
+timeout: 15m
+
+script:
+  - prompt: |
+      We need to control access to external services using IP CIDR blocks.
+
+      Setup in namespace 'external-access':
+      - An 'api-gateway' pod that needs to access external APIs
+      - A 'worker' pod that should have restricted external access
+
+      Requirements:
+      1. Create a NetworkPolicy named 'api-gateway-external' for the api-gateway pod that:
+         - Allows egress to CIDR block 10.0.0.0/8 (internal services)
+         - Allows egress to CIDR block 192.168.0.0/16 (VPN range)
+         - Allows egress to any IP EXCEPT 172.16.0.0/12 (blocked range)
+           Use ipBlock.except to exclude this range from 0.0.0.0/0
+         - Allows DNS (port 53 UDP/TCP)
+
+      2. Create a NetworkPolicy named 'worker-restricted' for the worker pod that:
+         - ONLY allows egress to CIDR 10.0.0.0/8
+         - Blocks all other external access
+         - Allows DNS (port 53)
+
+      3. Create a NetworkPolicy named 'ingress-from-lb' that:
+         - Allows ingress to api-gateway from CIDR 203.0.113.0/24 (load balancer IPs)
+         - Only on port 8080
+
+      The api-gateway should have broad external access while workers are restricted.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "networkpolicy|ipblock|cidr"

@@ -1,0 +1,39 @@
+# TCP Readiness Probe Task
+# Tests ability to configure TCP socket readiness probes
+
+name: Configure TCP Readiness Probe
+description: Create a pod with TCP socket readiness probe
+category: probes
+difficulty: medium
+tags:
+  - probes
+  - readiness
+  - tcp
+  - health-check
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a pod named 'readiness-tcp' in namespace 'probe-test' with:
+
+      1. Container: using redis image
+      2. Container port: 6379
+      3. Readiness probe configuration:
+         - tcpSocket port: 6379
+         - initialDelaySeconds: 5
+         - periodSeconds: 10
+         - successThreshold: 1
+         - failureThreshold: 3
+
+      The readiness probe checks if the container is ready to receive traffic.
+      The pod is removed from Service endpoints until the probe succeeds.
+
+      Verify the pod has correct readiness probe configuration.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "pod|readinessprobe|tcp|6379"

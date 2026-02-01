@@ -1,0 +1,37 @@
+# Create Headless Service Task
+# Tests ability to create headless services for StatefulSets
+
+name: Create Headless Service
+description: Create a headless service for direct pod DNS discovery
+category: services
+difficulty: medium
+tags:
+  - services
+  - headless
+  - dns
+  - statefulset
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a headless service named 'db-headless' in namespace 'service-test' with:
+
+      1. clusterIP: None (this makes it headless)
+      2. Selector: app=database
+      3. Port: 3306 (MySQL default port)
+      4. targetPort: 3306
+
+      Headless services don't have a cluster IP. Instead, DNS queries return
+      the pod IPs directly, which is useful for StatefulSets where each pod
+      needs to be individually addressable.
+
+      Also create a simple deployment 'database' with 2 replicas using mysql:8 image
+      with labels app=database to verify the headless service.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "service|headless|clusterip.*none"

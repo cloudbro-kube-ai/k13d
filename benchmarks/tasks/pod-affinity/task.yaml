@@ -1,0 +1,37 @@
+# Pod Affinity Task
+# Tests ability to configure pod-to-pod affinity rules
+
+name: Configure Pod Affinity
+description: Create a pod with pod affinity to co-locate with other pods
+category: scheduling
+difficulty: medium
+tags:
+  - scheduling
+  - pod-affinity
+  - colocation
+  - constraints
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a pod named 'cache-pod' in namespace 'schedule-test' with:
+
+      1. Container: using redis image
+      2. Labels: app=cache, tier=backend
+      3. Pod affinity with requiredDuringSchedulingIgnoredDuringExecution:
+         - Co-locate with pods having label app=web
+         - topologyKey: kubernetes.io/hostname
+
+      This ensures the cache pod runs on the same node as web pods,
+      reducing network latency between them.
+
+      First create a deployment 'web-app' with 2 replicas and label app=web
+      so the affinity can be tested.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "pod|affinity|app.*web|colocation"

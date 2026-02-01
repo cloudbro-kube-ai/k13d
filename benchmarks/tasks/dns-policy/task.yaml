@@ -1,0 +1,31 @@
+# DNS Policy Task
+# Tests ability to configure different DNS policies for pods
+
+name: DNS Policy
+description: Create pods with different DNS policies to understand DNS resolution behavior
+category: networking
+difficulty: medium
+tags:
+  - pods
+  - dns
+  - networking
+  - dnsPolicy
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'dns-policy-test':
+      1. Create a Pod named 'cluster-first-pod' using busybox:1.36 with command "sleep 3600"
+         - Set dnsPolicy: ClusterFirst (default, cluster DNS first, then upstream)
+      2. Create a Pod named 'cluster-first-host-pod' using busybox:1.36 with command "sleep 3600"
+         - Set dnsPolicy: ClusterFirstWithHostNet
+         - Set hostNetwork: true
+      3. Both pods should start successfully with their respective DNS policies
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "dns|dnsPolicy|ClusterFirst|hostNetwork"

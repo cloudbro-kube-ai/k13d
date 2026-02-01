@@ -1,0 +1,44 @@
+# Startup Probe Task
+# Tests ability to configure startup probes for slow-starting containers
+
+name: Configure Startup Probe
+description: Create a pod with startup probe for slow-starting applications
+category: probes
+difficulty: medium
+tags:
+  - probes
+  - startup
+  - slow-start
+  - health-check
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a pod named 'startup-app' in namespace 'probe-test' with:
+
+      1. Container: using nginx image
+      2. Container port: 80
+      3. Startup probe configuration:
+         - httpGet path: /
+         - httpGet port: 80
+         - failureThreshold: 30
+         - periodSeconds: 10
+
+      4. Liveness probe configuration:
+         - httpGet path: /
+         - httpGet port: 80
+         - periodSeconds: 5
+
+      The startup probe runs first and must succeed before liveness/readiness
+      probes start. This is useful for applications with slow startup times.
+      With failureThreshold=30 and periodSeconds=10, the app has up to 5 minutes to start.
+
+      Verify the pod has both startup and liveness probes configured.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "pod|startupprobe|livenessprobe"

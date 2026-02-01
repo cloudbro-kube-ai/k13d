@@ -1,0 +1,10 @@
+name: update-configmap
+description: Update a value in an existing ConfigMap
+difficulty: easy
+prompt: |
+  Update the ConfigMap named 'settings' in the 'benchmark' namespace.
+  Change the value of 'MAX_CONNECTIONS' from '100' to '500'.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

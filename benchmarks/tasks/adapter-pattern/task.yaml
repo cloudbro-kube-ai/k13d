@@ -1,0 +1,30 @@
+# Adapter Pattern Task
+# Tests ability to implement the adapter sidecar pattern
+
+name: Adapter Pattern
+description: Create a pod with an adapter container that transforms output format
+category: creation
+difficulty: medium
+tags:
+  - pods
+  - sidecar
+  - adapter
+  - monitoring
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'adapter-test':
+      1. Create a Pod named 'adapter-pod' with two containers:
+         - Main container 'app' using busybox:1.36 that generates metrics in a custom format to '/metrics/app-metrics.txt' (use: sh -c "while true; do echo \"memory_usage=$(shuf -i 100-500 -n 1)\" > /metrics/app-metrics.txt; echo \"cpu_usage=$(shuf -i 10-90 -n 1)\" >> /metrics/app-metrics.txt; sleep 5; done")
+         - Adapter container 'metrics-adapter' using busybox:1.36 that reads the custom metrics and converts them to Prometheus format in '/metrics/prometheus-metrics.txt' (use: sh -c "while true; do if [ -f /metrics/app-metrics.txt ]; then cat /metrics/app-metrics.txt | sed 's/=/\{app=\"myapp\"\} /' > /metrics/prometheus-metrics.txt; fi; sleep 5; done")
+      2. Use an emptyDir volume named 'metrics' mounted at '/metrics' in both containers
+      3. Both containers should be running and the adapter should transform the metrics format
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "adapter|metrics|transform|sidecar"

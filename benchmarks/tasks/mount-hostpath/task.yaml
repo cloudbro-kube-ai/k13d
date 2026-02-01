@@ -1,0 +1,34 @@
+# Mount HostPath Volume Task
+# Tests ability to create pods with hostPath volumes
+
+name: Mount HostPath Volume
+description: Create a pod with hostPath volume for accessing node filesystem
+category: storage
+difficulty: medium
+tags:
+  - volumes
+  - hostpath
+  - storage
+  - node-access
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a pod named 'hostpath-pod' in namespace 'volume-test' with the following specifications:
+
+      1. Container: named 'logger', using busybox image
+      2. Command: writes current date to /host-logs/app.log every 5 seconds
+      3. A hostPath volume named 'host-volume':
+         - hostPath: /tmp/k8s-logs
+         - type: DirectoryOrCreate
+      4. Mount the volume at /host-logs in the container
+
+      Verify the pod is running and can write to the hostPath.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "pod.*created|hostpath|volume"

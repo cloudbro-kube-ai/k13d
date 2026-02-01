@@ -1,0 +1,12 @@
+name: create-nodeport-service
+description: Create a NodePort Service
+difficulty: easy
+prompt: |
+  Create a NodePort Service named 'web-nodeport' in the 'benchmark' namespace that:
+  - Selects pods with label 'app=web'
+  - Exposes port 80 (service port) mapping to target port 8080
+  - Uses NodePort 30080
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

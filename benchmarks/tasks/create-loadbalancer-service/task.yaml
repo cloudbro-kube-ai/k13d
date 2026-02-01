@@ -1,0 +1,11 @@
+name: create-loadbalancer-service
+description: Create a LoadBalancer Service
+difficulty: easy
+prompt: |
+  Create a LoadBalancer Service named 'api-lb' in the 'benchmark' namespace that:
+  - Selects pods with label 'app=api'
+  - Exposes port 443 mapping to target port 8443
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

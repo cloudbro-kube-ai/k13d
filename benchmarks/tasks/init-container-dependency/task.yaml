@@ -1,0 +1,29 @@
+# Init Container Dependency Task
+# Tests ability to use init containers to check for dependencies
+
+name: Init Container Dependency
+description: Create a pod with an init container that checks for a database dependency
+category: creation
+difficulty: medium
+tags:
+  - pods
+  - init-containers
+  - dependencies
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'init-dep-test':
+      1. Create a Redis deployment named 'redis' with 1 replica using redis:7-alpine image
+      2. Create a Service named 'redis' exposing port 6379
+      3. Create a Pod named 'app-pod' with busybox:1.36 as the main container (command: sleep 3600)
+      4. Add an init container named 'check-redis' using busybox:1.36 that uses nc (netcat) to wait until redis:6379 is accepting connections
+      5. The init container should retry the connection check in a loop until successful
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "init|container|redis|dependency"

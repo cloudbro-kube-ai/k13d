@@ -1,0 +1,37 @@
+# Pod Anti-Affinity Task
+# Tests ability to configure pod anti-affinity rules
+
+name: Configure Pod Anti-Affinity
+description: Create a deployment with pod anti-affinity for high availability
+category: scheduling
+difficulty: medium
+tags:
+  - scheduling
+  - pod-anti-affinity
+  - high-availability
+  - constraints
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a deployment named 'ha-app' in namespace 'schedule-test' with:
+
+      1. Replicas: 3
+      2. Container: using nginx image
+      3. Labels: app=ha-app
+      4. Pod anti-affinity with requiredDuringSchedulingIgnoredDuringExecution:
+         - Do NOT co-locate with pods having label app=ha-app
+         - topologyKey: kubernetes.io/hostname
+
+      This ensures each replica runs on a different node for high availability.
+      If fewer nodes exist than replicas, some pods will remain Pending.
+
+      Verify the deployment has correct anti-affinity rules.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "deployment|anti.*affinity|ha-app"

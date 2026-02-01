@@ -1,0 +1,51 @@
+# Rollback Deployment Task
+# Tests understanding of deployment rollback and revision history
+
+name: Deployment Rollback
+description: Perform deployment rollback using revision history and analyze differences
+category: deployment
+difficulty: hard
+tags:
+  - deployment
+  - rollback
+  - revision
+  - history
+
+timeout: 15m
+
+script:
+  - prompt: |
+      A bad deployment was pushed and we need to rollback.
+
+      Setup in namespace 'rollback-demo':
+      - 'webapp' deployment was at v1 (nginx:1.24-alpine), then updated to v2
+        (nginx:1.25-alpine), and now has a bad v3 (nginx:invalid-tag) that's failing
+
+      Tasks:
+      1. Check the deployment rollout history to see all revisions
+
+      2. Rollback to the last known good version (v2, nginx:1.25-alpine):
+         - Use 'kubectl rollout undo' to rollback
+         - Or rollback to a specific revision
+
+      3. After rollback, annotate the deployment with:
+         - kubernetes.io/change-cause: "Rolled back from failing v3 to v2"
+         - rollback.k13d.io/from-revision: "<failed-revision>"
+         - rollback.k13d.io/to-revision: "<target-revision>"
+         - rollback.k13d.io/reason: "Image tag invalid"
+
+      4. Update the deployment's revisionHistoryLimit to 5 (keep 5 revisions)
+
+      5. Verify the deployment is running successfully with nginx:1.25-alpine
+
+      6. Create a ConfigMap 'rollback-log' documenting:
+         - FAILED_IMAGE: the image that caused the failure
+         - ROLLBACK_IMAGE: the image after rollback
+         - TIMESTAMP: current date
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "rollback|revision|undo|history"

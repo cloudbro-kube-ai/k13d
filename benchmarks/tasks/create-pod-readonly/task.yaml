@@ -1,0 +1,11 @@
+name: create-pod-readonly
+description: Create a pod with read-only root filesystem
+difficulty: easy
+prompt: |
+  Create a pod named 'readonly-pod' using the image 'nginx:alpine' in the 'benchmark' namespace.
+  The pod should have a read-only root filesystem for security.
+  Add an emptyDir volume mounted at '/var/cache/nginx' and '/var/run' to allow nginx to run properly.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

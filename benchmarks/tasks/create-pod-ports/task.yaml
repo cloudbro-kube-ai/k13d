@@ -1,0 +1,10 @@
+name: create-pod-ports
+description: Create a pod with container ports exposed
+difficulty: easy
+prompt: |
+  Create a pod named 'ports-pod' using the image 'nginx:alpine' in the 'benchmark' namespace.
+  The pod should expose container port 80 with the name 'http' and port 443 with the name 'https'.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

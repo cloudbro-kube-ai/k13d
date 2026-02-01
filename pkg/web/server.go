@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
+	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/session"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/helm"
@@ -40,6 +41,7 @@ type Server struct {
 	reportGenerator  *ReportGenerator
 	metricsCollector *metrics.Collector
 	securityScanner  *security.Scanner
+	sessionStore     *session.Store // AI conversation session storage
 	port             int
 	server           *http.Server
 	embeddedLLM      bool // Using embedded LLM server
@@ -61,8 +63,9 @@ type PendingToolApproval struct {
 }
 
 type ChatRequest struct {
-	Message  string `json:"message"`
-	Language string `json:"language,omitempty"` // Display language preference (e.g., "ko", "en")
+	Message   string `json:"message"`
+	SessionID string `json:"session_id,omitempty"` // Session ID for conversation history
+	Language  string `json:"language,omitempty"`   // Display language preference (e.g., "ko", "en")
 }
 
 type ChatResponse struct {
@@ -144,6 +147,14 @@ func NewServer(cfg *config.Config, port int, versionInfo *VersionInfo) (*Server,
 	authManager := NewAuthManager(authConfig)
 	fmt.Printf("  Authentication: %s\n", map[bool]string{true: "Enabled", false: "Disabled"}[authConfig.Enabled])
 
+	// Initialize session store for AI conversation history
+	sessionStore, err := session.NewStore()
+	if err != nil {
+		fmt.Printf("  Session Store: Failed to initialize (%v)\n", err)
+	} else {
+		fmt.Printf("  Session Store: Ready\n")
+	}
+
 	server := &Server{
 		cfg:              cfg,
 		aiClient:         aiClient,
@@ -151,6 +162,7 @@ func NewServer(cfg *config.Config, port int, versionInfo *VersionInfo) (*Server,
 		helmClient:       helmClient,
 		mcpClient:        mcp.NewClient(),
 		authManager:      authManager,
+		sessionStore:     sessionStore,
 		port:             port,
 		versionInfo:      versionInfo,
 		pendingApprovals: make(map[string]*PendingToolApproval),
@@ -249,6 +261,14 @@ func NewServerWithAuth(cfg *config.Config, port int, authOpts *AuthOptions, vers
 		fmt.Printf("  Embedded LLM: Enabled (LLM settings locked)\n")
 	}
 
+	// Initialize session store for AI conversation history
+	sessionStore, err := session.NewStore()
+	if err != nil {
+		fmt.Printf("  Session Store: Failed to initialize (%v)\n", err)
+	} else {
+		fmt.Printf("  Session Store: Ready\n")
+	}
+
 	server := &Server{
 		cfg:              cfg,
 		aiClient:         aiClient,
@@ -256,6 +276,7 @@ func NewServerWithAuth(cfg *config.Config, port int, authOpts *AuthOptions, vers
 		helmClient:       helmClient,
 		mcpClient:        mcp.NewClient(),
 		authManager:      authManager,
+		sessionStore:     sessionStore,
 		port:             port,
 		embeddedLLM:      authOpts.EmbeddedLLM,
 		versionInfo:      versionInfo,
@@ -349,6 +370,10 @@ func (s *Server) Start() error {
 	// All chat requests use agentic mode
 	mux.HandleFunc("/api/chat/agentic", s.authManager.AuthMiddleware(s.handleAgenticChat))
 	mux.HandleFunc("/api/tool/approve", s.authManager.AuthMiddleware(s.handleToolApprove))
+
+	// Session management for conversation history
+	mux.HandleFunc("/api/sessions", s.authManager.AuthMiddleware(s.handleSessions))
+	mux.HandleFunc("/api/sessions/", s.authManager.AuthMiddleware(s.handleSession))
 	mux.HandleFunc("/api/k8s/", s.authManager.AuthMiddleware(s.handleK8sResource))
 	mux.HandleFunc("/api/crd/", s.authManager.AuthMiddleware(s.handleCustomResources))
 	mux.HandleFunc("/api/audit", s.authManager.AuthMiddleware(s.handleAuditLogs))

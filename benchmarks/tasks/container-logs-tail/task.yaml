@@ -1,0 +1,31 @@
+# Container Logs Tail Task
+# Tests ability to retrieve and tail container logs
+
+name: Container Logs Tail
+description: Retrieve and tail logs from a running container with various options
+category: debugging
+difficulty: medium
+tags:
+  - pods
+  - logs
+  - debugging
+  - tail
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'logs-tail-test':
+      1. A pod named 'log-generator' is running that writes logs periodically
+      2. Use kubectl logs to:
+         - Get the last 10 lines of logs from the container
+         - Show logs from the last 30 seconds
+         - Add timestamps to the log output
+      3. Save the output showing the logs with timestamps to a file or display the command and output
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "kubectl logs|--tail|--since|--timestamps"

@@ -1,0 +1,50 @@
+# Probe Failure Threshold Task
+# Tests ability to configure probes with custom failure thresholds
+
+name: Configure Probe Failure Threshold
+description: Create a pod with customized probe failure thresholds for resilience
+category: probes
+difficulty: medium
+tags:
+  - probes
+  - failure-threshold
+  - resilience
+  - health-check
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a deployment named 'resilient-app' in namespace 'probe-test' with:
+
+      1. Replicas: 2
+      2. Container: using httpd (Apache) image
+      3. Container port: 80
+
+      4. Liveness probe:
+         - httpGet path: /
+         - httpGet port: 80
+         - initialDelaySeconds: 15
+         - periodSeconds: 20
+         - timeoutSeconds: 5
+         - failureThreshold: 5 (allow 5 consecutive failures before restart)
+         - successThreshold: 1
+
+      5. Readiness probe:
+         - httpGet path: /
+         - httpGet port: 80
+         - initialDelaySeconds: 5
+         - periodSeconds: 10
+         - timeoutSeconds: 3
+         - failureThreshold: 3
+         - successThreshold: 2 (need 2 consecutive successes to be ready)
+
+      Higher failure thresholds make the app more resilient to temporary failures.
+      Higher success thresholds ensure the app is truly ready before receiving traffic.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "deployment|probe|failurethreshold|5"

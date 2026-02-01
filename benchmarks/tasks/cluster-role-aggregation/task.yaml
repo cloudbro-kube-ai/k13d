@@ -1,0 +1,40 @@
+# Cluster Role Aggregation Task
+# Tests understanding of RBAC aggregation rules
+
+name: Cluster Role Aggregation
+description: Create aggregated ClusterRoles that automatically combine permissions from multiple roles
+category: rbac
+difficulty: hard
+tags:
+  - rbac
+  - security
+  - cluster-admin
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Our organization needs a flexible RBAC system using ClusterRole aggregation.
+
+      Requirements:
+      1. Create a base ClusterRole called 'monitoring-view' with labels:
+         - rbac.k13d.io/aggregate-to-monitoring: "true"
+         This role should allow: get, list, watch on pods, services, and endpoints
+
+      2. Create another ClusterRole called 'monitoring-logs' with the same label that allows:
+         get, list, watch on pods/log
+
+      3. Create an aggregated ClusterRole called 'monitoring-aggregate' that uses
+         aggregationRule to combine all roles with label 'rbac.k13d.io/aggregate-to-monitoring=true'
+
+      4. Create a ServiceAccount 'monitoring-sa' in namespace 'monitoring-system'
+         and bind it to the aggregated role
+
+      The aggregated role should automatically inherit permissions from both component roles.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "clusterrole|aggregation|monitoring"

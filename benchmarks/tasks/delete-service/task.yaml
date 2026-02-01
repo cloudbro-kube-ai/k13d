@@ -1,0 +1,9 @@
+name: delete-service
+description: Delete a Service
+difficulty: easy
+prompt: |
+  Delete the Service named 'old-service' in the 'benchmark' namespace.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

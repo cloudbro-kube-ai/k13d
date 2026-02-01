@@ -1,0 +1,11 @@
+name: create-secret
+description: Create a generic Secret with literal values
+difficulty: easy
+prompt: |
+  Create a generic Secret named 'db-credentials' in the 'benchmark' namespace with the following key-value pairs:
+  - username=admin
+  - password=secretpass123
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

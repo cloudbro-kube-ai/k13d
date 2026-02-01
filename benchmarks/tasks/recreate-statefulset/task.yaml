@@ -1,0 +1,59 @@
+# Recreate StatefulSet Task
+# Tests understanding of StatefulSet recreation strategies
+
+name: Recreate StatefulSet with Data Preservation
+description: Safely recreate a StatefulSet while preserving persistent data
+category: deployment
+difficulty: hard
+tags:
+  - statefulset
+  - recreate
+  - persistence
+  - data
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Recreate a StatefulSet with fundamental changes while preserving data.
+
+      Scenario in namespace 'sts-recreate':
+      - 'database' StatefulSet needs to be recreated with new configuration
+      - PVCs contain important data that must be preserved
+      - The StatefulSet selector needs to be changed (immutable field)
+
+      Current problem: The StatefulSet has wrong selector and needs recreation.
+
+      Tasks:
+      1. Document the current state:
+         - Note the PVC names (database-data-database-0, etc.)
+         - Note the current data stored
+
+      2. Safely delete the StatefulSet WITHOUT deleting PVCs:
+         - Use: kubectl delete statefulset database --cascade=orphan
+         - This keeps the pods and PVCs intact
+
+      3. Delete the orphaned pods (they're no longer managed):
+         - Delete pods with label app=database
+
+      4. Recreate the StatefulSet with:
+         - Updated selector: app=database-new
+         - Updated pod labels: app=database-new
+         - Same volumeClaimTemplates to reuse existing PVCs
+         - Set podManagementPolicy: Parallel
+         - Add annotation: recreate.k13d.io/reason: "selector-change"
+         - Add annotation: recreate.k13d.io/preserved-pvcs: "true"
+
+      5. Verify the new StatefulSet attaches to existing PVCs and data is preserved
+
+      6. Create a ConfigMap 'migration-record' documenting:
+         - OLD_SELECTOR: the original selector
+         - NEW_SELECTOR: the new selector
+         - PVC_NAMES: comma-separated PVC names
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "statefulset|orphan|pvc|recreate"

@@ -1,0 +1,40 @@
+# Priority Class Task
+# Tests ability to configure pod priority for scheduling precedence
+
+name: Configure Pod Priority Class
+description: Create a PriorityClass and use it in a pod for scheduling precedence
+category: scheduling
+difficulty: medium
+tags:
+  - scheduling
+  - priority
+  - priorityclass
+  - preemption
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a PriorityClass and pod in namespace 'schedule-test':
+
+      1. First, create a PriorityClass named 'high-priority' with:
+         - value: 1000000
+         - globalDefault: false
+         - description: "High priority for critical workloads"
+         - preemptionPolicy: PreemptLowerPriority
+
+      2. Create a pod named 'critical-pod' with:
+         - Container: using nginx image
+         - priorityClassName: high-priority
+
+      High priority pods can preempt (evict) lower priority pods when
+      resources are scarce.
+
+      Verify both the PriorityClass and pod are configured correctly.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "priorityclass|high-priority|1000000"

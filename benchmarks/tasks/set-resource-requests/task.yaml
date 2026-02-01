@@ -1,0 +1,30 @@
+# Set Resource Requests Task
+# Tests ability to set resource requests for containers
+
+name: Set Resource Requests
+description: Create a deployment with appropriate resource requests
+category: creation
+difficulty: medium
+tags:
+  - deployments
+  - resources
+  - requests
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'resource-req-test':
+      1. Create a Deployment named 'web-app' with 2 replicas using nginx:1.25
+      2. Set resource requests for the container:
+         - CPU: 100m (100 millicores)
+         - Memory: 128Mi
+      3. Do NOT set resource limits (only requests)
+      4. The deployment should be named 'web-app' with container named 'nginx'
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "resource|request|cpu|memory"

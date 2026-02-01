@@ -1,0 +1,31 @@
+# PVC Resize Task
+# Tests ability to expand PersistentVolumeClaim capacity
+
+name: PVC Resize
+description: Resize an existing PersistentVolumeClaim to larger capacity
+category: storage
+difficulty: medium
+tags:
+  - volumes
+  - pvc
+  - resize
+  - storage
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'volume-test', there is an existing PVC named 'data-pvc' with 1Gi capacity.
+
+      1. Expand the PVC 'data-pvc' from 1Gi to 2Gi
+      2. Verify the resize request has been accepted
+
+      Note: The actual resize may take time depending on the storage provider.
+      The task is complete when the PVC shows the new requested size.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "pvc|resize|2Gi|expand"

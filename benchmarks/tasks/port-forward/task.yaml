@@ -1,0 +1,31 @@
+# Port Forward Task
+# Tests ability to set up port forwarding to pods
+
+name: Port Forward
+description: Set up port forwarding to access a service running in a pod
+category: debugging
+difficulty: medium
+tags:
+  - pods
+  - port-forward
+  - debugging
+  - networking
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'port-fwd-test':
+      1. A pod named 'web-server' is running nginx on port 80
+      2. Set up port forwarding from local port 8080 to the pod's port 80:
+         - kubectl port-forward pod/web-server 8080:80 -n port-fwd-test
+      3. Alternatively, you can port-forward to a service:
+         - kubectl port-forward service/web-svc 8080:80 -n port-fwd-test
+      4. Verify the port forward works by accessing localhost:8080
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "port-forward|8080:80|localhost"

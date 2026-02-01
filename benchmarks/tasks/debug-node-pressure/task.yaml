@@ -1,0 +1,59 @@
+# Debug Node Pressure Task
+# Tests understanding of node conditions and resource pressure handling
+
+name: Debug Node Pressure Issues
+description: Diagnose and mitigate node resource pressure conditions
+category: debugging
+difficulty: hard
+tags:
+  - debugging
+  - node
+  - pressure
+  - conditions
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Pods are failing to schedule due to node resource pressure.
+
+      Scenario in namespace 'pressure-demo':
+      - Multiple deployments are competing for limited resources
+      - Some pods are stuck in Pending state
+      - You need to optimize resource allocation
+
+      Tasks:
+      1. Diagnose node pressure:
+         - Check node conditions (MemoryPressure, DiskPressure, PIDPressure)
+         - Examine node allocatable vs requested resources
+         - Identify which pods are causing pressure
+
+      2. Fix resource allocation:
+         a) Create a LimitRange 'default-limits' in the namespace:
+            - Default memory limit: 128Mi
+            - Default memory request: 64Mi
+            - Default CPU limit: 200m
+            - Default CPU request: 100m
+            - Max memory per container: 512Mi
+            - Max CPU per container: 1
+
+         b) Create a ResourceQuota 'namespace-quota':
+            - requests.cpu: 2
+            - requests.memory: 1Gi
+            - limits.cpu: 4
+            - limits.memory: 2Gi
+            - pods: 10
+
+         c) Update the 'resource-hog' deployment to have reasonable limits:
+            - Memory: 128Mi request, 256Mi limit
+            - CPU: 100m request, 200m limit
+            - Replicas: 2 (reduce from 5)
+
+      3. Ensure all pods can be scheduled after optimizations.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "limitrange|resourcequota|pressure|node"

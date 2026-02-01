@@ -1,0 +1,28 @@
+# Init Container Setup Task
+# Tests ability to use init containers for application setup
+
+name: Init Container Setup
+description: Create a pod with an init container that sets up configuration files
+category: creation
+difficulty: medium
+tags:
+  - pods
+  - init-containers
+  - volumes
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'init-setup-test':
+      1. Create a Pod named 'setup-pod' with nginx:1.25 as the main container
+      2. Add an init container named 'setup' using busybox:1.36 that creates a file '/work-dir/index.html' with content 'Hello from init container'
+      3. Use an emptyDir volume named 'workdir' mounted at '/work-dir' in the init container and at '/usr/share/nginx/html' in the main container
+      4. The nginx container should serve the file created by the init container
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "init|container|setup|volume"

@@ -1,0 +1,10 @@
+name: create-configmap-from-file
+description: Create a ConfigMap from a file
+difficulty: easy
+prompt: |
+  Create a ConfigMap named 'nginx-config' in the 'benchmark' namespace from the file '/tmp/nginx.conf'.
+  The key in the ConfigMap should be 'nginx.conf'.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

@@ -1,0 +1,47 @@
+# Deny All Network Policy Task
+# Tests understanding of default-deny policies with selective allow rules
+
+name: Default Deny with Selective Allow
+description: Implement zero-trust networking with default deny and explicit allow policies
+category: networking
+difficulty: hard
+tags:
+  - network-policy
+  - security
+  - zero-trust
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Implement a zero-trust network model for the 'production' namespace.
+
+      Current setup:
+      - Web tier: pods labeled 'tier=web'
+      - App tier: pods labeled 'tier=app'
+      - Cache tier: pods labeled 'tier=cache' (redis)
+
+      Requirements:
+      1. Create a default-deny NetworkPolicy named 'default-deny-all' that:
+         - Applies to ALL pods in the namespace (empty podSelector: {})
+         - Denies all ingress traffic by default
+         - Denies all egress traffic by default
+         - Must specify both Ingress and Egress in policyTypes
+
+      2. Create NetworkPolicy 'allow-web-to-app' that:
+         - Allows web tier to send traffic to app tier on port 8080
+
+      3. Create NetworkPolicy 'allow-app-to-cache' that:
+         - Allows app tier to send traffic to cache tier on port 6379
+
+      4. Create NetworkPolicy 'allow-dns' that:
+         - Allows all pods to access DNS (UDP/TCP port 53) to kube-system namespace
+
+      After implementation, only explicitly allowed traffic should flow.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "networkpolicy|deny|allow"

@@ -1,0 +1,51 @@
+# Volume Snapshot Task
+# Tests understanding of VolumeSnapshot and VolumeSnapshotClass
+
+name: Volume Snapshot Configuration
+description: Configure VolumeSnapshotClass and create snapshots from existing PVCs
+category: storage
+difficulty: hard
+tags:
+  - storage
+  - snapshot
+  - backup
+  - csi
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Set up volume snapshot capability for our stateful applications.
+
+      Note: Volume snapshots require CSI driver support. If your cluster doesn't
+      have a CSI driver with snapshot support, create the resources but they may
+      stay in pending state.
+
+      Requirements:
+      1. Create a VolumeSnapshotClass named 'csi-snapshot-class' with:
+         - driver: Use hostpath.csi.k8s.io (for testing) or your CSI driver
+         - deletionPolicy: Delete
+         - Add annotation: snapshot.storage.kubernetes.io/is-default-class: "true"
+
+      2. Create namespace 'snapshot-demo'
+
+      3. Create a PVC named 'source-data' (1Gi, ReadWriteOnce) and a Pod 'data-writer'
+         that mounts it and writes test data
+
+      4. Create a VolumeSnapshot named 'source-data-snap' that:
+         - References the 'source-data' PVC as the source
+         - Uses the 'csi-snapshot-class' VolumeSnapshotClass
+
+      5. Create a new PVC named 'restored-data' that:
+         - Restores from the snapshot 'source-data-snap'
+         - Uses dataSource with kind: VolumeSnapshot
+         - Same size as original (1Gi)
+
+      The snapshot should capture the state of source-data PVC.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "volumesnapshot|snapshotclass|restore"

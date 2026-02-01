@@ -1,0 +1,50 @@
+# Volume Expansion Task
+# Tests understanding of PVC expansion and online resize
+
+name: PVC Volume Expansion
+description: Expand PVC storage online without downtime
+category: storage
+difficulty: hard
+tags:
+  - storage
+  - pvc
+  - expansion
+  - resize
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Our application needs more storage. Expand the PVC without causing downtime.
+
+      Current setup in namespace 'expansion-demo':
+      - A StorageClass 'expandable-sc' exists but needs allowVolumeExpansion enabled
+      - A PVC 'app-storage' (1Gi) bound to a PV
+      - A StatefulSet 'data-app' using the PVC
+
+      Requirements:
+      1. Fix the StorageClass 'expandable-sc' to enable volume expansion
+         (patch allowVolumeExpansion to true)
+
+      2. Expand the PVC 'app-storage' from 1Gi to 5Gi:
+         - Edit the PVC spec.resources.requests.storage to 5Gi
+         - The expansion should happen online (pod keeps running)
+
+      3. Verify the expansion by checking:
+         - PVC status shows the new capacity
+         - The PV capacity has increased
+         - The filesystem inside the pod reflects the new size
+
+      4. Create a second PVC 'backup-storage' (2Gi) using the same StorageClass
+         and expand it to 4Gi to demonstrate you understand the process
+
+      Note: Actual expansion depends on the underlying storage provisioner.
+      For local-path or hostPath, the PVC status may not update but the
+      spec change is what we verify.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "pvc|expansion|resize|capacity"

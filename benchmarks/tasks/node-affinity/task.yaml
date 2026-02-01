@@ -1,0 +1,37 @@
+# Node Affinity Task
+# Tests ability to configure pod node affinity rules
+
+name: Configure Node Affinity
+description: Create a pod with node affinity to schedule on specific nodes
+category: scheduling
+difficulty: medium
+tags:
+  - scheduling
+  - node-affinity
+  - placement
+  - constraints
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a pod named 'affinity-pod' in namespace 'schedule-test' with:
+
+      1. Container: using nginx image
+      2. Node affinity with requiredDuringSchedulingIgnoredDuringExecution:
+         - Match nodes with label disktype=ssd
+      3. Node affinity with preferredDuringSchedulingIgnoredDuringExecution:
+         - Prefer nodes with label zone=us-west (weight: 100)
+
+      The required rule ensures the pod only runs on SSD nodes.
+      The preferred rule tries to place it in us-west zone but isn't mandatory.
+
+      Note: If no nodes match the required criteria, the pod will stay Pending.
+      Verify the pod has correct affinity rules configured.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "pod|affinity|disktype|ssd"

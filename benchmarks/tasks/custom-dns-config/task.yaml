@@ -1,0 +1,35 @@
+# Custom DNS Config Task
+# Tests ability to configure custom DNS settings for pods
+
+name: Custom DNS Config
+description: Create a pod with custom DNS configuration
+category: networking
+difficulty: medium
+tags:
+  - pods
+  - dns
+  - networking
+  - dnsConfig
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'dns-config-test':
+      1. Create a Pod named 'custom-dns-pod' using busybox:1.36 with command "sleep 3600"
+      2. Configure the pod with custom DNS settings using dnsConfig:
+         - nameservers: ["8.8.8.8", "8.8.4.4"]
+         - searches: ["custom.local", "svc.cluster.local"]
+         - options:
+           - name: ndots
+             value: "2"
+           - name: edns0
+      3. Set dnsPolicy to "None" to use only the custom DNS config
+      4. The pod should start successfully with the custom DNS configuration
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "dns|dnsConfig|nameservers|dnsPolicy"

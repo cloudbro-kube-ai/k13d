@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
+	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/session"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
 )
@@ -425,17 +426,64 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// Build message with language instruction if needed
+	// Build message with conversation history and language instruction
 	message := req.Message
-	if req.Language != "" && req.Language != "en" {
-		langInstruction := getLanguageInstruction(req.Language)
-		if langInstruction != "" {
-			message = langInstruction + "\n\n" + req.Message
+	var currentSessionID string
+
+	// Handle session-based conversation
+	if s.sessionStore != nil {
+		if req.SessionID != "" {
+			currentSessionID = req.SessionID
+			// Load conversation history
+			history, err := s.sessionStore.GetContextMessages(req.SessionID, 20)
+			if err == nil && len(history) > 0 {
+				var historyBuilder strings.Builder
+				historyBuilder.WriteString("Previous conversation:\n")
+				for _, msg := range history {
+					if msg.Role == "user" {
+						historyBuilder.WriteString(fmt.Sprintf("User: %s\n", msg.Content))
+					} else if msg.Role == "assistant" {
+						historyBuilder.WriteString(fmt.Sprintf("Assistant: %s\n", msg.Content))
+					}
+				}
+				historyBuilder.WriteString("\nCurrent message:\n")
+				message = historyBuilder.String() + req.Message
+			}
+		} else {
+			// Create new session
+			newSession, err := s.sessionStore.Create(s.cfg.LLM.Provider, s.cfg.LLM.Model)
+			if err == nil {
+				currentSessionID = newSession.ID
+				// Send session ID to client
+				sessionJSON, _ := json.Marshal(map[string]string{"session_id": currentSessionID})
+				sse.WriteEvent("session", string(sessionJSON))
+			}
+		}
+
+		// Save user message to session
+		if currentSessionID != "" {
+			s.sessionStore.AddMessage(currentSessionID, session.Message{
+				Role:      "user",
+				Content:   req.Message,
+				Timestamp: time.Now(),
+			})
 		}
 	}
 
+	// Add language instruction if needed
+	if req.Language != "" && req.Language != "en" {
+		langInstruction := getLanguageInstruction(req.Language)
+		if langInstruction != "" {
+			message = langInstruction + "\n\n" + message
+		}
+	}
+
+	// Collect response for session storage
+	var responseBuilder strings.Builder
+
 	// Run agentic chat with tool execution feedback
 	err := s.aiClient.AskWithToolsAndExecution(r.Context(), message, func(text string) {
+		responseBuilder.WriteString(text)
 		escaped := strings.ReplaceAll(text, "\n", "\\n")
 		sse.Write(escaped)
 	}, toolApprovalCallback, toolExecutionCallback)
@@ -443,6 +491,15 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		apiErr := ParseLLMError(err, s.cfg.LLM.Provider)
 		sse.Write(fmt.Sprintf("[ERROR] %s - %s", apiErr.Message, apiErr.Suggestion))
+	}
+
+	// Save assistant response to session
+	if s.sessionStore != nil && currentSessionID != "" {
+		s.sessionStore.AddMessage(currentSessionID, session.Message{
+			Role:      "assistant",
+			Content:   responseBuilder.String(),
+			Timestamp: time.Now(),
+		})
 	}
 
 	sse.Write("[DONE]")
@@ -1117,4 +1174,101 @@ func analyzeK8sSafety(req SafetyAnalysisRequest) SafetyAnalysisResponse {
 	}
 
 	return response
+}
+
+// ==================== Session Management Handlers ====================
+
+// handleSessions handles session list and creation
+func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if s.sessionStore == nil {
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Session store not initialized"))
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		// List sessions
+		sessions, err := s.sessionStore.List()
+		if err != nil {
+			WriteError(w, NewAPIError(ErrCodeInternalError, fmt.Sprintf("Failed to list sessions: %v", err)))
+			return
+		}
+		json.NewEncoder(w).Encode(sessions)
+
+	case http.MethodPost:
+		// Create new session
+		newSession, err := s.sessionStore.Create(s.cfg.LLM.Provider, s.cfg.LLM.Model)
+		if err != nil {
+			WriteError(w, NewAPIError(ErrCodeInternalError, fmt.Sprintf("Failed to create session: %v", err)))
+			return
+		}
+		json.NewEncoder(w).Encode(newSession)
+
+	case http.MethodDelete:
+		// Clear all sessions
+		if err := s.sessionStore.Clear(); err != nil {
+			WriteError(w, NewAPIError(ErrCodeInternalError, fmt.Sprintf("Failed to clear sessions: %v", err)))
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"status": "cleared"})
+
+	default:
+		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
+// handleSession handles single session operations
+func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if s.sessionStore == nil {
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Session store not initialized"))
+		return
+	}
+
+	// Extract session ID from URL path
+	sessionID := strings.TrimPrefix(r.URL.Path, "/api/sessions/")
+	if sessionID == "" {
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Session ID required"))
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		// Get session with messages
+		sess, err := s.sessionStore.Get(sessionID)
+		if err != nil {
+			WriteError(w, NewAPIError(ErrCodeNotFound, fmt.Sprintf("Session not found: %v", err)))
+			return
+		}
+		json.NewEncoder(w).Encode(sess)
+
+	case http.MethodDelete:
+		// Delete session
+		if err := s.sessionStore.Delete(sessionID); err != nil {
+			WriteError(w, NewAPIError(ErrCodeNotFound, fmt.Sprintf("Failed to delete session: %v", err)))
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+
+	case http.MethodPut:
+		// Update session title
+		var req struct {
+			Title string `json:"title"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
+			return
+		}
+		if err := s.sessionStore.UpdateTitle(sessionID, req.Title); err != nil {
+			WriteError(w, NewAPIError(ErrCodeNotFound, fmt.Sprintf("Failed to update session: %v", err)))
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
+
+	default:
+		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
 }

@@ -1,0 +1,31 @@
+# Host Network Task
+# Tests ability to configure pods with host network
+
+name: Host Network
+description: Create a pod that uses the host network namespace
+category: networking
+difficulty: medium
+tags:
+  - pods
+  - networking
+  - hostNetwork
+  - host
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'host-net-test':
+      1. Create a Pod named 'host-network-pod' using nginx:1.25 image
+      2. Configure the pod to use the host network namespace:
+         - hostNetwork: true
+      3. Set dnsPolicy to ClusterFirstWithHostNet (required when using hostNetwork)
+      4. The pod should start and nginx should be accessible on the host's network
+      Note: This is typically used for system-level networking tools or monitoring agents
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "hostNetwork|dnsPolicy|ClusterFirstWithHostNet"

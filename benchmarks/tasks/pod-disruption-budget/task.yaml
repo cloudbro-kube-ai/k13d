@@ -1,0 +1,51 @@
+# Pod Disruption Budget Task
+# Tests understanding of PDB configuration for HA
+
+name: Pod Disruption Budget Configuration
+description: Configure PDBs to ensure application availability during voluntary disruptions
+category: high-availability
+difficulty: hard
+tags:
+  - ha
+  - pdb
+  - availability
+  - maintenance
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Configure Pod Disruption Budgets for our production workloads to ensure
+      high availability during cluster maintenance.
+
+      Setup in namespace 'pdb-demo':
+      - 'web-frontend' deployment (3 replicas) - critical, needs 2 always available
+      - 'api-backend' deployment (5 replicas) - can tolerate 1 pod unavailable
+      - 'cache' StatefulSet (3 replicas) - needs quorum, allow max 1 unavailable
+      - 'batch-worker' deployment (4 replicas) - less critical, allow 50% unavailable
+
+      Requirements:
+      1. Create PDB 'web-frontend-pdb' for web-frontend:
+         - minAvailable: 2
+         - Selector matching 'app=web-frontend'
+
+      2. Create PDB 'api-backend-pdb' for api-backend:
+         - maxUnavailable: 1
+         - Selector matching 'app=api-backend'
+
+      3. Create PDB 'cache-pdb' for cache StatefulSet:
+         - maxUnavailable: 1
+         - Selector matching 'app=cache'
+
+      4. Create PDB 'batch-worker-pdb' for batch-worker:
+         - maxUnavailable: "50%"
+         - Selector matching 'app=batch-worker'
+
+      5. After creating PDBs, verify they protect the correct number of pods.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "poddisruptionbudget|pdb|minavailable|maxunavailable"

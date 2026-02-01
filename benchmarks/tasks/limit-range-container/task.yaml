@@ -1,0 +1,34 @@
+# LimitRange Container Task
+# Tests ability to create LimitRange for Container-level constraints with defaults
+
+name: LimitRange Container
+description: Create a LimitRange that sets default requests and limits for containers
+category: creation
+difficulty: medium
+tags:
+  - limitrange
+  - resources
+  - container
+  - defaults
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'limitrange-container-test':
+      1. Create a LimitRange named 'container-limits' with Container type constraints:
+         - Default CPU limit: 500m
+         - Default Memory limit: 256Mi
+         - Default CPU request: 100m
+         - Default Memory request: 128Mi
+         - Max CPU: 1
+         - Max Memory: 512Mi
+      2. Create a test Pod named 'default-resources-pod' using alpine:3.19 with command "sleep 3600"
+      3. Do NOT specify any resources for the pod - let the LimitRange defaults apply
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "limitrange|container|default|request|limit"

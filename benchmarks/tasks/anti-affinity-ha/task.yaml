@@ -1,0 +1,51 @@
+# Anti-Affinity HA Task
+# Tests understanding of pod anti-affinity for high availability
+
+name: Anti-Affinity for High Availability
+description: Configure pod anti-affinity rules to spread replicas across nodes
+category: high-availability
+difficulty: hard
+tags:
+  - ha
+  - anti-affinity
+  - scheduling
+  - spread
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Configure anti-affinity rules to ensure our critical services are spread
+      across different nodes for high availability.
+
+      Setup in namespace 'affinity-ha':
+      - 'critical-api' deployment (3 replicas) - must run on different nodes
+      - 'worker' deployment (4 replicas) - prefer different nodes but not required
+      - 'cache' StatefulSet (3 replicas) - must not run on same node as critical-api
+
+      Requirements:
+      1. Update 'critical-api' deployment with:
+         - requiredDuringSchedulingIgnoredDuringExecution podAntiAffinity
+         - Pods with label 'app=critical-api' must not be on the same node
+         - Use topologyKey: kubernetes.io/hostname
+
+      2. Update 'worker' deployment with:
+         - preferredDuringSchedulingIgnoredDuringExecution podAntiAffinity
+         - Weight: 100
+         - Prefer to not schedule on nodes with 'app=worker' pods
+         - Use topologyKey: kubernetes.io/hostname
+
+      3. Update 'cache' StatefulSet with:
+         - requiredDuringSchedulingIgnoredDuringExecution podAntiAffinity
+         - Must not run on nodes with 'app=critical-api' pods
+         - Use topologyKey: kubernetes.io/hostname
+
+      Note: In a single-node cluster, required anti-affinity may cause pods to
+      remain Pending. The verification checks the spec, not the running state.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "antiaffinity|affinity|topology|scheduling"

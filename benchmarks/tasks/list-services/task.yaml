@@ -1,0 +1,10 @@
+name: list-services
+description: List all Services in a namespace
+difficulty: easy
+prompt: |
+  List all Services in the 'benchmark' namespace and save their names to '/tmp/services.txt'.
+  Each Service name should be on a separate line.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

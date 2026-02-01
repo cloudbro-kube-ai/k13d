@@ -1,0 +1,37 @@
+# Job BackoffLimit Task
+# Tests ability to configure Job retry behavior
+
+name: Configure Job Backoff Limit
+description: Create a Job with specific backoff limit for failure handling
+category: jobs
+difficulty: medium
+tags:
+  - jobs
+  - backoff
+  - retry
+  - failure-handling
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a Job named 'retry-job' in namespace 'job-test' with:
+
+      1. Container: using busybox image
+      2. Command: echo "Attempting task..." && exit 0
+      3. backoffLimit: 5 (retry up to 5 times on failure)
+      4. activeDeadlineSeconds: 120 (max 2 minutes to complete)
+      5. restartPolicy: Never
+
+      The backoffLimit controls how many times Kubernetes will retry the Job
+      if pods fail. Combined with activeDeadlineSeconds, it ensures Jobs
+      don't run indefinitely.
+
+      Verify the Job has correct backoff configuration.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "job|backofflimit|5"

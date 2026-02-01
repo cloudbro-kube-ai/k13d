@@ -1,0 +1,10 @@
+name: update-label
+description: Update an existing label on a pod
+difficulty: easy
+prompt: |
+  Update the label 'version' on the pod named 'app-pod' in the 'benchmark' namespace.
+  Change the value from 'v1' to 'v2'.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

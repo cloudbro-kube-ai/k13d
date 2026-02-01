@@ -1,0 +1,32 @@
+# CronJob Suspend Task
+# Tests ability to suspend and manage CronJobs
+
+name: Suspend CronJob
+description: Suspend an active CronJob to prevent future executions
+category: jobs
+difficulty: medium
+tags:
+  - cronjob
+  - suspend
+  - scheduling
+  - operations
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'job-test', there is an active CronJob named 'cleanup-job' that
+      runs every 5 minutes.
+
+      1. Suspend the CronJob 'cleanup-job' to prevent future scheduled runs
+      2. Verify the CronJob is suspended
+
+      Suspending a CronJob sets spec.suspend to true, which prevents any new
+      Jobs from being created. Already running Jobs continue to completion.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "cronjob|suspend|true"

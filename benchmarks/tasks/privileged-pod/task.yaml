@@ -1,0 +1,31 @@
+# Privileged Pod Task
+# Tests understanding of privileged containers (for debugging/special use cases)
+
+name: Privileged Pod
+description: Create a privileged pod for system-level debugging (with awareness of security implications)
+category: security
+difficulty: medium
+tags:
+  - pods
+  - security
+  - privileged
+  - debugging
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'privileged-test':
+      1. Create a Pod named 'debug-pod' using busybox:1.36 with command "sleep 3600"
+      2. Configure the container security context to run in privileged mode:
+         - privileged: true
+      3. Mount the host's /var/log directory to /host-logs in the container (for log access)
+         - Use a hostPath volume named 'host-logs'
+      4. Note: This is for debugging purposes only; privileged pods should be avoided in production
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "privileged|hostPath|debug|security"

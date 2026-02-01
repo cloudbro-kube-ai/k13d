@@ -1,0 +1,58 @@
+# Graceful Shutdown Task
+# Tests understanding of graceful shutdown configuration for zero-downtime deployments
+
+name: Graceful Shutdown Configuration
+description: Configure proper shutdown handling to ensure zero-downtime during pod termination
+category: high-availability
+difficulty: hard
+tags:
+  - ha
+  - graceful-shutdown
+  - termination
+  - preStop
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Configure graceful shutdown for our services to ensure zero-downtime
+      during deployments and pod terminations.
+
+      Setup in namespace 'graceful-demo':
+      - 'web-server' deployment needs proper shutdown handling
+      - 'api-server' deployment needs connection draining
+
+      Requirements:
+      1. Update 'web-server' deployment:
+         - Add terminationGracePeriodSeconds: 60
+         - Add preStop lifecycle hook that runs: sleep 15
+           (allows load balancer to update before connections close)
+         - Add readinessProbe that checks /health on port 80
+           (periodSeconds: 5, failureThreshold: 3)
+
+      2. Update 'api-server' deployment:
+         - Add terminationGracePeriodSeconds: 90
+         - Add preStop lifecycle hook that executes:
+           /bin/sh -c "sleep 10 && kill -SIGTERM 1"
+         - Add readinessProbe checking TCP port 8080
+           (periodSeconds: 5, failureThreshold: 2)
+         - Add livenessProbe checking TCP port 8080
+           (periodSeconds: 10, failureThreshold: 3, initialDelaySeconds: 30)
+
+      3. Create a Service 'web-server' with:
+         - sessionAffinity: ClientIP
+         - sessionAffinityConfig.clientIP.timeoutSeconds: 3600
+
+      4. Create a Service 'api-server' with:
+         - Port 8080 targeting 8080
+         - Add annotation: service.kubernetes.io/topology-mode: Auto
+
+      5. Add annotation to both deployments:
+         - shutdown.k13d.io/grace-period: "<value>"
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "terminationgrace|prestop|lifecycle|readiness"

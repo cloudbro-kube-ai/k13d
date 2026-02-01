@@ -1,0 +1,33 @@
+# Copy Files to Pod Task
+# Tests ability to copy files to and from pods
+
+name: Copy Files to Pod
+description: Copy files between local machine and a running pod using kubectl cp
+category: debugging
+difficulty: medium
+tags:
+  - pods
+  - cp
+  - debugging
+  - files
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'cp-test':
+      1. A pod named 'file-server' is running
+      2. A local file 'test-file.txt' needs to be copied to the pod
+      3. Use kubectl cp to:
+         - Copy a local file to the pod at /tmp/test-file.txt
+         - Copy a file from the pod back to local
+      4. Commands:
+         - kubectl cp ./test-file.txt cp-test/file-server:/tmp/test-file.txt
+         - kubectl cp cp-test/file-server:/etc/hostname ./hostname-from-pod.txt
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "kubectl cp|pod|file|copy"

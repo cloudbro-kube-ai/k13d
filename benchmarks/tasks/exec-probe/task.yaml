@@ -1,0 +1,47 @@
+# Exec Probe Task
+# Tests ability to configure exec-based probes
+
+name: Configure Exec Probe
+description: Create a pod with exec-based liveness and readiness probes
+category: probes
+difficulty: medium
+tags:
+  - probes
+  - exec
+  - command
+  - health-check
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a pod named 'exec-probe-pod' in namespace 'probe-test' with:
+
+      1. Container: using busybox image
+      2. Command: sh -c "touch /tmp/healthy && sleep 3600"
+
+      3. Liveness probe (exec):
+         - command: ["cat", "/tmp/healthy"]
+         - initialDelaySeconds: 5
+         - periodSeconds: 5
+
+      4. Readiness probe (exec):
+         - command: ["test", "-f", "/tmp/ready"]
+         - initialDelaySeconds: 5
+         - periodSeconds: 5
+
+      Exec probes run a command inside the container. A zero exit code means
+      healthy, non-zero means unhealthy.
+
+      The liveness probe checks if /tmp/healthy exists (created at startup).
+      The readiness probe checks if /tmp/ready exists (not created initially,
+      so the pod will be not ready until manually created).
+
+      Verify the pod has correct exec probes configured.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "pod|exec|probe|command"

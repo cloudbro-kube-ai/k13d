@@ -1,0 +1,35 @@
+# Events Filter Task
+# Tests ability to filter and analyze Kubernetes events
+
+name: Events Filter
+description: Filter and analyze Kubernetes events for debugging issues
+category: debugging
+difficulty: medium
+tags:
+  - events
+  - debugging
+  - kubectl
+  - filter
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'events-test':
+      1. Various pods have been created with different states (some failing, some running)
+      2. Use kubectl get events to:
+         - List all events in the namespace, sorted by last timestamp
+         - Filter for Warning events only
+         - Filter events for a specific pod
+         - Show events in a custom output format (e.g., reason, message, type)
+      3. Commands:
+         - kubectl get events -n events-test --sort-by='.lastTimestamp'
+         - kubectl get events -n events-test --field-selector type=Warning
+         - kubectl get events -n events-test --field-selector involvedObject.name=failing-pod
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "kubectl get events|--sort-by|--field-selector|Warning"

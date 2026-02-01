@@ -1,0 +1,59 @@
+# Deployment Pause Resume Task
+# Tests understanding of pausing and resuming deployment rollouts
+
+name: Deployment Pause and Resume
+description: Use pause/resume to control deployment rollouts and make batched changes
+category: deployment
+difficulty: hard
+tags:
+  - deployment
+  - pause
+  - resume
+  - rollout
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Use deployment pause/resume to make multiple changes atomically.
+
+      Setup in namespace 'pause-demo':
+      - 'web-app' deployment needs multiple configuration changes
+      - Changes should be batched to avoid multiple rollouts
+
+      Tasks:
+      1. Pause the 'web-app' deployment rollout:
+         - Use 'kubectl rollout pause deployment/web-app'
+
+      2. While paused, make the following changes:
+         a) Update image from nginx:1.24-alpine to nginx:1.25-alpine
+         b) Add/update environment variables:
+            - APP_ENV: "production"
+            - LOG_LEVEL: "info"
+            - VERSION: "2.0"
+         c) Update resource limits:
+            - Memory limit: 128Mi
+            - CPU limit: 200m
+            - Memory request: 64Mi
+            - CPU request: 100m
+         d) Add labels:
+            - version: "2.0"
+            - updated-by: "batch-update"
+
+      3. Add annotation documenting the batched changes:
+         - batch-update.k13d.io/changes: "image,env,resources,labels"
+         - batch-update.k13d.io/timestamp: "<current-time>"
+
+      4. Resume the deployment rollout:
+         - Use 'kubectl rollout resume deployment/web-app'
+
+      5. Wait for the deployment to complete the single rollout with all changes
+
+      All changes should be applied in a single ReplicaSet update, not multiple.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "pause|resume|rollout|batch"

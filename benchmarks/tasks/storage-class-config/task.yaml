@@ -1,0 +1,54 @@
+# Storage Class Configuration Task
+# Tests understanding of StorageClass parameters and topology
+
+name: Advanced StorageClass Configuration
+description: Configure multiple StorageClasses with different parameters and topology constraints
+category: storage
+difficulty: hard
+tags:
+  - storage
+  - storageclass
+  - topology
+  - zones
+
+timeout: 15m
+
+script:
+  - prompt: |
+      Configure multiple storage tiers with different characteristics.
+
+      Requirements:
+      1. Create StorageClass 'ssd-immediate' for high-performance workloads:
+         - Provisioner: kubernetes.io/no-provisioner
+         - VolumeBindingMode: Immediate
+         - ReclaimPolicy: Retain
+         - AllowVolumeExpansion: true
+         - Add annotation: storageclass.kubernetes.io/is-default-class: "false"
+
+      2. Create StorageClass 'hdd-topology' for capacity workloads:
+         - Provisioner: kubernetes.io/no-provisioner
+         - VolumeBindingMode: WaitForFirstConsumer
+         - ReclaimPolicy: Delete
+         - AllowVolumeExpansion: false
+         - Add allowedTopologies constraint:
+           * Key: topology.kubernetes.io/zone
+           * Values: zone-a, zone-b
+
+      3. Create StorageClass 'encrypted-storage':
+         - Provisioner: kubernetes.io/no-provisioner
+         - VolumeBindingMode: WaitForFirstConsumer
+         - ReclaimPolicy: Delete
+         - Parameters: encrypted: "true", type: "secure"
+         - MountOptions: noatime, nodiratime
+
+      4. Create namespace 'storage-tiers' with test PVCs for each storage class:
+         - 'ssd-pvc' using ssd-immediate
+         - 'hdd-pvc' using hdd-topology
+         - 'encrypted-pvc' using encrypted-storage
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "storageclass|topology|parameters"

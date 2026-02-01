@@ -1,0 +1,14 @@
+name: namespace-resource-quota
+description: Create a ResourceQuota for a namespace
+difficulty: easy
+prompt: |
+  Create a ResourceQuota named 'compute-quota' in the 'benchmark' namespace with the following limits:
+  - requests.cpu: 2
+  - requests.memory: 4Gi
+  - limits.cpu: 4
+  - limits.memory: 8Gi
+  - pods: 10
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

@@ -1,0 +1,10 @@
+name: create-pod-command
+description: Create a pod with a custom command
+difficulty: easy
+prompt: |
+  Create a pod named 'command-pod' using the image 'busybox:1.35' in the 'benchmark' namespace.
+  The pod should run the command 'sleep 3600' to keep it running.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

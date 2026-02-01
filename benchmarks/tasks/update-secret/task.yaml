@@ -1,0 +1,10 @@
+name: update-secret
+description: Update a value in an existing Secret
+difficulty: easy
+prompt: |
+  Update the Secret named 'api-secret' in the 'benchmark' namespace.
+  Change the value of 'API_KEY' to 'new-api-key-2024'.
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

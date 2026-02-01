@@ -1,0 +1,32 @@
+# Set Resource Limits Task
+# Tests ability to set resource limits for containers
+
+name: Set Resource Limits
+description: Create a pod with both resource requests and limits
+category: creation
+difficulty: medium
+tags:
+  - pods
+  - resources
+  - limits
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'resource-lim-test':
+      1. Create a Pod named 'limited-pod' using httpd:2.4-alpine image
+      2. Set resource requests:
+         - CPU: 50m
+         - Memory: 64Mi
+      3. Set resource limits:
+         - CPU: 200m
+         - Memory: 256Mi
+      4. The container should be named 'httpd'
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "resource|limit|cpu|memory"

@@ -1,0 +1,35 @@
+# Create Job Task
+# Tests ability to create Kubernetes Jobs
+
+name: Create Kubernetes Job
+description: Create a Job that runs a task to completion
+category: jobs
+difficulty: medium
+tags:
+  - jobs
+  - batch
+  - workload
+  - completion
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a Job named 'data-processor' in namespace 'job-test' with:
+
+      1. Container: named 'processor', using busybox image
+      2. Command: echo "Processing data..." && sleep 10 && echo "Done!"
+      3. restartPolicy: Never
+      4. backoffLimit: 3
+      5. completions: 1
+
+      The Job should run the task once and complete successfully.
+
+      Verify the Job completes successfully.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "job|created|processor"

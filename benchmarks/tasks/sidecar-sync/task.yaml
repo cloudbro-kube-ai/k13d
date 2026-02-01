@@ -1,0 +1,32 @@
+# Sidecar Sync Task
+# Tests ability to implement a sidecar that syncs content
+
+name: Sidecar Sync
+description: Create a pod with a sidecar container that syncs content periodically
+category: creation
+difficulty: medium
+tags:
+  - pods
+  - sidecar
+  - sync
+  - git-sync
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'sidecar-sync-test':
+      1. Create a Pod named 'sync-pod' with two containers:
+         - Main container 'web' using nginx:1.25 that serves content from '/usr/share/nginx/html'
+         - Sidecar container 'content-sync' using busybox:1.36 that simulates content sync by creating/updating '/content/index.html' every 30 seconds with a timestamp (use: sh -c "while true; do echo \"Content synced at $(date)\" > /content/index.html; sleep 30; done")
+      2. Use an emptyDir volume named 'content' mounted at:
+         - '/content' in the sync container
+         - '/usr/share/nginx/html' in the web container
+      3. The web container should serve the synced content
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "sidecar|sync|content|volume"

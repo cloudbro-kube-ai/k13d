@@ -1,0 +1,43 @@
+# RBAC Impersonation Task
+# Tests understanding of user/group impersonation in Kubernetes RBAC
+
+name: RBAC Impersonation
+description: Configure RBAC to allow a service account to impersonate other users for multi-tenant scenarios
+category: rbac
+difficulty: hard
+tags:
+  - rbac
+  - security
+  - impersonation
+  - multi-tenant
+
+timeout: 15m
+
+script:
+  - prompt: |
+      We're building a multi-tenant platform where an admin service needs to perform
+      actions on behalf of tenant users.
+
+      Requirements:
+      1. Create namespace 'tenant-platform'
+
+      2. Create a ServiceAccount 'platform-admin' that can impersonate:
+         - Users in the group 'tenant-users'
+         - Specifically the user 'tenant-a-admin'
+         - The ServiceAccount 'tenant-operator' in namespace 'tenant-platform'
+
+      3. Create the necessary ClusterRole called 'impersonation-role' with impersonate
+         verb on users, groups, and serviceaccounts resources
+
+      4. Create ClusterRoleBinding 'platform-impersonation' binding the role to platform-admin
+
+      5. Create a test ServiceAccount 'tenant-operator' in the same namespace
+
+      The platform-admin should be able to impersonate specific users but NOT arbitrary users.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "impersonate|clusterrole|serviceaccount"

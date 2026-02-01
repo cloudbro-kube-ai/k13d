@@ -1,0 +1,33 @@
+# Read-Only Root Filesystem Task
+# Tests ability to configure pods with read-only root filesystem
+
+name: Read-Only Root Filesystem
+description: Create a pod with a read-only root filesystem for security
+category: security
+difficulty: medium
+tags:
+  - pods
+  - security
+  - securitycontext
+  - readonly
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'readonly-fs-test':
+      1. Create a Pod named 'readonly-pod' using nginx:1.25 image
+      2. Configure the container security context to:
+         - Set readOnlyRootFilesystem to true
+      3. Add emptyDir volumes for directories that nginx needs to write to:
+         - '/var/cache/nginx' - volume name 'cache'
+         - '/var/run' - volume name 'run'
+         - '/tmp' - volume name 'tmp'
+      4. The pod should start successfully with the read-only root filesystem
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "security|readonly|rootfilesystem|volume"

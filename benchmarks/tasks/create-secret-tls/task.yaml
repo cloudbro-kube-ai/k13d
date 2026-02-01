@@ -1,0 +1,11 @@
+name: create-secret-tls
+description: Create a TLS Secret from certificate files
+difficulty: easy
+prompt: |
+  Create a TLS Secret named 'tls-secret' in the 'benchmark' namespace using the certificate files:
+  - Certificate: /tmp/tls.crt
+  - Key: /tmp/tls.key
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

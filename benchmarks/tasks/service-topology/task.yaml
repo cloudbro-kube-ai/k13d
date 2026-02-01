@@ -1,0 +1,37 @@
+# Service Topology Task
+# Tests ability to configure service with internalTrafficPolicy
+
+name: Configure Service Internal Traffic Policy
+description: Configure service to prefer local node endpoints using internalTrafficPolicy
+category: services
+difficulty: medium
+tags:
+  - services
+  - topology
+  - traffic-policy
+  - optimization
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a service named 'local-svc' in namespace 'service-test' with:
+
+      1. internalTrafficPolicy: Local
+      2. Selector: app=local-app
+      3. Port: 80
+      4. targetPort: 8080
+
+      The internalTrafficPolicy: Local setting routes traffic only to endpoints
+      on the same node as the client, reducing latency and cross-node traffic.
+      If no local endpoints exist, traffic will be dropped.
+
+      Also create a deployment 'local-app' with 2 replicas using nginx image
+      with labels app=local-app.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "service|internaltrafficpolicy|local"

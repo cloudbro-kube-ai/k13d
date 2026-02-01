@@ -1,0 +1,12 @@
+name: create-basic-deployment
+description: Create a basic Deployment
+difficulty: easy
+prompt: |
+  Create a Deployment named 'nginx-deployment' in the 'benchmark' namespace with:
+  - Image: nginx:alpine
+  - Replicas: 3
+  - Label: app=nginx
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120

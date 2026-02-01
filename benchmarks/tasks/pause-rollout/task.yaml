@@ -1,0 +1,33 @@
+# Pause Rollout Task
+# Tests ability to pause and resume deployment rollout
+
+name: Pause Deployment Rollout
+description: Pause an ongoing deployment rollout for inspection
+category: deployments
+difficulty: medium
+tags:
+  - deployments
+  - rollout
+  - pause
+  - operations
+
+timeout: 5m
+
+script:
+  - prompt: |
+      In namespace 'deploy-test', there is a deployment 'rolling-app' that is currently rolling out an update.
+
+      1. Pause the rollout of the deployment 'rolling-app'
+      2. Verify the deployment rollout is paused
+
+      Pausing a rollout allows you to inspect the deployment state, check logs,
+      and ensure everything is working before completing the update.
+
+      After verification, the rollout should remain paused (do not resume it).
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "rollout|pause|deployment"

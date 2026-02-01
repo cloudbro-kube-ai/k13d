@@ -1,0 +1,35 @@
+# MinReadySeconds Configuration Task
+# Tests ability to configure minReadySeconds for deployment
+
+name: Configure MinReadySeconds
+description: Configure deployment with minReadySeconds for stable rollouts
+category: deployments
+difficulty: medium
+tags:
+  - deployments
+  - minreadyseconds
+  - stability
+  - rollout
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a deployment named 'stable-app' in namespace 'deploy-test' with:
+
+      1. Image: nginx:1.25
+      2. Replicas: 3
+      3. minReadySeconds: 30
+
+      The minReadySeconds field specifies the minimum number of seconds a new pod
+      should be ready without any container crashing before it's considered available.
+      This helps ensure pods are truly stable before marking the rollout as successful.
+
+      Verify the deployment has minReadySeconds set to 30.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "deployment|minreadyseconds|30"

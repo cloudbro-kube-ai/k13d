@@ -1,0 +1,10 @@
+name: update-service-port
+description: Update the port of an existing Service
+difficulty: easy
+prompt: |
+  Update the Service named 'backend-svc' in the 'benchmark' namespace.
+  Change the service port from 80 to 8080 (keep the target port as 80).
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+timeout: 120
