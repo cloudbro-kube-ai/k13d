@@ -1126,11 +1126,23 @@ func (a *App) switchToAllNamespaces() {
 	// Clear filter when switching namespace to avoid stale highlighting
 	a.filterText = ""
 	a.filterRegex = false
+	resource := a.currentResource
 	a.mx.Unlock()
 
+	// Clear table immediately to prevent visual artifacts
+	a.QueueUpdateDraw(func() {
+		a.table.Clear()
+		a.table.SetTitle(fmt.Sprintf(" %s - Loading... ", resource))
+		a.table.SetCell(0, 0, tview.NewTableCell("Loading...").SetTextColor(tcell.ColorYellow))
+	})
+
 	a.flashMsg("Switched to: all namespaces", false)
-	a.updateHeader()
-	a.refresh()
+
+	// Run async to prevent UI blocking
+	go func() {
+		a.updateHeader()
+		a.refresh()
+	}()
 }
 
 // selectNamespaceByNumber selects namespace by number (for command mode)
@@ -1168,8 +1180,12 @@ func (a *App) selectNamespaceByNumber(num int) {
 	})
 
 	a.flashMsg(fmt.Sprintf("Switched to namespace: %s", nsName), false)
-	a.updateHeader()
-	a.refresh()
+
+	// Run async to prevent UI blocking
+	go func() {
+		a.updateHeader()
+		a.refresh()
+	}()
 }
 
 // addRecentNamespace adds a namespace to the recent list (must be called with lock held)
@@ -1855,9 +1871,16 @@ func (a *App) prepareContext() context.Context {
 // refresh reloads the current resource list with atomic guard (k9s pattern)
 func (a *App) refresh() {
 	// Atomic guard to prevent concurrent updates (k9s pattern)
-	if !atomic.CompareAndSwapInt32(&a.inUpdate, 0, 1) {
-		a.logger.Debug("Dropping refresh - update already in progress")
-		return
+	// Use spin-wait with short delay to allow cancelled refresh to complete
+	for i := 0; i < 10; i++ {
+		if atomic.CompareAndSwapInt32(&a.inUpdate, 0, 1) {
+			break
+		}
+		if i == 9 {
+			a.logger.Debug("Dropping refresh - update still in progress after retries")
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
 	}
 	defer atomic.StoreInt32(&a.inUpdate, 0)
 
@@ -1899,6 +1922,11 @@ func (a *App) refresh() {
 	}, backoff.WithContext(bf, ctx))
 
 	if err != nil {
+		// If context was cancelled, silently return (new refresh is pending)
+		if ctx.Err() != nil {
+			a.logger.Debug("Refresh cancelled", "resource", resource)
+			return
+		}
 		a.logger.Error("Fetch failed after retries", "error", err, "resource", resource)
 		a.flashMsg(fmt.Sprintf("Error: %v", err), true)
 		a.QueueUpdateDraw(func() {
