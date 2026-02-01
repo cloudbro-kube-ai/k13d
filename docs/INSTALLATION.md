@@ -18,7 +18,7 @@ The fastest way to get started:
 
 ```bash
 # Download and run (macOS/Linux)
-curl -sSL https://github.com/youngjukim/k13d/releases/latest/download/k13d-$(uname -s)-$(uname -m).tar.gz | tar xz
+curl -sSL https://github.com/cloudbro-kube-ai/k13d/releases/latest/download/k13d-$(uname -s)-$(uname -m).tar.gz | tar xz
 ./k13d -web -port 8080
 ```
 
@@ -38,19 +38,19 @@ Open http://localhost:8080 in your browser.
 
 ```bash
 # Linux AMD64
-curl -LO https://github.com/youngjukim/k13d/releases/latest/download/k13d-linux-amd64.tar.gz
+curl -LO https://github.com/cloudbro-kube-ai/k13d/releases/latest/download/k13d-linux-amd64.tar.gz
 tar -xzf k13d-linux-amd64.tar.gz
 
 # Linux ARM64
-curl -LO https://github.com/youngjukim/k13d/releases/latest/download/k13d-linux-arm64.tar.gz
+curl -LO https://github.com/cloudbro-kube-ai/k13d/releases/latest/download/k13d-linux-arm64.tar.gz
 tar -xzf k13d-linux-arm64.tar.gz
 
 # macOS Intel
-curl -LO https://github.com/youngjukim/k13d/releases/latest/download/k13d-darwin-amd64.tar.gz
+curl -LO https://github.com/cloudbro-kube-ai/k13d/releases/latest/download/k13d-darwin-amd64.tar.gz
 tar -xzf k13d-darwin-amd64.tar.gz
 
 # macOS Apple Silicon
-curl -LO https://github.com/youngjukim/k13d/releases/latest/download/k13d-darwin-arm64.tar.gz
+curl -LO https://github.com/cloudbro-kube-ai/k13d/releases/latest/download/k13d-darwin-arm64.tar.gz
 tar -xzf k13d-darwin-arm64.tar.gz
 
 # Windows
@@ -60,7 +60,7 @@ tar -xzf k13d-darwin-arm64.tar.gz
 ### Option 2: Build from Source
 
 ```bash
-git clone https://github.com/youngjukim/k13d.git
+git clone https://github.com/cloudbro-kube-ai/k13d.git
 cd k13d
 go build -o k13d ./cmd/kube-ai-dashboard-cli/main.go
 ```
@@ -113,13 +113,13 @@ docker run -d \
   -e K13D_LLM_PROVIDER=solar \
   -e K13D_LLM_MODEL=solar-pro2 \
   -e K13D_LLM_API_KEY=your-api-key \
-  youngjukim/k13d:latest
+  cloudbro-kube-ai/k13d:latest
 ```
 
 ### Docker Compose
 
 ```bash
-curl -O https://raw.githubusercontent.com/youngjukim/k13d/main/docker-compose.yaml
+curl -O https://raw.githubusercontent.com/cloudbro-kube-ai/k13d/main/docker-compose.yaml
 docker-compose up -d
 ```
 
@@ -132,7 +132,7 @@ See [Kubernetes Installation Guide](./INSTALLATION_K8S.md) for detailed instruct
 ### Quick Start with kubectl
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/youngjukim/k13d/main/deploy/kubernetes/all-in-one.yaml
+kubectl apply -f https://raw.githubusercontent.com/cloudbro-kube-ai/k13d/main/deploy/kubernetes/all-in-one.yaml
 kubectl port-forward -n k13d svc/k13d 8080:80
 ```
 

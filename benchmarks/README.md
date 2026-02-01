@@ -41,8 +41,8 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 
 ```bash
 # Clone the repository
-git clone https://github.com/kube-ai-dashboard/kube-ai-dashboard-cli.git
-cd kube-ai-dashboard-cli
+git clone https://github.com/cloudbro-kube-ai/k13d.git
+cd k13d
 
 # Build the benchmark tool
 go build -o k13d-bench ./cmd/bench/

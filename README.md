@@ -116,8 +116,8 @@ It bridges the gap between traditional cluster management and natural language A
 
 ```bash
 # Clone and build
-git clone https://github.com/yourusername/kube-ai-dashboard-cli.git
-cd kube-ai-dashboard-cli
+git clone https://github.com/cloudbro-kube-ai/k13d.git
+cd k13d
 make build
 
 # Or with Go directly
@@ -616,7 +616,7 @@ Deploy k13d in your Kubernetes cluster using Helm:
 
 ```bash
 # Add Helm repository
-helm repo add k13d https://youngjuning.github.io/kube-ai-dashboard-cli
+helm repo add k13d https://cloudbro-kube-ai.github.io/k13d
 
 # Install with default settings
 helm install k13d k13d/k13d
@@ -659,6 +659,9 @@ kubectl apply -f deploy/helm/k13d/templates/
 | [Kubernetes Guide](docs/INSTALLATION_K8S.md) | Kubernetes deployment options |
 | [User Guide](docs/USER_GUIDE.md) | Navigation, shortcuts, workflows |
 | [Configuration Guide](docs/CONFIGURATION_GUIDE.md) | All config options |
+| [MCP Guide](docs/MCP_GUIDE.md) | MCP integration & agentic AI |
+| [TUI Architecture](docs/TUI_ARCHITECTURE.md) | Terminal UI internal structure |
+| [Architecture](docs/ARCHITECTURE.md) | System architecture overview |
 | [Contributing](CONTRIBUTING.md) | How to contribute |
 | [Security](SECURITY.md) | Security policy |
 
@@ -694,7 +697,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 </p>
 
 <p align="center">
-  <a href="https://github.com/yourusername/kube-ai-dashboard-cli">
-    <img src="https://img.shields.io/github/stars/yourusername/kube-ai-dashboard-cli?style=social" alt="GitHub Stars">
+  <a href="https://github.com/cloudbro-kube-ai/k13d">
+    <img src="https://img.shields.io/github/stars/cloudbro-kube-ai/k13d?style=social" alt="GitHub Stars">
   </a>
 </p>
