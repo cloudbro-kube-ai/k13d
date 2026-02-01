@@ -511,103 +511,94 @@ func (a *App) showHealth() {
 	a.pages.AddPage("health", centered(health, 60, 18), true, true)
 }
 
+// showAbout displays about modal with logo
+func (a *App) showAbout() {
+	about := AboutModal()
+	a.pages.AddPage("about", centered(about, 60, 35), true, true)
+	a.SetFocus(about)
+
+	about.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc || event.Rune() == 'q' {
+			a.pages.RemovePage("about")
+			a.SetFocus(a.table)
+			return nil
+		}
+		return event
+	})
+}
+
 // showHelp displays help modal
 func (a *App) showHelp() {
+	helpText := fmt.Sprintf(`
+%s
+[gray]k9s compatible keybindings with AI assistance[white]
+
+[cyan::b]GENERAL[white::-]
+  [yellow]:[white]        Command mode        [yellow]?[white]        Help
+  [yellow]/[white]        Filter mode         [yellow]Esc[white]      Back/Clear/Cancel
+  [yellow]Tab[white]      AI Panel focus      [yellow]Enter[white]    Select/Drill-down
+  [yellow]Ctrl+E[white]   Toggle AI panel     [yellow]Shift+O[white]  Settings/LLM Config
+  [yellow]q/Ctrl+C[white] Quit application
+
+[cyan::b]NAVIGATION[white::-]
+  [yellow]j/Down[white]   Down                [yellow]k/Up[white]     Up
+  [yellow]g[white]        Top                 [yellow]G[white]        Bottom
+  [yellow]Ctrl+F[white]   Page down           [yellow]Ctrl+B[white]   Page up
+  [yellow]Ctrl+D[white]   Half page down      [yellow]Ctrl+U[white]   Half page up
+
+[cyan::b]RESOURCE ACTIONS[white::-]
+  [yellow]d[white]        Describe            [yellow]y[white]        YAML view
+  [yellow]e[white]        Edit ($EDITOR)      [yellow]Ctrl+D[white]   Delete
+  [yellow]r[white]        Refresh             [yellow]c[white]        Switch context
+  [yellow]n[white]        Cycle namespace     [yellow]Space[white]    Multi-select
+
+[cyan::b]NAMESPACE SHORTCUTS[white::-] (k9s style)
+  [yellow]0[white] All namespaces      [yellow]n[white]   Cycle through namespaces
+  [yellow]u[white] Use namespace (on namespace view)
+  [yellow]:ns <name>[white]           Switch to specific namespace
+
+[cyan::b]POD ACTIONS[white::-]
+  [yellow]l[white]        Logs                [yellow]p[white]        Previous logs
+  [yellow]s[white]        Shell               [yellow]a[white]        Attach
+  [yellow]o[white]        Show node           [yellow]k/Ctrl+K[white] Kill (force delete)
+  [yellow]Shift+F[white]  Port forward        [yellow]f[white]        Show port-forward
+
+[cyan::b]WORKLOAD ACTIONS[white::-] (Deploy/StatefulSet/DaemonSet/ReplicaSet)
+  [yellow]S[white]        Scale               [yellow]R[white]        Restart/Rollout
+  [yellow]z[white]        Show ReplicaSets    [yellow]Enter[white]    Show Pods
+
+[cyan::b]VIEWER (Logs/Describe/YAML)[white::-] - Vim-style navigation
+  [yellow]j/k[white]      Scroll down/up      [yellow]g/G[white]      Top/Bottom
+  [yellow]Ctrl+D[white]   Half page down      [yellow]Ctrl+U[white]   Half page up
+  [yellow]Ctrl+F[white]   Full page down      [yellow]Ctrl+B[white]   Full page up
+  [yellow]/[white]        Search mode         [yellow]n/N[white]      Next/Prev match
+  [yellow]q/Esc[white]    Close viewer
+
+[cyan::b]COMMAND EXAMPLES[white::-] (press : to enter command mode)
+  [yellow]:pods[white] [yellow]:po[white]              List pods
+  [yellow]:pods -n kube-system[white]  List pods in specific namespace
+  [yellow]:pods -A[white]              List pods in all namespaces
+  [yellow]:deploy[white] [yellow]:dp[white]            List deployments
+  [yellow]:svc[white] [yellow]:services[white]         List services
+  [yellow]:ns kube-system[white]       Switch to namespace
+  [yellow]:ctx[white] [yellow]:context[white]          Switch context
+
+[cyan::b]AI ASSISTANT[white::-] (Tab to focus, type and press Enter)
+  Ask natural language questions or request kubectl commands:
+  - "Show me all pods in kube-system namespace"
+  - "Why is my pod crashing?"
+  - "Scale deployment nginx to 3 replicas"
+  - "Show recent events for this deployment"
+
+  [gray]AI will suggest commands. Press Y to execute, N to cancel.[white]
+
+[gray]Press Esc, q, or ? to close this help[white]
+`, LogoColors())
+
 	help := tview.NewTextView().
 		SetDynamicColors(true).
 		SetScrollable(true).
-		SetText(`
- [yellow::b]k13d - Kubernetes AI Dashboard[white::-]
- [gray]k9s compatible keybindings with AI assistance[white]
-
- ┌──────────────────────────────────────────────────────────────────┐
- │ [cyan::b]GENERAL[white::-]                                                      │
- ├──────────────────────────────────────────────────────────────────┤
- │  [yellow]:[white]        Command mode        [yellow]?[white]        Help                   │
- │  [yellow]/[white]        Filter mode         [yellow]Esc[white]      Back/Clear/Cancel      │
- │  [yellow]Tab[white]      AI Panel focus      [yellow]Enter[white]    Select/Drill-down      │
- │  [yellow]Ctrl+E[white]   Toggle AI panel     [yellow]Shift+O[white]  Settings/LLM Config    │
- │  [yellow]q/Ctrl+C[white] Quit application                                        │
- └──────────────────────────────────────────────────────────────────┘
-
- ┌──────────────────────────────────────────────────────────────────┐
- │ [cyan::b]NAVIGATION[white::-]                                                    │
- ├──────────────────────────────────────────────────────────────────┤
- │  [yellow]j/↓[white]      Down               [yellow]k/↑[white]      Up                     │
- │  [yellow]g[white]        Top                [yellow]G[white]        Bottom                 │
- │  [yellow]Ctrl+F[white]   Page down          [yellow]Ctrl+B[white]   Page up                │
- │  [yellow]Ctrl+D[white]   Half page down     [yellow]Ctrl+U[white]   Half page up           │
- └──────────────────────────────────────────────────────────────────┘
-
- ┌──────────────────────────────────────────────────────────────────┐
- │ [cyan::b]RESOURCE ACTIONS[white::-]                                              │
- ├──────────────────────────────────────────────────────────────────┤
- │  [yellow]d[white]        Describe           [yellow]y[white]        YAML view              │
- │  [yellow]e[white]        Edit ($EDITOR)     [yellow]Ctrl+D[white]   Delete                 │
- │  [yellow]r[white]        Refresh            [yellow]c[white]        Switch context         │
- │  [yellow]n[white]        Cycle namespace    [yellow]Space[white]    Multi-select           │
- └──────────────────────────────────────────────────────────────────┘
-
- ┌──────────────────────────────────────────────────────────────────┐
- │ [cyan::b]NAMESPACE SHORTCUTS[white::-] (k9s style)                               │
- ├──────────────────────────────────────────────────────────────────┤
- │  [yellow]0[white] All namespaces    [yellow]n[white]   Cycle through namespaces             │
- │  [yellow]u[white] Use namespace (on namespace view)                              │
- │  [yellow]:ns <name>[white]         Switch to specific namespace               │
- └──────────────────────────────────────────────────────────────────┘
-
- ┌──────────────────────────────────────────────────────────────────┐
- │ [cyan::b]POD ACTIONS[white::-]                                                   │
- ├──────────────────────────────────────────────────────────────────┤
- │  [yellow]l[white]        Logs               [yellow]p[white]        Previous logs          │
- │  [yellow]s[white]        Shell              [yellow]a[white]        Attach                 │
- │  [yellow]o[white]        Show node          [yellow]k/Ctrl+K[white] Kill (force delete)    │
- │  [yellow]Shift+F[white]  Port forward       [yellow]f[white]        Show port-forward      │
- └──────────────────────────────────────────────────────────────────┘
-
- ┌──────────────────────────────────────────────────────────────────┐
- │ [cyan::b]WORKLOAD ACTIONS[white::-] (Deploy/StatefulSet/DaemonSet/ReplicaSet)   │
- ├──────────────────────────────────────────────────────────────────┤
- │  [yellow]S[white]        Scale              [yellow]R[white]        Restart/Rollout        │
- │  [yellow]z[white]        Show ReplicaSets   [yellow]Enter[white]    Show Pods              │
- └──────────────────────────────────────────────────────────────────┘
-
- ┌──────────────────────────────────────────────────────────────────┐
- │ [cyan::b]VIEWER (Logs/Describe/YAML)[white::-] - Vim-style navigation            │
- ├──────────────────────────────────────────────────────────────────┤
- │  [yellow]j/k[white]      Scroll down/up     [yellow]g/G[white]      Top/Bottom             │
- │  [yellow]Ctrl+D[white]   Half page down     [yellow]Ctrl+U[white]   Half page up           │
- │  [yellow]Ctrl+F[white]   Full page down     [yellow]Ctrl+B[white]   Full page up           │
- │  [yellow]/[white]        Search mode        [yellow]n/N[white]      Next/Prev match        │
- │  [yellow]q/Esc[white]    Close viewer                                            │
- └──────────────────────────────────────────────────────────────────┘
-
- ┌──────────────────────────────────────────────────────────────────┐
- │ [cyan::b]COMMAND EXAMPLES[white::-] (press : to enter command mode)             │
- ├──────────────────────────────────────────────────────────────────┤
- │  [yellow]:pods[white] [yellow]:po[white]              List pods                            │
- │  [yellow]:pods -n kube-system[white]  List pods in specific namespace         │
- │  [yellow]:pods -A[white]              List pods in all namespaces             │
- │  [yellow]:deploy[white] [yellow]:dp[white]            List deployments                     │
- │  [yellow]:svc[white] [yellow]:services[white]         List services                        │
- │  [yellow]:ns kube-system[white]       Switch to namespace                     │
- │  [yellow]:ctx[white] [yellow]:context[white]          Switch context                       │
- └──────────────────────────────────────────────────────────────────┘
-
- ┌──────────────────────────────────────────────────────────────────┐
- │ [cyan::b]AI ASSISTANT[white::-] (Tab to focus, type and press Enter)            │
- ├──────────────────────────────────────────────────────────────────┤
- │  Ask natural language questions or request kubectl commands:     │
- │  • "Show me all pods in kube-system namespace"                   │
- │  • "Why is my pod crashing?"                                     │
- │  • "Scale deployment nginx to 3 replicas"                        │
- │  • "Show recent events for this deployment"                      │
- │                                                                  │
- │  [gray]AI will suggest commands. Press Y to execute, N to cancel.[white]     │
- └──────────────────────────────────────────────────────────────────┘
-
- [gray]Press Esc, q, or ? to close this help[white]
-`)
+		SetText(helpText)
 	help.SetBorder(true).SetTitle(" Help ")
 
 	a.pages.AddPage("help", centered(help, 75, 55), true, true)

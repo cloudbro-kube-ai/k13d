@@ -1550,6 +1550,9 @@ func (a *App) setupKeybindings() {
 			case 'B':
 				a.toggleBriefing() // Shift+B = toggle briefing panel
 				return nil
+			case 'I':
+				a.showAbout() // Shift+I = about/info
+				return nil
 			// k9s-style column sorting (Shift + column key)
 			case 'N':
 				a.sortByColumnName("NAME") // Shift+N = sort by Name
@@ -1761,10 +1764,10 @@ func (a *App) updateHeader() {
 	}
 
 	header := fmt.Sprintf(
-		" [yellow::b]k13d[white::-] - Kubernetes AI Dashboard                                    AI: %s\n"+
+		" %s [gray]- %s %s[white]                                        AI: %s\n"+
 			" [gray]Context:[white] %s  [gray]Cluster:[white] %s  [gray]NS:[white] %s  [gray]Resource:[white] [cyan]%s[white]\n"+
 			" [gray]Namespaces:[white]%s",
-		aiStatus, ctxName, cluster, currentNsDisplay, resource, nsPreview,
+		HeaderLogo(), Tagline, Version, aiStatus, ctxName, cluster, currentNsDisplay, resource, nsPreview,
 	)
 
 	// Use QueueUpdateDraw only after Application.Run() has started (k9s pattern)

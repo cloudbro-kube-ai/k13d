@@ -15,32 +15,32 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// BenchmarkTask represents a single benchmark test case
-type BenchmarkTask struct {
-	ID          string        `yaml:"id" json:"id"`
-	Category    string        `yaml:"category" json:"category"`
-	Difficulty  string        `yaml:"difficulty" json:"difficulty"`
-	Description string        `yaml:"description" json:"description"`
-	Prompt      string        `yaml:"prompt" json:"prompt"`
-	Expect      []Expectation `yaml:"expect" json:"expect"`
+// SimpleBenchmarkTask represents a single benchmark test case for simple AI evaluation
+type SimpleBenchmarkTask struct {
+	ID          string             `yaml:"id" json:"id"`
+	Category    string             `yaml:"category" json:"category"`
+	Difficulty  string             `yaml:"difficulty" json:"difficulty"`
+	Description string             `yaml:"description" json:"description"`
+	Prompt      string             `yaml:"prompt" json:"prompt"`
+	Expect      []SimpleExpectation `yaml:"expect" json:"expect"`
 }
 
-// Expectation defines what we expect in the response
-type Expectation struct {
+// SimpleExpectation defines what we expect in the response for simple benchmarks
+type SimpleExpectation struct {
 	Type   string   `yaml:"type" json:"type"`
 	Value  string   `yaml:"value,omitempty" json:"value,omitempty"`
 	Values []string `yaml:"values,omitempty" json:"values,omitempty"`
 }
 
-// BenchmarkConfig holds the benchmark configuration
-type BenchmarkConfig struct {
-	Version     string          `yaml:"version"`
-	Description string          `yaml:"description"`
-	Tasks       []BenchmarkTask `yaml:"tasks"`
+// SimpleBenchmarkConfig holds the benchmark configuration for simple benchmarks
+type SimpleBenchmarkConfig struct {
+	Version     string                `yaml:"version"`
+	Description string                `yaml:"description"`
+	Tasks       []SimpleBenchmarkTask `yaml:"tasks"`
 }
 
-// BenchmarkResult holds the result of a single task
-type BenchmarkResult struct {
+// SimpleBenchmarkResult holds the result of a single task for simple benchmarks
+type SimpleBenchmarkResult struct {
 	TaskID       string          `json:"task_id"`
 	Category     string          `json:"category"`
 	Difficulty   string          `json:"difficulty"`
@@ -51,28 +51,28 @@ type BenchmarkResult struct {
 	Error        string          `json:"error,omitempty"`
 }
 
-// ModelBenchmark holds results for a single model
+// ModelBenchmark holds results for a single model (simple benchmark format)
 type ModelBenchmark struct {
-	ModelName    string             `json:"model_name"`
-	Provider     string             `json:"provider"`
-	Timestamp    time.Time          `json:"timestamp"`
-	TotalTasks   int                `json:"total_tasks"`
-	PassedTasks  int                `json:"passed_tasks"`
-	PassRate     float64            `json:"pass_rate"`
-	AvgRespTime  time.Duration      `json:"avg_response_time_ms"`
-	Results      []BenchmarkResult  `json:"results"`
-	ByCategory   map[string]float64 `json:"by_category"`
-	ByDifficulty map[string]float64 `json:"by_difficulty"`
+	ModelName    string                  `json:"model_name"`
+	Provider     string                  `json:"provider"`
+	Timestamp    time.Time               `json:"timestamp"`
+	TotalTasks   int                     `json:"total_tasks"`
+	PassedTasks  int                     `json:"passed_tasks"`
+	PassRate     float64                 `json:"pass_rate"`
+	AvgRespTime  time.Duration           `json:"avg_response_time_ms"`
+	Results      []SimpleBenchmarkResult `json:"results"`
+	ByCategory   map[string]float64      `json:"by_category"`
+	ByDifficulty map[string]float64      `json:"by_difficulty"`
 }
 
-// LoadBenchmarkTasks loads benchmark tasks from YAML file
-func LoadBenchmarkTasks(path string) (*BenchmarkConfig, error) {
+// LoadSimpleBenchmarkTasks loads benchmark tasks from YAML file for simple benchmarks
+func LoadSimpleBenchmarkTasks(path string) (*SimpleBenchmarkConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read benchmark file: %w", err)
 	}
 
-	var cfg BenchmarkConfig
+	var cfg SimpleBenchmarkConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse benchmark file: %w", err)
 	}
@@ -80,8 +80,8 @@ func LoadBenchmarkTasks(path string) (*BenchmarkConfig, error) {
 	return &cfg, nil
 }
 
-// RunBenchmark executes all benchmark tasks for a model
-func RunBenchmark(ctx context.Context, cfg *config.Config, tasks []BenchmarkTask) (*ModelBenchmark, error) {
+// RunSimpleBenchmark executes all benchmark tasks for a model using simple benchmarks
+func RunSimpleBenchmark(ctx context.Context, cfg *config.Config, tasks []SimpleBenchmarkTask) (*ModelBenchmark, error) {
 	// Create AI client
 	aiClient, err := ai.NewClient(&cfg.LLM)
 	if err != nil {
@@ -93,7 +93,7 @@ func RunBenchmark(ctx context.Context, cfg *config.Config, tasks []BenchmarkTask
 		Provider:     cfg.LLM.Provider,
 		Timestamp:    time.Now(),
 		TotalTasks:   len(tasks),
-		Results:      make([]BenchmarkResult, 0, len(tasks)),
+		Results:      make([]SimpleBenchmarkResult, 0, len(tasks)),
 		ByCategory:   make(map[string]float64),
 		ByDifficulty: make(map[string]float64),
 	}
@@ -108,7 +108,7 @@ func RunBenchmark(ctx context.Context, cfg *config.Config, tasks []BenchmarkTask
 	for i, task := range tasks {
 		fmt.Printf("  [%d/%d] %s... ", i+1, len(tasks), task.ID)
 
-		result := runSingleTask(ctx, aiClient, task, cfg.Language)
+		result := runSimpleSingleTask(ctx, aiClient, task, cfg.Language)
 		benchmark.Results = append(benchmark.Results, result)
 
 		if result.Passed {
@@ -139,9 +139,9 @@ func RunBenchmark(ctx context.Context, cfg *config.Config, tasks []BenchmarkTask
 	return benchmark, nil
 }
 
-// runSingleTask executes a single benchmark task
-func runSingleTask(ctx context.Context, client *ai.Client, task BenchmarkTask, lang string) BenchmarkResult {
-	result := BenchmarkResult{
+// runSimpleSingleTask executes a single benchmark task for simple benchmarks
+func runSimpleSingleTask(ctx context.Context, client *ai.Client, task SimpleBenchmarkTask, lang string) SimpleBenchmarkResult {
+	result := SimpleBenchmarkResult{
 		TaskID:     task.ID,
 		Category:   task.Category,
 		Difficulty: task.Difficulty,
@@ -178,7 +178,7 @@ func runSingleTask(ctx context.Context, client *ai.Client, task BenchmarkTask, l
 			checkName = fmt.Sprintf("%s:%v", exp.Type, exp.Values)
 		}
 
-		passed := checkExpectation(result.Output, exp)
+		passed := checkSimpleExpectation(result.Output, exp)
 		result.Checks[checkName] = passed
 		if !passed {
 			result.Passed = false
@@ -188,8 +188,8 @@ func runSingleTask(ctx context.Context, client *ai.Client, task BenchmarkTask, l
 	return result
 }
 
-// checkExpectation verifies if output meets expectation
-func checkExpectation(output string, exp Expectation) bool {
+// checkSimpleExpectation verifies if output meets expectation for simple benchmarks
+func checkSimpleExpectation(output string, exp SimpleExpectation) bool {
 	lowerOutput := strings.ToLower(output)
 
 	switch exp.Type {
