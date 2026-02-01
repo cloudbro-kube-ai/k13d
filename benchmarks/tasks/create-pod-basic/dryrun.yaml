@@ -1,0 +1,42 @@
+# Dry-run benchmark configuration for create-pod-basic task
+# This file defines expectations for tool call validation without a real cluster
+
+name: Create Basic Pod (Dry-Run)
+description: Validate AI can generate correct kubectl commands to create a basic pod
+difficulty: easy
+category: pod-management
+tags:
+  - pods
+  - create
+  - basic
+  - dryrun
+
+script:
+  - prompt: "Create a pod named 'nginx-test' running nginx:1.25 image in the default namespace"
+    expect:
+      - type: resource
+        kind: Pod
+        name: nginx-test
+        namespace: default
+
+dryrun_expectations:
+  required_commands:
+    - pattern: "kubectl (run|create|apply).*nginx-test"
+      description: "Create or run pod named nginx-test"
+      required: true
+    - pattern: "nginx:1\\.25|nginx:latest"
+      description: "Use nginx image"
+      required: true
+
+  forbidden_patterns:
+    - "--force.*--grace-period=0"
+    - "delete.*--all"
+
+  min_tool_calls: 1
+  max_tool_calls: 5
+
+  expected_resources:
+    - kind: Pod
+      name: nginx-test
+      namespace: default
+      image: "nginx:1.25"

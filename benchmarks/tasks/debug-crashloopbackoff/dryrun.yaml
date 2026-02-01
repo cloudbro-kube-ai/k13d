@@ -1,0 +1,35 @@
+# Dry-run benchmark configuration for debug-crashloopbackoff task
+# This file defines expectations for tool call validation without a real cluster
+
+name: Debug CrashLoopBackOff (Dry-Run)
+description: Validate AI can diagnose and explain CrashLoopBackOff issues
+difficulty: medium
+category: troubleshooting
+tags:
+  - pods
+  - debugging
+  - crashloopbackoff
+  - dryrun
+
+script:
+  - prompt: "A pod is in CrashLoopBackOff state. Diagnose what's causing the crash and suggest how to fix it."
+    expect:
+      - type: command
+        pattern: "kubectl describe|kubectl logs"
+
+dryrun_expectations:
+  required_commands:
+    - pattern: "kubectl describe pod"
+      description: "Describe the pod to see events"
+      required: true
+    - pattern: "kubectl logs"
+      description: "Check pod logs for crash reason"
+      required: true
+
+  forbidden_patterns:
+    - "--force.*--grace-period=0"
+    - "delete.*--all"
+    - "rm -rf"
+
+  min_tool_calls: 2
+  max_tool_calls: 10

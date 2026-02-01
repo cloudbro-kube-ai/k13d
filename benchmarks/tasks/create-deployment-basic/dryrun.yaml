@@ -1,0 +1,46 @@
+# Dry-run benchmark configuration for create-deployment-basic task
+# This file defines expectations for tool call validation without a real cluster
+
+name: Create Basic Deployment (Dry-Run)
+description: Validate AI can generate correct kubectl commands to create a deployment
+difficulty: easy
+category: deployment-management
+tags:
+  - deployments
+  - create
+  - basic
+  - dryrun
+
+script:
+  - prompt: "Create a deployment named 'web-app' with 3 replicas running nginx:1.25 image"
+    expect:
+      - type: resource
+        kind: Deployment
+        name: web-app
+
+dryrun_expectations:
+  required_commands:
+    - pattern: "kubectl (create deployment|apply -f).*web-app"
+      description: "Create deployment named web-app"
+      required: true
+    - pattern: "replicas.*3|--replicas[= ]?3"
+      description: "Set 3 replicas"
+      required: true
+    - pattern: "nginx:1\\.25|--image[= ]?nginx"
+      description: "Use nginx image"
+      required: true
+
+  forbidden_patterns:
+    - "--force.*--grace-period=0"
+    - "delete.*--all"
+    - "rm -rf"
+
+  min_tool_calls: 1
+  max_tool_calls: 5
+
+  expected_resources:
+    - kind: Deployment
+      name: web-app
+      image: "nginx:1.25"
+      containers:
+        - nginx

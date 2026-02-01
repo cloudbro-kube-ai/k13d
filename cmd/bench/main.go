@@ -9,8 +9,10 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/bench"
+	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/eval"
 )
 
 const (
@@ -23,6 +25,7 @@ const (
 func main() {
 	// Define subcommands
 	runCmd := flag.NewFlagSet("run", flag.ExitOnError)
+	dryrunCmd := flag.NewFlagSet("dryrun", flag.ExitOnError)
 	analyzeCmd := flag.NewFlagSet("analyze", flag.ExitOnError)
 	listCmd := flag.NewFlagSet("list", flag.ExitOnError)
 
@@ -65,6 +68,23 @@ func main() {
 	analyzeOutputFormat := analyzeCmd.String("output-format", "markdown", "Output format (json, jsonl, yaml, markdown)")
 	analyzeOutputFile := analyzeCmd.String("output", "", "Output file (stdout if empty)")
 	analyzeShowFailures := analyzeCmd.Bool("show-failures", false, "Show only failed results")
+
+	// Dryrun subcommand flags
+	dryrunTaskDir := dryrunCmd.String("task-dir", defaultTaskDir, "Directory containing benchmark tasks")
+	dryrunTaskPattern := dryrunCmd.String("task-pattern", "", "Regex pattern to filter tasks")
+	dryrunOutputDir := dryrunCmd.String("output-dir", defaultOutputDir, "Directory for results")
+	dryrunParallelism := dryrunCmd.Int("parallelism", defaultParallelism, "Number of parallel workers")
+	dryrunTimeout := dryrunCmd.String("timeout", "5m", "Timeout per task")
+	dryrunMode := dryrunCmd.String("mode", "tool-validation", "Dry-run mode (tool-validation, mock-responses, command-analysis)")
+	dryrunVerbose := dryrunCmd.Bool("verbose", false, "Verbose output")
+	// LLM configuration for dryrun
+	dryrunModels := dryrunCmd.String("models", "", "Multiple LLM models (comma-separated, e.g., 'openai:gpt-4,anthropic:claude-3')")
+	dryrunLLMProvider := dryrunCmd.String("llm-provider", "openai", "LLM provider (openai, anthropic, ollama)")
+	dryrunLLMModel := dryrunCmd.String("llm-model", "gpt-4", "LLM model name")
+	dryrunLLMEndpoint := dryrunCmd.String("llm-endpoint", "", "LLM API endpoint (optional)")
+	dryrunLLMAPIKey := dryrunCmd.String("llm-api-key", "", "LLM API key (optional, uses env)")
+	dryrunEnableTools := dryrunCmd.Bool("enable-tools", true, "Enable tool/function calling")
+	dryrunAutoApprove := dryrunCmd.Bool("auto-approve", true, "Auto-approve tool executions")
 
 	// List subcommand flags
 	listTaskDir := listCmd.String("task-dir", defaultTaskDir, "Directory containing benchmark tasks")
@@ -117,6 +137,28 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "dryrun", "dry-run":
+		dryrunCmd.Parse(os.Args[2:])
+		if err := executeDryRun(dryrunConfig{
+			taskDir:     *dryrunTaskDir,
+			taskPattern: *dryrunTaskPattern,
+			outputDir:   *dryrunOutputDir,
+			parallelism: *dryrunParallelism,
+			timeout:     *dryrunTimeout,
+			mode:        *dryrunMode,
+			verbose:     *dryrunVerbose,
+			models:      *dryrunModels,
+			llmProvider: *dryrunLLMProvider,
+			llmModel:    *dryrunLLMModel,
+			llmEndpoint: *dryrunLLMEndpoint,
+			llmAPIKey:   *dryrunLLMAPIKey,
+			enableTools: *dryrunEnableTools,
+			autoApprove: *dryrunAutoApprove,
+		}); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
 	case "analyze":
 		analyzeCmd.Parse(os.Args[2:])
 		if err := executeAnalyze(*analyzeInputDir, *analyzeOutputFormat, *analyzeOutputFile, *analyzeShowFailures); err != nil {
@@ -154,6 +196,17 @@ type runConfig struct {
 	llmProvider, llmModel, llmEndpoint, llmAPIKey      string
 	enableTools, autoApprove                           bool
 	quiet, saveTrace, saveLog                          bool
+}
+
+type dryrunConfig struct {
+	taskDir, taskPattern, outputDir string
+	parallelism                     int
+	timeout, mode                   string
+	verbose                         bool
+	models                          string
+	llmProvider, llmModel           string
+	llmEndpoint, llmAPIKey          string
+	enableTools, autoApprove        bool
 }
 
 func executeRun(cmd *flag.FlagSet, cfg runConfig) error {
@@ -242,6 +295,128 @@ func executeRun(cmd *flag.FlagSet, cfg runConfig) error {
 	return nil
 }
 
+func executeDryRun(cfg dryrunConfig) error {
+	// Setup context with cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle signals
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigCh
+		fmt.Println("\nReceived interrupt, cleaning up...")
+		cancel()
+	}()
+
+	// Parse timeout
+	timeout, err := time.ParseDuration(cfg.timeout)
+	if err != nil {
+		timeout = 5 * time.Minute
+	}
+
+	// Build LLM configs
+	var llmConfigs []eval.LLMRunConfig
+	if cfg.models != "" {
+		for _, m := range splitAndTrim(cfg.models) {
+			parts := strings.SplitN(m, ":", 2)
+			var provider, model string
+			if len(parts) == 2 {
+				provider = parts[0]
+				model = parts[1]
+			} else {
+				provider = "openai"
+				model = parts[0]
+			}
+			llmConfigs = append(llmConfigs, eval.LLMRunConfig{
+				ID:            fmt.Sprintf("%s-%s", provider, model),
+				Provider:      provider,
+				Model:         model,
+				Endpoint:      cfg.llmEndpoint,
+				APIKey:        cfg.llmAPIKey,
+				EnableToolUse: cfg.enableTools,
+				AutoApprove:   cfg.autoApprove,
+			})
+		}
+	} else {
+		llmConfigs = []eval.LLMRunConfig{{
+			ID:            fmt.Sprintf("%s-%s", cfg.llmProvider, cfg.llmModel),
+			Provider:      cfg.llmProvider,
+			Model:         cfg.llmModel,
+			Endpoint:      cfg.llmEndpoint,
+			APIKey:        cfg.llmAPIKey,
+			EnableToolUse: cfg.enableTools,
+			AutoApprove:   cfg.autoApprove,
+		}}
+	}
+
+	// Parse dry-run mode
+	var mode eval.DryRunMode
+	switch cfg.mode {
+	case "tool-validation":
+		mode = eval.DryRunToolValidation
+	case "mock-responses":
+		mode = eval.DryRunMockResponses
+	case "command-analysis":
+		mode = eval.DryRunCommandAnalysis
+	default:
+		mode = eval.DryRunToolValidation
+	}
+
+	// Create runner config
+	runnerConfig := eval.DryRunRunnerConfig{
+		TasksDir:       cfg.taskDir,
+		OutputDir:      cfg.outputDir,
+		TaskPattern:    cfg.taskPattern,
+		Concurrency:    cfg.parallelism,
+		LLMConfigs:     llmConfigs,
+		Verbose:        cfg.verbose,
+		Mode:           mode,
+		TimeoutPerTask: timeout,
+	}
+
+	// Create runner
+	runner := eval.NewDryRunRunner(runnerConfig)
+
+	// Load tasks
+	if err := runner.LoadTasks(); err != nil {
+		return fmt.Errorf("failed to load tasks: %w", err)
+	}
+
+	tasks := runner.GetTasks()
+	if len(tasks) == 0 {
+		return fmt.Errorf("no tasks found in %s", cfg.taskDir)
+	}
+
+	fmt.Printf("Loaded %d tasks for dry-run evaluation\n", len(tasks))
+	fmt.Printf("Mode: %s\n", cfg.mode)
+	fmt.Printf("Models: %d configured\n\n", len(llmConfigs))
+
+	// Run benchmark
+	report, err := runner.Run(ctx)
+	if err != nil {
+		return fmt.Errorf("dry-run failed: %w", err)
+	}
+
+	// Print summary
+	fmt.Println("\n" + strings.Repeat("=", 60))
+	fmt.Println("DRY-RUN BENCHMARK SUMMARY")
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Printf("Total Tasks:    %d\n", report.Summary.TotalTasks)
+	fmt.Printf("Passed:         %d (%.1f%%)\n", report.Summary.PassedTasks, report.Summary.PassRate)
+	fmt.Printf("Failed:         %d\n", report.Summary.FailedTasks)
+	fmt.Printf("Average Score:  %.2f\n", report.Summary.AverageScore)
+	fmt.Printf("Total Duration: %s\n", report.TotalDuration)
+	fmt.Println(strings.Repeat("=", 60))
+
+	// Save report
+	if err := report.SaveReport(cfg.outputDir); err != nil {
+		return fmt.Errorf("failed to save report: %w", err)
+	}
+
+	return nil
+}
+
 func executeAnalyze(inputDir, outputFormat, outputFile string, showFailures bool) error {
 	analyzer := bench.NewAnalyzer(inputDir, bench.OutputFormat(outputFormat))
 
@@ -312,7 +487,8 @@ USAGE:
     k13d-bench <command> [options]
 
 COMMANDS:
-    run       Run benchmark evaluations
+    run       Run benchmark evaluations (requires cluster)
+    dryrun    Run dry-run benchmark (no cluster required)
     analyze   Analyze and report benchmark results
     list      List available benchmark tasks
     help      Show this help message
@@ -338,6 +514,18 @@ EXAMPLES:
 
     # Run in quiet mode
     k13d-bench run --quiet --output-format json
+
+    # DRY-RUN: Validate tool calls without cluster (no cluster required!)
+    k13d-bench dryrun --verbose
+
+    # DRY-RUN: Compare multiple LLMs without cluster
+    k13d-bench dryrun --models "openai:gpt-4,anthropic:claude-3-sonnet"
+
+    # DRY-RUN: Run specific tasks
+    k13d-bench dryrun --task-pattern "create-.*" --verbose
+
+    # DRY-RUN: Mock response mode for testing
+    k13d-bench dryrun --mode mock-responses --verbose
 
     # Analyze previous results
     k13d-bench analyze --input-dir .build/bench --output-format markdown

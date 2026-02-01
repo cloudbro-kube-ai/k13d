@@ -1,0 +1,35 @@
+# Dry-run benchmark configuration for fix-pending-pod task
+# This file defines expectations for tool call validation without a real cluster
+
+name: Fix Pending Pod (Dry-Run)
+description: Validate AI can diagnose and fix a pending pod by removing invalid nodeSelector
+difficulty: medium
+category: troubleshooting
+tags:
+  - pods
+  - troubleshooting
+  - nodeSelector
+  - dryrun
+
+script:
+  - prompt: "The pod 'homepage-pod' in namespace 'homepage-ns' is stuck in Pending state. Diagnose the issue and fix it."
+    expect:
+      - type: command
+        pattern: "kubectl describe|kubectl get.*events"
+
+dryrun_expectations:
+  required_commands:
+    - pattern: "kubectl (describe|get.*-o yaml) pod.*homepage-pod"
+      description: "Describe or get pod YAML to diagnose"
+      required: true
+    - pattern: "kubectl (patch|apply|replace|delete.*create)"
+      description: "Fix the pod (patch, apply, or recreate)"
+      required: true
+
+  forbidden_patterns:
+    - "--force.*--grace-period=0"
+    - "delete.*namespace"
+    - "rm -rf"
+
+  min_tool_calls: 2
+  max_tool_calls: 10
