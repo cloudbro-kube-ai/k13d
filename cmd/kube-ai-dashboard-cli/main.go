@@ -26,21 +26,32 @@ var (
 )
 
 func main() {
-	// Command line flags (k9s compatible)
+	// Command line flags - using consistent --long-form style
+	// Mode flags
 	webMode := flag.Bool("web", false, "Start web server mode")
 	tuiMode := flag.Bool("tui", false, "Start TUI mode (default when no mode specified)")
-	webPort := flag.Int("port", 8080, "Web server port (used with -web)")
-	namespace := flag.String("n", "", "Initial namespace (use 'all' for all namespaces)")
-	allNamespaces := flag.Bool("A", false, "Start with all namespaces")
+	webPort := flag.Int("port", 8080, "Web server port (used with --web)")
+
+	// Namespace flags (k9s compatible)
+	namespace := flag.String("namespace", "", "Initial namespace (use 'all' for all namespaces)")
+	flag.StringVar(namespace, "n", "", "Initial namespace (short for --namespace)")
+	allNamespaces := flag.Bool("all-namespaces", false, "Start with all namespaces")
+	flag.BoolVar(allNamespaces, "A", false, "Start with all namespaces (short for --all-namespaces)")
+
+	// Info flags
 	showVersion := flag.Bool("version", false, "Show version information")
 	genCompletion := flag.String("completion", "", "Generate shell completion (bash, zsh, fish)")
-	flag.StringVar(namespace, "namespace", "", "Initial namespace (use 'all' for all namespaces)")
 
 	// Web server auth flags
 	authMode := flag.String("auth-mode", "token", "Authentication mode: token (K8s RBAC), local (username/password), ldap")
 	authDisabled := flag.Bool("no-auth", false, "Disable authentication (not recommended)")
 	adminUser := flag.String("admin-user", "", "Default admin username for local auth mode")
 	adminPass := flag.String("admin-password", "", "Default admin password for local auth mode")
+
+	// Storage flags
+	dbPath := flag.String("db-path", "", "SQLite database path (default: ~/.config/k13d/audit.db)")
+	disableDB := flag.Bool("no-db", false, "Disable database persistence entirely")
+	showStorageInfo := flag.Bool("storage-info", false, "Show storage configuration and data locations")
 
 	// Embedded LLM flags
 	embeddedLLM := flag.Bool("embedded-llm", false, "Start embedded LLM server (llama.cpp)")
@@ -80,6 +91,12 @@ func main() {
 		return
 	}
 
+	// Show storage info
+	if *showStorageInfo {
+		showStorageConfiguration()
+		return
+	}
+
 	// Initialize enterprise logger
 	if err := log.Init("k13d"); err != nil {
 		fmt.Printf("Warning: could not initialize logger: %v\n", err)
@@ -92,6 +109,14 @@ func main() {
 	if err != nil {
 		log.Errorf("Failed to load config: %v", err)
 		cfg = config.NewDefaultConfig()
+	}
+
+	// Override storage settings from CLI flags
+	if *dbPath != "" {
+		cfg.Storage.DBPath = *dbPath
+	}
+	if *disableDB {
+		cfg.EnableAudit = false
 	}
 
 	// Start embedded LLM server if requested
@@ -134,14 +159,30 @@ func main() {
 
 func runWebServer(cfg *config.Config, port int, authOpts *web.AuthOptions, embeddedServer *embedded.Server) {
 	// Initialize audit database and file for web mode
-	if err := db.Init(""); err != nil {
-		log.Errorf("Failed to initialize audit database: %v", err)
+	if cfg.EnableAudit && cfg.IsPersistenceEnabled() {
+		dbCfg := db.DBConfig{
+			Type:     db.DBType(cfg.Storage.DBType),
+			Path:     cfg.GetEffectiveDBPath(),
+			Host:     cfg.Storage.DBHost,
+			Port:     cfg.Storage.DBPort,
+			Database: cfg.Storage.DBName,
+			Username: cfg.Storage.DBUser,
+			Password: cfg.Storage.DBPassword,
+			SSLMode:  cfg.Storage.DBSSLMode,
+		}
+		if err := db.InitWithConfig(dbCfg); err != nil {
+			log.Errorf("Failed to initialize audit database: %v", err)
+		}
+		defer db.Close()
+
+		// Initialize audit file if enabled
+		if cfg.Storage.EnableAuditFile {
+			if err := db.InitAuditFile(cfg.GetEffectiveAuditFilePath()); err != nil {
+				log.Errorf("Failed to initialize audit file: %v", err)
+			}
+			defer db.CloseAuditFile()
+		}
 	}
-	if err := db.InitAuditFile(""); err != nil {
-		log.Errorf("Failed to initialize audit file: %v", err)
-	}
-	defer db.Close()
-	defer db.CloseAuditFile()
 
 	// Pass version info to web server
 	versionInfo := &web.VersionInfo{
@@ -200,16 +241,29 @@ func runWebServer(cfg *config.Config, port int, authOpts *web.AuthOptions, embed
 
 func runTUI(cfg *config.Config, initialNamespace string, embeddedServer *embedded.Server) {
 	// Initialize audit database if enabled in config
-	if cfg.EnableAudit {
-		if err := db.Init(""); err != nil {
+	if cfg.EnableAudit && cfg.IsPersistenceEnabled() {
+		dbCfg := db.DBConfig{
+			Type:     db.DBType(cfg.Storage.DBType),
+			Path:     cfg.GetEffectiveDBPath(),
+			Host:     cfg.Storage.DBHost,
+			Port:     cfg.Storage.DBPort,
+			Database: cfg.Storage.DBName,
+			Username: cfg.Storage.DBUser,
+			Password: cfg.Storage.DBPassword,
+			SSLMode:  cfg.Storage.DBSSLMode,
+		}
+		if err := db.InitWithConfig(dbCfg); err != nil {
 			log.Errorf("Failed to initialize audit database: %v", err)
 		}
-		// Initialize audit file logging
-		if err := db.InitAuditFile(""); err != nil {
-			log.Errorf("Failed to initialize audit file: %v", err)
-		}
 		defer db.Close()
-		defer db.CloseAuditFile()
+
+		// Initialize audit file logging if enabled
+		if cfg.Storage.EnableAuditFile {
+			if err := db.InitAuditFile(cfg.GetEffectiveAuditFilePath()); err != nil {
+				log.Errorf("Failed to initialize audit file: %v", err)
+			}
+			defer db.CloseAuditFile()
+		}
 	}
 
 	// Stop embedded LLM server on exit
@@ -412,6 +466,105 @@ func downloadEmbeddedModel() {
 
 	fmt.Println("\nModel downloaded successfully!")
 	fmt.Printf("Path: %s\n", server.ModelPath())
+}
+
+func showStorageConfiguration() {
+	cfg, _ := config.LoadConfig()
+	if cfg == nil {
+		cfg = config.NewDefaultConfig()
+	}
+
+	fmt.Println("k13d Storage Configuration")
+	fmt.Println("===========================")
+	fmt.Println()
+
+	// Database configuration
+	fmt.Println("[Database]")
+	fmt.Printf("  Type:     %s\n", cfg.Storage.DBType)
+	if cfg.Storage.DBType == "sqlite" || cfg.Storage.DBType == "" {
+		dbPath := cfg.GetEffectiveDBPath()
+		fmt.Printf("  Path:     %s\n", dbPath)
+		if _, err := os.Stat(dbPath); err == nil {
+			info, _ := os.Stat(dbPath)
+			fmt.Printf("  Size:     %.2f MB\n", float64(info.Size())/1024/1024)
+			fmt.Printf("  Modified: %s\n", info.ModTime().Format("2006-01-02 15:04:05"))
+		} else {
+			fmt.Printf("  Status:   Not created yet\n")
+		}
+	} else {
+		fmt.Printf("  Host:     %s:%d\n", cfg.Storage.DBHost, cfg.Storage.DBPort)
+		fmt.Printf("  Database: %s\n", cfg.Storage.DBName)
+		fmt.Printf("  User:     %s\n", cfg.Storage.DBUser)
+	}
+	fmt.Println()
+
+	// Data persistence settings
+	fmt.Println("[Data Persistence]")
+	fmt.Printf("  Audit Logs:     %v\n", cfg.Storage.PersistAuditLogs)
+	fmt.Printf("  LLM Usage:      %v\n", cfg.Storage.PersistLLMUsage)
+	fmt.Printf("  Security Scans: %v\n", cfg.Storage.PersistSecurityScans)
+	fmt.Printf("  Metrics:        %v\n", cfg.Storage.PersistMetrics)
+	fmt.Printf("  AI Sessions:    %v\n", cfg.Storage.PersistSessions)
+	fmt.Println()
+
+	// File-based audit log
+	fmt.Println("[Audit File]")
+	fmt.Printf("  Enabled:  %v\n", cfg.Storage.EnableAuditFile)
+	if cfg.Storage.EnableAuditFile {
+		auditPath := cfg.GetEffectiveAuditFilePath()
+		fmt.Printf("  Path:     %s\n", auditPath)
+		if info, err := os.Stat(auditPath); err == nil {
+			fmt.Printf("  Size:     %.2f MB\n", float64(info.Size())/1024/1024)
+		}
+	}
+	fmt.Println()
+
+	// Data retention
+	fmt.Println("[Data Retention]")
+	if cfg.Storage.AuditRetentionDays == 0 {
+		fmt.Printf("  Audit Logs:     Forever\n")
+	} else {
+		fmt.Printf("  Audit Logs:     %d days\n", cfg.Storage.AuditRetentionDays)
+	}
+	fmt.Printf("  Metrics:        %d days\n", cfg.Storage.MetricsRetentionDays)
+	fmt.Printf("  LLM Usage:      %d days\n", cfg.Storage.LLMUsageRetentionDays)
+	fmt.Println()
+
+	// Sessions directory
+	sessionsDir := config.DefaultSessionsPath()
+	fmt.Println("[AI Sessions]")
+	fmt.Printf("  Path:     %s\n", sessionsDir)
+	if entries, err := os.ReadDir(sessionsDir); err == nil {
+		fmt.Printf("  Sessions: %d\n", len(entries))
+	} else {
+		fmt.Printf("  Status:   Not created yet\n")
+	}
+	fmt.Println()
+
+	// Configuration file
+	fmt.Println("[Configuration File]")
+	fmt.Printf("  Path:     %s\n", config.GetConfigPath())
+	if _, err := os.Stat(config.GetConfigPath()); err == nil {
+		fmt.Printf("  Status:   Exists\n")
+	} else {
+		fmt.Printf("  Status:   Using defaults\n")
+	}
+	fmt.Println()
+
+	// Data stored summary
+	fmt.Println("[Data Stored in SQLite]")
+	fmt.Println("  - audit_logs:      User actions, K8s operations, LLM interactions")
+	fmt.Println("  - security_scans:  Security assessment results")
+	fmt.Println("  - llm_usage:       LLM token usage and API call tracking")
+	fmt.Println("  - cluster_metrics: Time-series cluster resource metrics")
+	fmt.Println("  - node_metrics:    Per-node CPU/memory metrics")
+	fmt.Println("  - pod_metrics:     Per-pod resource usage")
+	fmt.Println()
+
+	fmt.Println("[Data Stored in Files]")
+	fmt.Printf("  - Sessions:        %s/*.json\n", sessionsDir)
+	fmt.Printf("  - Audit Log:       %s (if enabled)\n", cfg.GetEffectiveAuditFilePath())
+	fmt.Printf("  - Config:          %s\n", config.GetConfigPath())
 }
 
 func showEmbeddedLLMStatus() {

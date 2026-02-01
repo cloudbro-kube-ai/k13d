@@ -13,11 +13,41 @@ type Config struct {
 	Models       []ModelProfile `yaml:"models" json:"models"`             // Multiple LLM model profiles
 	ActiveModel  string         `yaml:"active_model" json:"active_model"` // Currently active model profile name
 	MCP          MCPConfig      `yaml:"mcp" json:"mcp"`                   // MCP server configuration
+	Storage      StorageConfig  `yaml:"storage" json:"storage"`           // Data storage configuration
 	ReportPath   string         `yaml:"report_path" json:"report_path"`
 	EnableAudit  bool           `yaml:"enable_audit" json:"enable_audit"`
 	Language     string         `yaml:"language" json:"language"`
 	BeginnerMode bool           `yaml:"beginner_mode" json:"beginner_mode"`
 	LogLevel     string         `yaml:"log_level" json:"log_level"`
+}
+
+// StorageConfig holds data persistence configuration
+type StorageConfig struct {
+	// Database settings
+	DBType     string `yaml:"db_type" json:"db_type"`         // sqlite, postgres, mariadb, mysql
+	DBPath     string `yaml:"db_path" json:"db_path"`         // Path for SQLite file (default: ~/.config/k13d/audit.db)
+	DBHost     string `yaml:"db_host" json:"db_host"`         // Database host (for postgres/mysql)
+	DBPort     int    `yaml:"db_port" json:"db_port"`         // Database port
+	DBName     string `yaml:"db_name" json:"db_name"`         // Database name
+	DBUser     string `yaml:"db_user" json:"db_user"`         // Database username
+	DBPassword string `yaml:"db_password" json:"db_password"` // Database password
+	DBSSLMode  string `yaml:"db_ssl_mode" json:"db_ssl_mode"` // SSL mode (for postgres)
+
+	// Data persistence options
+	PersistAuditLogs     bool `yaml:"persist_audit_logs" json:"persist_audit_logs"`           // Store audit logs in DB (default: true)
+	PersistLLMUsage      bool `yaml:"persist_llm_usage" json:"persist_llm_usage"`             // Store LLM token usage (default: true)
+	PersistSecurityScans bool `yaml:"persist_security_scans" json:"persist_security_scans"`   // Store security scan results (default: true)
+	PersistMetrics       bool `yaml:"persist_metrics" json:"persist_metrics"`                 // Store cluster metrics history (default: true)
+	PersistSessions      bool `yaml:"persist_sessions" json:"persist_sessions"`               // Store AI conversation sessions (default: true)
+
+	// File-based logging
+	EnableAuditFile bool   `yaml:"enable_audit_file" json:"enable_audit_file"` // Write audit logs to text file (default: false)
+	AuditFilePath   string `yaml:"audit_file_path" json:"audit_file_path"`     // Path for audit log file
+
+	// Data retention
+	AuditRetentionDays   int `yaml:"audit_retention_days" json:"audit_retention_days"`       // Days to keep audit logs (0 = forever)
+	MetricsRetentionDays int `yaml:"metrics_retention_days" json:"metrics_retention_days"`   // Days to keep metrics (default: 30)
+	LLMUsageRetentionDays int `yaml:"llm_usage_retention_days" json:"llm_usage_retention_days"` // Days to keep LLM usage (default: 90)
 }
 
 type LLMConfig struct {
@@ -85,6 +115,21 @@ const DefaultSolarEndpoint = "https://api.upstage.ai/v1"
 // DefaultSolarModel is the recommended Solar model
 const DefaultSolarModel = "solar-pro2"
 
+// DefaultDBPath returns the default SQLite database path
+func DefaultDBPath() string {
+	return filepath.Join(xdg.ConfigHome, "k13d", "audit.db")
+}
+
+// DefaultAuditFilePath returns the default audit log file path
+func DefaultAuditFilePath() string {
+	return filepath.Join(xdg.ConfigHome, "k13d", "audit.log")
+}
+
+// DefaultSessionsPath returns the default sessions directory
+func DefaultSessionsPath() string {
+	return filepath.Join(xdg.DataHome, "k13d", "sessions")
+}
+
 func NewDefaultConfig() *Config {
 	return &Config{
 		LLM: LLMConfig{
@@ -94,6 +139,20 @@ func NewDefaultConfig() *Config {
 			RetryEnabled: true,
 			MaxRetries:   5,
 			MaxBackoff:   10.0,
+		},
+		Storage: StorageConfig{
+			DBType:               "sqlite",
+			DBPath:               "", // Empty means use default: ~/.config/k13d/audit.db
+			PersistAuditLogs:     true,
+			PersistLLMUsage:      true,
+			PersistSecurityScans: true,
+			PersistMetrics:       true,
+			PersistSessions:      true,
+			EnableAuditFile:      false,
+			AuditFilePath:        "", // Empty means use default: ~/.config/k13d/audit.log
+			AuditRetentionDays:   0,  // 0 = keep forever
+			MetricsRetentionDays: 30,
+			LLMUsageRetentionDays: 90,
 		},
 		Models: []ModelProfile{
 			{
@@ -243,6 +302,30 @@ func (c *Config) ToggleMCPServer(name string, enabled bool) bool {
 		}
 	}
 	return false
+}
+
+// GetEffectiveDBPath returns the effective database path
+func (c *Config) GetEffectiveDBPath() string {
+	if c.Storage.DBPath != "" {
+		return c.Storage.DBPath
+	}
+	return DefaultDBPath()
+}
+
+// GetEffectiveAuditFilePath returns the effective audit file path
+func (c *Config) GetEffectiveAuditFilePath() string {
+	if c.Storage.AuditFilePath != "" {
+		return c.Storage.AuditFilePath
+	}
+	return DefaultAuditFilePath()
+}
+
+// IsPersistenceEnabled returns true if any persistence is enabled
+func (c *Config) IsPersistenceEnabled() bool {
+	return c.EnableAudit && (c.Storage.PersistAuditLogs ||
+		c.Storage.PersistLLMUsage ||
+		c.Storage.PersistSecurityScans ||
+		c.Storage.PersistMetrics)
 }
 
 func LoadConfig() (*Config, error) {
