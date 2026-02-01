@@ -183,9 +183,56 @@ func (p *AIPanel) setupKeyHandlers() {
 			return nil
 		}
 
-		// Tab to switch to input
-		if event.Key() == tcell.KeyTab {
+		// Handle arrow key scrolling
+		row, col := p.outputView.GetScrollOffset()
+		switch event.Key() {
+		case tcell.KeyUp:
+			if row > 0 {
+				p.outputView.ScrollTo(row-1, col)
+			}
+			return nil
+		case tcell.KeyDown:
+			p.outputView.ScrollTo(row+1, col)
+			return nil
+		case tcell.KeyPgUp:
+			_, _, _, height := p.outputView.GetInnerRect()
+			if row > height {
+				p.outputView.ScrollTo(row-height, col)
+			} else {
+				p.outputView.ScrollTo(0, col)
+			}
+			return nil
+		case tcell.KeyPgDn:
+			_, _, _, height := p.outputView.GetInnerRect()
+			p.outputView.ScrollTo(row+height, col)
+			return nil
+		case tcell.KeyHome:
+			p.outputView.ScrollTo(0, 0)
+			return nil
+		case tcell.KeyEnd:
+			p.outputView.ScrollToEnd()
+			return nil
+		case tcell.KeyTab:
+			// Tab to switch to input
 			p.app.SetFocus(p.inputField)
+			return nil
+		}
+
+		// j/k vim-style scrolling
+		switch event.Rune() {
+		case 'j':
+			p.outputView.ScrollTo(row+1, col)
+			return nil
+		case 'k':
+			if row > 0 {
+				p.outputView.ScrollTo(row-1, col)
+			}
+			return nil
+		case 'g':
+			p.outputView.ScrollTo(0, 0)
+			return nil
+		case 'G':
+			p.outputView.ScrollToEnd()
 			return nil
 		}
 

@@ -1,6 +1,6 @@
 # Binaries for programs and plugins
-k13d
-k13d_test
+/k13d
+/k13d_test
 k13d-bench
 k13d-eval
 build/

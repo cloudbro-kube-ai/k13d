@@ -1,0 +1,18 @@
+apiVersion: v2
+name: k13d
+description: A Helm chart for k13d - Kubernetes AI Dashboard CLI
+type: application
+version: 0.4.0
+appVersion: "0.4.0"
+keywords:
+  - kubernetes
+  - dashboard
+  - ai
+  - tui
+  - cli
+home: https://github.com/cloudbro-kube-ai/k13d
+sources:
+  - https://github.com/cloudbro-kube-ai/k13d
+maintainers:
+  - name: k13d maintainers
+    url: https://github.com/cloudbro-kube-ai/k13d

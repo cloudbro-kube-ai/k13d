@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "k13d.fullname" . }}
+  labels:
+    {{- include "k13d.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "k13d.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "k13d.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "k13d.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            {{- if eq .Values.k13d.mode "web" }}
+            - "-web"
+            - "-port"
+            - "{{ .Values.k13d.port }}"
+            {{- end }}
+            {{- if .Values.k13d.embeddedLLM.enabled }}
+            - "--embedded-llm"
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.k13d.port }}
+              protocol: TCP
+          env:
+            {{- if .Values.k13d.ai.provider }}
+            - name: K13D_AI_PROVIDER
+              value: {{ .Values.k13d.ai.provider | quote }}
+            {{- end }}
+            {{- if .Values.k13d.ai.model }}
+            - name: K13D_AI_MODEL
+              value: {{ .Values.k13d.ai.model | quote }}
+            {{- end }}
+            {{- if .Values.k13d.ai.endpoint }}
+            - name: K13D_AI_ENDPOINT
+              value: {{ .Values.k13d.ai.endpoint | quote }}
+            {{- end }}
+            {{- if or .Values.k13d.ai.apiKey .Values.k13d.ai.existingSecret }}
+            - name: K13D_AI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "k13d.apiKeySecretName" . }}
+                  key: {{ .Values.k13d.ai.existingSecretKey }}
+            {{- end }}
+            {{- if .Values.k13d.embeddedLLM.enabled }}
+            - name: OLLAMA_HOST
+              value: "http://localhost:11434"
+            {{- end }}
+            - name: K13D_DB_TYPE
+              value: {{ .Values.k13d.database.type | quote }}
+            {{- if eq .Values.k13d.database.type "sqlite" }}
+            - name: K13D_DB_PATH
+              value: {{ .Values.k13d.database.sqlitePath | quote }}
+            {{- else }}
+            - name: K13D_DB_HOST
+              value: {{ .Values.k13d.database.host | quote }}
+            - name: K13D_DB_PORT
+              value: {{ .Values.k13d.database.port | quote }}
+            - name: K13D_DB_NAME
+              value: {{ .Values.k13d.database.name | quote }}
+            - name: K13D_DB_USER
+              value: {{ .Values.k13d.database.user | quote }}
+            {{- if or .Values.k13d.database.password .Values.k13d.database.existingSecret }}
+            - name: K13D_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "k13d.dbSecretName" . }}
+                  key: {{ .Values.k13d.database.existingSecretKey }}
+            {{- end }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          {{- end }}
+        {{- if .Values.k13d.embeddedLLM.enabled }}
+        - name: ollama
+          image: "{{ .Values.k13d.embeddedLLM.image.repository }}:{{ .Values.k13d.embeddedLLM.image.tag }}"
+          ports:
+            - name: ollama
+              containerPort: 11434
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.k13d.embeddedLLM.resources | nindent 12 }}
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /root/.ollama
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    sleep 5 && ollama pull {{ .Values.k13d.embeddedLLM.model }}
+        {{- end }}
+      {{- if or .Values.persistence.enabled .Values.k13d.embeddedLLM.enabled }}
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "k13d.fullname" . }}
+        {{- end }}
+        {{- if .Values.k13d.embeddedLLM.enabled }}
+        - name: ollama-data
+          emptyDir: {}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

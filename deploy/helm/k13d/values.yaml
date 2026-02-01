@@ -1,0 +1,151 @@
+# Default values for k13d
+# This is a YAML-formatted file.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/cloudbro-kube-ai/k13d
+  pullPolicy: IfNotPresent
+  tag: ""  # Defaults to Chart appVersion
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# k13d configuration
+k13d:
+  # Run mode: web or tui (web recommended for Kubernetes deployment)
+  mode: web
+  port: 8080
+
+  # AI/LLM settings
+  ai:
+    provider: ""  # openai, anthropic, ollama, azure, bedrock
+    model: ""
+    endpoint: ""
+    apiKey: ""
+    # Use existing secret for API key
+    existingSecret: ""
+    existingSecretKey: "api-key"
+
+  # Authentication
+  auth:
+    enabled: true
+    type: local  # local, ldap, oidc
+    # For OIDC
+    oidc:
+      issuer: ""
+      clientId: ""
+      clientSecret: ""
+
+  # Database
+  database:
+    type: sqlite  # sqlite, postgres, mysql
+    # SQLite path (for sqlite type)
+    sqlitePath: /data/k13d.db
+    # External database settings
+    host: ""
+    port: 5432
+    name: k13d
+    user: ""
+    password: ""
+    existingSecret: ""
+    existingSecretKey: "password"
+
+  # Embedded LLM (Ollama sidecar)
+  embeddedLLM:
+    enabled: false
+    image:
+      repository: ollama/ollama
+      tag: latest
+    model: llama3.2:1b
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1"
+      limits:
+        memory: "4Gi"
+        cpu: "2"
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: k13d.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: k13d-tls
+  #    hosts:
+  #      - k13d.local
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Persistence for SQLite database
+persistence:
+  enabled: true
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 1Gi
+  annotations: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# RBAC settings for Kubernetes API access
+rbac:
+  create: true
+  # ClusterRole rules for k13d to access Kubernetes resources
+  rules:
+    - apiGroups: [""]
+      resources: ["pods", "pods/log", "services", "configmaps", "secrets", "namespaces", "nodes", "persistentvolumeclaims", "events"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    - apiGroups: ["apps"]
+      resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    - apiGroups: ["batch"]
+      resources: ["jobs", "cronjobs"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    - apiGroups: ["networking.k8s.io"]
+      resources: ["ingresses", "networkpolicies"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    - apiGroups: ["metrics.k8s.io"]
+      resources: ["pods", "nodes"]
+      verbs: ["get", "list"]
