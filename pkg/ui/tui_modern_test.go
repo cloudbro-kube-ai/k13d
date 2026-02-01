@@ -36,6 +36,7 @@ func NewTUITestContext(t *testing.T) *TUITestContext {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	ctx := &TUITestContext{

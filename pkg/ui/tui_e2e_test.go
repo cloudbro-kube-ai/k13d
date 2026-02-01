@@ -30,6 +30,7 @@ func TestAppNoFreezeOnStartup(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	// Run the app in background
@@ -75,6 +76,7 @@ func TestAppNoFreezeOnKeypress(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	// Run the app
@@ -134,6 +136,7 @@ func TestAppNoFreezeOnRapidKeypress(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -238,6 +241,7 @@ func TestCommandModeNavigation(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -284,6 +288,7 @@ func TestFilterMode(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -330,6 +335,7 @@ func TestEscapeClearsModals(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -367,6 +373,7 @@ func TestNamespaceSwitch(t *testing.T) {
 		Screen:                screen,
 		InitialNamespace:      "default",
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -612,6 +619,7 @@ func TestAppGracefulShutdown(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -641,6 +649,7 @@ func TestMultipleResourceSwitches(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})

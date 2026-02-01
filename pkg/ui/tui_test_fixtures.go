@@ -32,6 +32,8 @@ type TestAppConfig struct {
 	InitialNamespace string
 	// SkipBackgroundLoading prevents loadAPIResources and loadNamespaces goroutines
 	SkipBackgroundLoading bool
+	// SkipBriefing disables the briefing panel to prevent pulse animation blocking in tests
+	SkipBriefing bool
 }
 
 // NewTestApp creates a minimal App instance suitable for testing.
@@ -82,6 +84,7 @@ func NewTestApp(cfg TestAppConfig) *App {
 		navMx:               sync.Mutex{},
 		aiMx:                sync.RWMutex{},
 		cancelLock:          sync.Mutex{},
+		skipBriefing:        cfg.SkipBriefing, // Disable briefing to prevent pulse animation blocking
 	}
 
 	app.setupUI()

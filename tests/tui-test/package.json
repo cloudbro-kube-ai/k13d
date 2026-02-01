@@ -10,7 +10,7 @@
     "pretest": "npm run build-binary"
   },
   "devDependencies": {
-    "@microsoft/tui-test": "^0.3.0",
+    "@microsoft/tui-test": "^0.0.1-rc.5",
     "typescript": "^5.0.0"
   },
   "keywords": ["k13d", "kubernetes", "tui", "testing"],

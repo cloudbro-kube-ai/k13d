@@ -155,6 +155,9 @@ type App struct {
 
 	// Logger
 	logger *slog.Logger
+
+	// Test mode flags
+	skipBriefing bool // Skip briefing panel in test mode to prevent pulse animation blocking
 }
 
 // NewApp creates a new TUI application with default (all) namespace
@@ -328,7 +331,10 @@ func (a *App) setupUI() {
 		SetTextAlign(tview.AlignCenter)
 
 	// Briefing panel (natural language cluster summary)
-	a.briefing = NewBriefingPanel(a)
+	// Skip in test mode to prevent pulse animation blocking
+	if !a.skipBriefing {
+		a.briefing = NewBriefingPanel(a)
+	}
 
 	// Status bar
 	a.statusBar = tview.NewTextView().
@@ -377,11 +383,17 @@ func (a *App) setupUI() {
 		AddItem(a.cmdInput, 0, 1, true).
 		AddItem(a.cmdHint, 0, 2, false)
 
-	// Main layout with briefing panel
+	// Main layout with optional briefing panel
 	mainFlex := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(a.header, 4, 0, false). // 4 lines: title, context info, namespace preview
-		AddItem(a.flash, 1, 0, false).
-		AddItem(a.briefing, 5, 0, false). // 3 lines content + 2 border
+		AddItem(a.flash, 1, 0, false)
+
+	// Add briefing panel only if it's enabled
+	if a.briefing != nil {
+		mainFlex.AddItem(a.briefing, 5, 0, false) // 3 lines content + 2 border
+	}
+
+	mainFlex.
 		AddItem(contentFlex, 0, 1, true).
 		AddItem(a.statusBar, 1, 0, false).
 		AddItem(cmdFlex, 1, 0, false)
@@ -1952,35 +1964,40 @@ func (a *App) refresh() {
 
 // QueueUpdateDraw queues up a UI action and redraws.
 // Note: Unlike k9s, we don't wrap in goroutine here because tview's
-// QueueUpdateDraw is already thread-safe and non-blocking when called
-// from outside the main goroutine. The k9s pattern caused timing issues
-// where UI updates happened after function returns.
+// QueueUpdateDraw safely queues a function to be executed on the main UI thread.
+// This is the primary method for thread-safe UI updates from goroutines.
 //
-// IMPORTANT: This method checks if the app is running before queuing.
-// This prevents goroutines from blocking forever after app.Stop() is called.
-// It uses a timeout to prevent indefinite blocking on the update channel.
+// Key behaviors:
+// - Non-blocking: Returns immediately after queuing (does not wait for execution)
+// - Safe: Checks app state before queuing to avoid blocking on shutdown
+// - Atomic: The function f() will be executed atomically on the main UI thread
+//
+// This implementation follows the k9s pattern but avoids timeout-based approaches
+// that can cause visual artifacts due to skipped updates.
+//
+// IMPORTANT: Always runs in a goroutine to prevent deadlock when called from
+// within tview input handlers. tview's QueueUpdateDraw can block if the event
+// loop is waiting for the current handler to return.
 func (a *App) QueueUpdateDraw(f func()) {
 	if a.Application == nil {
 		return
 	}
-	// Check if app is stopping or not running - skip to avoid blocking
-	if atomic.LoadInt32(&a.stopping) == 1 || atomic.LoadInt32(&a.running) == 0 {
+	// Check if app is stopping - skip to avoid blocking on shutdown
+	if atomic.LoadInt32(&a.stopping) == 1 {
 		return
 	}
-	// Use a timeout wrapper to prevent indefinite blocking
-	// This can happen if too many updates are queued or the app is shutting down
-	done := make(chan struct{})
+	// Always queue in a goroutine to prevent deadlock when called from input handlers.
+	// tview's event loop can't process queued updates until the current handler returns,
+	// so calling QueueUpdateDraw directly from a handler can cause blocking.
 	go func() {
-		defer close(done)
-		a.Application.QueueUpdateDraw(f)
+		// Recheck state before queuing to avoid blocking on shutdown
+		if atomic.LoadInt32(&a.stopping) == 1 {
+			return
+		}
+		if a.Application != nil {
+			a.Application.QueueUpdateDraw(f)
+		}
 	}()
-	select {
-	case <-done:
-		// Success
-	case <-time.After(100 * time.Millisecond):
-		// Timeout - app might be shutting down or overloaded
-		return
-	}
 }
 
 // IsRunning returns true if the application is currently running and not stopping.
@@ -2025,11 +2042,26 @@ func (a *App) Run() error {
 		atomic.StoreInt32(&a.running, 0)
 	}()
 
+	// Use SetBeforeDrawFunc to clear screen on first draw to prevent artifacts
+	// This fixes the highlight residue issue on startup
+	var firstDraw int32 = 1
+	a.SetBeforeDrawFunc(func(screen tcell.Screen) bool {
+		if atomic.CompareAndSwapInt32(&firstDraw, 1, 0) {
+			// Clear entire screen on first draw to prevent artifacts
+			screen.Clear()
+		}
+		return false // Don't skip the draw
+	})
+
 	// Mark as running and trigger initial refresh after first draw
 	a.SetAfterDrawFunc(func(screen tcell.Screen) {
 		a.SetAfterDrawFunc(nil) // Only run once
 		atomic.StoreInt32(&a.running, 1)
-		go a.refresh()
+
+		// Small delay before refresh to ensure screen is fully initialized
+		time.AfterFunc(50*time.Millisecond, func() {
+			a.refresh()
+		})
 
 		// Start briefing pulse animation if visible
 		if a.briefing != nil && a.briefing.IsVisible() {

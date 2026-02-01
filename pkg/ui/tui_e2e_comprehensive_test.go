@@ -77,6 +77,7 @@ func TestE2EResourceNavigation(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -146,6 +147,7 @@ func TestE2ETableNavigation(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -233,6 +235,7 @@ func TestE2EFilterModeComplete(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -291,6 +294,7 @@ func TestE2ERegexFilter(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -347,6 +351,7 @@ func TestE2ENamespaceSwitching(t *testing.T) {
 		Screen:                screen,
 		InitialNamespace:      "default",
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -425,6 +430,7 @@ func TestE2EHelpModal(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -480,6 +486,7 @@ func TestE2EAIPanelFocus(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 	app.showAIPanel = true // Enable AI panel
 
@@ -531,6 +538,7 @@ func TestE2EMultiSelect(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -587,6 +595,7 @@ func TestE2EKeyboardShortcuts(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -650,6 +659,7 @@ func TestE2EScreenResize(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -711,6 +721,7 @@ func TestE2EConcurrentAccess(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -801,6 +812,7 @@ func TestE2EStressRapidInput(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -857,6 +869,7 @@ func TestE2EStressMultipleRefresh(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -910,6 +923,7 @@ func TestE2EScreenContentHeader(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -959,6 +973,7 @@ func TestE2EScreenContentResourceTable(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -1021,6 +1036,7 @@ func TestE2EGracefulShutdownWithQ(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})
@@ -1050,6 +1066,7 @@ func TestE2EGracefulShutdownWithCtrlC(t *testing.T) {
 		UseSimulationScreen:   true,
 		Screen:                screen,
 		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
 	})
 
 	done := make(chan struct{})

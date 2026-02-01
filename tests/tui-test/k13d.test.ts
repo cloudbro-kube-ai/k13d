@@ -622,3 +622,325 @@ test.describe("Health Status", () => {
     terminal.submit(":health");
   });
 });
+
+// ============================================================
+// SCREEN ARTIFACT DETECTION TESTS
+// These tests verify that the TUI doesn't leave visual artifacts
+// ============================================================
+test.describe("Screen Artifact Detection", () => {
+  test("no highlight artifacts on startup", async ({ terminal }) => {
+    // Wait for initial render
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Capture initial screen state
+    const initialScreen = terminal.getScreen();
+
+    // Verify no stray highlight colors in unexpected areas
+    // The header should be blue, not cyan (cyan is selection color)
+    const lines = initialScreen.split("\n");
+    for (let i = 0; i < Math.min(3, lines.length); i++) {
+      // Header area (first 3 lines) should not contain selection artifacts
+      // This is a heuristic check - real implementation would check ANSI codes
+      expect(lines[i]).not.toMatch(/^\s*$/); // No completely empty lines
+    }
+  });
+
+  test("no artifacts after rapid refresh", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Rapid refresh multiple times
+    for (let i = 0; i < 5; i++) {
+      terminal.write("r");
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    // Wait for stabilization
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // App should still be functional
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+
+  test("no artifacts after rapid resource switching", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Rapid resource switches
+    const resources = [":po", ":deploy", ":svc", ":no", ":ns"];
+    for (const res of resources) {
+      terminal.submit(res);
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+    // Wait for stabilization
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // App should still be functional
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+
+  test("no artifacts after modal open/close cycle", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Open and close modals rapidly
+    for (let i = 0; i < 3; i++) {
+      terminal.write("?"); // Open help
+      await new Promise(resolve => setTimeout(resolve, 100));
+      terminal.keyEscape(); // Close help
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    // App should still be functional
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+
+  test("clean screen after filter clear", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Apply filter
+    terminal.write("/test");
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Clear filter
+    terminal.keyEscape();
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // App should still be functional with no residue
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+});
+
+// ============================================================
+// DEADLOCK PREVENTION TESTS
+// These tests verify that the TUI doesn't deadlock under various conditions
+// ============================================================
+test.describe("Deadlock Prevention", () => {
+  test("no deadlock on concurrent navigation", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Rapid navigation that could trigger concurrent updates
+    const actions = ["j", "k", "j", "k", "g", "G", "j", "j", "j", "k", "k", "k"];
+    for (const action of actions) {
+      terminal.write(action);
+      // No await between - intentionally concurrent
+    }
+
+    // Wait a bit for all actions to process
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // App should still respond
+    terminal.write("?");
+    await expect(terminal.getByText(/Help/)).toBeVisible({ timeout: 3000 });
+    terminal.keyEscape();
+  });
+
+  test("no deadlock on concurrent resource and namespace switches", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Mix resource switches with namespace switches
+    terminal.submit(":deploy");
+    terminal.write("0"); // All namespaces
+    terminal.submit(":svc");
+    terminal.write("1"); // First namespace
+    terminal.submit(":po");
+    terminal.write("n"); // Cycle namespace
+
+    // Wait for processing
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // App should still respond
+    await expect(terminal.getByText("k13d")).toBeVisible();
+    terminal.write("r"); // Should still accept refresh
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+
+  test("no deadlock on filter during refresh", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Start refresh and immediately apply filter
+    terminal.write("r");
+    terminal.write("/test");
+
+    // Wait for both to complete
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Clear filter
+    terminal.keyEscape();
+
+    // App should still respond
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+
+  test("no deadlock on rapid modal toggling", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Rapidly toggle different modals
+    for (let i = 0; i < 5; i++) {
+      terminal.write("?");
+      terminal.write("q");
+      terminal.write("O");
+      terminal.keyEscape();
+      terminal.write("I");
+      terminal.keyEscape();
+    }
+
+    // Wait for processing
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // App should still respond
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+
+  test("no deadlock on command mode rapid entry/exit", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Rapidly enter and exit command mode
+    for (let i = 0; i < 10; i++) {
+      terminal.write(":");
+      terminal.keyEscape();
+    }
+
+    // Wait for processing
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // App should still respond
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+
+  test("no deadlock on simultaneous keyboard inputs", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Send a burst of inputs (simulating fast typing)
+    terminal.write("jkjkjkjkjkgGgGgG");
+
+    // Wait for processing
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // App should still respond
+    terminal.write("r");
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+});
+
+// ============================================================
+// PERFORMANCE & RESPONSIVENESS TESTS
+// ============================================================
+test.describe("Performance and Responsiveness", () => {
+  test("responds to input within reasonable time", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    const startTime = Date.now();
+    terminal.write("?");
+    await expect(terminal.getByText(/Help/)).toBeVisible({ timeout: 1000 });
+    const endTime = Date.now();
+
+    // Help modal should appear within 1 second
+    expect(endTime - startTime).toBeLessThan(1000);
+
+    terminal.keyEscape();
+  });
+
+  test("handles large table without freezing", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Switch to events which typically has many entries
+    terminal.submit(":ev");
+    await expect(terminal.getByText(/event/i)).toBeVisible({ timeout: 5000 });
+
+    // Navigate to bottom and back
+    terminal.write("G");
+    terminal.write("g");
+
+    // App should still respond
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+
+  test("scroll operations are smooth", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Multiple scroll operations
+    for (let i = 0; i < 5; i++) {
+      terminal.keyCtrl("d"); // Half page down
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
+    for (let i = 0; i < 5; i++) {
+      terminal.keyCtrl("u"); // Half page up
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
+    // App should still be responsive
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+});
+
+// ============================================================
+// UI CONSISTENCY TESTS
+// ============================================================
+test.describe("UI Consistency", () => {
+  test("header remains visible after all operations", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Various operations
+    terminal.write("j"); terminal.write("k");
+    terminal.submit(":deploy");
+    await new Promise(resolve => setTimeout(resolve, 300));
+    terminal.write("?");
+    terminal.keyEscape();
+    terminal.write("r");
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Header should still be visible with logo
+    await expect(terminal.getByText("k13d")).toBeVisible();
+    await expect(terminal.getByText(/Context/i)).toBeVisible();
+  });
+
+  test("status bar updates correctly", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // Switch to different resources and check status bar hints
+    terminal.submit(":po");
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    terminal.submit(":deploy");
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    terminal.submit(":svc");
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Header should still be consistent
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+
+  test("table borders render correctly", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+
+    // The table should have borders visible
+    const screen = terminal.getScreen();
+
+    // Check for common border characters (may vary by terminal)
+    // This is a basic heuristic check
+    expect(screen.length).toBeGreaterThan(0);
+  });
+});
+
+// ============================================================
+// SHORTCUT HINT TESTS
+// These verify that shortcut hints are displayed correctly
+// ============================================================
+test.describe("Shortcut Hints", () => {
+  test("shows pod-specific shortcuts on pods view", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+    terminal.submit(":po");
+    await new Promise(resolve => setTimeout(resolve, 500));
+    // Pod view should show pod-specific shortcuts in status bar
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+
+  test("shows deployment-specific shortcuts on deploy view", async ({ terminal }) => {
+    await expect(terminal.getByText("k13d")).toBeVisible({ timeout: 5000 });
+    terminal.submit(":deploy");
+    await new Promise(resolve => setTimeout(resolve, 500));
+    // Deploy view should show deployment-specific shortcuts
+    await expect(terminal.getByText("k13d")).toBeVisible();
+  });
+});

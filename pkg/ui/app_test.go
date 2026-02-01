@@ -663,3 +663,117 @@ func TestNumberKeyNamespaceSwitch(t *testing.T) {
 		})
 	}
 }
+
+// TestQueueUpdateDrawNilApp tests that QueueUpdateDraw handles nil Application gracefully
+func TestQueueUpdateDrawNilApp(t *testing.T) {
+	app := &App{
+		Application: nil,
+	}
+
+	// Should not panic
+	app.QueueUpdateDraw(func() {
+		t.Error("callback should not be called with nil Application")
+	})
+}
+
+// TestQueueUpdateDrawStoppingApp tests that QueueUpdateDraw handles stopping state
+func TestQueueUpdateDrawStoppingApp(t *testing.T) {
+	app := &App{}
+	app.stopping = 1 // Simulate stopping state
+
+	// Should not call the callback when stopping
+	app.QueueUpdateDraw(func() {
+		t.Error("callback should not be called when app is stopping")
+	})
+}
+
+// TestIsRunning tests the IsRunning method
+func TestIsRunning(t *testing.T) {
+	tests := []struct {
+		name     string
+		running  int32
+		stopping int32
+		expected bool
+	}{
+		{"running and not stopping", 1, 0, true},
+		{"not running", 0, 0, false},
+		{"running but stopping", 1, 1, false},
+		{"not running and stopping", 0, 1, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := &App{}
+			app.running = tt.running
+			app.stopping = tt.stopping
+
+			result := app.IsRunning()
+			if result != tt.expected {
+				t.Errorf("IsRunning() = %v, expected %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestBasicConcurrentAccess tests that basic concurrent access to app state is safe
+func TestBasicConcurrentAccess(t *testing.T) {
+	app := &App{
+		namespaces: []string{"", "default", "kube-system"},
+	}
+
+	// Run concurrent operations that access/modify state
+	done := make(chan bool, 10)
+
+	for i := 0; i < 10; i++ {
+		go func(n int) {
+			defer func() { done <- true }()
+
+			// Read operations
+			_ = app.namespaces
+			_ = app.currentResource
+			_ = app.currentNamespace
+
+			// Simulate state checks
+			if n%2 == 0 {
+				app.currentResource = "pods"
+			} else {
+				app.currentResource = "deployments"
+			}
+		}(i)
+	}
+
+	// Wait for all goroutines
+	for i := 0; i < 10; i++ {
+		<-done
+	}
+}
+
+// TestLogoColorsFunctionExists tests that LogoColors function returns non-empty string
+func TestLogoColorsFunctionExists(t *testing.T) {
+	result := LogoColors()
+	if result == "" {
+		t.Error("LogoColors() returned empty string")
+	}
+	if !strings.Contains(result, "k13d") && !strings.Contains(result, "[") {
+		t.Error("LogoColors() should contain logo text with color codes")
+	}
+}
+
+// TestHeaderLogoFunctionExists tests that HeaderLogo function returns non-empty string
+func TestHeaderLogoFunctionExists(t *testing.T) {
+	result := HeaderLogo()
+	if result == "" {
+		t.Error("HeaderLogo() returned empty string")
+	}
+	if !strings.Contains(result, "k") {
+		t.Error("HeaderLogo() should contain 'k' from k13d")
+	}
+}
+
+// TestAboutModalCreation tests that AboutModal returns a valid tview component
+func TestAboutModalCreation(t *testing.T) {
+	modal := AboutModal()
+	if modal == nil {
+		t.Error("AboutModal() returned nil")
+	}
+}
