@@ -1,0 +1,32 @@
+# Create RBAC Role Task
+# Tests RBAC configuration capabilities
+
+name: Create RBAC Role and Binding
+description: Create a Role with specific permissions and bind it to a ServiceAccount
+category: security
+difficulty: medium
+tags:
+  - rbac
+  - security
+  - serviceaccount
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create the following RBAC resources in the current namespace:
+
+      1. A ServiceAccount named 'app-reader'
+      2. A Role named 'pod-reader' that can:
+         - get, list, watch pods
+         - get, list, watch pod logs
+      3. A RoleBinding named 'app-reader-binding' that binds the Role to the ServiceAccount
+
+      After creation, verify the ServiceAccount can list pods.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "role.*created|rolebinding.*created|serviceaccount.*created"

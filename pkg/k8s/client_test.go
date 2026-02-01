@@ -11,638 +11,374 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func TestListPods(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pod",
-			Namespace: "default",
-		},
-	})
-	client := &Client{Clientset: clientset}
+// ============================================================================
+// Test Fixtures - Centralized test data creation
+// ============================================================================
 
-	pods, err := client.ListPods(ctx, "default")
+// testFixtures provides reusable test objects
+type testFixtures struct{}
+
+func newFixtures() *testFixtures { return &testFixtures{} }
+
+func (f *testFixtures) pod(name, ns string) *corev1.Pod {
+	return &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}}
+}
+
+func (f *testFixtures) node(name string) *corev1.Node {
+	return &corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: name}}
+}
+
+func (f *testFixtures) namespace(name string) *corev1.Namespace {
+	return &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name}}
+}
+
+func (f *testFixtures) deployment(name, ns string) *appsv1.Deployment {
+	replicas := int32(1)
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+		Spec:       appsv1.DeploymentSpec{Replicas: &replicas},
+	}
+}
+
+func (f *testFixtures) service(name, ns string) *corev1.Service {
+	return &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}}
+}
+
+func (f *testFixtures) configMap(name, ns string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+		Data:       map[string]string{"key": "value"},
+	}
+}
+
+func (f *testFixtures) secret(name, ns string) *corev1.Secret {
+	return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns}}
+}
+
+func (f *testFixtures) event(name, ns string) *corev1.Event {
+	return &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+		Type:       "Warning", Reason: "TestReason", Message: "Test message",
+	}
+}
+
+// ============================================================================
+// Interface Contract Tests - Validates Reader interface behavior
+// ============================================================================
+
+// TestReaderContract validates that Client implements Reader interface correctly.
+// This is the primary test - if interface contract is satisfied, implementation
+// details can change without breaking consumers.
+func TestReaderContract(t *testing.T) {
+	fix := newFixtures()
+
+	// Create client with comprehensive test data
+	objects := []runtime.Object{
+		fix.pod("pod-1", "default"),
+		fix.pod("pod-2", "default"),
+		fix.node("node-1"),
+		fix.namespace("default"),
+		fix.namespace("kube-system"),
+		fix.deployment("deploy-1", "default"),
+		fix.service("svc-1", "default"),
+		fix.configMap("cm-1", "default"),
+		fix.secret("secret-1", "default"),
+		fix.event("event-1", "default"),
+		&appsv1.StatefulSet{ObjectMeta: metav1.ObjectMeta{Name: "sts-1", Namespace: "default"}},
+		&appsv1.DaemonSet{ObjectMeta: metav1.ObjectMeta{Name: "ds-1", Namespace: "default"}},
+		&appsv1.ReplicaSet{ObjectMeta: metav1.ObjectMeta{Name: "rs-1", Namespace: "default"}},
+		&batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: "job-1", Namespace: "default"}},
+		&batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: "cj-1", Namespace: "default"}},
+		&networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: "ing-1", Namespace: "default"}},
+		&networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: "np-1", Namespace: "default"}},
+		&rbacv1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role-1", Namespace: "default"}},
+		&rbacv1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: "rb-1", Namespace: "default"}},
+		&rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: "cr-1"}},
+		&rbacv1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: "crb-1"}},
+		&corev1.PersistentVolume{ObjectMeta: metav1.ObjectMeta{Name: "pv-1"}},
+		&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "pvc-1", Namespace: "default"}},
+		&storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: "sc-1"}},
+		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-1", Namespace: "default"}},
+	}
+
+	client := &Client{Clientset: fake.NewSimpleClientset(objects...)}
+	ctx := context.Background()
+
+	// Use Reader interface - this is what consumers should depend on
+	var reader Reader = client
+
+	// Table-driven tests for all list operations
+	tests := []struct {
+		name     string
+		listFunc func() (int, error)
+		want     int
+	}{
+		{"ListPods", func() (int, error) { p, e := reader.ListPods(ctx, "default"); return len(p), e }, 2},
+		{"ListNodes", func() (int, error) { n, e := reader.ListNodes(ctx); return len(n), e }, 1},
+		{"ListNamespaces", func() (int, error) { n, e := reader.ListNamespaces(ctx); return len(n), e }, 2},
+		{"ListDeployments", func() (int, error) { d, e := reader.ListDeployments(ctx, "default"); return len(d), e }, 1},
+		{"ListServices", func() (int, error) { s, e := reader.ListServices(ctx, "default"); return len(s), e }, 1},
+		{"ListConfigMaps", func() (int, error) { c, e := reader.ListConfigMaps(ctx, "default"); return len(c), e }, 1},
+		{"ListSecrets", func() (int, error) { s, e := reader.ListSecrets(ctx, "default"); return len(s), e }, 1},
+		{"ListEvents", func() (int, error) { e, err := reader.ListEvents(ctx, "default"); return len(e), err }, 1},
+		{"ListStatefulSets", func() (int, error) { s, e := reader.ListStatefulSets(ctx, "default"); return len(s), e }, 1},
+		{"ListDaemonSets", func() (int, error) { d, e := reader.ListDaemonSets(ctx, "default"); return len(d), e }, 1},
+		{"ListReplicaSets", func() (int, error) { r, e := reader.ListReplicaSets(ctx, "default"); return len(r), e }, 1},
+		{"ListJobs", func() (int, error) { j, e := reader.ListJobs(ctx, "default"); return len(j), e }, 1},
+		{"ListCronJobs", func() (int, error) { c, e := reader.ListCronJobs(ctx, "default"); return len(c), e }, 1},
+		{"ListIngresses", func() (int, error) { i, e := reader.ListIngresses(ctx, "default"); return len(i), e }, 1},
+		{"ListNetworkPolicies", func() (int, error) { n, e := reader.ListNetworkPolicies(ctx, "default"); return len(n), e }, 1},
+		{"ListRoles", func() (int, error) { r, e := reader.ListRoles(ctx, "default"); return len(r), e }, 1},
+		{"ListRoleBindings", func() (int, error) { r, e := reader.ListRoleBindings(ctx, "default"); return len(r), e }, 1},
+		{"ListClusterRoles", func() (int, error) { c, e := reader.ListClusterRoles(ctx); return len(c), e }, 1},
+		{"ListClusterRoleBindings", func() (int, error) { c, e := reader.ListClusterRoleBindings(ctx); return len(c), e }, 1},
+		{"ListPersistentVolumes", func() (int, error) { p, e := reader.ListPersistentVolumes(ctx); return len(p), e }, 1},
+		{"ListPersistentVolumeClaims", func() (int, error) { p, e := reader.ListPersistentVolumeClaims(ctx, "default"); return len(p), e }, 1},
+		{"ListStorageClasses", func() (int, error) { s, e := reader.ListStorageClasses(ctx); return len(s), e }, 1},
+		{"ListServiceAccounts", func() (int, error) { s, e := reader.ListServiceAccounts(ctx, "default"); return len(s), e }, 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.listFunc()
+			if err != nil {
+				t.Fatalf("%s failed: %v", tt.name, err)
+			}
+			if got != tt.want {
+				t.Errorf("%s: got %d, want %d", tt.name, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestReaderEmptyResults validates behavior when no resources exist.
+func TestReaderEmptyResults(t *testing.T) {
+	client := &Client{Clientset: fake.NewSimpleClientset()}
+	ctx := context.Background()
+	var reader Reader = client
+
+	// All list operations should succeed with no error when namespace is empty
+	pods, err := reader.ListPods(ctx, "default")
 	if err != nil {
 		t.Fatalf("ListPods failed: %v", err)
 	}
-
-	if len(pods) != 1 {
-		t.Errorf("Expected 1 pod, got %d", len(pods))
-	}
-	if pods[0].Name != "test-pod" {
-		t.Errorf("Expected pod name test-pod, got %s", pods[0].Name)
+	// Note: K8s fake client returns nil slice when empty, which is acceptable Go behavior
+	// The important contract is: no error and len() == 0
+	if len(pods) != 0 {
+		t.Errorf("Expected 0 pods, got %d", len(pods))
 	}
 }
 
-func TestListNodes(t *testing.T) {
+// TestReaderNamespaceIsolation validates namespace filtering works correctly.
+func TestReaderNamespaceIsolation(t *testing.T) {
+	fix := newFixtures()
+	objects := []runtime.Object{
+		fix.pod("pod-default", "default"),
+		fix.pod("pod-kube", "kube-system"),
+	}
+	client := &Client{Clientset: fake.NewSimpleClientset(objects...)}
 	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&corev1.Node{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-node",
-		},
-	})
-	client := &Client{Clientset: clientset}
+	var reader Reader = client
 
-	nodes, err := client.ListNodes(ctx)
-	if err != nil {
-		t.Fatalf("ListNodes failed: %v", err)
+	defaultPods, _ := reader.ListPods(ctx, "default")
+	kubePods, _ := reader.ListPods(ctx, "kube-system")
+
+	if len(defaultPods) != 1 || defaultPods[0].Name != "pod-default" {
+		t.Errorf("Expected 1 pod in default, got %d", len(defaultPods))
 	}
-
-	if len(nodes) != 1 {
-		t.Errorf("Expected 1 node, got %d", len(nodes))
+	if len(kubePods) != 1 || kubePods[0].Name != "pod-kube" {
+		t.Errorf("Expected 1 pod in kube-system, got %d", len(kubePods))
 	}
 }
 
-func TestListDeployments(t *testing.T) {
-	ctx := context.Background()
-	replicas := int32(3)
-	clientset := fake.NewSimpleClientset(&appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-deploy",
-			Namespace: "default",
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicas,
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	deps, err := client.ListDeployments(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListDeployments failed: %v", err)
-	}
-
-	if len(deps) != 1 {
-		t.Errorf("Expected 1 deployment, got %d", len(deps))
-	}
-	if deps[0].Name != "test-deploy" {
-		t.Errorf("Expected deployment name test-deploy, got %s", deps[0].Name)
-	}
-}
-
-func TestListStatefulSets(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&appsv1.StatefulSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-sts",
-			Namespace: "default",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	sts, err := client.ListStatefulSets(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListStatefulSets failed: %v", err)
-	}
-
-	if len(sts) != 1 {
-		t.Errorf("Expected 1 statefulset, got %d", len(sts))
-	}
-}
-
-func TestListServices(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-svc",
-			Namespace: "default",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	svcs, err := client.ListServices(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListServices failed: %v", err)
-	}
-
-	if len(svcs) != 1 {
-		t.Errorf("Expected 1 service, got %d", len(svcs))
-	}
-}
-
-func TestListConfigMaps(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-cm",
-			Namespace: "default",
-		},
-		Data: map[string]string{"key": "value"},
-	})
-	client := &Client{Clientset: clientset}
-
-	cms, err := client.ListConfigMaps(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListConfigMaps failed: %v", err)
-	}
-
-	if len(cms) != 1 {
-		t.Errorf("Expected 1 configmap, got %d", len(cms))
-	}
-}
-
-func TestListSecrets(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-secret",
-			Namespace: "default",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	secrets, err := client.ListSecrets(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListSecrets failed: %v", err)
-	}
-
-	if len(secrets) != 1 {
-		t.Errorf("Expected 1 secret, got %d", len(secrets))
-	}
-}
-
-func TestListIngresses(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-ing",
-			Namespace: "default",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	ings, err := client.ListIngresses(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListIngresses failed: %v", err)
-	}
-
-	if len(ings) != 1 {
-		t.Errorf("Expected 1 ingress, got %d", len(ings))
-	}
-}
-
-func TestListNamespaces(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(
-		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
-		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system"}},
-	)
-	client := &Client{Clientset: clientset}
-
-	nss, err := client.ListNamespaces(ctx)
-	if err != nil {
-		t.Fatalf("ListNamespaces failed: %v", err)
-	}
-
-	if len(nss) != 2 {
-		t.Errorf("Expected 2 namespaces, got %d", len(nss))
-	}
-}
-
-func TestListEvents(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&corev1.Event{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-event",
-			Namespace: "default",
-		},
-		Type:    "Warning",
-		Reason:  "TestReason",
-		Message: "Test message",
-	})
-	client := &Client{Clientset: clientset}
-
-	events, err := client.ListEvents(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListEvents failed: %v", err)
-	}
-
-	if len(events) != 1 {
-		t.Errorf("Expected 1 event, got %d", len(events))
-	}
-}
-
-func TestListRoles(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-role",
-			Namespace: "default",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	roles, err := client.ListRoles(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListRoles failed: %v", err)
-	}
-
-	if len(roles) != 1 {
-		t.Errorf("Expected 1 role, got %d", len(roles))
-	}
-}
-
-func TestListRoleBindings(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-rb",
-			Namespace: "default",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	rbs, err := client.ListRoleBindings(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListRoleBindings failed: %v", err)
-	}
-
-	if len(rbs) != 1 {
-		t.Errorf("Expected 1 rolebinding, got %d", len(rbs))
-	}
-}
-
-func TestListClusterRoles(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-clusterrole",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	crs, err := client.ListClusterRoles(ctx)
-	if err != nil {
-		t.Fatalf("ListClusterRoles failed: %v", err)
-	}
-
-	if len(crs) != 1 {
-		t.Errorf("Expected 1 clusterrole, got %d", len(crs))
-	}
-}
-
-func TestListClusterRoleBindings(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-crb",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	crbs, err := client.ListClusterRoleBindings(ctx)
-	if err != nil {
-		t.Fatalf("ListClusterRoleBindings failed: %v", err)
-	}
-
-	if len(crbs) != 1 {
-		t.Errorf("Expected 1 clusterrolebinding, got %d", len(crbs))
-	}
-}
-
-func TestListPersistentVolumes(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&corev1.PersistentVolume{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-pv",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	pvs, err := client.ListPersistentVolumes(ctx)
-	if err != nil {
-		t.Fatalf("ListPersistentVolumes failed: %v", err)
-	}
-
-	if len(pvs) != 1 {
-		t.Errorf("Expected 1 pv, got %d", len(pvs))
-	}
-}
-
-func TestListPersistentVolumeClaims(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pvc",
-			Namespace: "default",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	pvcs, err := client.ListPersistentVolumeClaims(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListPersistentVolumeClaims failed: %v", err)
-	}
-
-	if len(pvcs) != 1 {
-		t.Errorf("Expected 1 pvc, got %d", len(pvcs))
-	}
-}
-
-func TestListStorageClasses(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-sc",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	scs, err := client.ListStorageClasses(ctx)
-	if err != nil {
-		t.Fatalf("ListStorageClasses failed: %v", err)
-	}
-
-	if len(scs) != 1 {
-		t.Errorf("Expected 1 storageclass, got %d", len(scs))
-	}
-}
-
-func TestListServiceAccounts(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-sa",
-			Namespace: "default",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	sas, err := client.ListServiceAccounts(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListServiceAccounts failed: %v", err)
-	}
-
-	if len(sas) != 1 {
-		t.Errorf("Expected 1 serviceaccount, got %d", len(sas))
-	}
-}
-
-func TestListDaemonSets(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&appsv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-ds",
-			Namespace: "default",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	dss, err := client.ListDaemonSets(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListDaemonSets failed: %v", err)
-	}
-
-	if len(dss) != 1 {
-		t.Errorf("Expected 1 daemonset, got %d", len(dss))
-	}
-}
-
-func TestListJobs(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-job",
-			Namespace: "default",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	jobs, err := client.ListJobs(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListJobs failed: %v", err)
-	}
-
-	if len(jobs) != 1 {
-		t.Errorf("Expected 1 job, got %d", len(jobs))
-	}
-}
-
-func TestListCronJobs(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&batchv1.CronJob{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-cj",
-			Namespace: "default",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	cjs, err := client.ListCronJobs(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListCronJobs failed: %v", err)
-	}
-
-	if len(cjs) != 1 {
-		t.Errorf("Expected 1 cronjob, got %d", len(cjs))
-	}
-}
-
-func TestListNetworkPolicies(t *testing.T) {
-	ctx := context.Background()
-	clientset := fake.NewSimpleClientset(&networkingv1.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-netpol",
-			Namespace: "default",
-		},
-	})
-	client := &Client{Clientset: clientset}
-
-	netpols, err := client.ListNetworkPolicies(ctx, "default")
-	if err != nil {
-		t.Fatalf("ListNetworkPolicies failed: %v", err)
-	}
-
-	if len(netpols) != 1 {
-		t.Errorf("Expected 1 networkpolicy, got %d", len(netpols))
-	}
-}
+// ============================================================================
+// GVR Mapping Tests - These test implementation-specific behavior
+// ============================================================================
 
 func TestGetGVR(t *testing.T) {
 	client := &Client{}
 
-	cases := []struct {
-		res      string
-		expected string
+	tests := []struct {
+		input    string
+		wantRes  string
+		wantOK   bool
 	}{
-		{"pods", "pods"},
-		{"po", "pods"},
-		{"services", "services"},
-		{"svc", "services"},
-		{"deployments", "deployments"},
-		{"deploy", "deployments"},
-		{"statefulsets", "statefulsets"},
-		{"sts", "statefulsets"},
-		{"daemonsets", "daemonsets"},
-		{"ds", "daemonsets"},
-		{"jobs", "jobs"},
-		{"cronjobs", "cronjobs"},
-		{"cj", "cronjobs"},
-		{"configmaps", "configmaps"},
-		{"cm", "configmaps"},
-		{"secrets", "secrets"},
-		{"ingresses", "ingresses"},
-		{"ing", "ingresses"},
-		{"roles", "roles"},
-		{"rolebindings", "rolebindings"},
-		{"rb", "rolebindings"},
-		{"clusterroles", "clusterroles"},
-		{"clusterrolebindings", "clusterrolebindings"},
-		{"crb", "clusterrolebindings"},
-		{"persistentvolumes", "persistentvolumes"},
-		{"pv", "persistentvolumes"},
-		{"persistentvolumeclaims", "persistentvolumeclaims"},
-		{"pvc", "persistentvolumeclaims"},
-		{"storageclasses", "storageclasses"},
-		{"sc", "storageclasses"},
-		{"serviceaccounts", "serviceaccounts"},
-		{"sa", "serviceaccounts"},
-		{"hpa", "horizontalpodautoscalers"},
-		{"networkpolicies", "networkpolicies"},
-		{"netpol", "networkpolicies"},
-		{"invalid", ""},
+		// Standard resources
+		{"pods", "pods", true},
+		{"po", "pods", true},
+		{"services", "services", true},
+		{"svc", "services", true},
+		{"deployments", "deployments", true},
+		{"deploy", "deployments", true},
+		{"statefulsets", "statefulsets", true},
+		{"sts", "statefulsets", true},
+		{"daemonsets", "daemonsets", true},
+		{"ds", "daemonsets", true},
+		{"jobs", "jobs", true},
+		{"cronjobs", "cronjobs", true},
+		{"cj", "cronjobs", true},
+		{"configmaps", "configmaps", true},
+		{"cm", "configmaps", true},
+		{"secrets", "secrets", true},
+		{"ingresses", "ingresses", true},
+		{"ing", "ingresses", true},
+		// RBAC
+		{"roles", "roles", true},
+		{"rolebindings", "rolebindings", true},
+		{"rb", "rolebindings", true},
+		{"clusterroles", "clusterroles", true},
+		{"clusterrolebindings", "clusterrolebindings", true},
+		{"crb", "clusterrolebindings", true},
+		// Storage
+		{"persistentvolumes", "persistentvolumes", true},
+		{"pv", "persistentvolumes", true},
+		{"persistentvolumeclaims", "persistentvolumeclaims", true},
+		{"pvc", "persistentvolumeclaims", true},
+		{"storageclasses", "storageclasses", true},
+		{"sc", "storageclasses", true},
+		// Other
+		{"serviceaccounts", "serviceaccounts", true},
+		{"sa", "serviceaccounts", true},
+		{"hpa", "horizontalpodautoscalers", true},
+		{"networkpolicies", "networkpolicies", true},
+		{"netpol", "networkpolicies", true},
+		// Invalid
+		{"invalid", "", false},
+		{"", "", false},
 	}
 
-	for _, c := range cases {
-		gvr, ok := client.GetGVR(c.res)
-		if c.expected == "" {
-			if ok {
-				t.Errorf("expected fail for %s, but got %v", c.res, gvr)
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			gvr, ok := client.GetGVR(tt.input)
+			if ok != tt.wantOK {
+				t.Errorf("GetGVR(%q) ok = %v, want %v", tt.input, ok, tt.wantOK)
 			}
-		} else {
-			if !ok || gvr.Resource != c.expected {
-				t.Errorf("expected %s for %s, got %v", c.expected, c.res, gvr)
+			if tt.wantOK && gvr.Resource != tt.wantRes {
+				t.Errorf("GetGVR(%q) = %v, want %v", tt.input, gvr.Resource, tt.wantRes)
 			}
-		}
+		})
 	}
 }
 
 func TestGetGVR_CaseInsensitive(t *testing.T) {
 	client := &Client{}
 
-	cases := []struct {
-		res      string
-		expected string
-	}{
-		{"PODS", "pods"},
-		{"Pods", "pods"},
-		{"DeployMents", "deployments"},
-		{"CONFIGMAPS", "configmaps"},
-	}
+	tests := []string{"PODS", "Pods", "DeployMents", "CONFIGMAPS"}
+	expected := []string{"pods", "pods", "deployments", "configmaps"}
 
-	for _, c := range cases {
-		gvr, ok := client.GetGVR(c.res)
-		if !ok || gvr.Resource != c.expected {
-			t.Errorf("expected %s for %s, got %v (ok=%v)", c.expected, c.res, gvr, ok)
+	for i, input := range tests {
+		gvr, ok := client.GetGVR(input)
+		if !ok || gvr.Resource != expected[i] {
+			t.Errorf("GetGVR(%q) = %v, want %v", input, gvr.Resource, expected[i])
 		}
 	}
 }
 
-func TestDefaultGetOptions(t *testing.T) {
-	opts := DefaultGetOptions()
-	if opts.ResourceVersion != "" {
-		t.Error("expected empty resource version")
-	}
+// ============================================================================
+// Options Tests
+// ============================================================================
+
+func TestDefaultOptions(t *testing.T) {
+	t.Run("GetOptions", func(t *testing.T) {
+		opts := DefaultGetOptions()
+		if opts.ResourceVersion != "" {
+			t.Error("expected empty resource version")
+		}
+	})
+
+	t.Run("ListOptions", func(t *testing.T) {
+		opts := DefaultListOptions()
+		if opts.LabelSelector != "" || opts.FieldSelector != "" {
+			t.Error("expected empty selectors")
+		}
+	})
 }
 
-func TestDefaultListOptions(t *testing.T) {
-	opts := DefaultListOptions()
-	if opts.LabelSelector != "" {
-		t.Error("expected empty label selector")
-	}
-	if opts.FieldSelector != "" {
-		t.Error("expected empty field selector")
-	}
-}
+// ============================================================================
+// Metrics Client Tests
+// ============================================================================
 
-func TestClient_GetPodMetrics_NoMetricsClient(t *testing.T) {
-	ctx := context.Background()
+func TestMetricsClientRequired(t *testing.T) {
 	client := &Client{Metrics: nil}
-
-	_, err := client.GetPodMetrics(ctx, "default")
-	if err == nil {
-		t.Error("expected error when metrics client is nil")
-	}
-}
-
-func TestClient_GetNodeMetrics_NoMetricsClient(t *testing.T) {
 	ctx := context.Background()
-	client := &Client{Metrics: nil}
 
-	_, err := client.GetNodeMetrics(ctx)
-	if err == nil {
-		t.Error("expected error when metrics client is nil")
+	t.Run("GetPodMetrics", func(t *testing.T) {
+		if _, err := client.GetPodMetrics(ctx, "default"); err == nil {
+			t.Error("expected error when metrics client is nil")
+		}
+	})
+
+	t.Run("GetNodeMetrics", func(t *testing.T) {
+		if _, err := client.GetNodeMetrics(ctx); err == nil {
+			t.Error("expected error when metrics client is nil")
+		}
+	})
+}
+
+// ============================================================================
+// CRDInfo Tests
+// ============================================================================
+
+func TestCRDInfo(t *testing.T) {
+	tests := []struct {
+		name       string
+		crd        CRDInfo
+		wantNs     bool
+		wantShorts int
+	}{
+		{
+			name: "namespaced with short names",
+			crd: CRDInfo{
+				Name: "certificates.cert-manager.io", Group: "cert-manager.io",
+				Version: "v1", Kind: "Certificate", Plural: "certificates",
+				Namespaced: true, ShortNames: []string{"cert", "certs"},
+			},
+			wantNs: true, wantShorts: 2,
+		},
+		{
+			name: "cluster-scoped no short names",
+			crd: CRDInfo{
+				Name: "clusterwidgets.example.com", Group: "example.com",
+				Version: "v1", Kind: "ClusterWidget", Plural: "clusterwidgets",
+				Namespaced: false, ShortNames: nil,
+			},
+			wantNs: false, wantShorts: 0,
+		},
+		{
+			name: "empty short names slice",
+			crd: CRDInfo{
+				Name: "widgets.example.com", Group: "example.com",
+				Version: "v1alpha1", Kind: "Widget", Plural: "widgets",
+				Namespaced: true, ShortNames: []string{},
+			},
+			wantNs: true, wantShorts: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.crd.Namespaced != tt.wantNs {
+				t.Errorf("Namespaced = %v, want %v", tt.crd.Namespaced, tt.wantNs)
+			}
+			if len(tt.crd.ShortNames) != tt.wantShorts {
+				t.Errorf("ShortNames count = %d, want %d", len(tt.crd.ShortNames), tt.wantShorts)
+			}
+		})
 	}
 }
 
-func TestCRDInfo_Struct(t *testing.T) {
-	crdInfo := &CRDInfo{
-		Name:       "certificates.cert-manager.io",
-		Group:      "cert-manager.io",
-		Version:    "v1",
-		Kind:       "Certificate",
-		Plural:     "certificates",
-		Namespaced: true,
-		ShortNames: []string{"cert", "certs"},
-	}
+// ============================================================================
+// Compile-time interface verification
+// ============================================================================
 
-	if crdInfo.Name != "certificates.cert-manager.io" {
-		t.Errorf("expected name certificates.cert-manager.io, got %s", crdInfo.Name)
-	}
-	if crdInfo.Group != "cert-manager.io" {
-		t.Errorf("expected group cert-manager.io, got %s", crdInfo.Group)
-	}
-	if crdInfo.Version != "v1" {
-		t.Errorf("expected version v1, got %s", crdInfo.Version)
-	}
-	if crdInfo.Kind != "Certificate" {
-		t.Errorf("expected kind Certificate, got %s", crdInfo.Kind)
-	}
-	if crdInfo.Plural != "certificates" {
-		t.Errorf("expected plural certificates, got %s", crdInfo.Plural)
-	}
-	if !crdInfo.Namespaced {
-		t.Error("expected namespaced to be true")
-	}
-	if len(crdInfo.ShortNames) != 2 {
-		t.Errorf("expected 2 short names, got %d", len(crdInfo.ShortNames))
-	}
-}
-
-func TestCRDInfo_ClusterScoped(t *testing.T) {
-	crdInfo := &CRDInfo{
-		Name:       "clusterwidgets.example.com",
-		Group:      "example.com",
-		Version:    "v1",
-		Kind:       "ClusterWidget",
-		Plural:     "clusterwidgets",
-		Namespaced: false,
-		ShortNames: nil,
-	}
-
-	if crdInfo.Namespaced {
-		t.Error("expected namespaced to be false for cluster-scoped resource")
-	}
-	if crdInfo.ShortNames != nil {
-		t.Error("expected nil short names")
-	}
-}
-
-func TestCRDInfo_EmptyShortNames(t *testing.T) {
-	crdInfo := &CRDInfo{
-		Name:       "widgets.example.com",
-		Group:      "example.com",
-		Version:    "v1alpha1",
-		Kind:       "Widget",
-		Plural:     "widgets",
-		Namespaced: true,
-		ShortNames: []string{},
-	}
-
-	if len(crdInfo.ShortNames) != 0 {
-		t.Errorf("expected 0 short names, got %d", len(crdInfo.ShortNames))
-	}
-}
+// Ensure Client implements all interfaces
+var (
+	_ Reader         = (*Client)(nil)
+	_ Writer         = (*Client)(nil)
+	_ ContextManager = (*Client)(nil)
+	_ ClientInterface = (*Client)(nil)
+)

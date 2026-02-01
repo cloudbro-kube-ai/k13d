@@ -1,0 +1,32 @@
+# Create Ingress Task
+# Tests Ingress resource creation with routing rules
+
+name: Create Ingress with Path Routing
+description: Create an Ingress resource with host and path-based routing
+category: networking
+difficulty: medium
+tags:
+  - networking
+  - ingress
+  - routing
+  - creation
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create an Ingress named 'app-ingress' in the current namespace with:
+      - Host: app.example.com
+      - Path: /api -> backend service 'api-svc' on port 8080
+      - Path: / -> backend service 'web-svc' on port 80
+      - Annotations for nginx ingress controller
+      - TLS configuration with secret name 'app-tls' (optional)
+
+      Note: Services 'api-svc' and 'web-svc' already exist in the namespace.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "ingress.*created|ingress.*configured"

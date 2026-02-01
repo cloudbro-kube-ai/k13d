@@ -1,0 +1,32 @@
+# Fix RBAC Permission Task
+# Tests RBAC troubleshooting capabilities
+
+name: Fix RBAC Permission Denied
+description: Diagnose and fix a pod that cannot access Kubernetes API due to missing RBAC permissions
+category: troubleshooting
+difficulty: hard
+tags:
+  - rbac
+  - security
+  - troubleshooting
+
+timeout: 10m
+
+script:
+  - prompt: |
+      A pod named 'api-client' is running but cannot list pods in the cluster.
+      When it tries to call the Kubernetes API, it gets "Forbidden" errors.
+
+      Please:
+      1. Diagnose why the pod cannot access the API
+      2. Create the necessary RBAC resources to allow it to list pods
+      3. Verify the pod can now access the API
+
+      The pod uses the ServiceAccount 'api-client-sa'.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "role|rolebinding|clusterrole|permission|forbidden|fixed"

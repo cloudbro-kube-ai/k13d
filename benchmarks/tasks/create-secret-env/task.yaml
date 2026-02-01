@@ -1,0 +1,34 @@
+# Create Secret and Inject as Env Task
+# Tests Secret creation and pod environment injection
+
+name: Create Secret and Inject into Pod
+description: Create a Secret and inject it as environment variables in a pod
+category: configuration
+difficulty: medium
+tags:
+  - secrets
+  - configuration
+  - environment
+  - creation
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a Secret named 'app-secrets' in the current namespace with the following data:
+      - DATABASE_URL: postgres://db.example.com:5432/myapp
+      - API_KEY: sk-test-12345
+
+      Then create a pod named 'app-pod' that:
+      - Uses image: busybox:1.35
+      - Runs command: ["sleep", "3600"]
+      - Has all keys from 'app-secrets' injected as environment variables
+
+      Verify the pod is running and has the environment variables set.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "secret.*created|pod.*created|running"

@@ -1,0 +1,31 @@
+# Create PVC Task
+# Tests PersistentVolumeClaim creation and binding
+
+name: Create PVC with Storage Class
+description: Create a PersistentVolumeClaim and verify it binds to a PersistentVolume
+category: storage
+difficulty: medium
+tags:
+  - storage
+  - pvc
+  - pv
+  - creation
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a PersistentVolumeClaim named 'data-pvc' in the current namespace with:
+      - Access mode: ReadWriteOnce
+      - Storage request: 1Gi
+      - Storage class: standard (or the default storage class)
+      - Labels: app=data, tier=storage
+
+      Verify the PVC is bound or in pending state (depending on cluster provisioner).
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "persistentvolumeclaim.*created|pvc.*created|bound|pending"

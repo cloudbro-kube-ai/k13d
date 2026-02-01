@@ -1,0 +1,37 @@
+# Debug DNS Task
+# Tests DNS troubleshooting in Kubernetes
+
+name: Debug DNS Resolution Issue
+description: Diagnose and fix DNS resolution problems in a pod
+category: troubleshooting
+difficulty: hard
+tags:
+  - networking
+  - dns
+  - coredns
+  - troubleshooting
+  - debugging
+
+timeout: 10m
+
+script:
+  - prompt: |
+      A pod named 'dns-test' is unable to resolve service names within the cluster.
+      Running 'nslookup kubernetes.default' from the pod fails.
+
+      Diagnose the DNS resolution issue and fix it.
+
+      Possible causes to investigate:
+      - CoreDNS pods not running
+      - Network policy blocking DNS traffic
+      - Pod DNS configuration issues
+      - Service ClusterIP issues
+
+      The solution should allow the pod to successfully resolve cluster DNS names.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "dns.*fixed|resolved|working|coredns"

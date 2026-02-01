@@ -1,0 +1,36 @@
+# Fix PV Binding Task
+# Tests troubleshooting PVC to PV binding issues
+
+name: Fix PVC Binding Issue
+description: Diagnose and fix a PVC that cannot bind to an available PV
+category: troubleshooting
+difficulty: hard
+tags:
+  - storage
+  - pvc
+  - pv
+  - troubleshooting
+  - debugging
+
+timeout: 10m
+
+script:
+  - prompt: |
+      A PVC named 'app-data' is in Pending state and cannot bind to the available PV.
+
+      Diagnose the issue and fix it so the PVC can successfully bind to a PV.
+
+      Common issues to check:
+      - Access mode mismatch
+      - Storage class mismatch
+      - Capacity mismatch
+      - Selector/label mismatch
+
+      The solution should result in the PVC being Bound.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "bound|fixed|updated|patched"

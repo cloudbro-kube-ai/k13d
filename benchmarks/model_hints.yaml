@@ -1,0 +1,235 @@
+# AI Model Hints for k13d Benchmarks
+# This file contains known strengths and weaknesses for various AI models
+# Used to provide context for benchmark interpretation
+
+version: "1.0"
+
+models:
+  # OpenAI Models
+  gpt-4o:
+    provider: openai
+    strengths:
+      - Excellent at multi-step reasoning
+      - Strong YAML generation
+      - Good at understanding complex Kubernetes architectures
+      - Fast response times for tool calling
+    weaknesses:
+      - May be verbose in explanations
+      - Sometimes over-engineers solutions
+    categories:
+      strong:
+        - multi-step
+        - troubleshooting
+        - creation
+      weak: []
+    notes: "Best overall performance for complex Kubernetes tasks"
+
+  gpt-4o-mini:
+    provider: openai
+    strengths:
+      - Fast and cost-effective
+      - Good for simple tasks
+      - Reliable tool usage
+    weaknesses:
+      - May struggle with complex multi-step tasks
+      - Less accurate on edge cases
+    categories:
+      strong:
+        - creation
+        - scaling
+      weak:
+        - multi-step
+        - gatekeeper
+    notes: "Good for simple operations, cost-effective"
+
+  o1:
+    provider: openai
+    strengths:
+      - Deep reasoning capabilities
+      - Excellent for complex debugging
+      - Strong logical analysis
+    weaknesses:
+      - Slower response times
+      - May overthink simple tasks
+    categories:
+      strong:
+        - troubleshooting
+        - analysis
+        - gatekeeper
+      weak: []
+    notes: "Best for complex troubleshooting requiring deep analysis"
+
+  o1-mini:
+    provider: openai
+    strengths:
+      - Good reasoning at lower cost
+      - Balanced performance
+    weaknesses:
+      - Less capable than full o1
+    categories:
+      strong:
+        - troubleshooting
+      weak: []
+
+  # Google Models
+  gemini-2.5-pro:
+    provider: gemini
+    strengths:
+      - Excellent multimodal understanding
+      - Good at interpreting logs and errors
+      - Strong code generation
+    weaknesses:
+      - May require more context for K8s specifics
+    categories:
+      strong:
+        - troubleshooting
+        - analysis
+      weak: []
+    notes: "Strong general-purpose model"
+
+  gemini-2.5-flash:
+    provider: gemini
+    strengths:
+      - Very fast response times
+      - Good for simple tasks
+      - Cost-effective
+    weaknesses:
+      - Less accurate on complex scenarios
+    categories:
+      strong:
+        - creation
+        - scaling
+      weak:
+        - multi-step
+    notes: "Best for quick, simple operations"
+
+  # Anthropic Models
+  claude-sonnet-4-20250514:
+    provider: anthropic
+    strengths:
+      - Excellent instruction following
+      - Strong safety awareness
+      - Good at explaining K8s concepts
+      - Reliable YAML generation
+    weaknesses:
+      - May be overly cautious
+    categories:
+      strong:
+        - creation
+        - rbac
+        - configuration
+      weak: []
+    notes: "Well-balanced model with strong safety"
+
+  claude-opus-4-20250514:
+    provider: anthropic
+    strengths:
+      - Best-in-class reasoning
+      - Excellent for complex debugging
+      - Strong multi-step task handling
+      - Superior code understanding
+    weaknesses:
+      - Higher latency
+      - May be verbose
+    categories:
+      strong:
+        - troubleshooting
+        - multi-step
+        - gatekeeper
+        - analysis
+      weak: []
+    notes: "Best for the most complex Kubernetes tasks"
+
+  # Ollama/Local Models
+  llama3.2:
+    provider: ollama
+    strengths:
+      - Runs locally
+      - No API costs
+      - Good privacy
+    weaknesses:
+      - Limited context window
+      - May struggle with complex K8s concepts
+    categories:
+      strong:
+        - creation
+      weak:
+        - multi-step
+        - troubleshooting
+    notes: "Good for basic local testing"
+
+  qwen2.5:
+    provider: ollama
+    strengths:
+      - Strong coding abilities
+      - Good YAML generation
+      - Runs locally
+    weaknesses:
+      - May have K8s knowledge gaps
+    categories:
+      strong:
+        - creation
+        - configuration
+      weak:
+        - analysis
+    notes: "Good local alternative for coding tasks"
+
+  deepseek-coder:
+    provider: ollama
+    strengths:
+      - Excellent code understanding
+      - Good at technical tasks
+    weaknesses:
+      - Limited K8s-specific knowledge
+    categories:
+      strong:
+        - configuration
+      weak:
+        - troubleshooting
+    notes: "Good for code-focused tasks"
+
+# Category descriptions
+categories:
+  creation:
+    description: "Creating new Kubernetes resources (pods, services, deployments)"
+    typical_difficulty: easy
+
+  troubleshooting:
+    description: "Debugging failing pods, services, and deployments"
+    typical_difficulty: medium
+
+  scaling:
+    description: "Scaling workloads up and down, HPA configuration"
+    typical_difficulty: medium
+
+  networking:
+    description: "Network policies, service routing, ingress configuration"
+    typical_difficulty: hard
+
+  storage:
+    description: "PVC/PV management, storage classes, volume mounting"
+    typical_difficulty: medium
+
+  rbac:
+    description: "Role-based access control, service accounts, permissions"
+    typical_difficulty: medium
+
+  configuration:
+    description: "ConfigMaps, Secrets, environment variables"
+    typical_difficulty: easy
+
+  workloads:
+    description: "Deployments, StatefulSets, DaemonSets, Jobs, CronJobs"
+    typical_difficulty: medium
+
+  analysis:
+    description: "Log analysis, resource investigation, cluster health checks"
+    typical_difficulty: medium
+
+  gatekeeper:
+    description: "OPA Gatekeeper policies and constraints"
+    typical_difficulty: hard
+
+  multi-step:
+    description: "Complex tasks requiring multiple coordinated operations"
+    typical_difficulty: expert

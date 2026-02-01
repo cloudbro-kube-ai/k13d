@@ -1,0 +1,18 @@
+{
+  "name": "k13d-tui-tests",
+  "version": "1.0.0",
+  "description": "TUI E2E tests for k13d using Microsoft tui-test",
+  "type": "module",
+  "scripts": {
+    "test": "npx @microsoft/tui-test",
+    "test:trace": "npx @microsoft/tui-test --trace",
+    "build-binary": "cd ../.. && go build -o tests/tui-test/k13d ./cmd/kube-ai-dashboard-cli",
+    "pretest": "npm run build-binary"
+  },
+  "devDependencies": {
+    "@microsoft/tui-test": "^0.3.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": ["k13d", "kubernetes", "tui", "testing"],
+  "license": "Apache-2.0"
+}

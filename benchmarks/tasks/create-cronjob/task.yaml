@@ -1,0 +1,34 @@
+# Create CronJob Task
+# Tests CronJob creation with schedule and job template
+
+name: Create Scheduled CronJob
+description: Create a CronJob that runs a backup task on a schedule
+category: workloads
+difficulty: medium
+tags:
+  - workloads
+  - cronjob
+  - scheduling
+  - creation
+
+timeout: 5m
+
+script:
+  - prompt: |
+      Create a CronJob named 'backup-job' in the current namespace with:
+      - Schedule: Every day at 2:00 AM (0 2 * * *)
+      - Container image: busybox:1.35
+      - Command: ["/bin/sh", "-c", "echo 'Backup completed at $(date)'"]
+      - Concurrency policy: Forbid
+      - Successful jobs history limit: 3
+      - Failed jobs history limit: 1
+      - Restart policy: OnFailure
+
+      Verify the CronJob is created correctly.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "cronjob.*created|cronjob.*configured"

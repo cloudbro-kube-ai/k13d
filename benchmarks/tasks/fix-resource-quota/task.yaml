@@ -1,0 +1,36 @@
+# Fix Resource Quota Task
+# Tests ResourceQuota troubleshooting
+
+name: Fix ResourceQuota Blocking Deployment
+description: Diagnose and fix a ResourceQuota issue preventing pod creation
+category: troubleshooting
+difficulty: hard
+tags:
+  - resources
+  - quota
+  - troubleshooting
+  - debugging
+
+timeout: 10m
+
+script:
+  - prompt: |
+      A deployment named 'web-app' cannot create pods. New pods are being rejected
+      with a quota exceeded error.
+
+      Diagnose the ResourceQuota issue and fix it so the deployment can scale to
+      its desired replica count of 3.
+
+      Possible solutions:
+      - Adjust the ResourceQuota limits
+      - Reduce the pod resource requests
+      - Delete unused resources to free up quota
+
+      The deployment should have 3 running replicas after the fix.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "quota.*updated|deployment.*scaled|replicas.*ready"

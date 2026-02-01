@@ -1,0 +1,39 @@
+# Diagnose Node Issue Task
+# Tests node troubleshooting and analysis
+
+name: Diagnose Node NotReady Issue
+description: Analyze and report on why a node is in NotReady state
+category: troubleshooting
+difficulty: hard
+tags:
+  - nodes
+  - troubleshooting
+  - debugging
+  - analysis
+
+timeout: 10m
+
+script:
+  - prompt: |
+      A node in the cluster appears to be having issues. Pods are being
+      evicted and new pods cannot be scheduled.
+
+      Perform a comprehensive diagnosis:
+      1. Check node conditions and status
+      2. Review node events for errors
+      3. Analyze resource usage (CPU, memory, disk)
+      4. Check kubelet status and logs if possible
+      5. Identify any taints or cordons
+
+      Provide a detailed analysis report of the node's issues and
+      recommended remediation steps.
+
+      Note: This is an analysis task - you should gather information
+      and provide recommendations rather than making changes.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "node.*condition|kubelet|disk|memory|cpu|taint|analysis|report"
