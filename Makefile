@@ -151,31 +151,31 @@ test-integration:
 # Start Docker Compose test environment
 docker-test-up:
 	@echo "Starting test services (postgres, mariadb, ldap, ollama, mock-openai)..."
-	docker compose -f docker-compose.test.yaml up -d
+	docker compose -f deploy/docker/docker-compose.test.yaml up -d
 	@echo ""
 	@echo "Waiting for services to be healthy..."
 	@sleep 10
-	docker compose -f docker-compose.test.yaml ps
+	docker compose -f deploy/docker/docker-compose.test.yaml ps
 	@echo ""
 	@echo "Test services started. Run 'make test-integration' to run integration tests."
 
 # Stop Docker Compose test environment
 docker-test-down:
 	@echo "Stopping test services..."
-	docker compose -f docker-compose.test.yaml down -v
+	docker compose -f deploy/docker/docker-compose.test.yaml down -v
 
 # Check Docker Compose test environment status
 docker-test-status:
-	docker compose -f docker-compose.test.yaml ps
+	docker compose -f deploy/docker/docker-compose.test.yaml ps
 
 # Build mock services for testing
 docker-test-build:
 	@echo "Building mock services..."
-	docker compose -f docker-compose.test.yaml build
+	docker compose -f deploy/docker/docker-compose.test.yaml build
 
 # View test service logs
 docker-test-logs:
-	docker compose -f docker-compose.test.yaml logs -f
+	docker compose -f deploy/docker/docker-compose.test.yaml logs -f
 
 # Ollama setup - install and configure Ollama with default model
 ollama-setup:
@@ -254,10 +254,10 @@ bench-run-openai: bench-build
 # Start Docker benchmark environment
 bench-docker-up:
 	@echo "Starting benchmark environment (Ollama)..."
-	docker compose -f docker-compose.bench.yaml up -d ollama
+	docker compose -f deploy/docker/docker-compose.bench.yaml up -d ollama
 	@echo "Waiting for Ollama to be ready..."
 	@sleep 10
-	docker compose -f docker-compose.bench.yaml up ollama-init
+	docker compose -f deploy/docker/docker-compose.bench.yaml up ollama-init
 	@echo ""
 	@echo "Benchmark environment ready."
 	@echo "Run 'make bench-docker-run' to execute benchmarks."
@@ -276,7 +276,7 @@ bench-docker-run: bench-build
 # Stop Docker benchmark environment
 bench-docker-down:
 	@echo "Stopping benchmark environment..."
-	docker compose -f docker-compose.bench.yaml down -v
+	docker compose -f deploy/docker/docker-compose.bench.yaml down -v
 
 # Analyze benchmark results
 bench-analyze: bench-build
