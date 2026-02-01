@@ -5,6 +5,26 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-01
+
+### Added
+- **Model Profiles DB Storage**: Store LLM model configurations in SQLite with CRUD operations, usage statistics, and active profile tracking
+- **Prometheus Integration**: Full metrics dashboard with service discovery for Kubernetes API Server, Nodes, and cAdvisor
+- **Trivy CVE Scanner**: Security vulnerability scanning with air-gapped environment support and auto-download capability
+- **Storage Configuration**: Comprehensive storage configuration with `--storage-info` command for debugging
+- **AI Benchmark Framework**: 125+ benchmark tasks with dry-run mode for cluster-free evaluation
+- **TUI Improvements**: k13d ASCII logo, comprehensive tests, and highlight artifact fixes
+
+### Changed
+- **Project Structure**: Reorganized Dockerfiles to `deploy/docker/` directory
+- **AI Settings**: Merged Model and LLM settings tabs into unified AI configuration tab
+- **Chat History UI**: Improved icon alignment and visibility for edit/delete buttons
+
+### Fixed
+- **CI/CD**: Fixed Dockerfile path in GitHub Actions workflow
+- **TUI Deadlocks**: Prevented highlight artifacts and deadlocks on startup
+- **Session Memory**: Fixed benchmark session memory issues
+
 ## [0.3.0] - 2026-01-22
 
 ### Added
