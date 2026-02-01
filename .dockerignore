@@ -9,9 +9,9 @@
 *.swo
 *~
 
-# Build artifacts (keep k13d for Dockerfile.prebuilt)
-# k13d  # Needed for prebuilt Docker image
-k13d-eval
+# Build artifacts
+build/
+dist/
 *.exe
 *.out
 coverage.out
@@ -23,8 +23,9 @@ Thumbs.db
 # Test files
 *_test.go
 testdata/
+tests/
 
-# Documentation
+# Documentation (keep README for reference)
 *.md
 !README.md
 docs/
@@ -37,7 +38,17 @@ skills/
 .env.local
 *.log
 
-# Docker files (don't include in context)
-Dockerfile
-docker-compose*.yml
-.dockerignore
+# Deploy directory (Dockerfiles are in deploy/docker/)
+# Note: When building from deploy/docker/, context is ../..
+# So these paths are relative to project root
+
+# Benchmark files
+benchmarks/
+.build/
+
+# Scripts
+scripts/
+
+# Node modules (test dependencies)
+node_modules/
+package-lock.json
