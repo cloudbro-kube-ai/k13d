@@ -315,6 +315,12 @@ func createTables() error {
 		fmt.Printf("Warning: failed to create llm_usage table: %v\n", err)
 	}
 
+	// Create model_profiles table for LLM model configuration
+	if err := InitModelProfilesTable(); err != nil {
+		// Log but don't fail - non-critical feature
+		fmt.Printf("Warning: failed to create model_profiles table: %v\n", err)
+	}
+
 	return nil
 }
 
