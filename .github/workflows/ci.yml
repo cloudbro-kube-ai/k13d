@@ -113,5 +113,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: deploy/docker/Dockerfile
           push: false
           tags: k13d:test
