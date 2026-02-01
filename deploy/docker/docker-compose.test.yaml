@@ -128,8 +128,8 @@ services:
   # Mock OpenAI API server for testing
   mock-openai:
     build:
-      context: ./tests/mocks
-      dockerfile: Dockerfile.openai
+      context: ../..
+      dockerfile: tests/mocks/Dockerfile.openai
     container_name: k13d-test-openai
     ports:
       - "8081:8080"

@@ -127,7 +127,10 @@ k13d/
 │   ├── db/                             # SQLite database layer
 │   └── i18n/                           # Internationalization
 ├── deploy/                             # Deployment configurations
-│   ├── docker/                         # Docker Compose files
+│   ├── docker/                         # Docker and Compose files
+│   │   ├── Dockerfile                  # Main Dockerfile
+│   │   ├── Dockerfile.bench            # Benchmark runner
+│   │   ├── Dockerfile.prebuilt         # Pre-built binary
 │   │   ├── docker-compose.yaml         # Main compose file
 │   │   ├── docker-compose.test.yaml    # Test environment
 │   │   ├── docker-compose.bench.yaml   # Benchmark environment
@@ -156,7 +159,6 @@ k13d/
 ├── .github/workflows/                  # CI/CD workflows
 │   └── ci.yml                          # Main CI workflow
 ├── Makefile                            # Build automation
-├── Dockerfile                          # Container image
 ├── .goreleaser.yaml                    # Release configuration
 ├── go.mod / go.sum                     # Go modules
 ├── README.md                           # Project overview

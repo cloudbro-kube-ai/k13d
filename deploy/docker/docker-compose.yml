@@ -3,8 +3,8 @@ version: '3.8'
 services:
   k13d:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
     image: k13d:latest
     container_name: k13d
     ports:

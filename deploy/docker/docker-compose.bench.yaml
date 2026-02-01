@@ -47,15 +47,15 @@ services:
   # k13d benchmark runner
   bench:
     build:
-      context: .
-      dockerfile: Dockerfile.bench
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.bench
     container_name: k13d-bench-runner
     depends_on:
       ollama:
         condition: service_healthy
     volumes:
-      - ./benchmarks:/app/benchmarks:ro
-      - ./.build/bench-results:/app/results
+      - ../../benchmarks:/app/benchmarks:ro
+      - ../../.build/bench-results:/app/results
       - ${KUBECONFIG:-~/.kube/config}:/home/k13d/.kube/config:ro
     environment:
       K13S_LLM_PROVIDER: ollama

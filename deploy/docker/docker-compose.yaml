@@ -4,8 +4,8 @@ services:
   k13d:
     image: youngjukim/k13d:latest
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
     container_name: k13d
     ports:
       - "8080:8080"
