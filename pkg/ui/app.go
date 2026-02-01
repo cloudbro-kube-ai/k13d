@@ -1157,7 +1157,15 @@ func (a *App) selectNamespaceByNumber(num int) {
 	if selectedNs != "" {
 		a.addRecentNamespace(selectedNs)
 	}
+	resource := a.currentResource
 	a.mx.Unlock()
+
+	// Clear table immediately to prevent visual artifacts
+	a.QueueUpdateDraw(func() {
+		a.table.Clear()
+		a.table.SetTitle(fmt.Sprintf(" %s - Loading... ", resource))
+		a.table.SetCell(0, 0, tview.NewTableCell("Loading...").SetTextColor(tcell.ColorYellow))
+	})
 
 	a.flashMsg(fmt.Sprintf("Switched to namespace: %s", nsName), false)
 	a.updateHeader()

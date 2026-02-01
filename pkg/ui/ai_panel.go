@@ -30,6 +30,7 @@ type AIPanel struct {
 	isShowingApproval bool
 	currentApproval   *agent.ChoiceRequest
 	approvalCallback  func(bool) // For synchronous approval handling
+	autoScroll        bool       // Whether to auto-scroll on new content
 	mu                sync.Mutex
 
 	// Callbacks
@@ -44,7 +45,8 @@ var _ agent.AgentListener = (*AIPanel)(nil)
 // NewAIPanel creates a new AI panel component
 func NewAIPanel(app *tview.Application) *AIPanel {
 	p := &AIPanel{
-		app: app,
+		app:        app,
+		autoScroll: true, // Auto-scroll enabled by default
 	}
 
 	// Output view for AI responses
@@ -187,14 +189,22 @@ func (p *AIPanel) setupKeyHandlers() {
 		row, col := p.outputView.GetScrollOffset()
 		switch event.Key() {
 		case tcell.KeyUp:
+			p.mu.Lock()
+			p.autoScroll = false // Disable auto-scroll when user scrolls up
+			p.mu.Unlock()
 			if row > 0 {
 				p.outputView.ScrollTo(row-1, col)
 			}
 			return nil
 		case tcell.KeyDown:
 			p.outputView.ScrollTo(row+1, col)
+			// Check if at bottom to re-enable auto-scroll
+			p.checkAutoScrollReEnable()
 			return nil
 		case tcell.KeyPgUp:
+			p.mu.Lock()
+			p.autoScroll = false
+			p.mu.Unlock()
 			_, _, _, height := p.outputView.GetInnerRect()
 			if row > height {
 				p.outputView.ScrollTo(row-height, col)
@@ -205,11 +215,18 @@ func (p *AIPanel) setupKeyHandlers() {
 		case tcell.KeyPgDn:
 			_, _, _, height := p.outputView.GetInnerRect()
 			p.outputView.ScrollTo(row+height, col)
+			p.checkAutoScrollReEnable()
 			return nil
 		case tcell.KeyHome:
+			p.mu.Lock()
+			p.autoScroll = false
+			p.mu.Unlock()
 			p.outputView.ScrollTo(0, 0)
 			return nil
 		case tcell.KeyEnd:
+			p.mu.Lock()
+			p.autoScroll = true // Re-enable auto-scroll when jumping to end
+			p.mu.Unlock()
 			p.outputView.ScrollToEnd()
 			return nil
 		case tcell.KeyTab:
@@ -222,22 +239,49 @@ func (p *AIPanel) setupKeyHandlers() {
 		switch event.Rune() {
 		case 'j':
 			p.outputView.ScrollTo(row+1, col)
+			p.checkAutoScrollReEnable()
 			return nil
 		case 'k':
+			p.mu.Lock()
+			p.autoScroll = false
+			p.mu.Unlock()
 			if row > 0 {
 				p.outputView.ScrollTo(row-1, col)
 			}
 			return nil
 		case 'g':
+			p.mu.Lock()
+			p.autoScroll = false
+			p.mu.Unlock()
 			p.outputView.ScrollTo(0, 0)
 			return nil
 		case 'G':
+			p.mu.Lock()
+			p.autoScroll = true
+			p.mu.Unlock()
 			p.outputView.ScrollToEnd()
 			return nil
 		}
 
 		return event
 	})
+}
+
+// checkAutoScrollReEnable checks if scrolled to bottom and re-enables auto-scroll
+func (p *AIPanel) checkAutoScrollReEnable() {
+	row, _ := p.outputView.GetScrollOffset()
+	_, _, _, height := p.outputView.GetInnerRect()
+
+	// Get total content height (approximate by line count)
+	text := p.outputView.GetText(false)
+	lineCount := strings.Count(text, "\n") + 1
+
+	// If we're at or near the bottom, re-enable auto-scroll
+	if row+height >= lineCount-1 {
+		p.mu.Lock()
+		p.autoScroll = true
+		p.mu.Unlock()
+	}
 }
 
 // handleApprovalKey processes key events for approval
@@ -356,7 +400,15 @@ func (p *AIPanel) showToolResultUI(tc *agent.ToolCallInfo) {
 // appendText appends text to the output view
 func (p *AIPanel) appendText(text string) {
 	fmt.Fprint(p.outputView, text)
-	p.outputView.ScrollToEnd()
+
+	// Only auto-scroll if enabled (user hasn't scrolled up)
+	p.mu.Lock()
+	shouldScroll := p.autoScroll
+	p.mu.Unlock()
+
+	if shouldScroll {
+		p.outputView.ScrollToEnd()
+	}
 }
 
 // setStatus updates the status bar

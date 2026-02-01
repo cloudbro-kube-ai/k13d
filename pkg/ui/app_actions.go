@@ -814,6 +814,13 @@ func (a *App) useNamespace() {
 	a.currentResource = "pods"
 	a.mx.Unlock()
 
+	// Clear table immediately to prevent visual artifacts
+	a.QueueUpdateDraw(func() {
+		a.table.Clear()
+		a.table.SetTitle(" pods - Loading... ")
+		a.table.SetCell(0, 0, tview.NewTableCell("Loading...").SetTextColor(tcell.ColorYellow))
+	})
+
 	a.flashMsg(fmt.Sprintf("Switched to namespace: %s", nsName), false)
 
 	go func() {
