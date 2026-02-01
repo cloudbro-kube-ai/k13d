@@ -32,11 +32,11 @@ type DryRunConfig struct {
 
 // MockResponse defines a mock response for a command pattern
 type MockResponse struct {
-	Pattern    string `yaml:"pattern" json:"pattern"`       // Regex pattern to match command
-	Response   string `yaml:"response" json:"response"`     // Mock response to return
-	ExitCode   int    `yaml:"exit_code" json:"exit_code"`   // Mock exit code (0 = success)
-	Delay      string `yaml:"delay" json:"delay"`           // Optional simulated delay
-	IsError    bool   `yaml:"is_error" json:"is_error"`     // Whether this is an error response
+	Pattern      string `yaml:"pattern" json:"pattern"`                                 // Regex pattern to match command
+	Response     string `yaml:"response" json:"response"`                               // Mock response to return
+	ExitCode     int    `yaml:"exit_code" json:"exit_code"`                             // Mock exit code (0 = success)
+	Delay        string `yaml:"delay" json:"delay"`                                     // Optional simulated delay
+	IsError      bool   `yaml:"is_error" json:"is_error"`                               // Whether this is an error response
 	ResourceYAML string `yaml:"resource_yaml,omitempty" json:"resource_yaml,omitempty"` // Mock YAML output
 }
 

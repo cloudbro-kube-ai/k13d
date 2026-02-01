@@ -51,19 +51,19 @@ type StorageConfig struct {
 	DBSSLMode  string `yaml:"db_ssl_mode" json:"db_ssl_mode"` // SSL mode (for postgres)
 
 	// Data persistence options
-	PersistAuditLogs     bool `yaml:"persist_audit_logs" json:"persist_audit_logs"`           // Store audit logs in DB (default: true)
-	PersistLLMUsage      bool `yaml:"persist_llm_usage" json:"persist_llm_usage"`             // Store LLM token usage (default: true)
-	PersistSecurityScans bool `yaml:"persist_security_scans" json:"persist_security_scans"`   // Store security scan results (default: true)
-	PersistMetrics       bool `yaml:"persist_metrics" json:"persist_metrics"`                 // Store cluster metrics history (default: true)
-	PersistSessions      bool `yaml:"persist_sessions" json:"persist_sessions"`               // Store AI conversation sessions (default: true)
+	PersistAuditLogs     bool `yaml:"persist_audit_logs" json:"persist_audit_logs"`         // Store audit logs in DB (default: true)
+	PersistLLMUsage      bool `yaml:"persist_llm_usage" json:"persist_llm_usage"`           // Store LLM token usage (default: true)
+	PersistSecurityScans bool `yaml:"persist_security_scans" json:"persist_security_scans"` // Store security scan results (default: true)
+	PersistMetrics       bool `yaml:"persist_metrics" json:"persist_metrics"`               // Store cluster metrics history (default: true)
+	PersistSessions      bool `yaml:"persist_sessions" json:"persist_sessions"`             // Store AI conversation sessions (default: true)
 
 	// File-based logging
 	EnableAuditFile bool   `yaml:"enable_audit_file" json:"enable_audit_file"` // Write audit logs to text file (default: false)
 	AuditFilePath   string `yaml:"audit_file_path" json:"audit_file_path"`     // Path for audit log file
 
 	// Data retention
-	AuditRetentionDays   int `yaml:"audit_retention_days" json:"audit_retention_days"`       // Days to keep audit logs (0 = forever)
-	MetricsRetentionDays int `yaml:"metrics_retention_days" json:"metrics_retention_days"`   // Days to keep metrics (default: 30)
+	AuditRetentionDays    int `yaml:"audit_retention_days" json:"audit_retention_days"`         // Days to keep audit logs (0 = forever)
+	MetricsRetentionDays  int `yaml:"metrics_retention_days" json:"metrics_retention_days"`     // Days to keep metrics (default: 30)
 	LLMUsageRetentionDays int `yaml:"llm_usage_retention_days" json:"llm_usage_retention_days"` // Days to keep LLM usage (default: 90)
 }
 
@@ -158,17 +158,17 @@ func NewDefaultConfig() *Config {
 			MaxBackoff:   10.0,
 		},
 		Storage: StorageConfig{
-			DBType:               "sqlite",
-			DBPath:               "", // Empty means use default: ~/.config/k13d/audit.db
-			PersistAuditLogs:     true,
-			PersistLLMUsage:      true,
-			PersistSecurityScans: true,
-			PersistMetrics:       true,
-			PersistSessions:      true,
-			EnableAuditFile:      false,
-			AuditFilePath:        "", // Empty means use default: ~/.config/k13d/audit.log
-			AuditRetentionDays:   0,  // 0 = keep forever
-			MetricsRetentionDays: 30,
+			DBType:                "sqlite",
+			DBPath:                "", // Empty means use default: ~/.config/k13d/audit.db
+			PersistAuditLogs:      true,
+			PersistLLMUsage:       true,
+			PersistSecurityScans:  true,
+			PersistMetrics:        true,
+			PersistSessions:       true,
+			EnableAuditFile:       false,
+			AuditFilePath:         "", // Empty means use default: ~/.config/k13d/audit.log
+			AuditRetentionDays:    0,  // 0 = keep forever
+			MetricsRetentionDays:  30,
 			LLMUsageRetentionDays: 90,
 		},
 		Models: []ModelProfile{
@@ -215,7 +215,7 @@ func NewDefaultConfig() *Config {
 			CollectK8sMetrics:  true,
 			CollectionInterval: 60,
 		},
-		Language: "ko",
+		Language:     "ko",
 		BeginnerMode: true,
 		LogLevel:     "debug",
 		ReportPath:   "report.md",

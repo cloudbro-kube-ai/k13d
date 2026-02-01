@@ -134,11 +134,11 @@ func (s *Server) handlePrometheusSettings(w http.ResponseWriter, r *http.Request
 	switch r.Method {
 	case http.MethodGet:
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"expose_metrics":       s.cfg.Prometheus.ExposeMetrics,
-			"external_url":         s.cfg.Prometheus.ExternalURL,
-			"has_auth":             s.cfg.Prometheus.Username != "",
-			"collect_k8s_metrics":  s.cfg.Prometheus.CollectK8sMetrics,
-			"collection_interval":  s.cfg.Prometheus.CollectionInterval,
+			"expose_metrics":      s.cfg.Prometheus.ExposeMetrics,
+			"external_url":        s.cfg.Prometheus.ExternalURL,
+			"has_auth":            s.cfg.Prometheus.Username != "",
+			"collect_k8s_metrics": s.cfg.Prometheus.CollectK8sMetrics,
+			"collection_interval": s.cfg.Prometheus.CollectionInterval,
 		})
 
 	case http.MethodPut:

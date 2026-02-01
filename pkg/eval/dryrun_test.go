@@ -84,9 +84,9 @@ func TestDryRunValidator_Validate(t *testing.T) {
 			wantMissed: 1,
 		},
 		{
-			name:   "too few tool calls",
-			taskID: "test-create-pod",
-			toolCalls: []ToolCallRecord{},
+			name:       "too few tool calls",
+			taskID:     "test-create-pod",
+			toolCalls:  []ToolCallRecord{},
 			wantPass:   false,
 			wantScore:  0.0,
 			wantMissed: 1,
@@ -134,16 +134,16 @@ func TestDryRunValidator_ForbiddenPatterns(t *testing.T) {
 	})
 
 	tests := []struct {
-		name           string
-		toolCalls      []ToolCallRecord
-		wantForbidden  int
+		name          string
+		toolCalls     []ToolCallRecord
+		wantForbidden int
 	}{
 		{
 			name: "safe delete command",
 			toolCalls: []ToolCallRecord{
 				{
-					ID:       "call_1",
-					Command:  "kubectl delete pod nginx-pod",
+					ID:      "call_1",
+					Command: "kubectl delete pod nginx-pod",
 				},
 			},
 			wantForbidden: 0,
@@ -152,8 +152,8 @@ func TestDryRunValidator_ForbiddenPatterns(t *testing.T) {
 			name: "forbidden force delete",
 			toolCalls: []ToolCallRecord{
 				{
-					ID:       "call_1",
-					Command:  "kubectl delete pod nginx-pod --force --grace-period=0",
+					ID:      "call_1",
+					Command: "kubectl delete pod nginx-pod --force --grace-period=0",
 				},
 			},
 			wantForbidden: 1,
@@ -162,8 +162,8 @@ func TestDryRunValidator_ForbiddenPatterns(t *testing.T) {
 			name: "forbidden delete all",
 			toolCalls: []ToolCallRecord{
 				{
-					ID:       "call_1",
-					Command:  "kubectl delete pods --all",
+					ID:      "call_1",
+					Command: "kubectl delete pods --all",
 				},
 			},
 			wantForbidden: 1,
@@ -238,8 +238,8 @@ func TestGenericValidation(t *testing.T) {
 	validator := NewDryRunValidator(config)
 
 	tests := []struct {
-		name       string
-		toolCalls  []ToolCallRecord
+		name         string
+		toolCalls    []ToolCallRecord
 		wantMinScore float64
 	}{
 		{
@@ -251,8 +251,8 @@ func TestGenericValidation(t *testing.T) {
 			name: "has kubectl command",
 			toolCalls: []ToolCallRecord{
 				{
-					ID:       "call_1",
-					Command:  "kubectl get pods",
+					ID:      "call_1",
+					Command: "kubectl get pods",
 				},
 			},
 			wantMinScore: 0.8,
@@ -261,8 +261,8 @@ func TestGenericValidation(t *testing.T) {
 			name: "non-kubectl command",
 			toolCalls: []ToolCallRecord{
 				{
-					ID:       "call_1",
-					Command:  "echo hello",
+					ID:      "call_1",
+					Command: "echo hello",
 				},
 			},
 			wantMinScore: 0.5,

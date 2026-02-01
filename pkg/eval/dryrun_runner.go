@@ -39,16 +39,16 @@ type DryRunRunnerConfig struct {
 
 // LLMRunConfig represents LLM configuration for dry-run evaluation
 type LLMRunConfig struct {
-	ID             string
-	Provider       string
-	Model          string
-	Endpoint       string
-	APIKey         string
-	Temperature    float64
-	MaxTokens      int
-	EnableToolUse  bool
-	EnableMCP      bool
-	AutoApprove    bool
+	ID            string
+	Provider      string
+	Model         string
+	Endpoint      string
+	APIKey        string
+	Temperature   float64
+	MaxTokens     int
+	EnableToolUse bool
+	EnableMCP     bool
+	AutoApprove   bool
 }
 
 // NewDryRunRunner creates a new dry-run benchmark runner
@@ -328,21 +328,21 @@ func (r *DryRunRunner) Run(ctx context.Context) (*DryRunBenchmarkReport, error) 
 
 // DryRunTaskResult represents the result of a single dry-run task
 type DryRunTaskResult struct {
-	TaskID          string            `json:"task_id"`
-	TaskName        string            `json:"task_name"`
-	Difficulty      TaskDifficulty    `json:"difficulty"`
-	LLMConfig       LLMRunConfig      `json:"llm_config"`
-	Success         bool              `json:"success"`
-	Score           float64           `json:"score"`
-	ToolCalls       []ToolCallRecord  `json:"tool_calls"`
-	MatchedPatterns []string          `json:"matched_patterns"`
-	MissedPatterns  []string          `json:"missed_patterns"`
-	ForbiddenHits   []string          `json:"forbidden_hits,omitempty"`
-	Errors          []string          `json:"errors,omitempty"`
-	LLMResponse     string            `json:"llm_response,omitempty"`
-	StartTime       time.Time         `json:"start_time"`
-	EndTime         time.Time         `json:"end_time"`
-	Duration        time.Duration     `json:"duration"`
+	TaskID          string           `json:"task_id"`
+	TaskName        string           `json:"task_name"`
+	Difficulty      TaskDifficulty   `json:"difficulty"`
+	LLMConfig       LLMRunConfig     `json:"llm_config"`
+	Success         bool             `json:"success"`
+	Score           float64          `json:"score"`
+	ToolCalls       []ToolCallRecord `json:"tool_calls"`
+	MatchedPatterns []string         `json:"matched_patterns"`
+	MissedPatterns  []string         `json:"missed_patterns"`
+	ForbiddenHits   []string         `json:"forbidden_hits,omitempty"`
+	Errors          []string         `json:"errors,omitempty"`
+	LLMResponse     string           `json:"llm_response,omitempty"`
+	StartTime       time.Time        `json:"start_time"`
+	EndTime         time.Time        `json:"end_time"`
+	Duration        time.Duration    `json:"duration"`
 }
 
 // DryRunBenchmarkReport represents the complete dry-run evaluation report
@@ -360,15 +360,15 @@ type DryRunBenchmarkReport struct {
 
 // DryRunSummary contains aggregate statistics for dry-run
 type DryRunSummary struct {
-	TotalTasks      int                           `json:"total_tasks"`
-	PassedTasks     int                           `json:"passed_tasks"`
-	FailedTasks     int                           `json:"failed_tasks"`
-	PassRate        float64                       `json:"pass_rate"`
-	AverageScore    float64                       `json:"average_score"`
-	ByDifficulty    map[TaskDifficulty]DiffStat   `json:"by_difficulty"`
-	ByModel         map[string]ModelDryRunStat    `json:"by_model"`
-	TotalToolCalls  int                           `json:"total_tool_calls"`
-	AvgToolCalls    float64                       `json:"avg_tool_calls"`
+	TotalTasks     int                         `json:"total_tasks"`
+	PassedTasks    int                         `json:"passed_tasks"`
+	FailedTasks    int                         `json:"failed_tasks"`
+	PassRate       float64                     `json:"pass_rate"`
+	AverageScore   float64                     `json:"average_score"`
+	ByDifficulty   map[TaskDifficulty]DiffStat `json:"by_difficulty"`
+	ByModel        map[string]ModelDryRunStat  `json:"by_model"`
+	TotalToolCalls int                         `json:"total_tool_calls"`
+	AvgToolCalls   float64                     `json:"avg_tool_calls"`
 }
 
 // DiffStat holds statistics for a difficulty level

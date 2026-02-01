@@ -77,6 +77,11 @@ func (l *Loader) loadTask(taskDir string) (*Task, error) {
 		return nil, fmt.Errorf("failed to parse task YAML: %w", err)
 	}
 
+	// Handle legacy 'prompt' field by converting to script
+	if task.Prompt != "" && len(task.Script) == 0 {
+		task.Script = []Prompt{{Text: task.Prompt}}
+	}
+
 	// Load prompt files if specified
 	for i, prompt := range task.Script {
 		if prompt.File != "" {
@@ -91,7 +96,7 @@ func (l *Loader) loadTask(taskDir string) (*Task, error) {
 
 	// Validate required fields
 	if len(task.Script) == 0 {
-		return nil, fmt.Errorf("task must have at least one prompt in script")
+		return nil, fmt.Errorf("task must have at least one prompt in script or prompt field")
 	}
 
 	// Set defaults

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/adrg/xdg"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "modernc.org/sqlite"
@@ -80,10 +81,14 @@ func InitWithConfig(cfg DBConfig) error {
 	return createTables()
 }
 
+// DefaultDBPath returns the default SQLite database path using XDG config directory
+func DefaultDBPath() string {
+	return filepath.Join(xdg.ConfigHome, "k13d", "audit.db")
+}
+
 func initSQLite(dbPath string) (*sql.DB, error) {
 	if dbPath == "" {
-		home, _ := os.UserHomeDir()
-		dbPath = filepath.Join(home, ".config", "k13d", "audit.db")
+		dbPath = DefaultDBPath()
 	}
 
 	dir := filepath.Dir(dbPath)

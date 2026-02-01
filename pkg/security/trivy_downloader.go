@@ -18,8 +18,8 @@ import (
 
 // TrivyRelease represents GitHub release info
 type TrivyRelease struct {
-	TagName string        `json:"tag_name"`
-	Assets  []TrivyAsset  `json:"assets"`
+	TagName string       `json:"tag_name"`
+	Assets  []TrivyAsset `json:"assets"`
 }
 
 // TrivyAsset represents a release asset
@@ -281,8 +281,8 @@ func (td *TrivyDownloader) findAsset(release *TrivyRelease) *TrivyAsset {
 
 	// Map OS names
 	osMap := map[string]string{
-		"darwin": "macOS",
-		"linux":  "Linux",
+		"darwin":  "macOS",
+		"linux":   "Linux",
 		"windows": "Windows",
 	}
 	if mapped, ok := osMap[osName]; ok {

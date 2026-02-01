@@ -63,6 +63,7 @@ type Task struct {
 
 	// Execution
 	Script    []Prompt      `yaml:"script"`              // Prompts to send to the AI agent
+	Prompt    string        `yaml:"prompt,omitempty"`    // Single prompt (legacy, converted to Script)
 	Setup     string        `yaml:"setup,omitempty"`     // Setup script path (relative to task dir)
 	Verifier  string        `yaml:"verifier,omitempty"`  // Verifier script path
 	Cleanup   string        `yaml:"cleanup,omitempty"`   // Cleanup script path
