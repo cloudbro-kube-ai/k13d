@@ -26,14 +26,14 @@ This guide covers Docker and Docker Compose installation methods for k13d.
 
 ```bash
 # Pull the latest image
-docker pull youngjukim/k13d:latest
+docker pull cloudbro-kube-ai/k13d:latest
 
 # Run with kubeconfig mount
 docker run -d \
   --name k13d \
   -p 8080:8080 \
   -v ~/.kube/config:/home/k13d/.kube/config:ro \
-  youngjukim/k13d:latest
+  cloudbro-kube-ai/k13d:latest
 
 # Open http://localhost:8080
 ```
@@ -49,7 +49,7 @@ docker run -d \
   --name k13d \
   -p 8080:8080 \
   -v ~/.kube/config:/home/k13d/.kube/config:ro \
-  youngjukim/k13d:latest
+  cloudbro-kube-ai/k13d:latest
 ```
 
 ### With LLM Configuration
@@ -63,7 +63,7 @@ docker run -d \
   -e K13D_LLM_MODEL=solar-pro2 \
   -e K13D_LLM_ENDPOINT=https://api.upstage.ai/v1 \
   -e K13D_LLM_API_KEY=your-api-key \
-  youngjukim/k13d:latest
+  cloudbro-kube-ai/k13d:latest
 ```
 
 ### With Authentication
@@ -76,7 +76,7 @@ docker run -d \
   -e K13D_AUTH_MODE=local \
   -e K13D_ADMIN_USER=admin \
   -e K13D_ADMIN_PASSWORD=your-secure-password \
-  youngjukim/k13d:latest
+  cloudbro-kube-ai/k13d:latest
 ```
 
 ### With Persistent Data
@@ -87,7 +87,7 @@ docker run -d \
   -p 8080:8080 \
   -v ~/.kube/config:/home/k13d/.kube/config:ro \
   -v k13d-data:/home/k13d/.config/k13d \
-  youngjukim/k13d:latest
+  cloudbro-kube-ai/k13d:latest
 ```
 
 ### TUI Mode (Interactive)
@@ -95,7 +95,7 @@ docker run -d \
 ```bash
 docker run -it --rm \
   -v ~/.kube/config:/home/k13d/.kube/config:ro \
-  youngjukim/k13d:latest \
+  cloudbro-kube-ai/k13d:latest \
   -tui
 ```
 
@@ -112,7 +112,7 @@ version: '3.8'
 
 services:
   k13d:
-    image: youngjukim/k13d:latest
+    image: cloudbro-kube-ai/k13d:latest
     container_name: k13d
     ports:
       - "8080:8080"
@@ -163,7 +163,7 @@ version: '3.8'
 
 services:
   k13d:
-    image: youngjukim/k13d:latest
+    image: cloudbro-kube-ai/k13d:latest
     container_name: k13d
     ports:
       - "8080:8080"
@@ -222,7 +222,7 @@ version: '3.8'
 
 services:
   k13d:
-    image: youngjukim/k13d:latest
+    image: cloudbro-kube-ai/k13d:latest
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.k13d.rule=Host(`k13d.example.com`)"

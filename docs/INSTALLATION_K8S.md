@@ -33,7 +33,7 @@ This guide covers deploying k13d in a Kubernetes cluster with various configurat
 kubectl create namespace k13d
 
 # Apply all-in-one manifest
-kubectl apply -f https://raw.githubusercontent.com/youngjukim/k13d/main/deploy/kubernetes/all-in-one.yaml
+kubectl apply -f https://raw.githubusercontent.com/cloudbro-kube-ai/k13d/main/deploy/kubernetes/all-in-one.yaml
 
 # Wait for pod to be ready
 kubectl wait --for=condition=ready pod -l app=k13d -n k13d --timeout=120s
@@ -48,7 +48,7 @@ kubectl port-forward -n k13d svc/k13d 8080:80
 
 ```bash
 # Add Helm repository
-helm repo add k13d https://youngjukim.github.io/k13d
+helm repo add k13d https://cloudbro-kube-ai.github.io/k13d
 helm repo update
 
 # Install with default settings
@@ -87,7 +87,7 @@ spec:
       serviceAccountName: k13d
       containers:
       - name: k13d
-        image: youngjukim/k13d:latest
+        image: cloudbro-kube-ai/k13d:latest
         ports:
         - containerPort: 8080
         env:
@@ -343,7 +343,7 @@ spec:
       containers:
       # k13d container
       - name: k13d
-        image: youngjukim/k13d:latest
+        image: cloudbro-kube-ai/k13d:latest
         ports:
         - containerPort: 8080
         env:
