@@ -20,17 +20,17 @@ const (
 type TaskCategory string
 
 const (
-	CategoryCreation       TaskCategory = "creation"
+	CategoryCreation        TaskCategory = "creation"
 	CategoryTroubleshooting TaskCategory = "troubleshooting"
-	CategoryScaling        TaskCategory = "scaling"
-	CategoryNetworking     TaskCategory = "networking"
-	CategoryStorage        TaskCategory = "storage"
-	CategoryRBAC           TaskCategory = "rbac"
-	CategoryConfiguration  TaskCategory = "configuration"
-	CategoryWorkloads      TaskCategory = "workloads"
-	CategoryAnalysis       TaskCategory = "analysis"
-	CategoryGatekeeper     TaskCategory = "gatekeeper"
-	CategoryMultiStep      TaskCategory = "multi-step"
+	CategoryScaling         TaskCategory = "scaling"
+	CategoryNetworking      TaskCategory = "networking"
+	CategoryStorage         TaskCategory = "storage"
+	CategoryRBAC            TaskCategory = "rbac"
+	CategoryConfiguration   TaskCategory = "configuration"
+	CategoryWorkloads       TaskCategory = "workloads"
+	CategoryAnalysis        TaskCategory = "analysis"
+	CategoryGatekeeper      TaskCategory = "gatekeeper"
+	CategoryMultiStep       TaskCategory = "multi-step"
 )
 
 // IsolationMode defines how tasks are isolated
@@ -89,11 +89,11 @@ type Expectation struct {
 
 // ModelHint provides AI model-specific information
 type ModelHint struct {
-	Strength   string   `yaml:"strength,omitempty" json:"strength,omitempty"`
-	Weakness   string   `yaml:"weakness,omitempty" json:"weakness,omitempty"`
-	Tips       []string `yaml:"tips,omitempty" json:"tips,omitempty"`
-	PassRate   float64  `yaml:"pass_rate,omitempty" json:"pass_rate,omitempty"`
-	AvgTime    string   `yaml:"avg_time,omitempty" json:"avg_time,omitempty"`
+	Strength string   `yaml:"strength,omitempty" json:"strength,omitempty"`
+	Weakness string   `yaml:"weakness,omitempty" json:"weakness,omitempty"`
+	Tips     []string `yaml:"tips,omitempty" json:"tips,omitempty"`
+	PassRate float64  `yaml:"pass_rate,omitempty" json:"pass_rate,omitempty"`
+	AvgTime  string   `yaml:"avg_time,omitempty" json:"avg_time,omitempty"`
 }
 
 // LLMConfig represents LLM configuration for evaluation
@@ -108,19 +108,19 @@ type LLMConfig struct {
 
 // TaskResult represents the outcome of a single task evaluation
 type TaskResult struct {
-	Task       string    `json:"task" yaml:"task"`
-	LLMConfig  LLMConfig `json:"llm_config" yaml:"llm_config"`
-	Result     string    `json:"result" yaml:"result"` // "success", "fail", "error"
-	Error      string    `json:"error,omitempty" yaml:"error,omitempty"`
-	Failures   []Failure `json:"failures,omitempty" yaml:"failures,omitempty"`
-	StartTime  time.Time `json:"start_time" yaml:"start_time"`
-	EndTime    time.Time `json:"end_time" yaml:"end_time"`
-	Duration   string    `json:"duration" yaml:"duration"`
+	Task      string    `json:"task" yaml:"task"`
+	LLMConfig LLMConfig `json:"llm_config" yaml:"llm_config"`
+	Result    string    `json:"result" yaml:"result"` // "success", "fail", "error"
+	Error     string    `json:"error,omitempty" yaml:"error,omitempty"`
+	Failures  []Failure `json:"failures,omitempty" yaml:"failures,omitempty"`
+	StartTime time.Time `json:"start_time" yaml:"start_time"`
+	EndTime   time.Time `json:"end_time" yaml:"end_time"`
+	Duration  string    `json:"duration" yaml:"duration"`
 
 	// Metrics
-	ToolCallCount  int `json:"tool_call_count" yaml:"tool_call_count"`
-	TokensUsed     int `json:"tokens_used,omitempty" yaml:"tokens_used,omitempty"`
-	RetryCount     int `json:"retry_count" yaml:"retry_count"`
+	ToolCallCount int `json:"tool_call_count" yaml:"tool_call_count"`
+	TokensUsed    int `json:"tokens_used,omitempty" yaml:"tokens_used,omitempty"`
+	RetryCount    int `json:"retry_count" yaml:"retry_count"`
 }
 
 // Failure represents a specific failure in task execution
@@ -151,11 +151,11 @@ type BenchmarkSuite struct {
 // BenchmarkReport represents the complete evaluation report
 type BenchmarkReport struct {
 	// Metadata
-	SuiteName    string    `json:"suite_name"`
-	RunID        string    `json:"run_id"`
-	StartTime    time.Time `json:"start_time"`
-	EndTime      time.Time `json:"end_time"`
-	TotalDuration string   `json:"total_duration"`
+	SuiteName     string    `json:"suite_name"`
+	RunID         string    `json:"run_id"`
+	StartTime     time.Time `json:"start_time"`
+	EndTime       time.Time `json:"end_time"`
+	TotalDuration string    `json:"total_duration"`
 
 	// Configuration
 	LLMConfigs []LLMConfig `json:"llm_configs"`
@@ -173,11 +173,11 @@ type BenchmarkReport struct {
 
 // ReportSummary contains aggregate statistics
 type ReportSummary struct {
-	TotalTasks    int     `json:"total_tasks"`
-	PassedTasks   int     `json:"passed_tasks"`
-	FailedTasks   int     `json:"failed_tasks"`
-	ErrorTasks    int     `json:"error_tasks"`
-	PassRate      float64 `json:"pass_rate"`
+	TotalTasks  int     `json:"total_tasks"`
+	PassedTasks int     `json:"passed_tasks"`
+	FailedTasks int     `json:"failed_tasks"`
+	ErrorTasks  int     `json:"error_tasks"`
+	PassRate    float64 `json:"pass_rate"`
 
 	// By category
 	CategoryStats map[TaskCategory]CategoryStat `json:"category_stats"`
@@ -202,15 +202,15 @@ type DifficultyStat struct {
 
 // ModelSummary contains per-model statistics
 type ModelSummary struct {
-	ModelID       string  `json:"model_id"`
-	ProviderID    string  `json:"provider_id"`
-	TotalTasks    int     `json:"total_tasks"`
-	PassedTasks   int     `json:"passed_tasks"`
-	FailedTasks   int     `json:"failed_tasks"`
-	ErrorTasks    int     `json:"error_tasks"`
-	PassRate      float64 `json:"pass_rate"`
-	AvgDuration   string  `json:"avg_duration"`
-	AvgToolCalls  float64 `json:"avg_tool_calls"`
+	ModelID      string  `json:"model_id"`
+	ProviderID   string  `json:"provider_id"`
+	TotalTasks   int     `json:"total_tasks"`
+	PassedTasks  int     `json:"passed_tasks"`
+	FailedTasks  int     `json:"failed_tasks"`
+	ErrorTasks   int     `json:"error_tasks"`
+	PassRate     float64 `json:"pass_rate"`
+	AvgDuration  string  `json:"avg_duration"`
+	AvgToolCalls float64 `json:"avg_tool_calls"`
 
 	// Strengths and weaknesses
 	StrongCategories []TaskCategory `json:"strong_categories,omitempty"`

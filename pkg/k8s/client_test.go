@@ -203,9 +203,9 @@ func TestGetGVR(t *testing.T) {
 	client := &Client{}
 
 	tests := []struct {
-		input    string
-		wantRes  string
-		wantOK   bool
+		input   string
+		wantRes string
+		wantOK  bool
 	}{
 		// Standard resources
 		{"pods", "pods", true},
@@ -377,8 +377,8 @@ func TestCRDInfo(t *testing.T) {
 
 // Ensure Client implements all interfaces
 var (
-	_ Reader         = (*Client)(nil)
-	_ Writer         = (*Client)(nil)
-	_ ContextManager = (*Client)(nil)
+	_ Reader          = (*Client)(nil)
+	_ Writer          = (*Client)(nil)
+	_ ContextManager  = (*Client)(nil)
 	_ ClientInterface = (*Client)(nil)
 )

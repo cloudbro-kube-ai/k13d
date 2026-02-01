@@ -17,11 +17,11 @@ import (
 
 // SimpleBenchmarkTask represents a single benchmark test case for simple AI evaluation
 type SimpleBenchmarkTask struct {
-	ID          string             `yaml:"id" json:"id"`
-	Category    string             `yaml:"category" json:"category"`
-	Difficulty  string             `yaml:"difficulty" json:"difficulty"`
-	Description string             `yaml:"description" json:"description"`
-	Prompt      string             `yaml:"prompt" json:"prompt"`
+	ID          string              `yaml:"id" json:"id"`
+	Category    string              `yaml:"category" json:"category"`
+	Difficulty  string              `yaml:"difficulty" json:"difficulty"`
+	Description string              `yaml:"description" json:"description"`
+	Prompt      string              `yaml:"prompt" json:"prompt"`
 	Expect      []SimpleExpectation `yaml:"expect" json:"expect"`
 }
 

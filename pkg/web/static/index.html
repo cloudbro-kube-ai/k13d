@@ -4773,9 +4773,8 @@
             <div class="modal-body">
                 <div class="tabs">
                     <div class="tab active" onclick="switchSettingsTab('general')">General</div>
-                    <div class="tab" onclick="switchSettingsTab('models')">Models</div>
+                    <div class="tab" onclick="switchSettingsTab('ai')">AI</div>
                     <div class="tab" onclick="switchSettingsTab('mcp')">MCP</div>
-                    <div class="tab" onclick="switchSettingsTab('llm')">LLM</div>
                     <div class="tab" id="admin-tab" onclick="switchSettingsTab('admin')" style="display:none;">Admin</div>
                     <div class="tab" onclick="switchSettingsTab('about')">About</div>
                 </div>
@@ -4841,10 +4840,77 @@
                     </div>
                 </div>
 
-                <!-- Models Tab -->
-                <div id="settings-models" class="settings-content" style="display:none;">
+                <!-- AI Tab (merged Models + LLM) -->
+                <div id="settings-ai" class="settings-content" style="display:none;">
+                    <!-- LLM Connection Status -->
+                    <div class="settings-section" style="margin-bottom:16px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg-primary);border-radius:8px;">
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <div id="llm-status-indicator" style="width:16px;height:16px;border-radius:50%;background:#888;box-shadow:0 0 8px rgba(136,136,136,0.5);transition:all 0.3s;"></div>
+                                <div>
+                                    <div id="llm-status-text" style="font-weight:500;">Connection Status: Unknown</div>
+                                    <div id="llm-status-detail" style="font-size:12px;color:var(--text-secondary);">Click 'Test Connection' to verify</div>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary" id="llm-test-btn" onclick="testLLMConnection()" style="min-width:130px;">
+                                <span id="llm-test-btn-text">Test Connection</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Current LLM Configuration -->
                     <div class="settings-section">
-                        <h4>LLM Model Profiles</h4>
+                        <h4>LLM Configuration</h4>
+                        <div class="form-group">
+                            <label>Provider</label>
+                            <select id="setting-llm-provider" onchange="updateEndpointPlaceholder()">
+                                <option value="solar">Upstage Solar</option>
+                                <option value="openai">OpenAI</option>
+                                <option value="ollama">Ollama</option>
+                                <option value="gemini">Google Gemini</option>
+                                <option value="anthropic">Anthropic Claude</option>
+                                <option value="bedrock">AWS Bedrock</option>
+                                <option value="azopenai">Azure OpenAI</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Model</label>
+                            <input type="text" id="setting-llm-model" placeholder="solar-pro2">
+                        </div>
+                        <div class="form-group">
+                            <label>Endpoint <span id="endpoint-hint" style="font-size:11px;color:var(--text-secondary);"></span></label>
+                            <input type="text" id="setting-llm-endpoint" placeholder="https://api.upstage.ai/v1">
+                        </div>
+                        <div class="form-group">
+                            <label>API Key <a href="https://console.upstage.ai/api-keys" target="_blank" style="font-size:11px;color:var(--accent-blue);margin-left:8px;">Get API Key →</a></label>
+                            <input type="password" id="setting-llm-apikey" placeholder="up_...">
+                        </div>
+                    </div>
+
+                    <!-- Reasoning Effort (Solar Pro2) -->
+                    <div class="settings-section" id="reasoning-effort-section" style="margin-top:16px;padding:12px;background:var(--bg-primary);border-radius:8px;">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+                            <span style="font-size:20px;">🧠</span>
+                            <div>
+                                <h4 style="margin:0;color:var(--accent-purple);">Reasoning Effort (Solar Pro2)</h4>
+                                <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0 0;">Control reasoning depth for complex tasks</p>
+                            </div>
+                        </div>
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-label">Enable High Reasoning</div>
+                                <div class="settings-description">Use deeper reasoning for complex tasks (may increase token usage)</div>
+                            </div>
+                            <div class="auto-refresh-toggle" id="reasoning-effort-toggle" onclick="toggleReasoningEffort()"></div>
+                        </div>
+                        <div style="margin-top:8px;font-size:12px;color:var(--text-secondary);">
+                            <span id="reasoning-effort-status">Current: minimal (default)</span>
+                        </div>
+                    </div>
+
+                    <!-- Model Profiles -->
+                    <div class="settings-section" style="margin-top:20px;">
+                        <h4>Saved Model Profiles</h4>
                         <p class="settings-description" style="margin-bottom:12px;">Manage multiple LLM configurations and switch between them easily.</p>
 
                         <div id="models-list" style="margin-bottom:16px;">
@@ -4890,136 +4956,6 @@
                         <div style="display:flex;gap:8px;margin-top:12px;">
                             <button class="btn btn-primary" onclick="addModelProfile()">Add Profile</button>
                             <button class="btn btn-secondary" onclick="hideAddModelForm()">Cancel</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MCP Tab -->
-                <div id="settings-mcp" class="settings-content" style="display:none;">
-                    <div class="settings-section">
-                        <h4>MCP Servers</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Connect to Model Context Protocol servers to extend AI capabilities with additional tools.</p>
-
-                        <div id="mcp-servers-list" style="margin-bottom:16px;">
-                            <!-- Populated by JavaScript -->
-                        </div>
-
-                        <button class="btn-add" onclick="showAddMCPForm()" style="margin-top:8px;"><span class="plus-icon">+</span> Add MCP Server</button>
-                    </div>
-
-                    <div id="add-mcp-form" class="settings-section" style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
-                        <h4>Add MCP Server</h4>
-                        <div class="form-group">
-                            <label>Server Name</label>
-                            <input type="text" id="new-mcp-name" placeholder="e.g., kubernetes-mcp">
-                        </div>
-                        <div class="form-group">
-                            <label>Command</label>
-                            <input type="text" id="new-mcp-command" placeholder="e.g., npx, docker">
-                        </div>
-                        <div class="form-group">
-                            <label>Arguments (comma-separated)</label>
-                            <input type="text" id="new-mcp-args" placeholder="e.g., -y, @anthropic/mcp-server">
-                        </div>
-                        <div class="form-group">
-                            <label>Description (optional)</label>
-                            <input type="text" id="new-mcp-description" placeholder="Kubernetes management tools">
-                        </div>
-                        <div class="settings-row" style="margin-top:8px;">
-                            <div>
-                                <div class="settings-label">Enable on Add</div>
-                            </div>
-                            <input type="checkbox" id="new-mcp-enabled" checked>
-                        </div>
-                        <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button class="btn btn-primary" onclick="addMCPServer()">Add Server</button>
-                            <button class="btn btn-secondary" onclick="hideAddMCPForm()">Cancel</button>
-                        </div>
-                    </div>
-
-                    <div class="settings-section" style="margin-top:16px;">
-                        <h4>Available Tools</h4>
-                        <div id="mcp-tools-list">
-                            <!-- Populated by JavaScript -->
-                        </div>
-                    </div>
-
-                    <div class="settings-section" style="margin-top:16px;background:var(--bg-primary);padding:12px;border-radius:8px;">
-                        <h4>Example: Kubernetes MCP Server</h4>
-                        <p class="settings-description" style="font-size:12px;">
-                            To add the <a href="https://github.com/containers/kubernetes-mcp-server" target="_blank" style="color:var(--accent-blue);">kubernetes-mcp-server</a>:<br><br>
-                            <strong>Name:</strong> kubernetes<br>
-                            <strong>Command:</strong> npx<br>
-                            <strong>Args:</strong> -y, @anthropic/mcp-server-kubernetes<br>
-                        </p>
-                    </div>
-                </div>
-
-                <div id="settings-llm" class="settings-content" style="display:none;">
-                    <div class="settings-section">
-                        <h4>Current LLM Configuration</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Direct LLM settings. For profile-based management, use the Models tab.</p>
-                    </div>
-
-                    <!-- LLM Connection Status -->
-                    <div class="settings-section" style="margin-bottom:16px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg-primary);border-radius:8px;">
-                            <div style="display:flex;align-items:center;gap:12px;">
-                                <div id="llm-status-indicator" style="width:16px;height:16px;border-radius:50%;background:#888;box-shadow:0 0 8px rgba(136,136,136,0.5);transition:all 0.3s;"></div>
-                                <div>
-                                    <div id="llm-status-text" style="font-weight:500;">Connection Status: Unknown</div>
-                                    <div id="llm-status-detail" style="font-size:12px;color:var(--text-secondary);">Click 'Test Connection' to verify</div>
-                                </div>
-                            </div>
-                            <button class="btn btn-secondary" id="llm-test-btn" onclick="testLLMConnection()" style="min-width:130px;">
-                                <span id="llm-test-btn-text">Test Connection</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Provider</label>
-                        <select id="setting-llm-provider" onchange="updateEndpointPlaceholder()">
-                            <option value="solar">Upstage Solar</option>
-                            <option value="openai">OpenAI</option>
-                            <option value="ollama">Ollama</option>
-                            <option value="gemini">Google Gemini</option>
-                            <option value="anthropic">Anthropic Claude</option>
-                            <option value="bedrock">AWS Bedrock</option>
-                            <option value="azopenai">Azure OpenAI</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Model</label>
-                        <input type="text" id="setting-llm-model" placeholder="solar-pro2">
-                    </div>
-                    <div class="form-group">
-                        <label>Endpoint <span id="endpoint-hint" style="font-size:11px;color:var(--text-secondary);"></span></label>
-                        <input type="text" id="setting-llm-endpoint" placeholder="https://api.upstage.ai/v1">
-                    </div>
-                    <div class="form-group">
-                        <label>API Key <a href="https://console.upstage.ai/api-keys" target="_blank" style="font-size:11px;color:var(--accent-blue);margin-left:8px;">Get API Key →</a></label>
-                        <input type="password" id="setting-llm-apikey" placeholder="up_...">
-                    </div>
-
-                    <!-- Reasoning Effort (Solar Pro2) -->
-                    <div class="settings-section" id="reasoning-effort-section" style="margin-top:16px;padding:12px;background:var(--bg-primary);border-radius:8px;">
-                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-                            <span style="font-size:20px;">🧠</span>
-                            <div>
-                                <h4 style="margin:0;color:var(--accent-purple);">Reasoning Effort (Solar Pro2)</h4>
-                                <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0 0;">Control reasoning depth for complex tasks</p>
-                            </div>
-                        </div>
-                        <div class="settings-row">
-                            <div>
-                                <div class="settings-label">Enable High Reasoning</div>
-                                <div class="settings-description">Use deeper reasoning for complex tasks (may increase token usage)</div>
-                            </div>
-                            <div class="auto-refresh-toggle" id="reasoning-effort-toggle" onclick="toggleReasoningEffort()"></div>
-                        </div>
-                        <div style="margin-top:8px;font-size:12px;color:var(--text-secondary);">
-                            <span id="reasoning-effort-status">Current: minimal (default)</span>
                         </div>
                     </div>
 
@@ -5138,6 +5074,67 @@
                         </div>
 
                         <button class="btn btn-secondary" onclick="clearGuardrailsHistory()" style="margin-top:12px;">Clear History</button>
+                    </div>
+                </div>
+
+                <!-- MCP Tab -->
+                <div id="settings-mcp" class="settings-content" style="display:none;">
+                    <div class="settings-section">
+                        <h4>MCP Servers</h4>
+                        <p class="settings-description" style="margin-bottom:12px;">Connect to Model Context Protocol servers to extend AI capabilities with additional tools.</p>
+
+                        <div id="mcp-servers-list" style="margin-bottom:16px;">
+                            <!-- Populated by JavaScript -->
+                        </div>
+
+                        <button class="btn-add" onclick="showAddMCPForm()" style="margin-top:8px;"><span class="plus-icon">+</span> Add MCP Server</button>
+                    </div>
+
+                    <div id="add-mcp-form" class="settings-section" style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
+                        <h4>Add MCP Server</h4>
+                        <div class="form-group">
+                            <label>Server Name</label>
+                            <input type="text" id="new-mcp-name" placeholder="e.g., kubernetes-mcp">
+                        </div>
+                        <div class="form-group">
+                            <label>Command</label>
+                            <input type="text" id="new-mcp-command" placeholder="e.g., npx, docker">
+                        </div>
+                        <div class="form-group">
+                            <label>Arguments (comma-separated)</label>
+                            <input type="text" id="new-mcp-args" placeholder="e.g., -y, @anthropic/mcp-server">
+                        </div>
+                        <div class="form-group">
+                            <label>Description (optional)</label>
+                            <input type="text" id="new-mcp-description" placeholder="Kubernetes management tools">
+                        </div>
+                        <div class="settings-row" style="margin-top:8px;">
+                            <div>
+                                <div class="settings-label">Enable on Add</div>
+                            </div>
+                            <input type="checkbox" id="new-mcp-enabled" checked>
+                        </div>
+                        <div style="display:flex;gap:8px;margin-top:12px;">
+                            <button class="btn btn-primary" onclick="addMCPServer()">Add Server</button>
+                            <button class="btn btn-secondary" onclick="hideAddMCPForm()">Cancel</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section" style="margin-top:16px;">
+                        <h4>Available Tools</h4>
+                        <div id="mcp-tools-list">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="settings-section" style="margin-top:16px;background:var(--bg-primary);padding:12px;border-radius:8px;">
+                        <h4>Example: Kubernetes MCP Server</h4>
+                        <p class="settings-description" style="font-size:12px;">
+                            To add the <a href="https://github.com/containers/kubernetes-mcp-server" target="_blank" style="color:var(--accent-blue);">kubernetes-mcp-server</a>:<br><br>
+                            <strong>Name:</strong> kubernetes<br>
+                            <strong>Command:</strong> npx<br>
+                            <strong>Args:</strong> -y, @anthropic/mcp-server-kubernetes<br>
+                        </p>
                     </div>
                 </div>
 
@@ -8444,18 +8441,17 @@ ${escapeHtml(execInfo.result)}</div>
             document.getElementById(`settings-${tab}`).style.display = 'block';
 
             // Load data for specific tabs
-            if (tab === 'models') {
+            if (tab === 'ai') {
                 loadModelProfiles();
+                updateEndpointPlaceholder();
+                loadLLMStatus();
+                onLLMTabOpened();
             } else if (tab === 'mcp') {
                 loadMCPServers();
                 loadMCPTools();
             } else if (tab === 'admin') {
                 loadAdminUsers();
                 loadAuthStatus();
-            } else if (tab === 'llm') {
-                updateEndpointPlaceholder();
-                loadLLMStatus();
-                onLLMTabOpened();
             }
         }
 

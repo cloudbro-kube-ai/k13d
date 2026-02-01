@@ -654,6 +654,9 @@ kubectl apply -f deploy/helm/k13d/templates/
 
 | Document | Description |
 |----------|-------------|
+| [Installation Guide](docs/INSTALLATION.md) | All installation methods |
+| [Docker Guide](docs/INSTALLATION_DOCKER.md) | Docker and Docker Compose setup |
+| [Kubernetes Guide](docs/INSTALLATION_K8S.md) | Kubernetes deployment options |
 | [User Guide](docs/USER_GUIDE.md) | Navigation, shortcuts, workflows |
 | [Configuration Guide](docs/CONFIGURATION_GUIDE.md) | All config options |
 | [Contributing](CONTRIBUTING.md) | How to contribute |

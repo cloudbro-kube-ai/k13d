@@ -716,29 +716,34 @@ func TestIsRunning(t *testing.T) {
 }
 
 // TestBasicConcurrentAccess tests that basic concurrent access to app state is safe
+// using the App's mutex for proper synchronization
 func TestBasicConcurrentAccess(t *testing.T) {
 	app := &App{
 		namespaces: []string{"", "default", "kube-system"},
 	}
 
-	// Run concurrent operations that access/modify state
+	// Run concurrent operations that access/modify state using mutex
 	done := make(chan bool, 10)
 
 	for i := 0; i < 10; i++ {
 		go func(n int) {
 			defer func() { done <- true }()
 
-			// Read operations
+			// Read operations with lock
+			app.mx.RLock()
 			_ = app.namespaces
 			_ = app.currentResource
 			_ = app.currentNamespace
+			app.mx.RUnlock()
 
-			// Simulate state checks
+			// Write operations with lock
+			app.mx.Lock()
 			if n%2 == 0 {
 				app.currentResource = "pods"
 			} else {
 				app.currentResource = "deployments"
 			}
+			app.mx.Unlock()
 		}(i)
 	}
 

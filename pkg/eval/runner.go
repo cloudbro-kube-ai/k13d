@@ -28,10 +28,10 @@ type RunnerConfig struct {
 
 // Runner executes benchmark tasks
 type Runner struct {
-	config      RunnerConfig
-	agentBin    string
-	tasks       map[string]BenchmarkTask
-	mu          sync.Mutex
+	config   RunnerConfig
+	agentBin string
+	tasks    map[string]BenchmarkTask
+	mu       sync.Mutex
 }
 
 // NewRunner creates a new benchmark runner
