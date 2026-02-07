@@ -53,6 +53,7 @@ func (v *VimViewer) SetContent(content string) {
 	v.content = content
 	v.lines = strings.Split(content, "\n")
 	v.totalLines = len(v.lines)
+	v.TextView.Clear()
 	v.TextView.SetText(content)
 }
 

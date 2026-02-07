@@ -2159,14 +2159,10 @@ func (a *App) Run() error {
 		atomic.StoreInt32(&a.running, 0)
 	}()
 
-	// Use SetBeforeDrawFunc to clear screen on first draw to prevent artifacts
-	// This fixes the highlight residue issue on startup
-	var firstDraw int32 = 1
+	// Use SetBeforeDrawFunc to clear screen before every draw to prevent ghosting
+	// This ensures old content never bleeds through when views change
 	a.SetBeforeDrawFunc(func(screen tcell.Screen) bool {
-		if atomic.CompareAndSwapInt32(&firstDraw, 1, 0) {
-			// Clear entire screen on first draw to prevent artifacts
-			screen.Clear()
-		}
+		screen.Clear()
 		return false // Don't skip the draw
 	})
 
