@@ -1,12 +1,29 @@
 package ui
 
 import (
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
+
+// ============================================================================
+// Shared Test Helpers
+// ============================================================================
+
+// createTestScreen creates a new SimulationScreen for testing.
+func createTestScreen(t *testing.T) tcell.SimulationScreen {
+	t.Helper()
+	screen := tcell.NewSimulationScreen("")
+	if err := screen.Init(); err != nil {
+		t.Fatalf("SimulationScreen init failed: %v", err)
+	}
+	screen.SetSize(120, 40)
+	return screen
+}
 
 // ============================================================================
 // Modern TUI Test Framework
@@ -219,6 +236,133 @@ func (ctx *TUITestContext) ExpectNoFreeze() *TUITestContext {
 		ctx.t.Fatal("App is frozen - Draw() did not complete")
 		return ctx
 	}
+}
+
+// ExpectFilter asserts the current filter text.
+func (ctx *TUITestContext) ExpectFilter(expected string) *TUITestContext {
+	ctx.t.Helper()
+	deadline := time.Now().Add(ctx.timeout)
+
+	for time.Now().Before(deadline) {
+		ctx.app.mx.RLock()
+		current := ctx.app.filterText
+		ctx.app.mx.RUnlock()
+
+		if current == expected {
+			return ctx
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	ctx.app.mx.RLock()
+	actual := ctx.app.filterText
+	ctx.app.mx.RUnlock()
+	ctx.t.Errorf("Expected filter %q, got %q", expected, actual)
+	return ctx
+}
+
+// ExpectNamespace asserts the current namespace.
+func (ctx *TUITestContext) ExpectNamespace(expected string) *TUITestContext {
+	ctx.t.Helper()
+	deadline := time.Now().Add(ctx.timeout)
+
+	for time.Now().Before(deadline) {
+		ctx.app.mx.RLock()
+		current := ctx.app.currentNamespace
+		ctx.app.mx.RUnlock()
+
+		if current == expected {
+			return ctx
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	ctx.app.mx.RLock()
+	actual := ctx.app.currentNamespace
+	ctx.app.mx.RUnlock()
+	ctx.t.Errorf("Expected namespace %q, got %q", expected, actual)
+	return ctx
+}
+
+// ExpectContentContains asserts the screen contains text (via SimulationScreen).
+func (ctx *TUITestContext) ExpectContentContains(text string) *TUITestContext {
+	ctx.t.Helper()
+	deadline := time.Now().Add(ctx.timeout)
+
+	for time.Now().Before(deadline) {
+		ctx.screen.Sync()
+		content := ctx.getScreenContent()
+		if strings.Contains(content, text) {
+			return ctx
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	ctx.t.Errorf("Screen does not contain %q", text)
+	return ctx
+}
+
+// ExpectGolden compares screen content against a golden file (teatest pattern).
+func (ctx *TUITestContext) ExpectGolden(name string) *TUITestContext {
+	ctx.t.Helper()
+	ctx.screen.Sync()
+	ctx.app.Draw()
+	time.Sleep(50 * time.Millisecond)
+	ctx.screen.Sync()
+
+	tt := &TUITester{
+		t:              ctx.t,
+		App:            ctx.app.Application,
+		Screen:         ctx.screen,
+		captureHistory: make([]ScreenCapture, 0),
+		maxCaptures:    10,
+	}
+	tt.CompareGolden(ctx.t, name)
+	return ctx
+}
+
+// ExpectNoDeadlock runs concurrent actions and asserts no deadlock occurs (Bubble Tea pattern).
+func (ctx *TUITestContext) ExpectNoDeadlock(timeout time.Duration, actions ...func(*TUITestContext)) *TUITestContext {
+	ctx.t.Helper()
+	var wg sync.WaitGroup
+	for _, action := range actions {
+		wg.Add(1)
+		go func(a func(*TUITestContext)) {
+			defer wg.Done()
+			a(ctx)
+		}(action)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return ctx
+	case <-time.After(timeout):
+		ctx.t.Fatalf("Deadlock detected: concurrent actions did not complete within %v", timeout)
+		return ctx
+	}
+}
+
+// getScreenContent extracts text from the simulation screen.
+func (ctx *TUITestContext) getScreenContent() string {
+	w, h := ctx.screen.Size()
+	var sb strings.Builder
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			mainc, _, _, _ := ctx.screen.GetContent(x, y)
+			if mainc == 0 {
+				mainc = ' '
+			}
+			sb.WriteRune(mainc)
+		}
+		sb.WriteRune('\n')
+	}
+	return sb.String()
 }
 
 // ============================================================================

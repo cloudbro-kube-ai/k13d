@@ -131,6 +131,14 @@ type App struct {
 	sortColumn          int               // Current sort column index (-1 = none)
 	sortAscending       bool              // Sort direction (true = ascending, false = descending)
 
+	// Command history
+	cmdHistory    []string
+	cmdHistoryIdx int // -1 = not browsing history
+
+	// Port-forward tracking (protected by pfMx)
+	pfMx         sync.Mutex
+	portForwards []*portForwardInfo
+
 	// Navigation history (protected by navMx)
 	navMx           sync.Mutex
 	navigationStack []navHistory
@@ -158,6 +166,15 @@ type App struct {
 
 	// Test mode flags
 	skipBriefing bool // Skip briefing panel in test mode to prevent pulse animation blocking
+
+	// RBAC authorization (Teleport-inspired)
+	tuiRole    string // TUI user role (default: "admin" for backward compatibility)
+	authorizer TUIAuthorizer
+}
+
+// TUIAuthorizer interface for RBAC authorization in TUI (decoupled from web package)
+type TUIAuthorizer interface {
+	IsAllowed(role, resource string, action string, namespace string) (bool, string)
 }
 
 // NewApp creates a new TUI application with default (all) namespace
@@ -210,6 +227,7 @@ func NewAppWithNamespace(initialNamespace string) *App {
 		selectedRows:        make(map[int]bool),
 		sortColumn:          -1, // No sort initially
 		sortAscending:       true,
+		cmdHistoryIdx:       -1, // Not browsing history
 		pendingToolApproval: make(chan bool, 1),
 		logger:              logger,
 	}
@@ -585,7 +603,8 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 			default:
 			}
 
-			// Wait for approval with timeout
+			// Wait for approval with 5-minute timeout
+			approvalTimeout := time.After(5 * time.Minute)
 			select {
 			case approved := <-a.pendingToolApproval:
 				if approved {
@@ -600,6 +619,13 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 					})
 				}
 				return approved
+			case <-approvalTimeout:
+				a.clearToolCallState()
+				a.QueueUpdateDraw(func() {
+					currentText := a.aiPanel.GetText(false)
+					a.aiPanel.SetText(currentText + "\n\n[yellow]⏰ Approval timed out (5 min)[white]")
+				})
+				return false
 			case <-ctx.Done():
 				return false
 			}
@@ -911,7 +937,7 @@ func (a *App) setupAutocomplete() {
 			return nil
 
 		case tcell.KeyUp:
-			// Cycle through suggestions backwards
+			// If suggestions available, cycle backwards; otherwise browse history
 			if len(suggestions) > 1 {
 				selectedIdx--
 				if selectedIdx < 0 {
@@ -924,6 +950,15 @@ func (a *App) setupAutocomplete() {
 				} else {
 					a.cmdHint.SetText("[gray] → " + hint)
 				}
+			} else if len(a.cmdHistory) > 0 {
+				// Browse command history
+				if a.cmdHistoryIdx < 0 {
+					a.cmdHistoryIdx = len(a.cmdHistory) - 1
+				} else if a.cmdHistoryIdx > 0 {
+					a.cmdHistoryIdx--
+				}
+				a.cmdInput.SetText(a.cmdHistory[a.cmdHistoryIdx])
+				a.cmdHint.SetText("")
 			}
 			return nil
 
@@ -941,6 +976,11 @@ func (a *App) setupAutocomplete() {
 					return nil
 				}
 			}
+			// Record command in history
+			if cmd != "" {
+				a.addCmdHistory(cmd)
+			}
+			a.cmdHistoryIdx = -1
 			a.cmdInput.SetText("")
 			a.cmdHint.SetText("")
 			a.cmdInput.SetLabel(" : ")
@@ -1344,6 +1384,8 @@ func (a *App) applyFilterText(filter string) {
 	headers := a.tableHeaders
 	rows := a.tableRows
 	resource := a.currentResource
+	sortCol := a.sortColumn
+	sortAsc := a.sortAscending
 	a.mx.RUnlock()
 
 	if len(headers) == 0 || len(rows) == 0 {
@@ -1375,10 +1417,20 @@ func (a *App) applyFilterText(filter string) {
 	a.QueueUpdateDraw(func() {
 		a.table.Clear()
 
-		// Set headers
+		// Set headers with sort indicator
 		for i, h := range headers {
-			cell := tview.NewTableCell(h).
-				SetTextColor(tcell.ColorYellow).
+			displayHeader := h
+			headerColor := tcell.ColorYellow
+			if sortCol == i {
+				if sortAsc {
+					displayHeader = h + " ▲"
+				} else {
+					displayHeader = h + " ▼"
+				}
+				headerColor = tcell.ColorDarkCyan
+			}
+			cell := tview.NewTableCell(displayHeader).
+				SetTextColor(headerColor).
 				SetAttributes(tcell.AttrBold).
 				SetSelectable(false).
 				SetExpansion(1)
@@ -1445,6 +1497,9 @@ func (a *App) applyFilterText(filter string) {
 			a.table.Select(1, 0)
 		}
 	})
+
+	// Update status bar to reflect current filter/sort state
+	a.updateStatusBar()
 }
 
 // highlightMatch wraps matching text with color tags
@@ -1567,6 +1622,9 @@ func (a *App) setupKeybindings() {
 				return nil
 			case 'b':
 				a.showBenchmark() // k9s: b = benchmark (services)
+				return nil
+			case 'f':
+				a.showPortForwards() // f = show active port-forwards
 				return nil
 			case 't':
 				a.triggerCronJob() // k9s: t = trigger (cronjobs)
@@ -1832,6 +1890,10 @@ func truncateNsName(name string, maxLen int) string {
 func (a *App) updateStatusBar() {
 	a.mx.RLock()
 	resource := a.currentResource
+	sortCol := a.sortColumn
+	sortAsc := a.sortAscending
+	headers := a.tableHeaders
+	filter := a.filterText
 	a.mx.RUnlock()
 
 	// k9s style status bar: show key shortcuts
@@ -1847,6 +1909,22 @@ func (a *App) updateStatusBar() {
 		shortcuts = "[yellow]<u>[white]Use " + shortcuts
 	default:
 		shortcuts = "[yellow]<d>[white]Describe [yellow]<y>[white]YAML " + shortcuts
+	}
+
+	// Append sort/filter status indicators
+	var indicators []string
+	if sortCol >= 0 && sortCol < len(headers) {
+		dir := "↑"
+		if !sortAsc {
+			dir = "↓"
+		}
+		indicators = append(indicators, fmt.Sprintf("[cyan]Sort:%s%s[white]", headers[sortCol], dir))
+	}
+	if filter != "" {
+		indicators = append(indicators, fmt.Sprintf("[magenta]Filter:%s[white]", filter))
+	}
+	if len(indicators) > 0 {
+		shortcuts += " │ " + strings.Join(indicators, " ")
 	}
 
 	// Clear before setting to prevent ghosting
@@ -2052,6 +2130,9 @@ func (a *App) Stop() {
 		a.briefing.stopPulseAnimation()
 	}
 
+	// Clean up port-forward processes
+	a.cleanupPortForwards()
+
 	// Now stop the tview application
 	if a.Application != nil {
 		a.Application.Stop()
@@ -2161,5 +2242,18 @@ func (a *App) clearPendingDecisions() {
 	// Show message after lock release to avoid deadlock
 	if hadDecisions {
 		a.flashMsg("Cancelled pending commands", false)
+	}
+}
+
+const maxCmdHistory = 50
+
+// addCmdHistory adds a command to the history, deduplicating consecutive repeats.
+func (a *App) addCmdHistory(cmd string) {
+	if len(a.cmdHistory) > 0 && a.cmdHistory[len(a.cmdHistory)-1] == cmd {
+		return // Don't add consecutive duplicates
+	}
+	a.cmdHistory = append(a.cmdHistory, cmd)
+	if len(a.cmdHistory) > maxCmdHistory {
+		a.cmdHistory = a.cmdHistory[1:]
 	}
 }

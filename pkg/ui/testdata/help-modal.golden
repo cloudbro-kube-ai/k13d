@@ -1,0 +1,25 @@
+ k║  Ctrl+E   Toggle AI panel     Shift+O  Settings/LLM Config              ║
+AI║  q/Ctrl+C Quit application                                              ║
+ C║                                                                         ║s
+ N║NAVIGATION                                                               ║
+  ║  j/Down   Down                k/Up     Up                               ║
+┌─║  g        Top                 G        Bottom                           ║──┐
+│N║  Ctrl+F   Page down           Ctrl+B   Page up                          ║  │
+│d║  Ctrl+D   Half page down      Ctrl+U   Half page up                     ║  │
+│d║                                                                         ║  │
+│d║RESOURCE ACTIONS                                                         ║  │
+│ ║  d        Describe            y        YAML view                        ║  │
+│ ║  e        Edit ($EDITOR)      Ctrl+D   Delete                           ║  │
+│ ║  r        Refresh             c        Switch context                   ║  │
+│ ║  n        Cycle namespace     Space    Multi-select                     ║  │
+│ ║                                                                         ║  │
+│ ║NAMESPACE SHORTCUTS (k9s style)                                          ║  │
+│ ║  0 All namespaces      n   Cycle through namespaces                     ║  │
+│ ║  u Use namespace (on namespace view)                                    ║  │
+│ ║  :ns <name>           Switch to specific namespace                      ║  │
+│ ║                                                                         ║  │
+│ ║POD ACTIONS                                                              ║  │
+│ ║  l        Logs                p        Previous logs                    ║  │
+└─║  s        Shell               a        Attach                           ║──┘
+  ║  o        Show node           k/Ctrl+K Kill (force delete)              ║
+ :║  Shift+F  Port forward        f        Show port-forward                ║

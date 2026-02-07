@@ -2,8 +2,12 @@ package ui
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -13,6 +17,10 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
+
+// updateGolden is a flag to update golden files instead of comparing.
+// Usage: go test -run TestGolden ./pkg/ui/... -update
+var updateGolden = flag.Bool("update", false, "update golden files")
 
 // TUITester provides headless TUI testing capabilities using tcell's SimulationScreen.
 // This allows automated testing of TUI interactions without a real terminal.
@@ -706,6 +714,73 @@ func (s *Scenario) Run() error {
 		}
 	}
 	return nil
+}
+
+// goldenDir returns the path to the testdata directory for golden files.
+func goldenDir() string {
+	_, filename, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(filename), "testdata")
+}
+
+// goldenPath returns the full path for a golden file.
+func goldenPath(name string) string {
+	return filepath.Join(goldenDir(), name+".golden")
+}
+
+// GetContentNormalized returns screen content with trailing whitespace removed
+// from each line and empty trailing lines removed for deterministic comparison.
+func (tt *TUITester) GetContentNormalized() string {
+	content := tt.GetContentTrimmed()
+	lines := strings.Split(content, "\n")
+
+	// Remove trailing empty lines
+	for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "" {
+		lines = lines[:len(lines)-1]
+	}
+
+	return strings.Join(lines, "\n") + "\n"
+}
+
+// CompareGolden compares current screen content against a golden file.
+// If -update flag is set, it writes the current content as the new golden file.
+// On mismatch, it writes actual content to a .actual file for easy diffing.
+func (tt *TUITester) CompareGolden(t *testing.T, name string) bool {
+	t.Helper()
+
+	actual := tt.GetContentNormalized()
+	path := goldenPath(name)
+
+	if *updateGolden {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatalf("Failed to create golden dir: %v", err)
+		}
+		if err := os.WriteFile(path, []byte(actual), 0o644); err != nil {
+			t.Fatalf("Failed to write golden file: %v", err)
+		}
+		t.Logf("Updated golden file: %s", path)
+		return true
+	}
+
+	expected, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// No golden file yet — write actual and fail
+			actualPath := path + ".actual"
+			_ = os.WriteFile(actualPath, []byte(actual), 0o644)
+			t.Fatalf("Golden file not found: %s\nRun with -update to create it.\nActual written to: %s", path, actualPath)
+		}
+		t.Fatalf("Failed to read golden file: %v", err)
+	}
+
+	if actual != string(expected) {
+		actualPath := path + ".actual"
+		_ = os.WriteFile(actualPath, []byte(actual), 0o644)
+		t.Errorf("Screen content does not match golden file: %s\nActual written to: %s\nRun 'diff %s %s' to see differences",
+			path, actualPath, path, actualPath)
+		return false
+	}
+
+	return true
 }
 
 // itoa is a simple int to string converter to avoid fmt import in hot paths.

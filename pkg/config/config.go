@@ -9,17 +9,66 @@ import (
 )
 
 type Config struct {
-	LLM          LLMConfig        `yaml:"llm" json:"llm"`
-	Models       []ModelProfile   `yaml:"models" json:"models"`             // Multiple LLM model profiles
-	ActiveModel  string           `yaml:"active_model" json:"active_model"` // Currently active model profile name
-	MCP          MCPConfig        `yaml:"mcp" json:"mcp"`                   // MCP server configuration
-	Storage      StorageConfig    `yaml:"storage" json:"storage"`           // Data storage configuration
-	Prometheus   PrometheusConfig `yaml:"prometheus" json:"prometheus"`     // Prometheus integration configuration
-	ReportPath   string           `yaml:"report_path" json:"report_path"`
-	EnableAudit  bool             `yaml:"enable_audit" json:"enable_audit"`
-	Language     string           `yaml:"language" json:"language"`
-	BeginnerMode bool             `yaml:"beginner_mode" json:"beginner_mode"`
-	LogLevel     string           `yaml:"log_level" json:"log_level"`
+	LLM           LLMConfig           `yaml:"llm" json:"llm"`
+	Models        []ModelProfile      `yaml:"models" json:"models"`               // Multiple LLM model profiles
+	ActiveModel   string              `yaml:"active_model" json:"active_model"`   // Currently active model profile name
+	MCP           MCPConfig           `yaml:"mcp" json:"mcp"`                     // MCP server configuration
+	Storage       StorageConfig       `yaml:"storage" json:"storage"`             // Data storage configuration
+	Prometheus    PrometheusConfig    `yaml:"prometheus" json:"prometheus"`       // Prometheus integration configuration
+	Authorization AuthorizationConfig `yaml:"authorization" json:"authorization"` // RBAC authorization (Teleport-inspired)
+	ReportPath    string              `yaml:"report_path" json:"report_path"`
+	EnableAudit   bool                `yaml:"enable_audit" json:"enable_audit"`
+	Language      string              `yaml:"language" json:"language"`
+	BeginnerMode  bool                `yaml:"beginner_mode" json:"beginner_mode"`
+	LogLevel      string              `yaml:"log_level" json:"log_level"`
+}
+
+// AuthorizationConfig holds RBAC authorization settings (Teleport-inspired)
+type AuthorizationConfig struct {
+	// DefaultTUIRole is the role used for TUI users (default: "admin" for backward compat)
+	DefaultTUIRole string `yaml:"default_tui_role" json:"default_tui_role"`
+	// AccessRequestTTL is the duration for approved access requests
+	AccessRequestTTL string `yaml:"access_request_ttl" json:"access_request_ttl"`
+	// RequireApprovalFor lists action categories requiring access request (e.g., ["dangerous"])
+	RequireApprovalFor []string `yaml:"require_approval_for" json:"require_approval_for"`
+	// CustomRoles defines additional role definitions beyond the built-in ones
+	CustomRoles []RoleConfig `yaml:"roles" json:"roles"`
+	// Impersonation controls K8s impersonation
+	Impersonation ImpersonationConfigYAML `yaml:"impersonation" json:"impersonation"`
+	// JWT configuration
+	JWT JWTConfigYAML `yaml:"jwt" json:"jwt"`
+}
+
+// RoleConfig defines a custom RBAC role in config
+type RoleConfig struct {
+	Name  string       `yaml:"name" json:"name"`
+	Allow []RuleConfig `yaml:"allow" json:"allow"`
+	Deny  []RuleConfig `yaml:"deny" json:"deny"`
+}
+
+// RuleConfig defines a permission rule in config
+type RuleConfig struct {
+	Resources  []string `yaml:"resources" json:"resources"`
+	Actions    []string `yaml:"actions" json:"actions"`
+	Namespaces []string `yaml:"namespaces" json:"namespaces"`
+}
+
+// ImpersonationConfigYAML is the YAML-friendly impersonation config
+type ImpersonationConfigYAML struct {
+	Enabled  bool                            `yaml:"enabled" json:"enabled"`
+	Mappings map[string]ImpersonationMapping `yaml:"mappings" json:"mappings"`
+}
+
+// ImpersonationMapping defines how a role maps to K8s impersonation
+type ImpersonationMapping struct {
+	User   string   `yaml:"user" json:"user"`
+	Groups []string `yaml:"groups" json:"groups"`
+}
+
+// JWTConfigYAML is the YAML-friendly JWT config
+type JWTConfigYAML struct {
+	TokenDuration string `yaml:"token_duration" json:"token_duration"` // e.g., "1h"
+	RefreshWindow string `yaml:"refresh_window" json:"refresh_window"` // e.g., "15m"
 }
 
 // PrometheusConfig holds Prometheus integration settings
@@ -214,6 +263,18 @@ func NewDefaultConfig() *Config {
 			ExposeMetrics:      false,
 			CollectK8sMetrics:  true,
 			CollectionInterval: 60,
+		},
+		Authorization: AuthorizationConfig{
+			DefaultTUIRole:     "admin", // Full access by default (backward compatible)
+			AccessRequestTTL:   "30m",
+			RequireApprovalFor: []string{},
+			Impersonation: ImpersonationConfigYAML{
+				Enabled: false,
+			},
+			JWT: JWTConfigYAML{
+				TokenDuration: "1h",
+				RefreshWindow: "15m",
+			},
 		},
 		Language:     "ko",
 		BeginnerMode: true,

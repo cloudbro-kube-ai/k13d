@@ -157,7 +157,13 @@ func createTables() error {
 			client_ip VARCHAR(50) DEFAULT '',
 			session_id VARCHAR(255) DEFAULT '',
 			success BOOLEAN DEFAULT TRUE,
-			error_msg TEXT DEFAULT ''
+			error_msg TEXT DEFAULT '',
+			requested_action VARCHAR(100) DEFAULT '',
+			target_resource VARCHAR(512) DEFAULT '',
+			target_namespace VARCHAR(255) DEFAULT '',
+			authz_decision VARCHAR(50) DEFAULT '',
+			access_request_id VARCHAR(255) DEFAULT '',
+			reviewer_user VARCHAR(255) DEFAULT ''
 		);`
 	case DBTypeMariaDB, DBTypeMySQL:
 		auditQuery = `
@@ -182,7 +188,13 @@ func createTables() error {
 			client_ip VARCHAR(50) DEFAULT '',
 			session_id VARCHAR(255) DEFAULT '',
 			success TINYINT(1) DEFAULT 1,
-			error_msg TEXT
+			error_msg TEXT,
+			requested_action VARCHAR(100) DEFAULT '',
+			target_resource VARCHAR(512) DEFAULT '',
+			target_namespace VARCHAR(255) DEFAULT '',
+			authz_decision VARCHAR(50) DEFAULT '',
+			access_request_id VARCHAR(255) DEFAULT '',
+			reviewer_user VARCHAR(255) DEFAULT ''
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
 	default: // SQLite
 		auditQuery = `
@@ -207,7 +219,13 @@ func createTables() error {
 			client_ip TEXT DEFAULT '',
 			session_id TEXT DEFAULT '',
 			success INTEGER DEFAULT 1,
-			error_msg TEXT DEFAULT ''
+			error_msg TEXT DEFAULT '',
+			requested_action TEXT DEFAULT '',
+			target_resource TEXT DEFAULT '',
+			target_namespace TEXT DEFAULT '',
+			authz_decision TEXT DEFAULT '',
+			access_request_id TEXT DEFAULT '',
+			reviewer_user TEXT DEFAULT ''
 		);`
 	}
 	if _, err := DB.Exec(auditQuery); err != nil {
@@ -303,6 +321,16 @@ func createTables() error {
 		}
 	}
 
+	// Create user_locks table (for emergency user locking)
+	if err := createUserLocksTable(); err != nil {
+		fmt.Printf("Warning: failed to create user_locks table: %v\n", err)
+	}
+
+	// Create access_requests table (for access request workflow)
+	if err := createAccessRequestsTable(); err != nil {
+		fmt.Printf("Warning: failed to create access_requests table: %v\n", err)
+	}
+
 	// Create indexes
 	indexQueries := getIndexQueries()
 	for _, q := range indexQueries {
@@ -353,9 +381,12 @@ func getIndexQueries() []string {
 			"CREATE INDEX IF NOT EXISTS idx_audit_action_type ON audit_logs(action_type);",
 			"CREATE INDEX IF NOT EXISTS idx_audit_k8s_user ON audit_logs(k8s_user);",
 			"CREATE INDEX IF NOT EXISTS idx_audit_source ON audit_logs(source);",
+			"CREATE INDEX IF NOT EXISTS idx_audit_authz_decision ON audit_logs(authz_decision);",
 			"CREATE INDEX IF NOT EXISTS idx_security_scan_time ON security_scans(scan_time DESC);",
 			"CREATE INDEX IF NOT EXISTS idx_security_cluster ON security_scans(cluster_name);",
 			"CREATE INDEX IF NOT EXISTS idx_security_risk ON security_scans(risk_level);",
+			"CREATE INDEX IF NOT EXISTS idx_access_requests_state ON access_requests(state);",
+			"CREATE INDEX IF NOT EXISTS idx_access_requests_user ON access_requests(requested_by);",
 		}
 	}
 }
@@ -414,6 +445,13 @@ func migrateAuditLogsTable() error {
 		{"session_id", "TEXT DEFAULT ''", "VARCHAR(255) DEFAULT ''", "VARCHAR(255) DEFAULT ''"},
 		{"success", "INTEGER DEFAULT 1", "BOOLEAN DEFAULT TRUE", "TINYINT(1) DEFAULT 1"},
 		{"error_msg", "TEXT DEFAULT ''", "TEXT DEFAULT ''", "TEXT"},
+		// Authorization fields (Teleport-inspired)
+		{"requested_action", "TEXT DEFAULT ''", "VARCHAR(100) DEFAULT ''", "VARCHAR(100) DEFAULT ''"},
+		{"target_resource", "TEXT DEFAULT ''", "VARCHAR(512) DEFAULT ''", "VARCHAR(512) DEFAULT ''"},
+		{"target_namespace", "TEXT DEFAULT ''", "VARCHAR(255) DEFAULT ''", "VARCHAR(255) DEFAULT ''"},
+		{"authz_decision", "TEXT DEFAULT ''", "VARCHAR(50) DEFAULT ''", "VARCHAR(50) DEFAULT ''"},
+		{"access_request_id", "TEXT DEFAULT ''", "VARCHAR(255) DEFAULT ''", "VARCHAR(255) DEFAULT ''"},
+		{"reviewer_user", "TEXT DEFAULT ''", "VARCHAR(255) DEFAULT ''", "VARCHAR(255) DEFAULT ''"},
 	}
 
 	// Add missing columns
@@ -440,4 +478,96 @@ func migrateAuditLogsTable() error {
 	}
 
 	return nil
+}
+
+// createUserLocksTable creates the user_locks table for emergency user locking
+func createUserLocksTable() error {
+	var query string
+	switch currentDBType {
+	case DBTypePostgres:
+		query = `
+		CREATE TABLE IF NOT EXISTS user_locks (
+			username VARCHAR(255) PRIMARY KEY,
+			locked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			locked_by VARCHAR(255) DEFAULT '',
+			reason TEXT DEFAULT ''
+		);`
+	case DBTypeMariaDB, DBTypeMySQL:
+		query = `
+		CREATE TABLE IF NOT EXISTS user_locks (
+			username VARCHAR(255) PRIMARY KEY,
+			locked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			locked_by VARCHAR(255) DEFAULT '',
+			reason TEXT
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+	default: // SQLite
+		query = `
+		CREATE TABLE IF NOT EXISTS user_locks (
+			username TEXT PRIMARY KEY,
+			locked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			locked_by TEXT DEFAULT '',
+			reason TEXT DEFAULT ''
+		);`
+	}
+
+	_, err := DB.Exec(query)
+	return err
+}
+
+// createAccessRequestsTable creates the access_requests table for access request workflow
+func createAccessRequestsTable() error {
+	var query string
+	switch currentDBType {
+	case DBTypePostgres:
+		query = `
+		CREATE TABLE IF NOT EXISTS access_requests (
+			id VARCHAR(255) PRIMARY KEY,
+			requested_by VARCHAR(255) NOT NULL,
+			action VARCHAR(100) NOT NULL,
+			resource VARCHAR(512) NOT NULL,
+			namespace VARCHAR(255) DEFAULT '',
+			reason TEXT DEFAULT '',
+			state VARCHAR(50) DEFAULT 'pending',
+			reviewed_by VARCHAR(255) DEFAULT '',
+			review_note TEXT DEFAULT '',
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			reviewed_at TIMESTAMP,
+			expires_at TIMESTAMP
+		);`
+	case DBTypeMariaDB, DBTypeMySQL:
+		query = `
+		CREATE TABLE IF NOT EXISTS access_requests (
+			id VARCHAR(255) PRIMARY KEY,
+			requested_by VARCHAR(255) NOT NULL,
+			action VARCHAR(100) NOT NULL,
+			resource VARCHAR(512) NOT NULL,
+			namespace VARCHAR(255) DEFAULT '',
+			reason TEXT,
+			state VARCHAR(50) DEFAULT 'pending',
+			reviewed_by VARCHAR(255) DEFAULT '',
+			review_note TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			reviewed_at DATETIME,
+			expires_at DATETIME
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+	default: // SQLite
+		query = `
+		CREATE TABLE IF NOT EXISTS access_requests (
+			id TEXT PRIMARY KEY,
+			requested_by TEXT NOT NULL,
+			action TEXT NOT NULL,
+			resource TEXT NOT NULL,
+			namespace TEXT DEFAULT '',
+			reason TEXT DEFAULT '',
+			state TEXT DEFAULT 'pending',
+			reviewed_by TEXT DEFAULT '',
+			review_note TEXT DEFAULT '',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			reviewed_at DATETIME,
+			expires_at DATETIME
+		);`
+	}
+
+	_, err := DB.Exec(query)
+	return err
 }

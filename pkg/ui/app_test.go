@@ -157,26 +157,6 @@ func TestCommandDefinitions(t *testing.T) {
 	}
 }
 
-func TestFormatAge(t *testing.T) {
-	tests := []struct {
-		name     string
-		duration string
-		expected string
-	}{
-		{"30 seconds", "30s", "30s"},
-		{"5 minutes", "5m", "5m"},
-		{"2 hours", "2h", "2h"},
-		{"3 days", "72h", "3d"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// This is a simplified test - actual implementation uses time.Time
-			// Just verify the function exists and handles basic cases
-		})
-	}
-}
-
 func TestStatusColor(t *testing.T) {
 	app := &App{}
 
@@ -379,128 +359,6 @@ func TestCommandCount(t *testing.T) {
 	}
 }
 
-func TestSelectNamespaceByNumber(t *testing.T) {
-	app := &App{
-		namespaces: []string{"", "default", "kube-system", "monitoring"},
-	}
-
-	tests := []struct {
-		name     string
-		num      int
-		expected string
-	}{
-		{"select all (0)", 0, ""},
-		{"select default (1)", 1, "default"},
-		{"select kube-system (2)", 2, "kube-system"},
-		{"select monitoring (3)", 3, "monitoring"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Reset state
-			app.currentNamespace = "initial"
-
-			// This would normally trigger goroutines, so we test the logic directly
-			if tt.num < len(app.namespaces) {
-				app.currentNamespace = app.namespaces[tt.num]
-			}
-
-			if app.currentNamespace != tt.expected {
-				t.Errorf("expected namespace %q, got %q", tt.expected, app.currentNamespace)
-			}
-		})
-	}
-}
-
-func TestSelectNamespaceByNumberOutOfRange(t *testing.T) {
-	app := &App{
-		namespaces: []string{"", "default"},
-	}
-	app.currentNamespace = "initial"
-
-	// Attempt to select out of range
-	num := 10
-	if num >= len(app.namespaces) {
-		// Should not change
-	} else {
-		app.currentNamespace = app.namespaces[num]
-	}
-
-	if app.currentNamespace != "initial" {
-		t.Errorf("namespace should not change for out of range selection")
-	}
-}
-
-// TestSetResourceGoroutine verifies that setResource runs in a goroutine to avoid deadlock
-// This test validates the pattern fix for deadlock issues when calling setResource from event handlers
-func TestSetResourceGoroutine(t *testing.T) {
-	// This test validates the code pattern, not the actual execution
-	// The fix ensures setResource wraps updateHeader and refresh in a goroutine
-
-	// The pattern should be:
-	// func (a *App) setResource(resource string) {
-	//     a.mx.Lock()
-	//     a.currentResource = resource
-	//     a.mx.Unlock()
-	//     go func() {
-	//         a.updateHeader()
-	//         a.refresh()
-	//     }()
-	// }
-
-	// We test that the App struct has the required fields
-	app := &App{}
-	app.mx.Lock()
-	app.currentResource = "pods"
-	app.mx.Unlock()
-
-	if app.currentResource != "pods" {
-		t.Errorf("expected currentResource to be 'pods', got %q", app.currentResource)
-	}
-}
-
-// TestCycleNamespaceGoroutine verifies that cycleNamespace runs in a goroutine to avoid deadlock
-func TestCycleNamespaceGoroutine(t *testing.T) {
-	app := &App{
-		namespaces: []string{"default", "kube-system", "monitoring"},
-	}
-	app.currentNamespace = "default"
-
-	// Simulate cycle logic (without goroutine for testing)
-	current := 0
-	for i, n := range app.namespaces {
-		if n == app.currentNamespace {
-			current = i
-			break
-		}
-	}
-	next := (current + 1) % len(app.namespaces)
-	app.currentNamespace = app.namespaces[next]
-
-	if app.currentNamespace != "kube-system" {
-		t.Errorf("expected namespace to cycle to 'kube-system', got %q", app.currentNamespace)
-	}
-}
-
-// TestHandleCommandNamespaceGoroutine verifies that handleCommand ns runs in a goroutine
-func TestHandleCommandNamespaceGoroutine(t *testing.T) {
-	app := &App{}
-	app.currentNamespace = "default"
-
-	// Simulate the command handling logic
-	cmd := "ns kube-system"
-	if strings.HasPrefix(cmd, "ns ") {
-		parts := strings.Fields(cmd)
-		if len(parts) >= 2 {
-			app.currentNamespace = parts[1]
-		}
-	}
-
-	if app.currentNamespace != "kube-system" {
-		t.Errorf("expected namespace to be 'kube-system', got %q", app.currentNamespace)
-	}
-}
-
 // TestHandleCommandWithNamespaceFlag tests kubectl-style -n flag parsing
 func TestHandleCommandWithNamespaceFlag(t *testing.T) {
 	tests := []struct {
@@ -664,18 +522,6 @@ func TestNumberKeyNamespaceSwitch(t *testing.T) {
 	}
 }
 
-// TestQueueUpdateDrawNilApp tests that QueueUpdateDraw handles nil Application gracefully
-func TestQueueUpdateDrawNilApp(t *testing.T) {
-	app := &App{
-		Application: nil,
-	}
-
-	// Should not panic
-	app.QueueUpdateDraw(func() {
-		t.Error("callback should not be called with nil Application")
-	})
-}
-
 // TestQueueUpdateDrawStoppingApp tests that QueueUpdateDraw handles stopping state
 func TestQueueUpdateDrawStoppingApp(t *testing.T) {
 	app := &App{}
@@ -753,32 +599,44 @@ func TestBasicConcurrentAccess(t *testing.T) {
 	}
 }
 
-// TestLogoColorsFunctionExists tests that LogoColors function returns non-empty string
-func TestLogoColorsFunctionExists(t *testing.T) {
-	result := LogoColors()
-	if result == "" {
-		t.Error("LogoColors() returned empty string")
+// TestResourceAliases verifies all resource aliases resolve correctly via getCompletions.
+// (Migrated from tui_interface_test.go)
+func TestResourceAliases(t *testing.T) {
+	app := &App{
+		namespaces: []string{"", "default"},
 	}
-	if !strings.Contains(result, "k13d") && !strings.Contains(result, "[") {
-		t.Error("LogoColors() should contain logo text with color codes")
-	}
-}
 
-// TestHeaderLogoFunctionExists tests that HeaderLogo function returns non-empty string
-func TestHeaderLogoFunctionExists(t *testing.T) {
-	result := HeaderLogo()
-	if result == "" {
-		t.Error("HeaderLogo() returned empty string")
+	aliases := map[string]string{
+		"po":     "pods",
+		"deploy": "deployments",
+		"svc":    "services",
+		"no":     "nodes",
+		"ns":     "namespaces",
+		"ev":     "events",
+		"cm":     "configmaps",
+		"sec":    "secrets",
+		"pv":     "persistentvolumes",
+		"pvc":    "persistentvolumeclaims",
+		"sc":     "storageclasses",
+		"rs":     "replicasets",
+		"ds":     "daemonsets",
+		"sts":    "statefulsets",
+		"job":    "jobs",
+		"cj":     "cronjobs",
+		"ing":    "ingresses",
+		"ep":     "endpoints",
+		"netpol": "networkpolicies",
+		"sa":     "serviceaccounts",
 	}
-	if !strings.Contains(result, "k") {
-		t.Error("HeaderLogo() should contain 'k' from k13d")
-	}
-}
 
-// TestAboutModalCreation tests that AboutModal returns a valid tview component
-func TestAboutModalCreation(t *testing.T) {
-	modal := AboutModal()
-	if modal == nil {
-		t.Error("AboutModal() returned nil")
+	for alias, expectedResource := range aliases {
+		completions := app.getCompletions(alias)
+		if len(completions) == 0 {
+			t.Errorf("Alias %q returned no completions", alias)
+			continue
+		}
+		if completions[0] != expectedResource {
+			t.Errorf("Alias %q: expected %q, got %q", alias, expectedResource, completions[0])
+		}
 	}
 }

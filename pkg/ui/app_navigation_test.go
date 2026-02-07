@@ -100,3 +100,76 @@ func TestNavStackConcurrency(t *testing.T) {
 		t.Errorf("Expected %d items in stack, got %d", numGoroutines, finalLen)
 	}
 }
+
+func TestSortByColumnToggle(t *testing.T) {
+	app := &App{
+		sortColumn:    -1,
+		sortAscending: true,
+		tableHeaders:  []string{"NAME", "STATUS", "AGE"},
+		tableRows:     [][]string{},
+	}
+
+	// First sort sets column and ascending
+	app.mx.Lock()
+	app.sortColumn = 0
+	app.sortAscending = true
+	app.mx.Unlock()
+
+	// Sorting same column should toggle direction
+	app.mx.Lock()
+	if app.sortColumn == 0 {
+		app.sortAscending = !app.sortAscending
+	}
+	asc := app.sortAscending
+	app.mx.Unlock()
+
+	if asc {
+		t.Error("Expected sortAscending to toggle to false")
+	}
+
+	// Sort different column resets to ascending
+	app.mx.Lock()
+	newCol := 1
+	if app.sortColumn == newCol {
+		app.sortAscending = !app.sortAscending
+	} else {
+		app.sortColumn = newCol
+		app.sortAscending = true
+	}
+	asc = app.sortAscending
+	col := app.sortColumn
+	app.mx.Unlock()
+
+	if col != 1 {
+		t.Errorf("Expected sortColumn to be 1, got %d", col)
+	}
+	if !asc {
+		t.Error("Expected sortAscending to reset to true for new column")
+	}
+}
+
+func TestNavHistoryPreservesFilter(t *testing.T) {
+	app := &App{
+		navigationStack: nil,
+		navMx:           sync.Mutex{},
+	}
+
+	// Push with filter
+	app.navMx.Lock()
+	app.navigationStack = append(app.navigationStack, navHistory{
+		resource:  "pods",
+		namespace: "default",
+		filter:    "nginx",
+	})
+	app.navMx.Unlock()
+
+	// Pop and verify filter preserved
+	app.navMx.Lock()
+	prev := app.navigationStack[len(app.navigationStack)-1]
+	app.navigationStack = app.navigationStack[:len(app.navigationStack)-1]
+	app.navMx.Unlock()
+
+	if prev.filter != "nginx" {
+		t.Errorf("Expected filter 'nginx' to be preserved, got %q", prev.filter)
+	}
+}

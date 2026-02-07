@@ -64,6 +64,10 @@ func safeGetTable(app *App) *tview.Table {
 //
 // Note: Some tests may be slow due to the nature of TUI testing.
 // Use -short flag to skip the slowest tests.
+//
+// Migration note: New E2E tests should use TUITestContext from tui_modern_test.go
+// for reduced boilerplate. See feature_test.go for examples using the fluent API.
+// Existing tests below use the raw setup pattern and work correctly.
 
 // ============================================================================
 // Resource Navigation Tests
