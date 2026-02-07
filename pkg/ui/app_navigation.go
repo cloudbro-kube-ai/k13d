@@ -342,6 +342,9 @@ func (a *App) navigateTo(resource, namespace, filter string) {
 	a.sortAscending = true
 	a.mx.Unlock()
 
+	// Force full terminal sync to prevent ghosting when switching resources
+	a.requestSync()
+
 	// Always run UI updates in goroutine after releasing lock
 	go func() {
 		a.updateHeader()
