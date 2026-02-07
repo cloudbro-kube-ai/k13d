@@ -31,6 +31,7 @@ type AIPanel struct {
 	currentApproval   *agent.ChoiceRequest
 	approvalCallback  func(bool) // For synchronous approval handling
 	autoScroll        bool       // Whether to auto-scroll on new content
+	lineCount         int        // Cached line count for efficient scroll detection
 	mu                sync.Mutex
 
 	// Callbacks
@@ -272,16 +273,14 @@ func (p *AIPanel) checkAutoScrollReEnable() {
 	row, _ := p.outputView.GetScrollOffset()
 	_, _, _, height := p.outputView.GetInnerRect()
 
-	// Get total content height (approximate by line count)
-	text := p.outputView.GetText(false)
-	lineCount := strings.Count(text, "\n") + 1
-
+	// Use cached line count instead of O(n) strings.Count on every scroll
+	p.mu.Lock()
+	lineCount := p.lineCount + 1 // +1 for the first line (0 newlines = 1 line)
 	// If we're at or near the bottom, re-enable auto-scroll
 	if row+height >= lineCount-1 {
-		p.mu.Lock()
 		p.autoScroll = true
-		p.mu.Unlock()
 	}
+	p.mu.Unlock()
 }
 
 // handleApprovalKey processes key events for approval
@@ -401,8 +400,10 @@ func (p *AIPanel) showToolResultUI(tc *agent.ToolCallInfo) {
 func (p *AIPanel) appendText(text string) {
 	fmt.Fprint(p.outputView, text)
 
-	// Only auto-scroll if enabled (user hasn't scrolled up)
+	// Update cached line count
+	newLines := strings.Count(text, "\n")
 	p.mu.Lock()
+	p.lineCount += newLines
 	shouldScroll := p.autoScroll
 	p.mu.Unlock()
 
@@ -439,6 +440,10 @@ func (p *AIPanel) updateStatusFromState(state string) {
 // Clear clears the output view
 func (p *AIPanel) Clear() {
 	p.outputView.Clear()
+	p.mu.Lock()
+	p.lineCount = 0
+	p.autoScroll = true
+	p.mu.Unlock()
 	p.setStatus("Ready")
 }
 
@@ -540,33 +545,31 @@ func (p *AIPanel) SetApprovalCallback(callback func(bool)) {
 			return event
 		}
 
+		// Check if this key triggers an approval action
+		approved := false
+		handled := false
+
 		switch event.Key() {
 		case tcell.KeyEnter:
-			p.mu.Lock()
-			p.isShowingApproval = false
-			p.mu.Unlock()
-			callback(true)
-			return nil
+			approved, handled = true, true
 		case tcell.KeyEscape:
-			p.mu.Lock()
-			p.isShowingApproval = false
-			p.mu.Unlock()
-			callback(false)
-			return nil
+			approved, handled = false, true
 		}
 
-		switch event.Rune() {
-		case 'Y', 'y':
+		if !handled {
+			switch event.Rune() {
+			case 'Y', 'y':
+				approved, handled = true, true
+			case 'N', 'n':
+				approved, handled = false, true
+			}
+		}
+
+		if handled {
 			p.mu.Lock()
 			p.isShowingApproval = false
 			p.mu.Unlock()
-			callback(true)
-			return nil
-		case 'N', 'n':
-			p.mu.Lock()
-			p.isShowingApproval = false
-			p.mu.Unlock()
-			callback(false)
+			callback(approved)
 			return nil
 		}
 

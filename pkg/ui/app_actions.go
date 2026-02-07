@@ -917,7 +917,10 @@ func (a *App) editResource() {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		cmd.Run()
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "\nEdit failed: %v\nPress Enter to return...\n", err)
+			bufio.NewReader(os.Stdin).ReadString('\n')
+		}
 	})
 
 	// Record audit (we can't know if edit was actually saved, so just record the attempt)
@@ -952,7 +955,10 @@ func (a *App) attachContainer() {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		cmd.Run()
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "\nAttach failed: %v\nPress Enter to return...\n", err)
+			bufio.NewReader(os.Stdin).ReadString('\n')
+		}
 	})
 }
 

@@ -79,7 +79,11 @@ func (b *BriefingPanel) Toggle() {
 
 	if visible {
 		b.startPulse()
-		go b.Update(context.Background())
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			b.Update(ctx)
+		}()
 	} else {
 		b.stopPulseAnimation()
 	}
@@ -110,7 +114,7 @@ func (b *BriefingPanel) Update(ctx context.Context) error {
 	return nil
 }
 
-// fetchData collects all data needed for the briefing
+// fetchData collects all data needed for the briefing (parallelized)
 func (b *BriefingPanel) fetchData(ctx context.Context) (*BriefingData, error) {
 	if b.app.k8s == nil {
 		return nil, fmt.Errorf("K8s client not available")
@@ -124,21 +128,79 @@ func (b *BriefingPanel) fetchData(ctx context.Context) (*BriefingData, error) {
 		Namespace: ns,
 	}
 
-	// Get context info
+	// Get context info (fast, non-API call)
 	ctxName, cluster, _, err := b.app.k8s.GetContextInfo()
 	if err == nil {
 		data.ContextName = ctxName
 		data.ClusterName = cluster
 	}
 
-	// Fetch pods
-	pods, err := b.app.k8s.ListPods(ctx, ns)
-	if err == nil {
+	// Fetch pods, nodes, deployments, and metrics in parallel
+	type podsResult struct {
+		pods []corev1.Pod
+		err  error
+	}
+	type nodesResult struct {
+		nodes []corev1.Node
+		err   error
+	}
+	podsCh := make(chan podsResult, 1)
+	nodesCh := make(chan nodesResult, 1)
+	deployReadyCh := make(chan [2]int, 1) // [total, ready]
+
+	// Goroutine 1: Fetch pods
+	go func() {
+		pods, err := b.app.k8s.ListPods(ctx, ns)
+		podsCh <- podsResult{pods: pods, err: err}
+	}()
+
+	// Goroutine 2: Fetch nodes (always cluster-wide)
+	go func() {
+		nodes, err := b.app.k8s.ListNodes(ctx)
+		nodesCh <- nodesResult{nodes: nodes, err: err}
+	}()
+
+	// Goroutine 3: Fetch deployments
+	go func() {
+		deployments, err := b.app.k8s.ListDeployments(ctx, ns)
+		if err != nil {
+			deployReadyCh <- [2]int{0, 0}
+			return
+		}
+		total := len(deployments)
+		ready := 0
+		for _, d := range deployments {
+			replicas := int32(1)
+			if d.Spec.Replicas != nil {
+				replicas = *d.Spec.Replicas
+			}
+			if d.Status.ReadyReplicas >= replicas {
+				ready++
+			}
+		}
+		deployReadyCh <- [2]int{total, ready}
+	}()
+
+	// Goroutine 4: Fetch metrics (optional, may not be available)
+	type metricsResult struct {
+		podMetrics  map[string][]int64
+		nodeMetrics map[string][]int64
+	}
+	metricsResultCh := make(chan metricsResult, 1)
+	go func() {
+		podMetrics, _ := b.app.k8s.GetPodMetrics(ctx, ns)
+		nodeMetrics, _ := b.app.k8s.GetNodeMetrics(ctx)
+		metricsResultCh <- metricsResult{podMetrics: podMetrics, nodeMetrics: nodeMetrics}
+	}()
+
+	// Collect results
+	pr := <-podsCh
+	if pr.err == nil {
+		pods := pr.pods
 		data.TotalPods = len(pods)
 		for _, p := range pods {
 			switch p.Status.Phase {
 			case corev1.PodRunning:
-				// Check if all containers are ready
 				allReady := true
 				for _, cs := range p.Status.ContainerStatuses {
 					if !cs.Ready {
@@ -166,9 +228,9 @@ func (b *BriefingPanel) fetchData(ctx context.Context) (*BriefingData, error) {
 		}
 	}
 
-	// Fetch nodes (always cluster-wide)
-	nodes, err := b.app.k8s.ListNodes(ctx)
-	if err == nil {
+	nr := <-nodesCh
+	if nr.err == nil {
+		nodes := nr.nodes
 		data.TotalNodes = len(nodes)
 		for _, n := range nodes {
 			for _, c := range n.Status.Conditions {
@@ -178,32 +240,19 @@ func (b *BriefingPanel) fetchData(ctx context.Context) (*BriefingData, error) {
 				}
 			}
 		}
-
-		// Check for not-ready nodes
 		if data.ReadyNodes < data.TotalNodes {
 			notReady := data.TotalNodes - data.ReadyNodes
 			data.Alerts = append(data.Alerts, fmt.Sprintf("%d node(s) not ready", notReady))
 		}
 	}
 
-	// Fetch deployments
-	deployments, err := b.app.k8s.ListDeployments(ctx, ns)
-	if err == nil {
-		data.TotalDeployments = len(deployments)
-		for _, d := range deployments {
-			replicas := int32(1)
-			if d.Spec.Replicas != nil {
-				replicas = *d.Spec.Replicas
-			}
-			if d.Status.ReadyReplicas >= replicas {
-				data.ReadyDeployments++
-			}
-		}
-	}
+	dr := <-deployReadyCh
+	data.TotalDeployments = dr[0]
+	data.ReadyDeployments = dr[1]
 
-	// Try to get metrics (optional, may not be available)
-	podMetrics, _ := b.app.k8s.GetPodMetrics(ctx, ns)
-	nodeMetrics, _ := b.app.k8s.GetNodeMetrics(ctx)
+	mr := <-metricsResultCh
+	podMetrics := mr.podMetrics
+	nodeMetrics := mr.nodeMetrics
 
 	// Calculate resource usage from node metrics
 	if len(nodeMetrics) > 0 {
@@ -411,13 +460,16 @@ func getHealthColor(status string) string {
 // startPulse starts the pulse animation
 func (b *BriefingPanel) startPulse() {
 	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	if b.pulseActive {
-		b.mu.Unlock()
 		return
 	}
 	b.pulseActive = true
 	b.stopPulse = make(chan struct{})
-	b.mu.Unlock()
+
+	// Capture the channel to avoid race when stopPulse is recreated
+	stopCh := b.stopPulse
 
 	go func() {
 		ticker := time.NewTicker(400 * time.Millisecond)
@@ -435,7 +487,7 @@ func (b *BriefingPanel) startPulse() {
 				b.mu.Unlock()
 
 				b.updateDisplay()
-			case <-b.stopPulse:
+			case <-stopCh:
 				return
 			}
 		}
@@ -445,11 +497,12 @@ func (b *BriefingPanel) startPulse() {
 // stopPulseAnimation stops the pulse animation
 func (b *BriefingPanel) stopPulseAnimation() {
 	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	if b.pulseActive {
 		b.pulseActive = false
 		close(b.stopPulse)
 	}
-	b.mu.Unlock()
 }
 
 // UpdateWithAI requests an AI-generated briefing (Shift+B)
