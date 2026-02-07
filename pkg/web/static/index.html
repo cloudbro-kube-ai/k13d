@@ -3975,6 +3975,9 @@
         .resource-action-btn.portforward { border-color: var(--accent-purple); }
         .resource-action-btn.portforward:hover { background: var(--accent-purple); }
 
+        .resource-action-btn.topo { border-color: var(--accent-yellow); }
+        .resource-action-btn.topo:hover { background: var(--accent-yellow); color: #1a1b26; }
+
         /* ==========================================
          * AI Action Highlight
          * ========================================== */
@@ -5104,9 +5107,25 @@
                         <select id="topology-ns-select" onchange="onTopologyNamespaceChange()">
                             <option value="">All Namespaces</option>
                         </select>
+                        <select id="topology-kind-filter" onchange="loadTopology()">
+                            <option value="">All Kinds</option>
+                            <option value="Deployment">Deployments</option>
+                            <option value="StatefulSet">StatefulSets</option>
+                            <option value="DaemonSet">DaemonSets</option>
+                            <option value="Pod">Pods</option>
+                            <option value="Service">Services</option>
+                            <option value="Ingress">Ingresses</option>
+                            <option value="Job">Jobs</option>
+                            <option value="CronJob">CronJobs</option>
+                            <option value="ConfigMap">ConfigMaps</option>
+                            <option value="Secret">Secrets</option>
+                            <option value="PVC">PVCs</option>
+                            <option value="HPA">HPAs</option>
+                        </select>
                         <input type="text" id="topology-search" placeholder="Search resources..." oninput="filterTopologyGraph(this.value)">
                         <div class="toolbar-separator"></div>
                         <button onclick="topologyFitView()">Fit</button>
+                        <button onclick="clearTopologyFocus()">Show All</button>
                         <button onclick="loadTopology()">↻ Refresh</button>
                         <div class="toolbar-separator"></div>
                         <label><input type="checkbox" id="topology-show-configmaps" onchange="loadTopology()"> ConfigMaps</label>
@@ -8115,6 +8134,7 @@ spec:
                                 <button class="resource-action-btn terminal" onclick="event.stopPropagation(); openTerminal('${item.name}', '${item.namespace}')">Terminal</button>
                                 <button class="resource-action-btn logs" onclick="event.stopPropagation(); openLogViewerFromRow(this, '${item.name}', '${item.namespace}')">Logs</button>
                                 <button class="resource-action-btn portforward" onclick="event.stopPropagation(); openPortForward('${item.name}', '${item.namespace}')">Forward</button>
+                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Pod', '${item.name}', '${item.namespace}')">Topo</button>
                             </td>
                         </tr>`;
                     case 'deployments':
@@ -8127,6 +8147,7 @@ spec:
                             <td>${item.age}</td>
                             <td class="resource-actions">
                                 <button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button>
+                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Deployment', '${item.name}', '${item.namespace}')">Topo</button>
                             </td>
                         </tr>`;
                     case 'daemonsets':
@@ -8139,6 +8160,7 @@ spec:
                             <td>${item.age}</td>
                             <td class="resource-actions">
                                 <button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button>
+                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('DaemonSet', '${item.name}', '${item.namespace}')">Topo</button>
                             </td>
                         </tr>`;
                     case 'statefulsets':
@@ -8149,6 +8171,7 @@ spec:
                             <td>${item.age}</td>
                             <td class="resource-actions">
                                 <button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button>
+                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('StatefulSet', '${item.name}', '${item.namespace}')">Topo</button>
                             </td>
                         </tr>`;
                     case 'replicasets':
@@ -8161,6 +8184,7 @@ spec:
                             <td>${item.age}</td>
                             <td class="resource-actions">
                                 <button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button>
+                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('ReplicaSet', '${item.name}', '${item.namespace}')">Topo</button>
                             </td>
                         </tr>`;
                     case 'jobs':
@@ -8188,6 +8212,9 @@ spec:
                             <td>${item.clusterIP}</td>
                             <td>${item.ports}</td>
                             <td>${item.age}</td>
+                            <td class="resource-actions">
+                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Service', '${item.name}', '${item.namespace}')">Topo</button>
+                            </td>
                         </tr>`;
                     case 'ingresses':
                         return `<tr data-index="${index}">
@@ -8197,6 +8224,9 @@ spec:
                             <td>${item.hosts || '-'}</td>
                             <td>${item.address || '-'}</td>
                             <td>${item.age}</td>
+                            <td class="resource-actions">
+                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Ingress', '${item.name}', '${item.namespace}')">Topo</button>
+                            </td>
                         </tr>`;
                     case 'networkpolicies':
                         return `<tr data-index="${index}">
@@ -10655,6 +10685,7 @@ ${escapeHtml(execInfo.result)}</div>
         let topologyGraph = null;
         let topologyData = null;
         let topologySelectedNode = null;
+        let topologyFocusNodeId = null; // When set, show subgraph around this resource
 
         const topologyStatusColors = {
             running: '#9ece6a',
@@ -10751,6 +10782,7 @@ ${escapeHtml(execInfo.result)}</div>
 
         async function loadTopology() {
             const namespace = document.getElementById('topology-ns-select')?.value || '';
+            const kindFilter = document.getElementById('topology-kind-filter')?.value || '';
             const graphContainer = document.getElementById('topology-graph');
             if (!graphContainer) return;
 
@@ -10777,10 +10809,61 @@ ${escapeHtml(execInfo.result)}</div>
                     filteredEdges = filteredEdges.filter(e => !secIds.has(e.source) && !secIds.has(e.target));
                 }
 
+                // Kind filter: show selected kind + all connected resources
+                if (kindFilter) {
+                    const kindNodeIds = new Set(filteredNodes.filter(n => n.kind === kindFilter).map(n => n.id));
+                    const connectedIds = new Set(kindNodeIds);
+                    filteredEdges.forEach(e => {
+                        if (kindNodeIds.has(e.source)) connectedIds.add(e.target);
+                        if (kindNodeIds.has(e.target)) connectedIds.add(e.source);
+                    });
+                    filteredNodes = filteredNodes.filter(n => connectedIds.has(n.id));
+                    filteredEdges = filteredEdges.filter(e => connectedIds.has(e.source) && connectedIds.has(e.target));
+                }
+
+                // Resource focus: show subgraph reachable from the focused resource
+                if (topologyFocusNodeId) {
+                    const focusResult = extractSubgraph(filteredNodes, filteredEdges, topologyFocusNodeId);
+                    filteredNodes = focusResult.nodes;
+                    filteredEdges = focusResult.edges;
+                }
+
                 renderTopologyGraph(filteredNodes, filteredEdges);
+
+                // After rendering, highlight the focused node
+                if (topologyFocusNodeId && topologyGraph) {
+                    try {
+                        topologyGraph.setElementState(topologyFocusNodeId, ['selected']);
+                    } catch (e) { /* node may not exist */ }
+                }
             } catch (err) {
                 graphContainer.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--accent-red);">Failed to load topology: ${escapeHtml(err.message)}</div>`;
             }
+        }
+
+        // Extract the connected subgraph reachable from a root node (BFS in both directions)
+        function extractSubgraph(nodes, edges, rootId) {
+            const visited = new Set([rootId]);
+            const queue = [rootId];
+            // Walk up: find ancestors (who owns/selects/routes to this node)
+            // Walk down: find descendants (what this node owns/selects/routes)
+            while (queue.length > 0) {
+                const current = queue.shift();
+                edges.forEach(e => {
+                    if (e.source === current && !visited.has(e.target)) {
+                        visited.add(e.target);
+                        queue.push(e.target);
+                    }
+                    if (e.target === current && !visited.has(e.source)) {
+                        visited.add(e.source);
+                        queue.push(e.source);
+                    }
+                });
+            }
+            return {
+                nodes: nodes.filter(n => visited.has(n.id)),
+                edges: edges.filter(e => visited.has(e.source) && visited.has(e.target)),
+            };
         }
 
         function renderTopologyGraph(nodes, edges) {
@@ -10835,9 +10918,11 @@ ${escapeHtml(execInfo.result)}</div>
                     },
                     style: {
                         size: (d) => {
-                            if (d.data?.kind === 'Pod') return 28;
-                            if (d.data?.kind === 'Service' || d.data?.kind === 'Ingress' || d.data?.kind === 'HPA') return 32;
-                            return [80, 36];
+                            const kind = d.data?.kind;
+                            if (kind === 'Pod') return 36;
+                            if (kind === 'Service' || kind === 'Ingress' || kind === 'HPA') return 40;
+                            if (kind === 'ConfigMap' || kind === 'Secret') return 36;
+                            return [110, 44]; // rect: wider for label text
                         },
                         fill: (d) => {
                             const color = statusColor(d.data?.status);
@@ -10848,17 +10933,34 @@ ${escapeHtml(execInfo.result)}</div>
                         labelText: (d) => {
                             const label = d.data?.kindLabel || '';
                             const name = d.data?.name || '';
-                            // Truncate long names
-                            const shortName = name.length > 20 ? name.substring(0, 18) + '..' : name;
-                            return `${label}\n${shortName}`;
+                            const kind = d.data?.kind;
+                            // Shorter truncation for non-rect shapes
+                            const isCompact = (kind === 'Pod' || kind === 'Service' || kind === 'Ingress' || kind === 'HPA' || kind === 'ConfigMap' || kind === 'Secret');
+                            const maxLen = isCompact ? 10 : 14;
+                            const shortName = name.length > maxLen ? name.substring(0, maxLen - 2) + '..' : name;
+                            return isCompact ? `${label}\n${shortName}` : `${label}: ${shortName}`;
                         },
                         labelFill: '#c0caf5',
-                        labelFontSize: 10,
+                        labelFontSize: (d) => {
+                            const kind = d.data?.kind;
+                            const isCompact = (kind === 'Pod' || kind === 'ConfigMap' || kind === 'Secret');
+                            return isCompact ? 9 : 10;
+                        },
                         labelFontFamily: 'IBM Plex Mono, monospace',
-                        labelPlacement: 'center',
+                        labelPlacement: (d) => {
+                            // Place label below for small shapes so text doesn't overflow
+                            const kind = d.data?.kind;
+                            if (kind === 'Pod' || kind === 'Service' || kind === 'Ingress' || kind === 'HPA' || kind === 'ConfigMap' || kind === 'Secret') return 'bottom';
+                            return 'center';
+                        },
                         labelMaxLines: 2,
                         labelWordWrap: true,
-                        labelWordWrapWidth: 76,
+                        labelWordWrapWidth: 100,
+                        labelOffsetY: (d) => {
+                            const kind = d.data?.kind;
+                            if (kind === 'Pod' || kind === 'Service' || kind === 'Ingress' || kind === 'HPA' || kind === 'ConfigMap' || kind === 'Secret') return 8;
+                            return 0;
+                        },
                     },
                     state: {
                         highlight: {
@@ -10902,8 +11004,8 @@ ${escapeHtml(execInfo.result)}</div>
                 layout: {
                     type: 'dagre',
                     rankdir: 'TB',
-                    nodesep: 30,
-                    ranksep: 50,
+                    nodesep: 50,
+                    ranksep: 70,
                 },
                 behaviors: [
                     'drag-canvas',
@@ -11047,6 +11149,29 @@ ${escapeHtml(execInfo.result)}</div>
             if (topologyGraph) {
                 topologyGraph.fitView();
             }
+        }
+
+        // Show topology focused on a specific resource (called from dashboard Topo button)
+        function showTopologyForResource(kind, name, namespace) {
+            topologyFocusNodeId = `${kind}/${namespace}/${name}`;
+
+            // Set namespace in topology view
+            const nsSelect = document.getElementById('topology-ns-select');
+            if (nsSelect) nsSelect.value = namespace || '';
+
+            // Clear kind filter when focusing on a specific resource
+            const kindFilter = document.getElementById('topology-kind-filter');
+            if (kindFilter) kindFilter.value = '';
+
+            showTopology();
+        }
+
+        // Clear the focused resource and show the full topology
+        function clearTopologyFocus() {
+            topologyFocusNodeId = null;
+            const kindFilter = document.getElementById('topology-kind-filter');
+            if (kindFilter) kindFilter.value = '';
+            loadTopology();
         }
 
         function filterTopologyGraph(query) {
@@ -15308,8 +15433,8 @@ spec:
         // ==========================================
         // Enhanced renderTable with action buttons
         // ==========================================
-        // Add ACTIONS column to workload types
-        ['pods', 'deployments', 'daemonsets', 'statefulsets', 'replicasets'].forEach(resource => {
+        // Add ACTIONS column to workload and networking types
+        ['pods', 'deployments', 'daemonsets', 'statefulsets', 'replicasets', 'services', 'ingresses'].forEach(resource => {
             if (!tableHeaders[resource].includes('ACTIONS')) {
                 tableHeaders[resource].push('ACTIONS');
             }
@@ -15330,23 +15455,23 @@ spec:
                     case 'pods':
                         const podContainers = item.containers || ['default'];
                         const podContainersJson = JSON.stringify(podContainers).replace(/'/g, "\\'");
-                        return `<tr data-index="${index}" data-containers='${podContainersJson}'><td>${item.name}</td><td>${item.namespace}</td><td>${item.ready}</td><td class="status-${item.status.toLowerCase()}">${item.status}</td><td>${item.restarts}</td><td>${item.age}</td><td>${item.ip || '-'}</td><td class="resource-actions"><button class="resource-action-btn terminal" onclick="event.stopPropagation(); openTerminal('${item.name}', '${item.namespace}')">Terminal</button><button class="resource-action-btn logs" onclick="event.stopPropagation(); openLogViewerFromRow(this, '${item.name}', '${item.namespace}')">Logs</button><button class="resource-action-btn portforward" onclick="event.stopPropagation(); openPortForward('${item.name}', '${item.namespace}')">Forward</button></td></tr>`;
+                        return `<tr data-index="${index}" data-containers='${podContainersJson}'><td>${item.name}</td><td>${item.namespace}</td><td>${item.ready}</td><td class="status-${item.status.toLowerCase()}">${item.status}</td><td>${item.restarts}</td><td>${item.age}</td><td>${item.ip || '-'}</td><td class="resource-actions"><button class="resource-action-btn terminal" onclick="event.stopPropagation(); openTerminal('${item.name}', '${item.namespace}')">Terminal</button><button class="resource-action-btn logs" onclick="event.stopPropagation(); openLogViewerFromRow(this, '${item.name}', '${item.namespace}')">Logs</button><button class="resource-action-btn portforward" onclick="event.stopPropagation(); openPortForward('${item.name}', '${item.namespace}')">Forward</button><button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Pod', '${item.name}', '${item.namespace}')">Topo</button></td></tr>`;
                     case 'deployments':
-                        return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.ready}</td><td>${item.upToDate || item.up_to_date || '-'}</td><td>${item.available || '-'}</td><td>${item.age}</td><td class="resource-actions"><button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button></td></tr>`;
+                        return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.ready}</td><td>${item.upToDate || item.up_to_date || '-'}</td><td>${item.available || '-'}</td><td>${item.age}</td><td class="resource-actions"><button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button><button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Deployment', '${item.name}', '${item.namespace}')">Topo</button></td></tr>`;
                     case 'daemonsets':
-                        return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.desired || '-'}</td><td>${item.current || '-'}</td><td>${item.ready || '-'}</td><td>${item.age}</td><td class="resource-actions"><button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button></td></tr>`;
+                        return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.desired || '-'}</td><td>${item.current || '-'}</td><td>${item.ready || '-'}</td><td>${item.age}</td><td class="resource-actions"><button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button><button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('DaemonSet', '${item.name}', '${item.namespace}')">Topo</button></td></tr>`;
                     case 'statefulsets':
-                        return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.ready || '-'}</td><td>${item.age}</td><td class="resource-actions"><button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button></td></tr>`;
+                        return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.ready || '-'}</td><td>${item.age}</td><td class="resource-actions"><button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button><button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('StatefulSet', '${item.name}', '${item.namespace}')">Topo</button></td></tr>`;
                     case 'replicasets':
-                        return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.desired || '-'}</td><td>${item.current || '-'}</td><td>${item.ready || '-'}</td><td>${item.age}</td><td class="resource-actions"><button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button></td></tr>`;
+                        return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.desired || '-'}</td><td>${item.current || '-'}</td><td>${item.ready || '-'}</td><td>${item.age}</td><td class="resource-actions"><button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button><button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('ReplicaSet', '${item.name}', '${item.namespace}')">Topo</button></td></tr>`;
                     case 'jobs':
                         return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.completions || '-'}</td><td>${item.duration || '-'}</td><td>${item.age}</td></tr>`;
                     case 'cronjobs':
                         return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.schedule || '-'}</td><td>${item.suspend ? 'Yes' : 'No'}</td><td>${item.active || 0}</td><td>${item.lastSchedule || '-'}</td></tr>`;
                     case 'services':
-                        return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.type}</td><td>${item.clusterIP}</td><td>${item.ports}</td><td>${item.age}</td></tr>`;
+                        return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.type}</td><td>${item.clusterIP}</td><td>${item.ports}</td><td>${item.age}</td><td class="resource-actions"><button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Service', '${item.name}', '${item.namespace}')">Topo</button></td></tr>`;
                     case 'ingresses':
-                        return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.class || item.ingressClass || '-'}</td><td>${item.hosts || '-'}</td><td>${item.address || '-'}</td><td>${item.age}</td></tr>`;
+                        return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.class || item.ingressClass || '-'}</td><td>${item.hosts || '-'}</td><td>${item.address || '-'}</td><td>${item.age}</td><td class="resource-actions"><button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Ingress', '${item.name}', '${item.namespace}')">Topo</button></td></tr>`;
                     case 'networkpolicies':
                         return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.podSelector || '-'}</td><td>${item.age}</td></tr>`;
                     case 'configmaps':
