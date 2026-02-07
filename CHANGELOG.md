@@ -5,6 +5,25 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2026-02-08
+
+### Added
+- **MCP Server Tests**: Comprehensive test coverage for MCP server (19 new tests)
+  - Server lifecycle tests (New, NewWithIO, RegisterTool)
+  - Handler tests (Initialize, ListTools, CallTool, Ping)
+  - Error handling tests (UnknownMethod, InvalidJSON, CallUnknownTool)
+  - Tool definition tests (DefaultTools, schema validation)
+
+### Fixed
+- **Benchmark Task**: Fixed create-canary-deployment task.yaml missing required fields
+  - Added name, description, category, tags, timeout, expect fields
+  - Improved prompt formatting for readability
+- **Benchmark Runner**: Improved error handling
+  - Added config validation (nil check, task dir, LLM configs)
+  - Better namespace management with detailed error output
+  - Added --wait=false to namespace cleanup for faster execution
+- **Code Style**: Fixed gofmt formatting in app_test.go
+
 ## [0.6.0] - 2026-02-08
 
 ### Added
