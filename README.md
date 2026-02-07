@@ -71,8 +71,10 @@ It bridges the gap between traditional cluster management and natural language A
 | **Pod Terminal** | Interactive xterm.js shell in browser |
 | **Log Viewer** | Real-time logs with ANSI color support |
 | **Metrics Charts** | CPU/Memory graphs with Chart.js |
-| **Authentication** | Session-based auth with LDAP/SSO support |
-| **Audit Logging** | Track all actions in SQLite database |
+| **Authentication** | Session-based auth + JWT tokens with LDAP/SSO support |
+| **RBAC Authorization** | Teleport-inspired deny-overrides-allow RBAC with resource-level permissions |
+| **Access Requests** | Just-in-time privilege escalation with approval workflow |
+| **Audit Logging** | Structured audit events with authorization decisions in SQLite |
 | **Reports** | LLM-powered cluster analysis (PDF/CSV) |
 
 ### 🤖 Agentic AI Assistant
@@ -100,6 +102,17 @@ It bridges the gap between traditional cluster management and natural language A
 | **Safety First** | Dangerous commands require explicit approval |
 | **Deep Context** | AI receives YAML + Events + Logs for analysis |
 | **Beginner Mode** | Simple explanations for complex resources |
+
+### 🔐 Enterprise Security (Teleport-Inspired)
+
+| Feature | Description |
+|---------|-------------|
+| **RBAC Authorization** | Deny-overrides-allow role system (viewer/user/admin) with resource & namespace scoping |
+| **JWT Tokens** | Short-lived HMAC-SHA256 tokens with automatic refresh (stdlib-only, zero dependencies) |
+| **Access Requests** | Just-in-time privilege escalation — reviewers cannot self-approve |
+| **Emergency Locking** | Instant user lock with session invalidation, DB-persisted across restarts |
+| **K8s Impersonation** | Role-based impersonation headers (opt-in) for least-privilege K8s access |
+| **Structured Audit** | Authorization decisions, access requests, lock events all tracked |
 
 ### 🌍 Global & Accessible
 
@@ -248,6 +261,15 @@ llm:
 language: en                # en, ko, zh, ja
 beginner_mode: true
 enable_audit: true
+
+authorization:
+  default_tui_role: admin    # admin, user, viewer
+  access_request_ttl: 30m
+  impersonation:
+    enabled: false           # opt-in K8s impersonation
+  jwt:
+    token_duration: 1h
+    refresh_window: 15m
 ```
 
 ### Supported LLM Providers
@@ -579,7 +601,11 @@ k13d/
 │   │   └── sessions/           # Conversation state
 │   ├── ui/                     # TUI (tview/tcell)
 │   ├── web/                    # Web server & API
-│   │   ├── auth.go             # Authentication
+│   │   ├── auth.go             # Authentication + user locking
+│   │   ├── authz.go            # RBAC authorization (Teleport-style)
+│   │   ├── jwt.go              # JWT token management
+│   │   ├── access_request.go   # Access request workflow
+│   │   ├── impersonation.go    # K8s impersonation
 │   │   ├── ldap.go             # LDAP/SSO
 │   │   └── static/             # Frontend
 │   ├── k8s/                    # Kubernetes client
@@ -605,6 +631,12 @@ k13d/
 | `/api/settings` | GET/POST | User settings |
 | `/api/settings/ldap` | GET/POST | LDAP configuration |
 | `/api/settings/sso` | GET/POST | SSO/OAuth configuration |
+| `/api/admin/lock` | POST | Emergency user lock (admin) |
+| `/api/admin/unlock` | POST | Unlock user (admin) |
+| `/api/access/request` | POST | Create access request |
+| `/api/access/requests` | GET | List pending access requests |
+| `/api/access/approve/{id}` | POST | Approve access request (admin) |
+| `/api/access/deny/{id}` | POST | Deny access request (admin) |
 
 ---
 

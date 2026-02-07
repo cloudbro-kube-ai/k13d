@@ -2,12 +2,15 @@ package ui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
+
+const maxNavStackDepth = 50
 
 // Navigation history for back navigation
 type navHistory struct {
@@ -29,9 +32,12 @@ func (a *App) drillDown() {
 	filter := a.filterText
 	a.mx.RUnlock()
 
-	// Save current state to navigation stack (thread-safe)
+	// Save current state to navigation stack (thread-safe, bounded)
 	a.navMx.Lock()
 	a.navigationStack = append(a.navigationStack, navHistory{resource, ns, filter})
+	if len(a.navigationStack) > maxNavStackDepth {
+		a.navigationStack = a.navigationStack[1:]
+	}
 	a.navMx.Unlock()
 
 	// Get selected item info
@@ -434,14 +440,8 @@ func (a *App) sortByColumn(columnIdx int) {
 		return !result
 	}
 
-	// Sort
-	for i := 0; i < len(sortedRows)-1; i++ {
-		for j := i + 1; j < len(sortedRows); j++ {
-			if !sortFunc(i, j) {
-				sortedRows[i], sortedRows[j] = sortedRows[j], sortedRows[i]
-			}
-		}
-	}
+	// Sort using stdlib O(n log n)
+	sort.SliceStable(sortedRows, sortFunc)
 
 	// Update stored rows
 	a.mx.Lock()
@@ -461,6 +461,9 @@ func (a *App) sortByColumn(columnIdx int) {
 	filter := a.filterText
 	a.mx.RUnlock()
 	a.applyFilterText(filter)
+
+	// Update status bar to reflect sort state
+	a.updateStatusBar()
 }
 
 // parseNumber extracts a number from a string

@@ -38,6 +38,7 @@ type Server struct {
 	helmClient       *helm.Client
 	mcpClient        *mcp.Client
 	authManager      *AuthManager
+	authorizer       *Authorizer // RBAC authorizer (Teleport-inspired)
 	reportGenerator  *ReportGenerator
 	metricsCollector *metrics.Collector
 	securityScanner  *security.Scanner
@@ -50,6 +51,9 @@ type Server struct {
 	// Tool approval management
 	pendingApprovals     map[string]*PendingToolApproval
 	pendingApprovalMutex sync.RWMutex
+
+	// Access request management (Teleport-inspired)
+	accessRequestManager *AccessRequestManager
 }
 
 // PendingToolApproval represents a tool call waiting for user approval
@@ -155,17 +159,27 @@ func NewServer(cfg *config.Config, port int, versionInfo *VersionInfo) (*Server,
 		fmt.Printf("  Session Store: Ready\n")
 	}
 
+	// Initialize RBAC authorizer (Teleport-inspired)
+	authorizer := NewAuthorizer()
+	fmt.Printf("  RBAC Authorizer: Ready (roles: admin, user, viewer)\n")
+
+	// Initialize access request manager (Teleport-inspired)
+	accessReqManager := NewAccessRequestManager(30 * time.Minute)
+	fmt.Printf("  Access Request Manager: Ready (TTL: 30m)\n")
+
 	server := &Server{
-		cfg:              cfg,
-		aiClient:         aiClient,
-		k8sClient:        k8sClient,
-		helmClient:       helmClient,
-		mcpClient:        mcp.NewClient(),
-		authManager:      authManager,
-		sessionStore:     sessionStore,
-		port:             port,
-		versionInfo:      versionInfo,
-		pendingApprovals: make(map[string]*PendingToolApproval),
+		cfg:                  cfg,
+		aiClient:             aiClient,
+		k8sClient:            k8sClient,
+		helmClient:           helmClient,
+		mcpClient:            mcp.NewClient(),
+		authManager:          authManager,
+		authorizer:           authorizer,
+		accessRequestManager: accessReqManager,
+		sessionStore:         sessionStore,
+		port:                 port,
+		versionInfo:          versionInfo,
+		pendingApprovals:     make(map[string]*PendingToolApproval),
 	}
 
 	server.reportGenerator = NewReportGenerator(server)
@@ -188,6 +202,9 @@ func NewServer(cfg *config.Config, port int, versionInfo *VersionInfo) (*Server,
 
 	// Initialize MCP servers
 	server.initMCPServers()
+
+	// Load persisted user locks
+	authManager.LoadUserLocks()
 
 	return server, nil
 }
@@ -269,18 +286,28 @@ func NewServerWithAuth(cfg *config.Config, port int, authOpts *AuthOptions, vers
 		fmt.Printf("  Session Store: Ready\n")
 	}
 
+	// Initialize RBAC authorizer (Teleport-inspired)
+	authorizer := NewAuthorizer()
+	fmt.Printf("  RBAC Authorizer: Ready (roles: admin, user, viewer)\n")
+
+	// Initialize access request manager (Teleport-inspired)
+	accessReqManager := NewAccessRequestManager(30 * time.Minute)
+	fmt.Printf("  Access Request Manager: Ready (TTL: 30m)\n")
+
 	server := &Server{
-		cfg:              cfg,
-		aiClient:         aiClient,
-		k8sClient:        k8sClient,
-		helmClient:       helmClient,
-		mcpClient:        mcp.NewClient(),
-		authManager:      authManager,
-		sessionStore:     sessionStore,
-		port:             port,
-		embeddedLLM:      authOpts.EmbeddedLLM,
-		versionInfo:      versionInfo,
-		pendingApprovals: make(map[string]*PendingToolApproval),
+		cfg:                  cfg,
+		aiClient:             aiClient,
+		k8sClient:            k8sClient,
+		helmClient:           helmClient,
+		mcpClient:            mcp.NewClient(),
+		authManager:          authManager,
+		authorizer:           authorizer,
+		accessRequestManager: accessReqManager,
+		sessionStore:         sessionStore,
+		port:                 port,
+		embeddedLLM:          authOpts.EmbeddedLLM,
+		versionInfo:          versionInfo,
+		pendingApprovals:     make(map[string]*PendingToolApproval),
 	}
 
 	server.reportGenerator = NewReportGenerator(server)
@@ -303,6 +330,9 @@ func NewServerWithAuth(cfg *config.Config, port int, authOpts *AuthOptions, vers
 
 	// Initialize MCP servers
 	server.initMCPServers()
+
+	// Load persisted user locks
+	authManager.LoadUserLocks()
 
 	return server, nil
 }
@@ -442,33 +472,33 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/security/trivy/install", s.authManager.AuthMiddleware(s.handleTrivyInstall))
 	mux.HandleFunc("/api/security/trivy/instructions", s.authManager.AuthMiddleware(s.handleTrivyInstructions))
 
-	// Port forwarding endpoints
-	mux.HandleFunc("/api/portforward/start", s.authManager.AuthMiddleware(s.handlePortForwardStart))
+	// Port forwarding endpoints (RBAC-protected)
+	mux.HandleFunc("/api/portforward/start", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("pods", ActionPortForward)(s.handlePortForwardStart)))
 	mux.HandleFunc("/api/portforward/list", s.authManager.AuthMiddleware(s.handlePortForwardList))
 	mux.HandleFunc("/api/portforward/", s.authManager.AuthMiddleware(s.handlePortForwardStop))
 
-	// Deployment operations
-	mux.HandleFunc("/api/deployment/scale", s.authManager.AuthMiddleware(s.handleDeploymentScale))
-	mux.HandleFunc("/api/deployment/restart", s.authManager.AuthMiddleware(s.handleDeploymentRestart))
-	mux.HandleFunc("/api/deployment/pause", s.authManager.AuthMiddleware(s.handleDeploymentPause))
-	mux.HandleFunc("/api/deployment/resume", s.authManager.AuthMiddleware(s.handleDeploymentResume))
-	mux.HandleFunc("/api/deployment/rollback", s.authManager.AuthMiddleware(s.handleDeploymentRollback))
+	// Deployment operations (RBAC-protected)
+	mux.HandleFunc("/api/deployment/scale", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("deployments", ActionScale)(s.handleDeploymentScale)))
+	mux.HandleFunc("/api/deployment/restart", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("deployments", ActionRestart)(s.handleDeploymentRestart)))
+	mux.HandleFunc("/api/deployment/pause", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("deployments", ActionEdit)(s.handleDeploymentPause)))
+	mux.HandleFunc("/api/deployment/resume", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("deployments", ActionEdit)(s.handleDeploymentResume)))
+	mux.HandleFunc("/api/deployment/rollback", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("deployments", ActionEdit)(s.handleDeploymentRollback)))
 	mux.HandleFunc("/api/deployment/history", s.authManager.AuthMiddleware(s.handleDeploymentHistory))
 
-	// StatefulSet operations
-	mux.HandleFunc("/api/statefulset/scale", s.authManager.AuthMiddleware(s.handleStatefulSetScale))
-	mux.HandleFunc("/api/statefulset/restart", s.authManager.AuthMiddleware(s.handleStatefulSetRestart))
+	// StatefulSet operations (RBAC-protected)
+	mux.HandleFunc("/api/statefulset/scale", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("statefulsets", ActionScale)(s.handleStatefulSetScale)))
+	mux.HandleFunc("/api/statefulset/restart", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("statefulsets", ActionRestart)(s.handleStatefulSetRestart)))
 
-	// DaemonSet operations
-	mux.HandleFunc("/api/daemonset/restart", s.authManager.AuthMiddleware(s.handleDaemonSetRestart))
+	// DaemonSet operations (RBAC-protected)
+	mux.HandleFunc("/api/daemonset/restart", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("daemonsets", ActionRestart)(s.handleDaemonSetRestart)))
 
-	// CronJob operations
-	mux.HandleFunc("/api/cronjob/trigger", s.authManager.AuthMiddleware(s.handleCronJobTrigger))
-	mux.HandleFunc("/api/cronjob/suspend", s.authManager.AuthMiddleware(s.handleCronJobSuspend))
+	// CronJob operations (RBAC-protected)
+	mux.HandleFunc("/api/cronjob/trigger", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("cronjobs", ActionCreate)(s.handleCronJobTrigger)))
+	mux.HandleFunc("/api/cronjob/suspend", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("cronjobs", ActionEdit)(s.handleCronJobSuspend)))
 
-	// Node operations
-	mux.HandleFunc("/api/node/cordon", s.authManager.AuthMiddleware(s.handleNodeCordon))
-	mux.HandleFunc("/api/node/drain", s.authManager.AuthMiddleware(s.handleNodeDrain))
+	// Node operations (RBAC-protected)
+	mux.HandleFunc("/api/node/cordon", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("nodes", ActionEdit)(s.handleNodeCordon)))
+	mux.HandleFunc("/api/node/drain", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("nodes", ActionEdit)(s.handleNodeDrain)))
 	mux.HandleFunc("/api/node/pods", s.authManager.AuthMiddleware(s.handleNodePods))
 
 	// Pod logs endpoint
@@ -480,19 +510,22 @@ func (s *Server) Start() error {
 	// Cluster overview endpoint
 	mux.HandleFunc("/api/overview", s.authManager.AuthMiddleware(s.handleClusterOverview))
 
+	// Topology endpoint (resource relationship graph)
+	mux.HandleFunc("/api/topology/", s.authManager.AuthMiddleware(s.handleTopology))
+
 	// Global search endpoint
 	mux.HandleFunc("/api/search", s.authManager.AuthMiddleware(s.handleGlobalSearch))
 
-	// YAML apply endpoint
-	mux.HandleFunc("/api/k8s/apply", s.authManager.AuthMiddleware(s.handleYamlApply))
+	// YAML apply endpoint (RBAC-protected)
+	mux.HandleFunc("/api/k8s/apply", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionApply)(s.handleYamlApply)))
 
-	// Helm operations
+	// Helm operations (RBAC-protected for mutations)
 	mux.HandleFunc("/api/helm/releases", s.authManager.AuthMiddleware(s.handleHelmReleases))
 	mux.HandleFunc("/api/helm/release/", s.authManager.AuthMiddleware(s.handleHelmRelease))
-	mux.HandleFunc("/api/helm/install", s.authManager.AuthMiddleware(s.handleHelmInstall))
-	mux.HandleFunc("/api/helm/upgrade", s.authManager.AuthMiddleware(s.handleHelmUpgrade))
-	mux.HandleFunc("/api/helm/uninstall", s.authManager.AuthMiddleware(s.handleHelmUninstall))
-	mux.HandleFunc("/api/helm/rollback", s.authManager.AuthMiddleware(s.handleHelmRollback))
+	mux.HandleFunc("/api/helm/install", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("helm", ActionCreate)(s.handleHelmInstall)))
+	mux.HandleFunc("/api/helm/upgrade", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("helm", ActionEdit)(s.handleHelmUpgrade)))
+	mux.HandleFunc("/api/helm/uninstall", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("helm", ActionDelete)(s.handleHelmUninstall)))
+	mux.HandleFunc("/api/helm/rollback", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("helm", ActionEdit)(s.handleHelmRollback)))
 	mux.HandleFunc("/api/helm/repos", s.authManager.AuthMiddleware(s.handleHelmRepos))
 	mux.HandleFunc("/api/helm/search", s.authManager.AuthMiddleware(s.handleHelmSearch))
 
@@ -501,6 +534,15 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/admin/users/", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.handleAdminUserAction)))
 	mux.HandleFunc("/api/admin/reset-password", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleResetPassword)))
 	mux.HandleFunc("/api/admin/status", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleAuthStatus)))
+	// Emergency user locking (Teleport-inspired)
+	mux.HandleFunc("/api/admin/lock", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleLockUser)))
+	mux.HandleFunc("/api/admin/unlock", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleUnlockUser)))
+
+	// Access request workflow (Teleport-inspired)
+	mux.HandleFunc("/api/access/request", s.authManager.AuthMiddleware(s.accessRequestManager.HandleCreateAccessRequest))
+	mux.HandleFunc("/api/access/requests", s.authManager.AuthMiddleware(s.accessRequestManager.HandleListAccessRequests))
+	mux.HandleFunc("/api/access/approve/", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.accessRequestManager.HandleApproveAccessRequest)))
+	mux.HandleFunc("/api/access/deny/", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.accessRequestManager.HandleDenyAccessRequest)))
 
 	// Static files
 	staticFS, err := fs.Sub(staticFiles, "static")

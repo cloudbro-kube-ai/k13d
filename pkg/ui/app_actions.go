@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -14,10 +15,67 @@ import (
 	"github.com/rivo/tview"
 )
 
+// portForwardInfo tracks a running port-forward process
+type portForwardInfo struct {
+	Cmd        *exec.Cmd
+	Namespace  string
+	Name       string
+	LocalPort  string
+	RemotePort string
+}
+
+// checkTUIPermission checks RBAC authorization for TUI actions
+// Returns true if allowed, false if denied (with flash error shown)
+func (a *App) checkTUIPermission(resource, action string) bool {
+	if a.authorizer == nil {
+		return true // No authorizer configured, allow all (backward compatible)
+	}
+
+	role := a.tuiRole
+	if role == "" {
+		role = "admin" // Default: admin for backward compatibility
+	}
+
+	a.mx.RLock()
+	ns := a.currentNamespace
+	a.mx.RUnlock()
+
+	allowed, reason := a.authorizer.IsAllowed(role, resource, action, ns)
+	if !allowed {
+		a.flashMsg(fmt.Sprintf("Permission denied: %s", reason), true)
+
+		// Record denial in audit log
+		db.RecordAudit(db.AuditEntry{
+			User:            a.getTUIUser(),
+			Action:          "authz_denied",
+			Resource:        resource,
+			Details:         reason,
+			ActionType:      db.ActionTypeAuthzDenied,
+			Source:          "tui",
+			Success:         false,
+			ErrorMsg:        reason,
+			RequestedAction: action,
+			TargetResource:  resource,
+			TargetNamespace: ns,
+			AuthzDecision:   "denied",
+		})
+		return false
+	}
+	return true
+}
+
+// getTUIUser returns the current TUI username
+func (a *App) getTUIUser() string {
+	if a.tuiRole != "" {
+		return fmt.Sprintf("tui-user(%s)", a.tuiRole)
+	}
+	return "tui-user"
+}
+
 // recordTUIAudit records an audit entry for TUI actions with k8s context
 func (a *App) recordTUIAudit(action, resource, details string, success bool, errMsg string) {
 	entry := db.AuditEntry{
-		User:       "tui-user",
+		User:       a.getTUIUser(),
 		Action:     action,
 		Resource:   resource,
 		Details:    details,
@@ -160,6 +218,11 @@ func (a *App) confirmDelete() {
 	selectedCount := len(a.selectedRows)
 	a.mx.RUnlock()
 
+	// RBAC check
+	if !a.checkTUIPermission(resource, "delete") {
+		return
+	}
+
 	// Check for multi-select deletion
 	if selectedCount > 0 {
 		a.confirmDeleteMultiple()
@@ -296,6 +359,11 @@ func (a *App) execShell() {
 		return
 	}
 
+	// RBAC check
+	if !a.checkTUIPermission("pods", "exec") {
+		return
+	}
+
 	row, _ := a.table.GetSelection()
 	if row <= 0 {
 		return
@@ -312,14 +380,16 @@ func (a *App) execShell() {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
-		err := cmd.Run()
-		if err != nil {
+		if err := cmd.Run(); err != nil {
 			// Try sh if bash fails
-			cmd = exec.Command("kubectl", "exec", "-it", "-n", ns, name, "--", "/bin/sh")
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			cmd.Run()
+			cmd2 := exec.Command("kubectl", "exec", "-it", "-n", ns, name, "--", "/bin/sh")
+			cmd2.Stdin = os.Stdin
+			cmd2.Stdout = os.Stdout
+			cmd2.Stderr = os.Stderr
+			if err2 := cmd2.Run(); err2 != nil {
+				fmt.Fprintf(os.Stderr, "\nShell failed: %v\nPress Enter to return...\n", err2)
+				bufio.NewReader(os.Stdin).ReadString('\n')
+			}
 		}
 	})
 }
@@ -332,6 +402,11 @@ func (a *App) portForward() {
 
 	if resource != "pods" && resource != "po" && resource != "services" && resource != "svc" {
 		a.flashMsg("Port forward only available for pods and services", true)
+		return
+	}
+
+	// RBAC check
+	if !a.checkTUIPermission(resource, "port-forward") {
 		return
 	}
 
@@ -392,7 +467,97 @@ func (a *App) startPortForward(ns, name, resource, localPort, remotePort string)
 		return
 	}
 
+	// Track the port-forward process
+	pf := &portForwardInfo{
+		Cmd:        cmd,
+		Namespace:  ns,
+		Name:       name,
+		LocalPort:  localPort,
+		RemotePort: remotePort,
+	}
+	a.pfMx.Lock()
+	a.portForwards = append(a.portForwards, pf)
+	a.pfMx.Unlock()
+
+	// Wait for process to exit in background and clean up
+	go func() {
+		cmd.Wait()
+		a.pfMx.Lock()
+		for i, p := range a.portForwards {
+			if p == pf {
+				a.portForwards = append(a.portForwards[:i], a.portForwards[i+1:]...)
+				break
+			}
+		}
+		a.pfMx.Unlock()
+	}()
+
 	a.flashMsg(fmt.Sprintf("Port forward active: localhost:%s -> %s:%s (PID: %d)", localPort, name, remotePort, cmd.Process.Pid), false)
+}
+
+// showPortForwards displays active port-forward processes
+func (a *App) showPortForwards() {
+	a.pfMx.Lock()
+	forwards := make([]*portForwardInfo, len(a.portForwards))
+	copy(forwards, a.portForwards)
+	a.pfMx.Unlock()
+
+	if len(forwards) == 0 {
+		a.flashMsg("No active port-forwards", false)
+		return
+	}
+
+	list := tview.NewList()
+	list.SetBorder(true).SetTitle(fmt.Sprintf(" Active Port Forwards (%d) - Enter to stop, Esc to close ", len(forwards)))
+
+	for i, pf := range forwards {
+		pid := 0
+		if pf.Cmd.Process != nil {
+			pid = pf.Cmd.Process.Pid
+		}
+		list.AddItem(
+			fmt.Sprintf("localhost:%s -> %s/%s:%s", pf.LocalPort, pf.Namespace, pf.Name, pf.RemotePort),
+			fmt.Sprintf("PID: %d", pid),
+			rune('1'+i),
+			nil,
+		)
+	}
+
+	list.SetSelectedFunc(func(idx int, _, _ string, _ rune) {
+		if idx < len(forwards) {
+			pf := forwards[idx]
+			if pf.Cmd.Process != nil {
+				pf.Cmd.Process.Kill()
+				a.flashMsg(fmt.Sprintf("Stopped port-forward localhost:%s", pf.LocalPort), false)
+			}
+		}
+		a.pages.RemovePage("portforwards")
+		a.SetFocus(a.table)
+	})
+
+	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			a.pages.RemovePage("portforwards")
+			a.SetFocus(a.table)
+			return nil
+		}
+		return event
+	})
+
+	a.pages.AddPage("portforwards", centered(list, 65, 20), true, true)
+	a.SetFocus(list)
+}
+
+// cleanupPortForwards kills all active port-forward processes
+func (a *App) cleanupPortForwards() {
+	a.pfMx.Lock()
+	defer a.pfMx.Unlock()
+	for _, pf := range a.portForwards {
+		if pf.Cmd.Process != nil {
+			pf.Cmd.Process.Kill()
+		}
+	}
+	a.portForwards = nil
 }
 
 // showContextSwitcher displays context selection dialog
@@ -898,6 +1063,11 @@ func (a *App) killPod() {
 		return
 	}
 
+	// RBAC check
+	if !a.checkTUIPermission("pods", "delete") {
+		return
+	}
+
 	row, _ := a.table.GetSelection()
 	if row <= 0 {
 		return
@@ -1056,6 +1226,11 @@ func (a *App) scaleResource() {
 		return
 	}
 
+	// RBAC check
+	if !a.checkTUIPermission(resource, "scale") {
+		return
+	}
+
 	row, _ := a.table.GetSelection()
 	if row <= 0 {
 		return
@@ -1069,10 +1244,23 @@ func (a *App) scaleResource() {
 	form.SetBorder(true).SetTitle(fmt.Sprintf(" Scale: %s/%s ", ns, name))
 
 	var replicas string
-	form.AddInputField("Replicas:", "1", 10, nil, func(text string) {
+	form.AddInputField("Replicas:", "1", 10, tview.InputFieldInteger, func(text string) {
 		replicas = text
 	})
 	form.AddButton("Scale", func() {
+		// Validate replica count
+		n, err := fmt.Sscanf(replicas, "%d", new(int))
+		if n != 1 || err != nil {
+			a.flashMsg("Invalid replica count: must be a number", true)
+			return
+		}
+		var replicaCount int
+		fmt.Sscanf(replicas, "%d", &replicaCount)
+		if replicaCount < 0 || replicaCount > 999 {
+			a.flashMsg("Replica count must be between 0 and 999", true)
+			return
+		}
+
 		a.pages.RemovePage("scale-dialog")
 		a.SetFocus(a.table)
 
@@ -1124,6 +1312,11 @@ func (a *App) restartResource() {
 
 	if !restartable[resource] {
 		a.flashMsg("Restart only available for deployments, statefulsets, daemonsets", true)
+		return
+	}
+
+	// RBAC check
+	if !a.checkTUIPermission(resource, "restart") {
 		return
 	}
 

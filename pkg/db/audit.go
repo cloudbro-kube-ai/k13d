@@ -19,6 +19,14 @@ const (
 	ActionTypeLLM      ActionType = "llm"      // AI/LLM tool executions
 	ActionTypeAuth     ActionType = "auth"     // Authentication related
 	ActionTypeConfig   ActionType = "config"   // Configuration changes
+
+	// Authorization & access control events (Teleport-inspired)
+	ActionTypeAccessRequest  ActionType = "access_request"  // User requested elevated access
+	ActionTypeAccessApproved ActionType = "access_approved" // Access request approved
+	ActionTypeAccessDenied   ActionType = "access_denied"   // Access request denied
+	ActionTypeUserLocked     ActionType = "user_locked"     // User account locked
+	ActionTypeUserUnlocked   ActionType = "user_unlocked"   // User account unlocked
+	ActionTypeAuthzDenied    ActionType = "authz_denied"    // Authorization check denied
 )
 
 // AuditEntry represents a single audit log entry
@@ -51,6 +59,14 @@ type AuditEntry struct {
 	// Result
 	Success  bool   `json:"success"`
 	ErrorMsg string `json:"error_msg,omitempty"`
+
+	// Authorization fields (Teleport-inspired structured audit)
+	RequestedAction string `json:"requested_action,omitempty"` // "scale", "delete", "exec", etc.
+	TargetResource  string `json:"target_resource,omitempty"`  // "deployment/nginx", "pod/xyz"
+	TargetNamespace string `json:"target_namespace,omitempty"` // "production", "default"
+	AuthzDecision   string `json:"authz_decision,omitempty"`   // "allowed", "denied"
+	AccessRequestID string `json:"access_request_id,omitempty"`
+	ReviewerUser    string `json:"reviewer_user,omitempty"`
 }
 
 // AuditConfig controls audit behavior
@@ -132,14 +148,18 @@ func RecordAudit(entry AuditEntry) error {
 			timestamp, user, action, resource, details, action_type,
 			k8s_user, k8s_context, k8s_cluster, namespace,
 			llm_request, llm_response, llm_tool, llm_command, llm_approved,
-			source, client_ip, session_id, success, error_msg
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			source, client_ip, session_id, success, error_msg,
+			requested_action, target_resource, target_namespace,
+			authz_decision, access_request_id, reviewer_user
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 		_, err := DB.Exec(query, now,
 			entry.User, entry.Action, entry.Resource, entry.Details, string(entry.ActionType),
 			entry.K8sUser, entry.K8sContext, entry.K8sCluster, entry.Namespace,
 			entry.LLMRequest, entry.LLMResponse, entry.LLMTool, entry.LLMCommand, entry.LLMApproved,
-			entry.Source, entry.ClientIP, entry.SessionID, entry.Success, entry.ErrorMsg)
+			entry.Source, entry.ClientIP, entry.SessionID, entry.Success, entry.ErrorMsg,
+			entry.RequestedAction, entry.TargetResource, entry.TargetNamespace,
+			entry.AuthzDecision, entry.AccessRequestID, entry.ReviewerUser)
 		if err != nil {
 			return err
 		}
@@ -225,7 +245,9 @@ func GetAuditLogsFiltered(filter AuditFilter) ([]map[string]interface{}, error) 
 	query := `SELECT id, timestamp, user, action, resource, details, action_type,
 		k8s_user, k8s_context, k8s_cluster, namespace,
 		llm_request, llm_response, llm_tool, llm_command, llm_approved,
-		source, client_ip, session_id, success, error_msg
+		source, client_ip, session_id, success, error_msg,
+		requested_action, target_resource, target_namespace,
+		authz_decision, access_request_id, reviewer_user
 		FROM audit_logs WHERE 1=1`
 
 	var args []interface{}
@@ -292,11 +314,15 @@ func GetAuditLogsFiltered(filter AuditFilter) ([]map[string]interface{}, error) 
 		var llmReq, llmResp, llmTool, llmCmd string
 		var llmApproved, success bool
 		var source, clientIP, sessionID, errorMsg string
+		var requestedAction, targetResource, targetNamespace string
+		var authzDecision, accessRequestID, reviewerUser string
 
 		if err := rows.Scan(&id, &ts, &user, &action, &res, &details, &actionType,
 			&k8sUser, &k8sContext, &k8sCluster, &namespace,
 			&llmReq, &llmResp, &llmTool, &llmCmd, &llmApproved,
-			&source, &clientIP, &sessionID, &success, &errorMsg); err != nil {
+			&source, &clientIP, &sessionID, &success, &errorMsg,
+			&requestedAction, &targetResource, &targetNamespace,
+			&authzDecision, &accessRequestID, &reviewerUser); err != nil {
 			return nil, err
 		}
 
@@ -333,6 +359,26 @@ func GetAuditLogsFiltered(filter AuditFilter) ([]map[string]interface{}, error) 
 		}
 		if clientIP != "" {
 			entry["client_ip"] = clientIP
+		}
+
+		// Include authorization fields if present
+		if requestedAction != "" {
+			entry["requested_action"] = requestedAction
+		}
+		if targetResource != "" {
+			entry["target_resource"] = targetResource
+		}
+		if targetNamespace != "" {
+			entry["target_namespace"] = targetNamespace
+		}
+		if authzDecision != "" {
+			entry["authz_decision"] = authzDecision
+		}
+		if accessRequestID != "" {
+			entry["access_request_id"] = accessRequestID
+		}
+		if reviewerUser != "" {
+			entry["reviewer_user"] = reviewerUser
 		}
 
 		logs = append(logs, entry)

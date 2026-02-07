@@ -13,6 +13,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+
 	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -31,6 +33,11 @@ type User struct {
 	Source       string    `json:"source"` // local, ldap
 	CreatedAt    time.Time `json:"created_at"`
 	LastLogin    time.Time `json:"last_login,omitempty"`
+
+	// Emergency locking (Teleport-inspired)
+	Locked   bool      `json:"locked"`
+	LockedAt time.Time `json:"locked_at,omitempty"`
+	LockedBy string    `json:"locked_by,omitempty"`
 }
 
 // Session represents an authenticated session
@@ -55,6 +62,7 @@ type AuthManager struct {
 	ldapProvider   *LDAPProvider
 	tokenValidator *K8sTokenValidator
 	oidcProvider   *OIDCProvider
+	jwtManager     *JWTManager // JWT token manager (Teleport-inspired)
 }
 
 // AuthConfig holds authentication configuration
@@ -215,6 +223,7 @@ func NewAuthManager(cfg *AuthConfig) *AuthManager {
 		tokenSessions: make(map[string]*Session),
 		csrfTokens:    make(map[string]time.Time),
 		config:        cfg,
+		jwtManager:    NewJWTManager(JWTConfig{}), // Auto-generates secret
 	}
 
 	// Set default auth mode to "token" if not specified
@@ -611,9 +620,44 @@ func (am *AuthManager) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		// Try JWT validation first (Teleport-inspired short-lived tokens)
+		if am.jwtManager != nil {
+			claims, jwtErr := am.jwtManager.ValidateToken(sessionID)
+			if jwtErr == nil {
+				// JWT is valid - check if user is locked
+				if am.IsUserLocked(claims.Username) {
+					http.Error(w, "Account locked", http.StatusForbidden)
+					return
+				}
+
+				r.Header.Set("X-User-ID", claims.Subject)
+				r.Header.Set("X-Username", claims.Username)
+				r.Header.Set("X-User-Role", claims.Role)
+
+				// Auto-refresh if near expiry
+				if am.jwtManager.NeedsRefresh(sessionID) {
+					newToken, refreshErr := am.jwtManager.RefreshToken(sessionID)
+					if refreshErr == nil && newToken != sessionID {
+						w.Header().Set("X-Refreshed-Token", newToken)
+					}
+				}
+
+				next(w, r)
+				return
+			}
+			// JWT validation failed, fall through to opaque session
+		}
+
 		session, err := am.ValidateSession(sessionID)
 		if err != nil {
 			http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// Check if user is locked (Teleport-inspired emergency locking)
+		if am.IsUserLocked(session.Username) {
+			am.InvalidateSession(sessionID)
+			http.Error(w, "Account locked", http.StatusForbidden)
 			return
 		}
 
@@ -689,6 +733,7 @@ type LoginRequest struct {
 // LoginResponse represents a login response
 type LoginResponse struct {
 	Token     string    `json:"token"`
+	JWTToken  string    `json:"jwt_token,omitempty"` // JWT token (Teleport-inspired short-lived)
 	Username  string    `json:"username"`
 	Role      string    `json:"role"`
 	ExpiresAt time.Time `json:"expires_at"`
@@ -746,9 +791,21 @@ func (am *AuthManager) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		Expires:  session.ExpiresAt,
 	})
 
+	// Generate JWT token alongside session (Teleport-inspired)
+	var jwtToken string
+	if am.jwtManager != nil {
+		jwtToken, _ = am.jwtManager.GenerateToken(JWTClaims{
+			Subject:   session.UserID,
+			Username:  session.Username,
+			Role:      session.Role,
+			SessionID: session.ID,
+		})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(LoginResponse{
 		Token:     session.ID,
+		JWTToken:  jwtToken,
 		Username:  session.Username,
 		Role:      session.Role,
 		ExpiresAt: session.ExpiresAt,
@@ -1210,6 +1267,206 @@ func generateSecurePassword(length int) string {
 		b[i] = charset[int(b[i])%len(charset)]
 	}
 	return string(b)
+}
+
+// LockUser locks a user account immediately and invalidates all sessions (Teleport-inspired)
+func (am *AuthManager) LockUser(username, lockedBy string) error {
+	am.mu.Lock()
+	defer am.mu.Unlock()
+
+	user, exists := am.users[username]
+	if !exists {
+		return fmt.Errorf("user not found: %s", username)
+	}
+
+	user.Locked = true
+	user.LockedAt = time.Now()
+	user.LockedBy = lockedBy
+
+	// Invalidate all sessions for this user
+	for id, session := range am.sessions {
+		if session.Username == username {
+			delete(am.sessions, id)
+		}
+	}
+
+	// Persist lock to database
+	if db.DB != nil {
+		_, err := db.DB.Exec(
+			"INSERT OR REPLACE INTO user_locks (username, locked_at, locked_by, reason) VALUES (?, ?, ?, ?)",
+			username, user.LockedAt, lockedBy, "emergency lock")
+		if err != nil {
+			fmt.Printf("Warning: failed to persist user lock: %v\n", err)
+		}
+	}
+
+	// Record audit event
+	db.RecordAudit(db.AuditEntry{
+		User:       lockedBy,
+		Action:     "lock_user",
+		Resource:   "user/" + username,
+		Details:    fmt.Sprintf("User %s locked by %s", username, lockedBy),
+		ActionType: db.ActionTypeUserLocked,
+		Source:     "web",
+		Success:    true,
+	})
+
+	return nil
+}
+
+// UnlockUser unlocks a previously locked user account
+func (am *AuthManager) UnlockUser(username string) error {
+	am.mu.Lock()
+	defer am.mu.Unlock()
+
+	user, exists := am.users[username]
+	if !exists {
+		return fmt.Errorf("user not found: %s", username)
+	}
+
+	user.Locked = false
+	user.LockedAt = time.Time{}
+	user.LockedBy = ""
+
+	// Remove from database
+	if db.DB != nil {
+		db.DB.Exec("DELETE FROM user_locks WHERE username = ?", username)
+	}
+
+	// Record audit event
+	db.RecordAudit(db.AuditEntry{
+		User:       username,
+		Action:     "unlock_user",
+		Resource:   "user/" + username,
+		Details:    fmt.Sprintf("User %s unlocked", username),
+		ActionType: db.ActionTypeUserUnlocked,
+		Source:     "web",
+		Success:    true,
+	})
+
+	return nil
+}
+
+// IsUserLocked checks if a user is locked (fast path: in-memory, fallback: DB)
+func (am *AuthManager) IsUserLocked(username string) bool {
+	am.mu.RLock()
+	user, exists := am.users[username]
+	am.mu.RUnlock()
+
+	if exists {
+		return user.Locked
+	}
+
+	// Fallback: check database for users not yet loaded in memory
+	if db.DB != nil {
+		var count int
+		err := db.DB.QueryRow("SELECT COUNT(*) FROM user_locks WHERE username = ?", username).Scan(&count)
+		if err == nil && count > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+// LoadUserLocks loads persisted user locks from the database on startup
+func (am *AuthManager) LoadUserLocks() {
+	if db.DB == nil {
+		return
+	}
+
+	rows, err := db.DB.Query("SELECT username, locked_at, locked_by FROM user_locks")
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	am.mu.Lock()
+	defer am.mu.Unlock()
+
+	for rows.Next() {
+		var username, lockedBy string
+		var lockedAt time.Time
+		if err := rows.Scan(&username, &lockedAt, &lockedBy); err != nil {
+			continue
+		}
+		if user, exists := am.users[username]; exists {
+			user.Locked = true
+			user.LockedAt = lockedAt
+			user.LockedBy = lockedBy
+		}
+	}
+}
+
+// HandleLockUser handles POST /api/admin/lock - locks a user account (admin only)
+func (am *AuthManager) HandleLockUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Username == "" {
+		http.Error(w, "Username is required", http.StatusBadRequest)
+		return
+	}
+
+	// Prevent self-lock
+	currentUser := r.Header.Get("X-Username")
+	if req.Username == currentUser {
+		http.Error(w, "Cannot lock your own account", http.StatusBadRequest)
+		return
+	}
+
+	if err := am.LockUser(req.Username, currentUser); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":   "locked",
+		"username": req.Username,
+	})
+}
+
+// HandleUnlockUser handles POST /api/admin/unlock - unlocks a user account (admin only)
+func (am *AuthManager) HandleUnlockUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.Username == "" {
+		http.Error(w, "Username is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := am.UnlockUser(req.Username); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":   "unlocked",
+		"username": req.Username,
+	})
 }
 
 // GenerateCSRFToken generates a new CSRF token for the session

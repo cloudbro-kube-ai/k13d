@@ -18,6 +18,8 @@
     <script src="vendor/ansi_up.min.js"></script>
     <!-- marked for markdown rendering -->
     <script src="vendor/marked.min.js"></script>
+    <!-- G6 for topology graph visualization -->
+    <script src="vendor/g6.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -3297,6 +3299,203 @@
         }
 
         /* ==========================================
+         * Topology View Styles
+         * ========================================== */
+        #topology-container {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            background: var(--bg-primary);
+            position: relative;
+        }
+
+        #topology-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        #topology-toolbar select,
+        #topology-toolbar input[type="text"] {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-family: var(--font-sans);
+        }
+
+        #topology-toolbar input[type="text"] {
+            width: 200px;
+        }
+
+        #topology-toolbar button {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            transition: background 0.2s;
+        }
+
+        #topology-toolbar button:hover {
+            background: var(--accent-blue);
+            color: #fff;
+        }
+
+        #topology-toolbar label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        #topology-toolbar .toolbar-separator {
+            width: 1px;
+            height: 20px;
+            background: var(--border-color);
+            margin: 0 4px;
+        }
+
+        #topology-graph {
+            width: 100%;
+            flex: 1;
+            min-height: 0;
+        }
+
+        #topology-detail {
+            display: none;
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 320px;
+            height: 100%;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            z-index: 10;
+            overflow-y: auto;
+            box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
+        }
+
+        #topology-detail.active {
+            display: block;
+        }
+
+        .topology-detail-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+        }
+
+        .topology-detail-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .topology-detail-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0 4px;
+        }
+
+        .topology-detail-body {
+            padding: 16px;
+        }
+
+        .topology-detail-field {
+            margin-bottom: 12px;
+        }
+
+        .topology-detail-field .label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .topology-detail-field .value {
+            font-size: 13px;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+        }
+
+        .topology-detail-actions {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .topology-detail-actions button {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--accent-blue);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: var(--font-sans);
+        }
+
+        .topology-detail-actions button:hover {
+            opacity: 0.9;
+        }
+
+        .topology-status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .topology-status-badge.running { background: rgba(158, 206, 106, 0.2); color: var(--accent-green); }
+        .topology-status-badge.pending { background: rgba(224, 175, 104, 0.2); color: var(--accent-yellow); }
+        .topology-status-badge.failed { background: rgba(247, 118, 142, 0.2); color: var(--accent-red); }
+        .topology-status-badge.succeeded { background: rgba(122, 162, 247, 0.2); color: var(--accent-blue); }
+        .topology-status-badge.unknown { background: rgba(169, 177, 214, 0.2); color: var(--text-secondary); }
+
+        .topology-legend {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .topology-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .topology-legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* ==========================================
          * Metrics Modal Styles
          * ========================================== */
         .metrics-modal {
@@ -4832,6 +5031,13 @@
                 </div>
 
                 <div class="nav-section">
+                    <div class="nav-title">Visualization</div>
+                    <div class="nav-item" data-resource="topology" onclick="showTopology()">
+                        <span>Topology</span>
+                    </div>
+                </div>
+
+                <div class="nav-section">
                     <div class="nav-title">Monitoring</div>
                     <div class="nav-item" onclick="showAuditLogs()">
                         <span>Audit Logs</span>
@@ -4888,6 +5094,39 @@
                             <button class="pagination-btn" id="prev-page-btn" onclick="goToPrevPage()" disabled>← Prev</button>
                             <span id="page-indicator">1 / 1</span>
                             <button class="pagination-btn" id="next-page-btn" onclick="goToNextPage()" disabled>Next →</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Topology View Container -->
+                <div id="topology-container">
+                    <div id="topology-toolbar">
+                        <select id="topology-ns-select" onchange="onTopologyNamespaceChange()">
+                            <option value="">All Namespaces</option>
+                        </select>
+                        <input type="text" id="topology-search" placeholder="Search resources..." oninput="filterTopologyGraph(this.value)">
+                        <div class="toolbar-separator"></div>
+                        <button onclick="topologyFitView()">Fit</button>
+                        <button onclick="loadTopology()">↻ Refresh</button>
+                        <div class="toolbar-separator"></div>
+                        <label><input type="checkbox" id="topology-show-configmaps" onchange="loadTopology()"> ConfigMaps</label>
+                        <label><input type="checkbox" id="topology-show-secrets" onchange="loadTopology()"> Secrets</label>
+                        <div class="topology-legend">
+                            <div class="topology-legend-item"><div class="topology-legend-dot" style="background: var(--accent-green);"></div> Running</div>
+                            <div class="topology-legend-item"><div class="topology-legend-dot" style="background: var(--accent-yellow);"></div> Pending</div>
+                            <div class="topology-legend-item"><div class="topology-legend-dot" style="background: var(--accent-red);"></div> Failed</div>
+                            <div class="topology-legend-item"><div class="topology-legend-dot" style="background: var(--accent-blue);"></div> Succeeded</div>
+                        </div>
+                    </div>
+                    <div id="topology-graph"></div>
+                    <div id="topology-detail">
+                        <div class="topology-detail-header">
+                            <h3 id="topology-detail-title">Resource</h3>
+                            <button class="topology-detail-close" onclick="closeTopologyDetail()">&times;</button>
+                        </div>
+                        <div class="topology-detail-body" id="topology-detail-body"></div>
+                        <div class="topology-detail-actions">
+                            <button id="topology-view-dashboard-btn" onclick="topologyNavigateToDashboard()">View in Dashboard</button>
                         </div>
                     </div>
                 </div>
@@ -7626,6 +7865,9 @@ spec:
                 item.classList.toggle('active', item.dataset.resource === resource);
             });
             document.getElementById('panel-title').textContent = resource.charAt(0).toUpperCase() + resource.slice(1);
+
+            // Hide topology view and show main panel
+            hideTopologyView();
 
             // Update active column filters display
             updateActiveColumnFiltersDisplay();
@@ -10404,6 +10646,440 @@ ${escapeHtml(execInfo.result)}</div>
         function truncateText(text, maxLen) {
             if (!text) return '';
             return text.length > maxLen ? text.substring(0, maxLen) + '...' : text;
+        }
+
+        // ==========================================
+        // Topology View Functions
+        // ==========================================
+
+        let topologyGraph = null;
+        let topologyData = null;
+        let topologySelectedNode = null;
+
+        const topologyStatusColors = {
+            running: '#9ece6a',
+            pending: '#e0af68',
+            failed: '#f7768e',
+            succeeded: '#7aa2f7',
+            unknown: '#a9b1d6',
+        };
+
+        const topologyKindShapes = {
+            Deployment: 'rect',
+            ReplicaSet: 'rect',
+            StatefulSet: 'rect',
+            DaemonSet: 'rect',
+            Pod: 'circle',
+            Service: 'diamond',
+            Ingress: 'diamond',
+            Job: 'rect',
+            CronJob: 'rect',
+            ConfigMap: 'triangle',
+            Secret: 'triangle',
+            PVC: 'rect',
+            HPA: 'diamond',
+        };
+
+        const topologyKindLabels = {
+            Deployment: 'Deploy',
+            ReplicaSet: 'RS',
+            StatefulSet: 'STS',
+            DaemonSet: 'DS',
+            Pod: 'Pod',
+            Service: 'Svc',
+            Ingress: 'Ing',
+            Job: 'Job',
+            CronJob: 'CJ',
+            ConfigMap: 'CM',
+            Secret: 'Sec',
+            PVC: 'PVC',
+            HPA: 'HPA',
+        };
+
+        const topologyEdgeStyles = {
+            owns: { lineDash: 0, stroke: '#565f89' },
+            selects: { lineDash: [5, 5], stroke: '#7aa2f7' },
+            mounts: { lineDash: [2, 4], stroke: '#bb9af7' },
+            routes: { lineDash: 0, stroke: '#9ece6a' },
+            scales: { lineDash: [8, 4], stroke: '#e0af68' },
+        };
+
+        function hideTopologyView() {
+            const topoContainer = document.getElementById('topology-container');
+            const mainPanel = document.querySelector('.main-panel');
+            if (topoContainer) topoContainer.style.display = 'none';
+            if (mainPanel) mainPanel.style.display = '';
+        }
+
+        function showTopology() {
+            currentResource = 'topology';
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            const topoNav = document.querySelector('.nav-item[data-resource="topology"]');
+            if (topoNav) topoNav.classList.add('active');
+
+            // Hide main panel, show topology
+            const mainPanel = document.querySelector('.main-panel');
+            const topoContainer = document.getElementById('topology-container');
+            if (mainPanel) mainPanel.style.display = 'none';
+            if (topoContainer) topoContainer.style.display = 'flex';
+
+            // Sync namespace select
+            syncTopologyNamespaces();
+
+            loadTopology();
+        }
+
+        function syncTopologyNamespaces() {
+            const srcSelect = document.getElementById('namespace-select');
+            const topoSelect = document.getElementById('topology-ns-select');
+            if (!srcSelect || !topoSelect) return;
+
+            // Copy options from main namespace select
+            topoSelect.innerHTML = '';
+            for (const opt of srcSelect.options) {
+                const newOpt = document.createElement('option');
+                newOpt.value = opt.value;
+                newOpt.textContent = opt.textContent;
+                topoSelect.appendChild(newOpt);
+            }
+            topoSelect.value = srcSelect.value;
+        }
+
+        function onTopologyNamespaceChange() {
+            loadTopology();
+        }
+
+        async function loadTopology() {
+            const namespace = document.getElementById('topology-ns-select')?.value || '';
+            const graphContainer = document.getElementById('topology-graph');
+            if (!graphContainer) return;
+
+            try {
+                const resp = await fetchWithAuth(`/api/topology/?namespace=${encodeURIComponent(namespace)}`);
+                const data = await resp.json();
+                topologyData = data;
+
+                // Filter based on checkboxes
+                const showCM = document.getElementById('topology-show-configmaps')?.checked;
+                const showSec = document.getElementById('topology-show-secrets')?.checked;
+
+                let filteredNodes = data.nodes || [];
+                let filteredEdges = data.edges || [];
+
+                if (!showCM) {
+                    const cmIds = new Set(filteredNodes.filter(n => n.kind === 'ConfigMap').map(n => n.id));
+                    filteredNodes = filteredNodes.filter(n => n.kind !== 'ConfigMap');
+                    filteredEdges = filteredEdges.filter(e => !cmIds.has(e.source) && !cmIds.has(e.target));
+                }
+                if (!showSec) {
+                    const secIds = new Set(filteredNodes.filter(n => n.kind === 'Secret').map(n => n.id));
+                    filteredNodes = filteredNodes.filter(n => n.kind !== 'Secret');
+                    filteredEdges = filteredEdges.filter(e => !secIds.has(e.source) && !secIds.has(e.target));
+                }
+
+                renderTopologyGraph(filteredNodes, filteredEdges);
+            } catch (err) {
+                graphContainer.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--accent-red);">Failed to load topology: ${escapeHtml(err.message)}</div>`;
+            }
+        }
+
+        function renderTopologyGraph(nodes, edges) {
+            const container = document.getElementById('topology-graph');
+            if (!container) return;
+
+            // Destroy previous graph
+            if (topologyGraph) {
+                topologyGraph.destroy();
+                topologyGraph = null;
+            }
+
+            if (!nodes || nodes.length === 0) {
+                container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-secondary);">No resources found in this namespace</div>';
+                return;
+            }
+
+            // Clear container
+            container.innerHTML = '';
+
+            // Transform data for G6
+            const g6Nodes = nodes.map(n => ({
+                id: n.id,
+                data: {
+                    kind: n.kind,
+                    name: n.name,
+                    namespace: n.namespace,
+                    status: n.status,
+                    info: n.info || {},
+                    kindLabel: topologyKindLabels[n.kind] || n.kind,
+                },
+            }));
+
+            const g6Edges = edges.map((e, i) => ({
+                id: `edge-${i}`,
+                source: e.source,
+                target: e.target,
+                data: { type: e.type },
+            }));
+
+            const statusColor = (status) => topologyStatusColors[status] || topologyStatusColors.unknown;
+
+            topologyGraph = new G6.Graph({
+                container,
+                autoFit: 'view',
+                padding: [40, 40, 40, 40],
+                data: { nodes: g6Nodes, edges: g6Edges },
+                node: {
+                    type: (d) => {
+                        const shape = topologyKindShapes[d.data?.kind] || 'circle';
+                        return shape;
+                    },
+                    style: {
+                        size: (d) => {
+                            if (d.data?.kind === 'Pod') return 28;
+                            if (d.data?.kind === 'Service' || d.data?.kind === 'Ingress' || d.data?.kind === 'HPA') return 32;
+                            return [80, 36];
+                        },
+                        fill: (d) => {
+                            const color = statusColor(d.data?.status);
+                            return color + '33'; // 20% opacity
+                        },
+                        stroke: (d) => statusColor(d.data?.status),
+                        lineWidth: 2,
+                        labelText: (d) => {
+                            const label = d.data?.kindLabel || '';
+                            const name = d.data?.name || '';
+                            // Truncate long names
+                            const shortName = name.length > 20 ? name.substring(0, 18) + '..' : name;
+                            return `${label}\n${shortName}`;
+                        },
+                        labelFill: '#c0caf5',
+                        labelFontSize: 10,
+                        labelFontFamily: 'IBM Plex Mono, monospace',
+                        labelPlacement: 'center',
+                        labelMaxLines: 2,
+                        labelWordWrap: true,
+                        labelWordWrapWidth: 76,
+                    },
+                    state: {
+                        highlight: {
+                            stroke: '#7aa2f7',
+                            lineWidth: 3,
+                            shadowColor: '#7aa2f7',
+                            shadowBlur: 10,
+                        },
+                        dim: {
+                            opacity: 0.3,
+                        },
+                        selected: {
+                            stroke: '#7dcfff',
+                            lineWidth: 3,
+                            shadowColor: '#7dcfff',
+                            shadowBlur: 12,
+                        },
+                    },
+                },
+                edge: {
+                    type: 'line',
+                    style: {
+                        stroke: (d) => {
+                            const es = topologyEdgeStyles[d.data?.type] || topologyEdgeStyles.owns;
+                            return es.stroke;
+                        },
+                        lineDash: (d) => {
+                            const es = topologyEdgeStyles[d.data?.type] || topologyEdgeStyles.owns;
+                            return es.lineDash || 0;
+                        },
+                        lineWidth: 1,
+                        endArrow: true,
+                        endArrowSize: 6,
+                    },
+                    state: {
+                        dim: {
+                            opacity: 0.15,
+                        },
+                    },
+                },
+                layout: {
+                    type: 'dagre',
+                    rankdir: 'TB',
+                    nodesep: 30,
+                    ranksep: 50,
+                },
+                behaviors: [
+                    'drag-canvas',
+                    'zoom-canvas',
+                    'click-select',
+                ],
+            });
+
+            // Event: node click → show detail
+            topologyGraph.on('node:click', (evt) => {
+                const nodeId = evt.target.id;
+                const nodeData = nodes.find(n => n.id === nodeId);
+                if (nodeData) {
+                    showTopologyDetail(nodeData);
+                }
+            });
+
+            // Event: double click → navigate to dashboard
+            topologyGraph.on('node:dblclick', (evt) => {
+                const nodeId = evt.target.id;
+                const nodeData = nodes.find(n => n.id === nodeId);
+                if (nodeData) {
+                    topologyNavigateToDashboardForNode(nodeData);
+                }
+            });
+
+            // Event: canvas click → close detail
+            topologyGraph.on('canvas:click', () => {
+                closeTopologyDetail();
+            });
+
+            topologyGraph.render();
+        }
+
+        function showTopologyDetail(nodeData) {
+            topologySelectedNode = nodeData;
+            const detail = document.getElementById('topology-detail');
+            const title = document.getElementById('topology-detail-title');
+            const body = document.getElementById('topology-detail-body');
+
+            if (!detail || !body) return;
+
+            title.textContent = `${nodeData.kind}: ${nodeData.name}`;
+
+            let html = '';
+            html += `<div class="topology-detail-field">
+                <div class="label">Kind</div>
+                <div class="value">${escapeHtml(nodeData.kind)}</div>
+            </div>`;
+            html += `<div class="topology-detail-field">
+                <div class="label">Name</div>
+                <div class="value">${escapeHtml(nodeData.name)}</div>
+            </div>`;
+            html += `<div class="topology-detail-field">
+                <div class="label">Namespace</div>
+                <div class="value">${escapeHtml(nodeData.namespace)}</div>
+            </div>`;
+            html += `<div class="topology-detail-field">
+                <div class="label">Status</div>
+                <div class="value"><span class="topology-status-badge ${nodeData.status}">${escapeHtml(nodeData.status)}</span></div>
+            </div>`;
+
+            // Show info fields
+            if (nodeData.info) {
+                for (const [key, val] of Object.entries(nodeData.info)) {
+                    html += `<div class="topology-detail-field">
+                        <div class="label">${escapeHtml(key)}</div>
+                        <div class="value">${escapeHtml(val)}</div>
+                    </div>`;
+                }
+            }
+
+            // Show connections
+            if (topologyData) {
+                const incoming = (topologyData.edges || []).filter(e => e.target === nodeData.id);
+                const outgoing = (topologyData.edges || []).filter(e => e.source === nodeData.id);
+                if (incoming.length > 0) {
+                    html += `<div class="topology-detail-field">
+                        <div class="label">Incoming (${incoming.length})</div>
+                        <div class="value" style="font-size:11px;">`;
+                    for (const e of incoming) {
+                        html += `${escapeHtml(e.source)} <span style="color:var(--text-secondary);">(${e.type})</span><br>`;
+                    }
+                    html += `</div></div>`;
+                }
+                if (outgoing.length > 0) {
+                    html += `<div class="topology-detail-field">
+                        <div class="label">Outgoing (${outgoing.length})</div>
+                        <div class="value" style="font-size:11px;">`;
+                    for (const e of outgoing) {
+                        html += `${escapeHtml(e.target)} <span style="color:var(--text-secondary);">(${e.type})</span><br>`;
+                    }
+                    html += `</div></div>`;
+                }
+            }
+
+            body.innerHTML = html;
+            detail.classList.add('active');
+        }
+
+        function closeTopologyDetail() {
+            const detail = document.getElementById('topology-detail');
+            if (detail) detail.classList.remove('active');
+            topologySelectedNode = null;
+        }
+
+        function topologyNavigateToDashboard() {
+            if (!topologySelectedNode) return;
+            topologyNavigateToDashboardForNode(topologySelectedNode);
+        }
+
+        function topologyNavigateToDashboardForNode(nodeData) {
+            const kindToResource = {
+                Pod: 'pods',
+                Deployment: 'deployments',
+                ReplicaSet: 'replicasets',
+                StatefulSet: 'statefulsets',
+                DaemonSet: 'daemonsets',
+                Service: 'services',
+                Ingress: 'ingresses',
+                Job: 'jobs',
+                CronJob: 'cronjobs',
+                ConfigMap: 'configmaps',
+                Secret: 'secrets',
+                PVC: 'persistentvolumeclaims',
+                HPA: 'hpas',
+            };
+            const resource = kindToResource[nodeData.kind];
+            if (resource) {
+                // Set namespace if available
+                if (nodeData.namespace) {
+                    const nsSelect = document.getElementById('namespace-select');
+                    if (nsSelect) nsSelect.value = nodeData.namespace;
+                    currentNamespace = nodeData.namespace;
+                }
+                switchResource(resource);
+            }
+        }
+
+        function topologyFitView() {
+            if (topologyGraph) {
+                topologyGraph.fitView();
+            }
+        }
+
+        function filterTopologyGraph(query) {
+            if (!topologyGraph || !topologyData) return;
+
+            const q = query.toLowerCase().trim();
+            if (!q) {
+                // Clear filter: reset all states
+                topologyGraph.getNodeData().forEach(n => {
+                    topologyGraph.setElementState(n.id, []);
+                });
+                topologyGraph.getEdgeData().forEach(e => {
+                    topologyGraph.setElementState(e.id, []);
+                });
+                topologyGraph.draw();
+                return;
+            }
+
+            const matchedIds = new Set();
+            (topologyData.nodes || []).forEach(n => {
+                if (n.name.toLowerCase().includes(q) || n.kind.toLowerCase().includes(q)) {
+                    matchedIds.add(n.id);
+                }
+            });
+
+            topologyGraph.getNodeData().forEach(n => {
+                topologyGraph.setElementState(n.id, matchedIds.has(n.id) ? ['highlight'] : ['dim']);
+            });
+            topologyGraph.getEdgeData().forEach(e => {
+                const connected = matchedIds.has(e.source) || matchedIds.has(e.target);
+                topologyGraph.setElementState(e.id, connected ? [] : ['dim']);
+            });
+            topologyGraph.draw();
         }
 
         async function showReports() {

@@ -1,0 +1,25 @@
+ k13d - Kubernetes AI Dashboard v0.1.0
+AI: Offline
+ Context: docker-desktop  Cluster: docker-desktop  NS: default  Resource: pods
+ Namespaces: 0:all 1:default 2:kube-system 3:kube-public
+
+┌────────────────────────────── pods - Loading... ─────────────────────────────┐
+│Loading...                                                                    │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+   <l>Logs <s>Shell <d>Describe <n>NS <0>All </>Filter <:>Cmd <?>Help <q>Quit
+ /                        Type to filter (use /regex/ for regex), Enter to
