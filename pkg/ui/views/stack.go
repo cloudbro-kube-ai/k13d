@@ -173,6 +173,7 @@ func (ps *PageStack) GoBack() bool {
 // Replace replaces the top view with a new view.
 func (ps *PageStack) Replace(view View) {
 	ps.mx.Lock()
+	defer ps.mx.Unlock()
 
 	// Stop and remove current top
 	if len(ps.stack) > 0 {
@@ -182,10 +183,17 @@ func (ps *PageStack) Replace(view View) {
 		ps.stack = ps.stack[:len(ps.stack)-1]
 	}
 
-	ps.mx.Unlock()
+	// Inline push logic to avoid releasing and re-acquiring the lock
+	ps.stack = append(ps.stack, view)
+	ps.Pages.AddPage(view.Name(), view.Primitive(), true, true)
 
-	// Push new view (this handles the rest)
-	ps.Push(view)
+	view.Start()
+	view.SetFocus(ps.app)
+
+	for _, l := range ps.listeners {
+		l.StackPushed(view)
+		l.StackTop(view)
+	}
 }
 
 // SwitchTo switches to a specific view by name.

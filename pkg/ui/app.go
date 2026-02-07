@@ -206,7 +206,10 @@ func NewAppWithNamespace(initialNamespace string) *App {
 	}
 
 	// AI client (optional)
-	aiClient, _ := ai.NewClient(&cfg.LLM)
+	aiClient, aiErr := ai.NewClient(&cfg.LLM)
+	if aiErr != nil {
+		logger.Warn("AI client initialization failed (AI features disabled)", "error", aiErr)
+	}
 
 	// Handle "all" as empty string (all namespaces)
 	if initialNamespace == "all" {
@@ -1968,8 +1971,8 @@ func (a *App) refresh() {
 	resource := a.currentResource
 	a.mx.RUnlock()
 
-	// Show loading state
-	a.QueueUpdateDraw(func() {
+	// Show loading state (already in goroutine, use direct version)
+	a.queueUpdateDrawDirect(func() {
 		a.table.Clear()
 		a.table.SetTitle(fmt.Sprintf(" %s - Loading... ", resource))
 		a.table.SetCell(0, 0, tview.NewTableCell("Loading...").SetTextColor(tcell.ColorYellow))
@@ -2007,7 +2010,7 @@ func (a *App) refresh() {
 		}
 		a.logger.Error("Fetch failed after retries", "error", err, "resource", resource)
 		a.flashMsg(fmt.Sprintf("Error: %v", err), true)
-		a.QueueUpdateDraw(func() {
+		a.queueUpdateDrawDirect(func() {
 			a.table.Clear()
 			a.table.SetTitle(fmt.Sprintf(" %s - Error ", resource))
 			a.table.SetCell(0, 0, tview.NewTableCell(fmt.Sprintf("Error: %v", err)).SetTextColor(tcell.ColorRed))
@@ -2027,7 +2030,7 @@ func (a *App) refresh() {
 		a.applyFilterText(currentFilter)
 	} else {
 		// Update UI (k9s pattern: queue all UI updates)
-		a.QueueUpdateDraw(func() {
+		a.queueUpdateDrawDirect(func() {
 			a.table.Clear()
 
 			// Set headers
@@ -2064,7 +2067,7 @@ func (a *App) refresh() {
 	}
 
 	// Update status bar for resource-specific shortcuts
-	a.QueueUpdateDraw(func() {
+	a.queueUpdateDrawDirect(func() {
 		a.updateStatusBar()
 	})
 
@@ -2093,25 +2096,22 @@ func (a *App) refresh() {
 // within tview input handlers. tview's QueueUpdateDraw can block if the event
 // loop is waiting for the current handler to return.
 func (a *App) QueueUpdateDraw(f func()) {
-	if a.Application == nil {
+	if a.Application == nil || atomic.LoadInt32(&a.stopping) == 1 {
 		return
 	}
-	// Check if app is stopping - skip to avoid blocking on shutdown
-	if atomic.LoadInt32(&a.stopping) == 1 {
-		return
-	}
-	// Always queue in a goroutine to prevent deadlock when called from input handlers.
+	// Queue in a goroutine to prevent deadlock when called from input handlers.
 	// tview's event loop can't process queued updates until the current handler returns,
 	// so calling QueueUpdateDraw directly from a handler can cause blocking.
-	go func() {
-		// Recheck state before queuing to avoid blocking on shutdown
-		if atomic.LoadInt32(&a.stopping) == 1 {
-			return
-		}
-		if a.Application != nil {
-			a.Application.QueueUpdateDraw(f)
-		}
-	}()
+	go a.queueUpdateDrawDirect(f)
+}
+
+// queueUpdateDrawDirect queues an update without spawning a goroutine.
+// Use this when already running inside a goroutine (e.g., from refresh(), background tasks).
+func (a *App) queueUpdateDrawDirect(f func()) {
+	if a.Application == nil || atomic.LoadInt32(&a.stopping) == 1 {
+		return
+	}
+	a.Application.QueueUpdateDraw(f)
 }
 
 // IsRunning returns true if the application is currently running and not stopping.
