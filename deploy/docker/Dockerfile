@@ -52,8 +52,9 @@ RUN adduser -D -g '' k13d
 # Copy binary from builder
 COPY --from=builder /app/k13d /usr/local/bin/k13d
 
-# Create config and kubeconfig directories
-RUN mkdir -p /home/k13d/.config/k13d /home/k13d/.kube && \
+# Create config, kubeconfig, and data directories
+# data directory is writable for SQLite audit DB and user locks
+RUN mkdir -p /home/k13d/.config/k13d /home/k13d/.kube /home/k13d/data && \
     chown -R k13d:k13d /home/k13d
 
 # Switch to non-root user
@@ -61,25 +62,29 @@ USER k13d
 WORKDIR /home/k13d
 
 # Environment variables for configuration
-# K13S_AUTH_MODE: token (k8s RBAC - recommended) or local (username/password)
-# K13S_USERNAME/K13S_PASSWORD: credentials for local auth mode (optional)
+# K13D_AUTH_MODE: token (k8s RBAC - recommended) or local (username/password)
+# K13D_USERNAME/K13D_PASSWORD: credentials for local auth mode (optional)
 # KUBECONFIG: path to kubeconfig file (mount as volume)
-# K13S_LLM_PROVIDER: openai, ollama, gemini, anthropic, bedrock
-# K13S_LLM_ENDPOINT: Custom LLM endpoint (e.g., http://ollama:11434 for air-gapped)
-# K13S_LLM_MODEL: Model name (e.g., gpt-4o-mini, llama3)
-# K13S_LLM_API_KEY: API key for LLM provider
-ENV K13S_PORT=8080 \
-    K13S_AUTH_MODE=token \
-    K13S_LLM_PROVIDER=ollama \
-    K13S_LLM_MODEL=llama3 \
-    K13S_LLM_ENDPOINT=""
+# K13D_LLM_PROVIDER: openai, ollama, gemini, anthropic, bedrock
+# K13D_LLM_ENDPOINT: Custom LLM endpoint (e.g., http://ollama:11434 for air-gapped)
+# K13D_LLM_MODEL: Model name (e.g., gpt-4o-mini, llama3)
+# K13D_LLM_API_KEY: API key for LLM provider
+# K13D_JWT_SECRET: Secret key for JWT token signing (auto-generated if not set)
+# K13D_DEFAULT_ROLE: Default TUI role (admin, user, viewer)
+ENV K13D_PORT=8080 \
+    K13D_AUTH_MODE=token \
+    K13D_LLM_PROVIDER=ollama \
+    K13D_LLM_MODEL=llama3 \
+    K13D_LLM_ENDPOINT="" \
+    K13D_JWT_SECRET="" \
+    K13D_DEFAULT_ROLE=admin
 
 # Expose web UI port
 EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -sf http://localhost:${K13S_PORT}/api/health || exit 1
+    CMD curl -sf http://localhost:${K13D_PORT}/api/health || exit 1
 
 # Default command: run in web mode
 # TUI mode: docker run -it --rm -v ~/.kube/config:/home/k13d/.kube/config:ro k13d -tui

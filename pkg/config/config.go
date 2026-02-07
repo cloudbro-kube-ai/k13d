@@ -67,6 +67,7 @@ type ImpersonationMapping struct {
 
 // JWTConfigYAML is the YAML-friendly JWT config
 type JWTConfigYAML struct {
+	Secret        string `yaml:"secret" json:"-"`                      // HMAC secret (never exposed in JSON)
 	TokenDuration string `yaml:"token_duration" json:"token_duration"` // e.g., "1h"
 	RefreshWindow string `yaml:"refresh_window" json:"refresh_window"` // e.g., "15m"
 }
@@ -414,20 +415,49 @@ func (c *Config) IsPersistenceEnabled() bool {
 func LoadConfig() (*Config, error) {
 	path := GetConfigPath()
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return NewDefaultConfig(), nil
+		cfg := NewDefaultConfig()
+		applyEnvOverrides(cfg)
+		return cfg, nil
 	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return NewDefaultConfig(), nil // Fail gracefully to defaults
+		cfg := NewDefaultConfig()
+		applyEnvOverrides(cfg)
+		return cfg, nil // Fail gracefully to defaults
 	}
 
 	cfg := NewDefaultConfig()
 	if err := yaml.Unmarshal(data, cfg); err != nil {
-		return NewDefaultConfig(), nil // Fail gracefully to defaults
+		cfg = NewDefaultConfig()
 	}
 
+	applyEnvOverrides(cfg)
 	return cfg, nil
+}
+
+// applyEnvOverrides applies K13D_* environment variable overrides.
+// Environment variables take precedence over config file values.
+// This enables configuration via Docker/K8s environment without a config file.
+func applyEnvOverrides(cfg *Config) {
+	if v := os.Getenv("K13D_LLM_PROVIDER"); v != "" {
+		cfg.LLM.Provider = v
+	}
+	if v := os.Getenv("K13D_LLM_MODEL"); v != "" {
+		cfg.LLM.Model = v
+	}
+	if v := os.Getenv("K13D_LLM_ENDPOINT"); v != "" {
+		cfg.LLM.Endpoint = v
+	}
+	if v := os.Getenv("K13D_LLM_API_KEY"); v != "" {
+		cfg.LLM.APIKey = v
+	}
+	if v := os.Getenv("K13D_JWT_SECRET"); v != "" {
+		cfg.Authorization.JWT.Secret = v
+	}
+	if v := os.Getenv("K13D_DEFAULT_ROLE"); v != "" {
+		cfg.Authorization.DefaultTUIRole = v
+	}
 }
 
 func (c *Config) Save() error {

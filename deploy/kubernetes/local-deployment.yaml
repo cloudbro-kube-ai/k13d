@@ -157,9 +157,9 @@ spec:
               containerPort: 8080
               protocol: TCP
           env:
-            - name: K13S_AUTH_MODE
+            - name: K13D_AUTH_MODE
               value: "local"
-            - name: K13S_PORT
+            - name: K13D_PORT
               value: "8080"
           livenessProbe:
             httpGet:
