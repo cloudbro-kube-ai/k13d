@@ -1,6 +1,36 @@
+# Create Canary Deployment Task
+# Tests advanced deployment strategies
+
+name: Create Canary Deployment
+description: Deploy a canary release alongside stable version with traffic splitting
+category: deployment
+difficulty: hard
+tags:
+  - deployments
+  - canary
+  - traffic-management
+  - advanced
+
+timeout: 10m
+
 script:
-  - prompt: "We want to test a new version of our recommendation engine using nginx:1.29 image in production without disturbing the existing stable deployment. Can you deploy it as a canary (as engine-v2-1)? We want about 50% of traffic to go to the new version. The current deployment is named engine-v2-0 in the canary-deployment-ns namespace and uses nginx:1.28. Create a new deployment engine-v2-1 with nginx:1.29 and update the service selector to route traffic to both versions."
-setup: "setup.sh"
-verifier: "verify.sh"
-cleanup: "cleanup.sh"
-difficulty: "hard"
+  - prompt: |
+      We want to test a new version of our recommendation engine using nginx:1.29 image
+      in production without disturbing the existing stable deployment.
+
+      Can you deploy it as a canary (as engine-v2-1)? We want about 50% of traffic
+      to go to the new version.
+
+      The current deployment is named engine-v2-0 in the canary-deployment-ns namespace
+      and uses nginx:1.28.
+
+      Create a new deployment engine-v2-1 with nginx:1.29 and update the service
+      selector to route traffic to both versions.
+
+setup: setup.sh
+verifier: verify.sh
+cleanup: cleanup.sh
+
+expect:
+  - contains: "deployment.*created|engine-v2-1.*created"
+  - contains: "service.*updated|selector.*updated"
