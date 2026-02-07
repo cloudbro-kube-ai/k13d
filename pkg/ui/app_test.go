@@ -160,28 +160,38 @@ func TestCommandDefinitions(t *testing.T) {
 func TestStatusColor(t *testing.T) {
 	app := &App{}
 
+	// Tokyo Night theme colors
+	greenColor := tcell.NewRGBColor(158, 206, 106)   // #9ece6a
+	yellowColor := tcell.NewRGBColor(224, 175, 104)  // #e0af68
+	redColor := tcell.NewRGBColor(247, 118, 142)     // #f7768e
+	secondaryColor := tcell.NewRGBColor(169, 177, 214) // #a9b1d6
+	primaryColor := tcell.NewRGBColor(192, 202, 245)   // #c0caf5
+
 	tests := []struct {
 		status   string
 		expected tcell.Color
 	}{
-		{"Running", tcell.ColorGreen},
-		{"Ready", tcell.ColorGreen},
-		{"Active", tcell.ColorGreen},
-		{"Succeeded", tcell.ColorGreen},
-		{"Normal", tcell.ColorGreen},
-		{"Completed", tcell.ColorGreen},
-		{"Pending", tcell.ColorYellow},
-		{"ContainerCreating", tcell.ColorYellow},
-		{"Warning", tcell.ColorYellow},
-		{"Updating", tcell.ColorYellow},
-		{"Failed", tcell.ColorRed},
-		{"Error", tcell.ColorRed},
-		{"CrashLoopBackOff", tcell.ColorRed},
-		{"NotReady", tcell.ColorRed},
-		{"ImagePullBackOff", tcell.ColorRed},
-		{"ErrImagePull", tcell.ColorRed},
-		{"Unknown", tcell.ColorWhite},
-		{"SomeRandomStatus", tcell.ColorWhite},
+		{"Running", greenColor},
+		{"Ready", greenColor},
+		{"Active", greenColor},
+		{"Succeeded", greenColor},
+		{"Normal", greenColor},
+		{"Completed", greenColor},
+		{"Bound", greenColor},
+		{"Pending", yellowColor},
+		{"ContainerCreating", yellowColor},
+		{"Warning", yellowColor},
+		{"Updating", yellowColor},
+		{"Terminating", yellowColor},
+		{"Failed", redColor},
+		{"Error", redColor},
+		{"CrashLoopBackOff", redColor},
+		{"NotReady", redColor},
+		{"ImagePullBackOff", redColor},
+		{"ErrImagePull", redColor},
+		{"Evicted", redColor},
+		{"Unknown", secondaryColor},
+		{"SomeRandomStatus", primaryColor},
 	}
 
 	for _, tt := range tests {

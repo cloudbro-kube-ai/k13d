@@ -1,13 +1,13 @@
- k13d - Kubernetes AI Dashboard v0.1.0
-AI: Offline
- Context: docker-desktop  Cluster: docker-desktop  NS: default  Resource: pods
+ k13d Kubernetes AI Dashboard v0.1.0                                        AI
+● Offline
+ ⎈ Context: docker-desktop  Cluster: docker-desktop  NS: default  Resource: pods
  Namespaces: 0:all 1:default 2:kube-system 3:kube-public
 
 ┌────────────────────────────────── pods (3) ──────────────────────────────────┐
-│NAMESPACE     NAME            STATUS      READY     RESTARTS     AGE          │
-│default       failing-pod     Failed      0/1       5            106751d      │
-│default       nginx-pod       Running     1/1       0            106751d      │
-│default       redis-pod       Running     1/1       2            106751d      │
+│NAMESPACE    │NAME           │STATUS     │READY    │RESTARTS    │AGE          │
+│default      │failing-pod    │Failed     │0/1      │5           │106751d      │
+│default      │nginx-pod      │Running    │1/1      │0           │106751d      │
+│default      │redis-pod      │Running    │1/1      │2           │106751d      │
 │                                                                              │
 │                                                                              │
 │                                                                              │
@@ -21,5 +21,5 @@ AI: Offline
 │                                                                              │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
-   <l>Logs <s>Shell <d>Describe <n>NS <0>All </>Filter <:>Cmd <?>Help <q>Quit
+            lLogs sShell dDescribe nNS 0All /Filter :Cmd ?Help qQuit
  :

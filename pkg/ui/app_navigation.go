@@ -290,17 +290,19 @@ func (a *App) handleCommand(cmd string) {
 	}
 }
 
-// statusColor returns color based on status
+// statusColor returns color based on status (Tokyo Night theme)
 func (a *App) statusColor(status string) tcell.Color {
 	switch status {
-	case "Running", "Ready", "Active", "Succeeded", "Normal", "Completed":
-		return tcell.ColorGreen
-	case "Pending", "ContainerCreating", "Warning", "Updating":
-		return tcell.ColorYellow
-	case "Failed", "Error", "CrashLoopBackOff", "NotReady", "ImagePullBackOff", "ErrImagePull":
-		return tcell.ColorRed
+	case "Running", "Ready", "Active", "Succeeded", "Normal", "Completed", "Bound":
+		return tcell.NewRGBColor(158, 206, 106) // #9ece6a green
+	case "Pending", "ContainerCreating", "Warning", "Updating", "Terminating":
+		return tcell.NewRGBColor(224, 175, 104) // #e0af68 yellow
+	case "Failed", "Error", "CrashLoopBackOff", "NotReady", "ImagePullBackOff", "ErrImagePull", "Evicted":
+		return tcell.NewRGBColor(247, 118, 142) // #f7768e red
+	case "Unknown":
+		return tcell.NewRGBColor(169, 177, 214) // #a9b1d6 secondary text
 	default:
-		return tcell.ColorWhite
+		return tcell.NewRGBColor(192, 202, 245) // #c0caf5 primary text
 	}
 }
 

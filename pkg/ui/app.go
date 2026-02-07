@@ -311,40 +311,55 @@ func (a *App) loadNamespaces() {
 
 // setupUI initializes all UI components
 func (a *App) setupUI() {
-	// Header
+	// Color scheme (Tokyo Night inspired - matching WebUI)
+	headerBg := tcell.NewRGBColor(36, 40, 59)       // #24283b
+	tableBorder := tcell.NewRGBColor(122, 162, 247) // #7aa2f7 (accent blue)
+	tableSelect := tcell.NewRGBColor(65, 72, 104)   // #414868
+	aiBorder := tcell.NewRGBColor(187, 154, 247)    // #bb9af7 (accent purple)
+	statusBg := tcell.NewRGBColor(158, 206, 106)    // #9ece6a (accent green)
+
+	// Header with gradient-like appearance
 	a.header = tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignLeft)
-	a.header.SetBackgroundColor(tcell.ColorDarkBlue)
+	a.header.SetBackgroundColor(headerBg)
 
-	// Main table with fixed header row
+	// Main table with enhanced styling
 	a.table = tview.NewTable().
 		SetSelectable(true, false).
-		SetFixed(1, 0)
+		SetFixed(1, 0).
+		SetSeparator('│')
 	a.table.SetBorder(true).
-		SetBorderColor(tcell.ColorDarkCyan)
+		SetBorderColor(tableBorder).
+		SetTitle(" Resources ").
+		SetTitleColor(tableBorder)
 	a.table.SetSelectedStyle(tcell.StyleDefault.
-		Background(tcell.ColorDarkCyan).
-		Foreground(tcell.ColorWhite))
+		Background(tableSelect).
+		Foreground(tcell.ColorWhite).
+		Bold(true))
 
-	// AI Panel (output area)
+	// AI Panel with enhanced styling
 	a.aiPanel = tview.NewTextView().
 		SetDynamicColors(true).
 		SetScrollable(true).
 		SetWrap(true)
-	a.aiPanel.SetText("[gray]Press [yellow]Tab[gray] to ask AI\n\n" +
-		"[white]Examples:\n" +
-		"[darkgray]- Why is this pod failing?\n" +
-		"- How do I scale this deployment?\n" +
-		"- Explain this resource")
+	a.aiPanel.SetText("[#7aa2f7]╭─────────────────────────────╮[-]\n" +
+		"[#7aa2f7]│[white] 🤖 AI Assistant Ready       [#7aa2f7]│[-]\n" +
+		"[#7aa2f7]╰─────────────────────────────╯[-]\n\n" +
+		"[#a9b1d6]Press [#e0af68]Tab[#a9b1d6] to ask questions:\n\n" +
+		"[#565f89]• Why is this pod failing?\n" +
+		"• How do I scale this deployment?\n" +
+		"• Explain this resource\n" +
+		"• Show me the logs[-]")
 
-	// AI Input field
+	// AI Input field with better styling
 	a.aiInput = tview.NewInputField().
-		SetLabel(" 🤖 ").
+		SetLabel("[#bb9af7] ⟩ [-]").
 		SetFieldWidth(0).
 		SetFieldBackgroundColor(tcell.ColorDefault).
-		SetPlaceholder("Ask AI a question...")
+		SetPlaceholder("Ask AI...")
 	a.aiInput.SetPlaceholderStyle(tcell.StyleDefault.Foreground(tcell.ColorDarkGray))
+	a.aiInput.SetLabelColor(aiBorder)
 	a.setupAIInput()
 
 	// Flash message area (k9s pattern)
@@ -358,46 +373,52 @@ func (a *App) setupUI() {
 		a.briefing = NewBriefingPanel(a)
 	}
 
-	// Status bar
+	// Status bar with enhanced color
 	a.statusBar = tview.NewTextView().
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignCenter)
-	a.statusBar.SetBackgroundColor(tcell.ColorDarkGreen)
+	a.statusBar.SetBackgroundColor(statusBg)
+	a.statusBar.SetTextColor(tcell.ColorBlack)
 
-	// Command input with autocomplete
+	// Command input with enhanced styling
 	a.cmdInput = tview.NewInputField().
-		SetLabel(" : ").
+		SetLabel("[#7aa2f7] :[white] ").
 		SetFieldWidth(0).
 		SetFieldBackgroundColor(tcell.ColorDefault)
+	a.cmdInput.SetLabelColor(tableBorder)
 
 	// Autocomplete hint (dimmed text showing suggestion)
 	a.cmdHint = tview.NewTextView().
 		SetDynamicColors(true)
 
-	// Autocomplete dropdown
+	// Autocomplete dropdown with enhanced styling
 	a.cmdDropdown = tview.NewList().
 		ShowSecondaryText(true).
 		SetHighlightFullLine(true).
-		SetSelectedBackgroundColor(tcell.ColorDarkCyan).
+		SetSelectedBackgroundColor(tableSelect).
 		SetSelectedTextColor(tcell.ColorWhite)
-	a.cmdDropdown.SetBorder(true).SetTitle(" Commands ")
+	a.cmdDropdown.SetBorder(true).
+		SetTitle(" Commands ").
+		SetBorderColor(tableBorder).
+		SetTitleColor(tableBorder)
 
 	// Setup autocomplete behavior
 	a.setupAutocomplete()
 
-	// AI Panel container (output + input)
+	// AI Panel container with enhanced border
 	aiContainer := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(a.aiPanel, 0, 1, false).
 		AddItem(a.aiInput, 1, 0, true)
 	aiContainer.SetBorder(true).
-		SetTitle(" AI Assistant ").
-		SetBorderColor(tcell.ColorDarkMagenta)
+		SetTitle(" 🤖 AI Assistant ").
+		SetBorderColor(aiBorder).
+		SetTitleColor(aiBorder)
 
 	// Content area (table + AI panel)
 	contentFlex := tview.NewFlex()
 	contentFlex.AddItem(a.table, 0, 3, true)
 	if a.showAIPanel {
-		contentFlex.AddItem(aiContainer, 45, 0, false)
+		contentFlex.AddItem(aiContainer, 48, 0, false) // Slightly wider for better UX
 	}
 
 	// Command bar with hint overlay
@@ -1436,20 +1457,21 @@ func (a *App) applyFilterText(filter string) {
 		// Set headers with sort indicator
 		for i, h := range headers {
 			displayHeader := h
-			headerColor := tcell.ColorYellow
+			headerColor := tcell.NewRGBColor(224, 175, 104) // #e0af68 yellow
 			if sortCol == i {
 				if sortAsc {
 					displayHeader = h + " ▲"
 				} else {
 					displayHeader = h + " ▼"
 				}
-				headerColor = tcell.ColorDarkCyan
+				headerColor = tcell.NewRGBColor(125, 207, 255) // #7dcfff cyan
 			}
 			cell := tview.NewTableCell(displayHeader).
 				SetTextColor(headerColor).
 				SetAttributes(tcell.AttrBold).
 				SetSelectable(false).
-				SetExpansion(1)
+				SetExpansion(1).
+				SetBackgroundColor(tcell.NewRGBColor(36, 40, 59)) // #24283b header bg
 			a.table.SetCell(0, i, cell)
 		}
 
@@ -1837,14 +1859,14 @@ func (a *App) updateHeader() {
 	namespaces := a.namespaces
 	a.mx.RUnlock()
 
-	currentNsDisplay := "[green]all[white]"
+	currentNsDisplay := "[#9ece6a]all[-]"
 	if ns != "" {
-		currentNsDisplay = "[green]" + ns + "[white]"
+		currentNsDisplay = "[#9ece6a]" + ns + "[-]"
 	}
 
-	aiStatus := "[red]Offline[white]"
+	aiStatus := "[#f7768e]● Offline[-]"
 	if a.aiClient != nil && a.aiClient.IsReady() {
-		aiStatus = "[green]Online[white]"
+		aiStatus = "[#9ece6a]● Online[-]"
 	}
 
 	// Build namespace quick-select preview (show first 9 namespaces with numbers)
@@ -1862,21 +1884,21 @@ func (a *App) updateHeader() {
 			}
 			// Highlight current namespace
 			if (ns == "" && nsName == "all") || ns == nsName {
-				nsParts = append(nsParts, fmt.Sprintf("[yellow]%d[white]:[green::b]%s[white::-]", i, truncateNsName(nsName, 12)))
+				nsParts = append(nsParts, fmt.Sprintf("[#e0af68]%d[-]:[#9ece6a::b]%s[-::-]", i, truncateNsName(nsName, 12)))
 			} else {
-				nsParts = append(nsParts, fmt.Sprintf("[yellow]%d[white]:[gray]%s[white]", i, truncateNsName(nsName, 12)))
+				nsParts = append(nsParts, fmt.Sprintf("[#e0af68]%d[-]:[#565f89]%s[-]", i, truncateNsName(nsName, 12)))
 			}
 		}
 		if len(namespaces) > maxShow {
-			nsParts = append(nsParts, fmt.Sprintf("[gray]+%d more[white]", len(namespaces)-maxShow))
+			nsParts = append(nsParts, fmt.Sprintf("[#565f89]+%d more[-]", len(namespaces)-maxShow))
 		}
 		nsPreview = " " + strings.Join(nsParts, " ")
 	}
 
 	header := fmt.Sprintf(
-		" %s [gray]- %s %s[white]                                        AI: %s\n"+
-			" [gray]Context:[white] %s  [gray]Cluster:[white] %s  [gray]NS:[white] %s  [gray]Resource:[white] [cyan]%s[white]\n"+
-			" [gray]Namespaces:[white]%s",
+		" %s [#565f89]%s %s[-]                                        [#bb9af7]AI[-] %s\n"+
+			" [#565f89]⎈ Context:[-] [#7aa2f7]%s[-]  [#565f89]Cluster:[-] [#7aa2f7]%s[-]  [#565f89]NS:[-] %s  [#565f89]Resource:[-] [#7dcfff]%s[-]\n"+
+			" [#565f89]Namespaces:[-]%s",
 		HeaderLogo(), Tagline, Version, aiStatus, ctxName, cluster, currentNsDisplay, resource, nsPreview,
 	)
 
@@ -1912,19 +1934,19 @@ func (a *App) updateStatusBar() {
 	filter := a.filterText
 	a.mx.RUnlock()
 
-	// k9s style status bar: show key shortcuts
-	shortcuts := "[yellow]<n>[white]NS [yellow]<0>[white]All [yellow]</>[white]Filter [yellow]<:>[white]Cmd [yellow]<?>[white]Help [yellow]<q>[white]Quit"
+	// Enhanced status bar with Tokyo Night colors (dark text on green background)
+	shortcuts := "[black]n[-][#1a1b26]NS[-] [black]0[-][#1a1b26]All[-] [black]/[-][#1a1b26]Filter[-] [black]:[-][#1a1b26]Cmd[-] [black]?[-][#1a1b26]Help[-] [black]q[-][#1a1b26]Quit[-]"
 
 	// Add resource-specific shortcuts
 	switch resource {
 	case "pods", "po":
-		shortcuts = "[yellow]<l>[white]Logs [yellow]<s>[white]Shell [yellow]<d>[white]Describe " + shortcuts
+		shortcuts = "[black]l[-][#1a1b26]Logs[-] [black]s[-][#1a1b26]Shell[-] [black]d[-][#1a1b26]Describe[-] " + shortcuts
 	case "deployments", "deploy", "statefulsets", "sts", "daemonsets", "ds":
-		shortcuts = "[yellow]<S>[white]Scale [yellow]<R>[white]Restart [yellow]<d>[white]Describe " + shortcuts
+		shortcuts = "[black]S[-][#1a1b26]Scale[-] [black]R[-][#1a1b26]Restart[-] [black]d[-][#1a1b26]Describe[-] " + shortcuts
 	case "namespaces", "ns":
-		shortcuts = "[yellow]<u>[white]Use " + shortcuts
+		shortcuts = "[black]u[-][#1a1b26]Use[-] " + shortcuts
 	default:
-		shortcuts = "[yellow]<d>[white]Describe [yellow]<y>[white]YAML " + shortcuts
+		shortcuts = "[black]d[-][#1a1b26]Describe[-] [black]y[-][#1a1b26]YAML[-] " + shortcuts
 	}
 
 	// Append sort/filter status indicators
@@ -1934,10 +1956,10 @@ func (a *App) updateStatusBar() {
 		if !sortAsc {
 			dir = "↓"
 		}
-		indicators = append(indicators, fmt.Sprintf("[cyan]Sort:%s%s[white]", headers[sortCol], dir))
+		indicators = append(indicators, fmt.Sprintf("[#1a1b26]Sort:%s%s[-]", headers[sortCol], dir))
 	}
 	if filter != "" {
-		indicators = append(indicators, fmt.Sprintf("[magenta]Filter:%s[white]", filter))
+		indicators = append(indicators, fmt.Sprintf("[#1a1b26]Filter:%s[-]", filter))
 	}
 	if len(indicators) > 0 {
 		shortcuts += " │ " + strings.Join(indicators, " ")
