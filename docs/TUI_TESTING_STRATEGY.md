@@ -1,4 +1,4 @@
-# TUI Testing Strategy for kube-ai-dashboard-cli
+# TUI Testing Strategy for k13d
 
 > AI 에이전트가 TUI 개발 시 효율적으로 테스트할 수 있는 전략 문서
 

@@ -119,7 +119,7 @@ docker run -d \
 ### Docker Compose
 
 ```bash
-curl -O https://raw.githubusercontent.com/cloudbro-kube-ai/k13d/main/docker-compose.yaml
+curl -O https://raw.githubusercontent.com/cloudbro-kube-ai/k13d/dev/deploy/docker/docker-compose.yaml
 docker-compose up -d
 ```
 

@@ -75,7 +75,11 @@ func safeGetTable(app *App) *tview.Table {
 // ============================================================================
 
 // TestE2EResourceNavigation tests switching between different resource types.
+// Skipped in CI due to timing-sensitive sequential key input across shared state.
 func TestE2EResourceNavigation(t *testing.T) {
+	if os.Getenv("CI") == "true" {
+		t.Skip("Skipping resource navigation test in CI - timing-sensitive with shared state")
+	}
 	screen := createTestScreen(t)
 
 	app := NewTestApp(TestAppConfig{

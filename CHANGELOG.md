@@ -5,6 +5,29 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-02-08
+
+### Added
+- **Branch Strategy**: Established dev as default branch, feature/* branches merge to dev, dev merges to main for releases
+- **Enhanced MCP Integration**: k13d as MCP client spawns external MCP servers via JSON-RPC 2.0 stdio
+- **Improved Documentation**: Comprehensive updates to all documentation files
+
+### Changed
+- **Repository Organization**: Updated repository URL to https://github.com/cloudbro-kube-ai/k13d
+
+### Fixed
+- **TUI Screen Ghosting**: Resolved screen ghosting issues during namespace/resource switching
+- **Deprecated API Usage**: Improved error handling and fixed deprecated API usage
+
+## [0.5.0] - 2026-02-05
+
+### Added
+- **TUI Testing Framework**: Added comprehensive TUI testing with golden files and screen capture
+- **Feature Tests**: Added unit, E2E, and deadlock tests for TUI components
+
+### Fixed
+- **UI Stability**: Fixed TUI screen ghosting and improved concurrent access patterns
+
 ## [0.4.0] - 2026-02-01
 
 ### Added

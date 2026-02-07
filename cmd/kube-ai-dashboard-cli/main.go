@@ -14,6 +14,7 @@ import (
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/llm/embedded"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/log"
+	mcpserver "github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/mcp/server"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ui"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/web"
 )
@@ -39,6 +40,7 @@ func main() {
 	// Mode flags
 	webMode := flag.Bool("web", false, "Start web server mode")
 	tuiMode := flag.Bool("tui", false, "Start TUI mode (default when no mode specified)")
+	mcpMode := flag.Bool("mcp", false, "Start MCP server mode (stdio transport)")
 	webPort := flag.Int("port", 8080, "Web server port (used with --web)")
 
 	// Namespace flags (k9s compatible)
@@ -145,6 +147,12 @@ func main() {
 		cfg.LLM.Model = "qwen2.5-0.5b-instruct"
 	}
 
+	// MCP server mode
+	if *mcpMode {
+		runMCPServer()
+		return
+	}
+
 	// Web mode
 	if *webMode {
 		authOpts := &web.AuthOptions{
@@ -164,6 +172,34 @@ func main() {
 		initialNS = "" // empty means all namespaces
 	}
 	runTUI(cfg, initialNS, embeddedServer)
+}
+
+func runMCPServer() {
+	// Create MCP server
+	server := mcpserver.New("k13d", Version)
+
+	// Register default tools
+	for _, tool := range mcpserver.DefaultTools() {
+		server.RegisterTool(tool)
+	}
+
+	// Set up signal handling for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigCh
+		cancel()
+	}()
+
+	// Run server (blocks until context is cancelled or EOF)
+	if err := server.Run(ctx); err != nil && err != context.Canceled {
+		fmt.Fprintf(os.Stderr, "MCP server error: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 func runWebServer(cfg *config.Config, port int, authOpts *web.AuthOptions, embeddedServer *embedded.Server) {

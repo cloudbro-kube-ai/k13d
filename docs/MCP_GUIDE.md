@@ -5,6 +5,9 @@ This guide explains how MCP works in k13d and how to extend AI capabilities with
 ## Table of Contents
 
 - [What is MCP?](#what-is-mcp)
+- [k13d MCP Modes](#k13d-mcp-modes)
+- [MCP Server Mode](#mcp-server-mode)
+- [MCP Client Mode](#mcp-client-mode)
 - [Architecture Overview](#architecture-overview)
 - [How It Works](#how-it-works)
 - [Agentic Loop Integration](#agentic-loop-integration)
@@ -26,6 +29,163 @@ This guide explains how MCP works in k13d and how to extend AI capabilities with
 - **Standardization**: Use any MCP-compatible server
 - **Isolation**: Tools run in separate processes
 - **Security**: Fine-grained control over tool capabilities
+
+---
+
+## k13d MCP Modes
+
+k13d supports **both** MCP Server and MCP Client modes:
+
+| Mode | Command | Description |
+|------|---------|-------------|
+| **MCP Server** | `k13d --mcp` | Exposes k13d tools to external MCP clients (Claude Desktop, Cursor, VS Code) |
+| **MCP Client** | (default) | Connects to external MCP servers for additional tools |
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                           k13d                                       │
+│                                                                      │
+│  ┌─────────────────────┐          ┌─────────────────────┐           │
+│  │   MCP Server Mode   │          │   MCP Client Mode   │           │
+│  │   (k13d --mcp)      │          │   (default)         │           │
+│  │                     │          │                     │           │
+│  │ Exposes tools:      │          │ Connects to:        │           │
+│  │ - kubectl           │          │ - thinking server   │           │
+│  │ - kubectl_get       │          │ - kubernetes server │           │
+│  │ - kubectl_describe  │          │ - custom servers    │           │
+│  │ - kubectl_logs      │          │                     │           │
+│  │ - kubectl_apply     │          │                     │           │
+│  │ - bash              │          │                     │           │
+│  └──────────┬──────────┘          └──────────┬──────────┘           │
+│             │                                │                       │
+└─────────────┼────────────────────────────────┼───────────────────────┘
+              │ stdio                          │ stdio
+              ▼                                ▼
+      ┌─────────────┐                  ┌─────────────┐
+      │ Claude      │                  │ External    │
+      │ Desktop,    │                  │ MCP         │
+      │ Cursor,     │                  │ Servers     │
+      │ VS Code     │                  │             │
+      └─────────────┘                  └─────────────┘
+```
+
+---
+
+## MCP Server Mode
+
+Run k13d as an MCP server to expose Kubernetes management tools to external AI clients.
+
+### Quick Start
+
+```bash
+# Start k13d as MCP server
+k13d --mcp
+```
+
+### Integration with Claude Desktop
+
+Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "k13d": {
+      "command": "k13d",
+      "args": ["--mcp"]
+    }
+  }
+}
+```
+
+### Integration with Cursor
+
+Add to Cursor MCP settings:
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "k13d": {
+        "command": "k13d",
+        "args": ["--mcp"]
+      }
+    }
+  }
+}
+```
+
+### Available Tools (Server Mode)
+
+| Tool | Description |
+|------|-------------|
+| `kubectl` | Execute any kubectl command |
+| `kubectl_get` | Get Kubernetes resources with filtering |
+| `kubectl_describe` | Describe a resource in detail |
+| `kubectl_logs` | Get pod logs |
+| `kubectl_apply` | Apply YAML manifests |
+| `bash` | Execute shell commands |
+
+### Example: Using k13d from Claude Desktop
+
+Once configured, you can ask Claude:
+
+> "Get all pods in the kube-system namespace"
+
+Claude will use k13d's `kubectl_get` tool:
+
+```
+Using tool: kubectl_get
+Arguments: {"resource": "pods", "namespace": "kube-system"}
+
+Result:
+NAME                                     READY   STATUS    RESTARTS   AGE
+coredns-5d78c9869d-xxxxx                1/1     Running   0          10d
+etcd-master                             1/1     Running   0          10d
+kube-apiserver-master                   1/1     Running   0          10d
+...
+```
+
+---
+
+## MCP Client Mode
+
+k13d can also act as an **MCP Client** to connect to external MCP servers for additional capabilities.
+
+**Important**: k13d is an **MCP Client**, not an MCP Server. This distinction is crucial:
+
+| Role | Description | k13d |
+|------|-------------|------|
+| **MCP Client** | Connects to MCP servers, discovers tools, invokes them | **This is k13d** |
+| **MCP Server** | Provides tools, executes them when called | External processes |
+
+### How k13d Uses MCP
+
+1. **Spawns MCP Servers**: k13d starts external MCP server processes as child processes
+2. **Communicates via stdio**: Uses JSON-RPC 2.0 over stdin/stdout pipes
+3. **Discovers Tools**: Calls `tools/list` to learn what tools each server provides
+4. **Invokes Tools**: When AI decides to use a tool, k13d calls `tools/call` on the appropriate server
+5. **Returns Results**: Tool results are passed back to the AI for reasoning
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│                    k13d (MCP Client)                           │
+│                                                                │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐       │
+│   │ AI Agent    │───▶│ MCP Manager │───▶│ Tool Router │       │
+│   └─────────────┘    └─────────────┘    └─────────────┘       │
+│                             │                                  │
+│                             │ spawn + JSON-RPC 2.0 stdio       │
+└─────────────────────────────┼──────────────────────────────────┘
+                              │
+          ┌───────────────────┼───────────────────┐
+          ▼                   ▼                   ▼
+  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+  │ MCP Server  │     │ MCP Server  │     │ MCP Server  │
+  │ (thinking)  │     │ (kubernetes)│     │ (custom)    │
+  └─────────────┘     └─────────────┘     └─────────────┘
+     External            External            External
+     Process             Process             Process
+```
 
 ---
 

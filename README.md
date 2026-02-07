@@ -98,7 +98,7 @@ It bridges the gap between traditional cluster management and natural language A
 | Feature | Description |
 |---------|-------------|
 | **Tool Execution** | AI *directly runs* kubectl/bash commands (not just suggests) |
-| **MCP Integration** | Model Context Protocol for extensible tools |
+| **MCP Integration** | k13d is an MCP Client - spawns external MCP servers for extensible tools |
 | **Safety First** | Dangerous commands require explicit approval |
 | **Deep Context** | AI receives YAML + Events + Logs for analysis |
 | **Beginner Mode** | Simple explanations for complex resources |
@@ -154,7 +154,7 @@ docker run -d -p 8080:8080 \
   -v ~/.kube/config:/home/k13d/.kube/config:ro \
   -e K13D_USERNAME=admin \
   -e K13D_PASSWORD=changeme \
-  youngjukim/k13d:latest
+  cloudbro-kube-ai/k13d:latest
 
 # With Docker Compose
 docker-compose up -d

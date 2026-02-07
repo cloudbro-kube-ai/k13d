@@ -25,26 +25,37 @@ llm:
 ---
 
 ## MCP Configuration
-Stored in `~/.config/kubectl-ai/mcp.yaml`. This allows the AI Assistant to use external tools.
 
-### Example `mcp.yaml`
+k13d is an **MCP Client** that spawns external MCP servers as child processes and communicates via JSON-RPC 2.0 over stdio. MCP configuration is stored in `~/.config/k13d/config.yaml` alongside LLM settings. This allows the AI Assistant to use external tools.
+
+### Example MCP Configuration in `config.yaml`
 ```yaml
-mcpServers:
-  kubernetes:
-    command: npx
-    args: ["-y", "@modelcontextprotocol/server-kubernetes"]
-  
-  google-search:
-    command: npx
-    args: ["-y", "@modelcontextprotocol/server-google-search"]
-    env:
-      GOOGLE_API_KEY: "your-google-api-key"
-      GOOGLE_SEARCH_ENGINE_ID: "your-cse-id"
+# In ~/.config/k13d/config.yaml
+mcp:
+  servers:
+    - name: kubernetes
+      enabled: true
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-kubernetes"]
+      description: "Kubernetes management tools"
 
-  filesystem:
-    command: npx
-    args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"]
+    - name: google-search
+      enabled: true
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-google-search"]
+      description: "Google search integration"
+      env:
+        GOOGLE_API_KEY: "your-google-api-key"
+        GOOGLE_SEARCH_ENGINE_ID: "your-cse-id"
+
+    - name: filesystem
+      enabled: false
+      command: npx
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"]
+      description: "Filesystem access tools"
 ```
+
+**Note**: k13d spawns these MCP servers as child processes and communicates via JSON-RPC 2.0 over stdio. See [MCP Guide](./MCP_GUIDE.md) for more details.
 
 ## Assistant Navigation
 - **Switch to Assistant**: Press `TAB` or `Right Arrow`.

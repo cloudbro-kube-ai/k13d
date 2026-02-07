@@ -26,7 +26,7 @@ docker tag k13d:latest your-registry/k13d:latest
 docker push your-registry/k13d:latest
 
 # 3. Update image in manifest (if using private registry)
-sed -i 's|youngjukim/k13d:latest|your-registry/k13d:latest|g' kubernetes/single-pod.yaml
+sed -i 's|cloudbro-kube-ai/k13d:latest|your-registry/k13d:latest|g' kubernetes/single-pod.yaml
 
 # 4. Deploy
 kubectl apply -f kubernetes/single-pod.yaml
