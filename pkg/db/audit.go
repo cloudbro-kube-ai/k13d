@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -108,8 +109,11 @@ func InitAuditFile(path string) error {
 
 // CloseAuditFile closes the audit file
 func CloseAuditFile() {
+	auditFileMu.Lock()
+	defer auditFileMu.Unlock()
 	if auditFile != nil {
 		auditFile.Close()
+		auditFile = nil
 	}
 }
 
@@ -171,7 +175,9 @@ func RecordAudit(entry AuditEntry) error {
 		defer auditFileMu.Unlock()
 
 		logLine := formatAuditLogLine(now, entry)
-		auditFile.WriteString(logLine + "\n")
+		if _, err := auditFile.WriteString(logLine + "\n"); err != nil {
+			return fmt.Errorf("failed to write audit log: %w", err)
+		}
 	}
 
 	return nil
@@ -383,6 +389,9 @@ func GetAuditLogsFiltered(filter AuditFilter) ([]map[string]interface{}, error) 
 
 		logs = append(logs, entry)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return logs, nil
 }
 
@@ -533,6 +542,9 @@ func GetSecurityScans(filter SecurityScanFilter) ([]SecurityScanRecord, error) {
 		}
 		records = append(records, r)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return records, nil
 }
@@ -589,7 +601,9 @@ func GetSecurityScanStats(clusterName string, days int) (map[string]interface{},
 		args = append(args, clusterName)
 	}
 
-	DB.QueryRow(query, args...).Scan(&totalScans, &avgScore)
+	if err := DB.QueryRow(query, args...).Scan(&totalScans, &avgScore); err != nil {
+		return nil, fmt.Errorf("failed to query scan stats: %w", err)
+	}
 
 	// Get latest risk level
 	query = `SELECT risk_level FROM security_scans WHERE scan_time >= ?`
@@ -597,7 +611,9 @@ func GetSecurityScanStats(clusterName string, days int) (map[string]interface{},
 		query += " AND cluster_name = ?"
 	}
 	query += " ORDER BY scan_time DESC LIMIT 1"
-	DB.QueryRow(query, args...).Scan(&latestRisk)
+	if err := DB.QueryRow(query, args...).Scan(&latestRisk); err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to query latest risk: %w", err)
+	}
 
 	// Get risk distribution
 	riskDist := make(map[string]int)
@@ -609,13 +625,20 @@ func GetSecurityScanStats(clusterName string, days int) (map[string]interface{},
 
 	rows, err := DB.Query(query, args...)
 	if err == nil {
-		defer rows.Close()
 		for rows.Next() {
 			var risk string
 			var count int
-			rows.Scan(&risk, &count)
+			if err := rows.Scan(&risk, &count); err != nil {
+				rows.Close()
+				return nil, fmt.Errorf("failed to scan risk distribution: %w", err)
+			}
 			riskDist[risk] = count
 		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("rows iteration error: %w", err)
+		}
+		rows.Close()
 	}
 
 	// Get score trend (last 10 scans)
@@ -628,18 +651,25 @@ func GetSecurityScanStats(clusterName string, days int) (map[string]interface{},
 
 	rows, err = DB.Query(query, args...)
 	if err == nil {
-		defer rows.Close()
 		for rows.Next() {
 			var scanTime time.Time
 			var score float64
 			var risk string
-			rows.Scan(&scanTime, &score, &risk)
+			if err := rows.Scan(&scanTime, &score, &risk); err != nil {
+				rows.Close()
+				return nil, fmt.Errorf("failed to scan score trend: %w", err)
+			}
 			scoreTrend = append(scoreTrend, map[string]interface{}{
 				"time":       scanTime,
 				"score":      score,
 				"risk_level": risk,
 			})
 		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("rows iteration error: %w", err)
+		}
+		rows.Close()
 	}
 
 	stats["total_scans"] = totalScans

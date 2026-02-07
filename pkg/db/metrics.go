@@ -231,6 +231,9 @@ func (s *MetricsStore) GetClusterMetrics(ctx context.Context, contextName string
 		}
 		metrics = append(metrics, m)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return metrics, nil
 }
 
@@ -261,6 +264,9 @@ func (s *MetricsStore) GetNodeMetricsHistory(ctx context.Context, contextName, n
 		m.IsSchedulable = isSchedulable == 1
 		metrics = append(metrics, m)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return metrics, nil
 }
 
@@ -286,6 +292,9 @@ func (s *MetricsStore) GetPodMetricsHistory(ctx context.Context, contextName, na
 			return nil, err
 		}
 		metrics = append(metrics, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return metrics, nil
 }
@@ -420,6 +429,9 @@ func (s *MetricsStore) GetAggregatedClusterMetrics(ctx context.Context, contextN
 			"max_cpu_millis":   maxCPU,
 			"max_memory_mb":    maxMem,
 		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return results, nil
 }
