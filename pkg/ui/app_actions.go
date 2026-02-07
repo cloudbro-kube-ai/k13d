@@ -985,6 +985,9 @@ func (a *App) useNamespace() {
 	a.currentResource = "pods"
 	a.mx.Unlock()
 
+	// Force full terminal sync to prevent ghosting during namespace switch
+	a.requestSync()
+
 	// Clear table immediately to prevent visual artifacts
 	a.QueueUpdateDraw(func() {
 		a.table.Clear()
@@ -1051,6 +1054,8 @@ func (a *App) showNode() {
 	a.currentNamespace = ""
 	a.filterText = nodeName
 	a.mx.Unlock()
+
+	a.requestSync()
 
 	go func() {
 		a.updateHeader()

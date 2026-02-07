@@ -148,6 +148,7 @@ type App struct {
 	running     int32 // 1 after Application.Run() starts
 	stopping    int32 // 1 when Stop() is called (set immediately, before tview processes)
 	hasToolCall int32 // 1 if there's a pending tool call (atomic for lock-free check)
+	needsSync   int32 // 1 when a full terminal sync is needed (namespace/resource switch)
 	cancelFn    context.CancelFunc
 	cancelLock  sync.Mutex
 
@@ -1162,6 +1163,12 @@ func (a *App) parseNamespaceNumber(input string) (int, bool) {
 	return 0, false
 }
 
+// requestSync requests a full terminal sync on the next draw cycle.
+// This forces the terminal to repaint completely, removing any stale content.
+func (a *App) requestSync() {
+	atomic.StoreInt32(&a.needsSync, 1)
+}
+
 // switchToAllNamespaces switches to all namespaces (k9s style: 0 key)
 func (a *App) switchToAllNamespaces() {
 	a.mx.Lock()
@@ -1171,6 +1178,9 @@ func (a *App) switchToAllNamespaces() {
 	a.filterRegex = false
 	resource := a.currentResource
 	a.mx.Unlock()
+
+	// Force full terminal sync to prevent ghosting during namespace switch
+	a.requestSync()
 
 	// Clear table immediately to prevent visual artifacts
 	a.QueueUpdateDraw(func() {
@@ -1214,6 +1224,9 @@ func (a *App) selectNamespaceByNumber(num int) {
 	}
 	resource := a.currentResource
 	a.mx.Unlock()
+
+	// Force full terminal sync to prevent ghosting during namespace switch
+	a.requestSync()
 
 	// Clear table immediately to prevent visual artifacts
 	a.QueueUpdateDraw(func() {
@@ -2159,10 +2172,15 @@ func (a *App) Run() error {
 		atomic.StoreInt32(&a.running, 0)
 	}()
 
-	// Use SetBeforeDrawFunc to clear screen before every draw to prevent ghosting
-	// This ensures old content never bleeds through when views change
+	// Use SetBeforeDrawFunc to handle screen clearing:
+	// - Always clear the internal buffer to prevent ghosting artifacts
+	// - When needsSync is set (namespace/resource switch), force full terminal sync
+	//   to ensure no stale pixels remain from the previous view
 	a.SetBeforeDrawFunc(func(screen tcell.Screen) bool {
 		screen.Clear()
+		if atomic.CompareAndSwapInt32(&a.needsSync, 1, 0) {
+			screen.Sync()
+		}
 		return false // Don't skip the draw
 	})
 
