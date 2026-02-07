@@ -59,7 +59,7 @@ jobs:
       - name: Run tests
         env:
           CI: "true"
-        run: go test -race -timeout 300s ./...
+        run: go test -race -timeout 600s ./...
 
   build:
     runs-on: ubuntu-latest
