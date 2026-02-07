@@ -15,6 +15,10 @@ services:
       - K13D_USERNAME=admin
       - K13D_PASSWORD=${K13D_PASSWORD:-admin}
 
+      # Authorization settings
+      - K13D_JWT_SECRET=${K13D_JWT_SECRET:-}
+      - K13D_DEFAULT_ROLE=${K13D_DEFAULT_ROLE:-admin}
+
       # LLM Configuration (optional)
       # Supported providers: openai, anthropic, ollama, local
       - K13D_LLM_PROVIDER=${K13D_LLM_PROVIDER:-}
@@ -28,8 +32,9 @@ services:
       # Mount kubeconfig for cluster access
       - ${KUBECONFIG:-~/.kube/config}:/home/k13d/.kube/config:ro
 
-      # Optional: persist k13d configuration
+      # Persist k13d configuration and audit DB
       - k13d-config:/home/k13d/.config/k13d
+      - k13d-data:/home/k13d/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8080/api/health"]
@@ -99,6 +104,7 @@ services:
 
 volumes:
   k13d-config:
+  k13d-data:
   ollama-data:
   prometheus-data:
   grafana-data:

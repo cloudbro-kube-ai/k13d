@@ -240,12 +240,22 @@ spec:
               memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: false  # SQLite audit DB requires writable filesystem
             runAsNonRoot: true
             runAsUser: 1000
             capabilities:
               drop:
                 - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /home/k13d/data
+            - name: config
+              mountPath: /home/k13d/.config/k13d
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: config
+          emptyDir: {}
 
 ---
 apiVersion: v1

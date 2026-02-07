@@ -25,8 +25,17 @@ var (
 	GitCommit = "unknown"
 )
 
+// envDefault returns the environment variable value if set, otherwise the default.
+func envDefault(envKey, defaultVal string) string {
+	if v := os.Getenv(envKey); v != "" {
+		return v
+	}
+	return defaultVal
+}
+
 func main() {
 	// Command line flags - using consistent --long-form style
+	// Flags fall back to K13D_* environment variables for Docker/K8s compatibility
 	// Mode flags
 	webMode := flag.Bool("web", false, "Start web server mode")
 	tuiMode := flag.Bool("tui", false, "Start TUI mode (default when no mode specified)")
@@ -42,11 +51,11 @@ func main() {
 	showVersion := flag.Bool("version", false, "Show version information")
 	genCompletion := flag.String("completion", "", "Generate shell completion (bash, zsh, fish)")
 
-	// Web server auth flags
-	authMode := flag.String("auth-mode", "token", "Authentication mode: token (K8s RBAC), local (username/password), ldap")
+	// Web server auth flags (env: K13D_AUTH_MODE, K13D_USERNAME, K13D_PASSWORD)
+	authMode := flag.String("auth-mode", envDefault("K13D_AUTH_MODE", "token"), "Authentication mode: token (K8s RBAC), local (username/password), ldap")
 	authDisabled := flag.Bool("no-auth", false, "Disable authentication (not recommended)")
-	adminUser := flag.String("admin-user", "", "Default admin username for local auth mode")
-	adminPass := flag.String("admin-password", "", "Default admin password for local auth mode")
+	adminUser := flag.String("admin-user", envDefault("K13D_USERNAME", ""), "Default admin username for local auth mode")
+	adminPass := flag.String("admin-password", envDefault("K13D_PASSWORD", ""), "Default admin password for local auth mode")
 
 	// Storage flags
 	dbPath := flag.String("db-path", "", "SQLite database path (default: ~/.config/k13d/audit.db)")
