@@ -117,10 +117,12 @@ func (t *TerminalSession) Write(p []byte) (int, error) {
 		Type: "output",
 		Data: string(p),
 	}
-	data, _ := json.Marshal(msg)
-
-	err := t.conn.WriteMessage(websocket.TextMessage, data)
+	data, err := json.Marshal(msg)
 	if err != nil {
+		return 0, fmt.Errorf("failed to marshal terminal message: %w", err)
+	}
+
+	if err := t.conn.WriteMessage(websocket.TextMessage, data); err != nil {
 		return 0, err
 	}
 	return len(p), nil
@@ -151,7 +153,10 @@ func (t *TerminalSession) SendError(err error) {
 		Type: "error",
 		Data: err.Error(),
 	}
-	data, _ := json.Marshal(msg)
+	data, marshalErr := json.Marshal(msg)
+	if marshalErr != nil {
+		return
+	}
 	t.conn.WriteMessage(websocket.TextMessage, data)
 }
 

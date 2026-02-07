@@ -370,8 +370,13 @@ func (conn *ServerConnection) initialize(ctx context.Context) error {
 		JSONRPC: "2.0",
 		Method:  "notifications/initialized",
 	}
-	notifBytes, _ := json.Marshal(notif)
-	conn.stdin.Write(append(notifBytes, '\n'))
+	notifBytes, err := json.Marshal(notif)
+	if err != nil {
+		return fmt.Errorf("failed to marshal notification: %w", err)
+	}
+	if _, err := conn.stdin.Write(append(notifBytes, '\n')); err != nil {
+		return fmt.Errorf("failed to send initialized notification: %w", err)
+	}
 
 	conn.ready = true
 	return nil

@@ -373,7 +373,7 @@ func (b *BriefingPanel) updateDisplay() {
 	// Line 1: Health overview with pulse indicator
 	pulseChar := pulseChars[pulseIdx%len(pulseChars)]
 	healthColor := getHealthColor(data.HealthStatus)
-	sb.WriteString(fmt.Sprintf(" %s%c %s (%d%%)[white]", healthColor, pulseChar, strings.Title(data.HealthStatus), data.HealthScore))
+	sb.WriteString(fmt.Sprintf(" %s%c %s (%d%%)[white]", healthColor, pulseChar, capitalizeFirst(data.HealthStatus), data.HealthScore))
 
 	// Pod summary
 	sb.WriteString(fmt.Sprintf(" • %d pods", data.TotalPods))
@@ -503,6 +503,14 @@ func (b *BriefingPanel) stopPulseAnimation() {
 		b.pulseActive = false
 		close(b.stopPulse)
 	}
+}
+
+// capitalizeFirst capitalizes the first letter of a string
+func capitalizeFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }
 
 // UpdateWithAI requests an AI-generated briefing (Shift+B)
