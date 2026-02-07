@@ -35,6 +35,33 @@ type Runner struct {
 
 // NewRunner creates a new benchmark runner
 func NewRunner(cfg *RunConfig) (*Runner, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("config cannot be nil")
+	}
+
+	// Validate task directory
+	if cfg.TaskDir == "" {
+		return nil, fmt.Errorf("task directory is required")
+	}
+	if info, err := os.Stat(cfg.TaskDir); err != nil {
+		return nil, fmt.Errorf("task directory not accessible: %w", err)
+	} else if !info.IsDir() {
+		return nil, fmt.Errorf("task directory is not a directory: %s", cfg.TaskDir)
+	}
+
+	// Validate LLM configs
+	if len(cfg.LLMConfigs) == 0 {
+		return nil, fmt.Errorf("at least one LLM config is required")
+	}
+	for i, llmCfg := range cfg.LLMConfigs {
+		if llmCfg.ID == "" {
+			return nil, fmt.Errorf("LLM config #%d: ID is required", i+1)
+		}
+		if llmCfg.Provider == "" && llmCfg.Endpoint == "" {
+			return nil, fmt.Errorf("LLM config #%d (%s): provider or endpoint is required", i+1, llmCfg.ID)
+		}
+	}
+
 	// Set defaults
 	if cfg.DefaultTimeout == "" {
 		cfg.DefaultTimeout = "10m"
@@ -553,14 +580,23 @@ func (r *Runner) setupCluster(ctx context.Context) error {
 func (r *Runner) createNamespace(ctx context.Context, kubeconfig, namespace string) error {
 	cmd := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
 		"create", "namespace", namespace)
-	return cmd.Run()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("kubectl create namespace failed: %w, output: %s", err, string(output))
+	}
+	return nil
 }
 
 // deleteNamespace deletes a namespace from the cluster
 func (r *Runner) deleteNamespace(ctx context.Context, kubeconfig, namespace string) error {
 	cmd := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
-		"delete", "namespace", namespace, "--ignore-not-found")
-	return cmd.Run()
+		"delete", "namespace", namespace, "--ignore-not-found", "--wait=false")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// Log warning but don't fail - cleanup errors are not critical
+		r.log("Warning: failed to delete namespace %s: %v (output: %s)\n", namespace, err, string(output))
+	}
+	return err
 }
 
 // saveResult saves an individual result to a file
