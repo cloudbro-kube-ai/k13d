@@ -161,9 +161,9 @@ func TestStatusColor(t *testing.T) {
 	app := &App{}
 
 	// Tokyo Night theme colors
-	greenColor := tcell.NewRGBColor(158, 206, 106)   // #9ece6a
-	yellowColor := tcell.NewRGBColor(224, 175, 104)  // #e0af68
-	redColor := tcell.NewRGBColor(247, 118, 142)     // #f7768e
+	greenColor := tcell.NewRGBColor(158, 206, 106)     // #9ece6a
+	yellowColor := tcell.NewRGBColor(224, 175, 104)    // #e0af68
+	redColor := tcell.NewRGBColor(247, 118, 142)       // #f7768e
 	secondaryColor := tcell.NewRGBColor(169, 177, 214) // #a9b1d6
 	primaryColor := tcell.NewRGBColor(192, 202, 245)   // #c0caf5
 
