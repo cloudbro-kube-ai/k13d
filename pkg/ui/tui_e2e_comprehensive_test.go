@@ -738,9 +738,6 @@ func TestE2EConcurrentAccess(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping slow E2E test in short mode")
 	}
-	if os.Getenv("CI") == "true" {
-		t.Skip("Skipping concurrent access test in CI - timing-sensitive with race detector")
-	}
 	screen := createTestScreen(t)
 
 	app := NewTestApp(TestAppConfig{
@@ -763,27 +760,27 @@ func TestE2EConcurrentAccess(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	var wg sync.WaitGroup
-	numGoroutines := 10
-	iterations := 50
 
-	// Concurrent key presses
-	for i := 0; i < numGoroutines; i++ {
+	// Concurrent key presses (with pacing to avoid flooding the event channel,
+	// which blocks InjectKey callers when the event loop can't drain fast enough)
+	for i := 0; i < 5; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < iterations; j++ {
+			for j := 0; j < 20; j++ {
 				screen.InjectKey(tcell.KeyRune, 'j', tcell.ModNone)
 				screen.InjectKey(tcell.KeyRune, 'k', tcell.ModNone)
+				time.Sleep(time.Millisecond)
 			}
 		}()
 	}
 
 	// Concurrent state reads
-	for i := 0; i < numGoroutines; i++ {
+	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < iterations; j++ {
+			for j := 0; j < 50; j++ {
 				app.mx.RLock()
 				_ = app.currentResource
 				_ = app.currentNamespace
@@ -793,14 +790,17 @@ func TestE2EConcurrentAccess(t *testing.T) {
 		}()
 	}
 
-	// Concurrent draws
+	// Concurrent UI updates via QueueUpdateDraw (the thread-safe draw path)
 	for i := 0; i < 3; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for j := 0; j < iterations; j++ {
-				app.Draw()
-				time.Sleep(time.Millisecond)
+			for j := 0; j < 20; j++ {
+				app.QueueUpdateDraw(func() {
+					// Simulate concurrent UI mutations
+					app.flash.SetText("")
+				})
+				time.Sleep(2 * time.Millisecond)
 			}
 		}()
 	}
