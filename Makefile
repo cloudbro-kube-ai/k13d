@@ -33,6 +33,7 @@ PLATFORMS := \
 .PHONY: test-integration docker-test-up docker-test-down docker-test-status
 .PHONY: ollama-setup ollama-pull-models
 .PHONY: bench bench-build bench-list bench-run bench-docker-up bench-docker-down
+.PHONY: frontend-build frontend-watch
 
 # Default target
 all: clean deps test build
@@ -378,3 +379,17 @@ help:
 	@echo "  help           Show this help message"
 	@echo ""
 	@echo "Supported platforms: $(PLATFORMS)"
+
+# ============================================
+# Frontend Build Targets
+# ============================================
+
+# Build frontend bundles (CSS + JS)
+frontend-build:
+	@echo "Building frontend assets..."
+	@$(GOCMD) run scripts/build-frontend.go
+
+# Watch for changes and rebuild (requires watchexec)
+frontend-watch:
+	@echo "Watching for frontend changes..."
+	@watchexec -e css,js -w pkg/web/static/css -w pkg/web/static/js make frontend-build
