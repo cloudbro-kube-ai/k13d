@@ -1,0 +1,166 @@
+# k13d Documentation
+# MkDocs configuration with Material theme
+
+site_name: k13d
+site_url: https://cloudbro-kube-ai.github.io/k13d
+site_author: cloudbro-kube-ai
+site_description: >-
+  Kubernetes management tool combining k9s-style TUI,
+  modern Web UI, and AI-powered intelligence
+
+repo_name: cloudbro-kube-ai/k13d
+repo_url: https://github.com/cloudbro-kube-ai/k13d
+edit_uri: edit/main/docs-site/docs/
+
+# Theme configuration
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.path
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.tabs.link
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+  palette:
+    # Dark mode (Tokyo Night) - Default
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to Light Mode
+    # Light mode (Clean White)
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: light-blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to Dark Mode
+  font:
+    text: IBM Plex Sans
+    code: IBM Plex Mono
+  icon:
+    repo: fontawesome/brands/github
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+
+# Plugins
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - minify:
+      minify_html: true
+
+# Extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      normalize_issue_symbols: true
+      repo_url_shorthand: true
+      user: cloudbro-kube-ai
+      repo: k13d
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - includes/abbreviations.md
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Navigation
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Overview: getting-started/overview.md
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quick-start.md
+    - Configuration: getting-started/configuration.md
+  - Features:
+    - Overview: features/index.md
+    - Web UI: features/web-ui.md
+    - TUI: features/tui.md
+    - AI Assistant: features/ai-assistant.md
+    - Security: features/security.md
+  - Concepts:
+    - Architecture: concepts/architecture.md
+    - AI Assistant: concepts/ai-assistant.md
+    - MCP Integration: concepts/mcp-integration.md
+    - Security & RBAC: concepts/security.md
+  - User Guide:
+    - TUI Dashboard: user-guide/tui.md
+    - Web Dashboard: user-guide/web.md
+    - Keyboard Shortcuts: user-guide/shortcuts.md
+    - Reports: user-guide/reports.md
+  - AI & LLM:
+    - LLM Providers: ai-llm/providers.md
+    - Embedded LLM: ai-llm/embedded.md
+    - Tool Calling: ai-llm/tool-calling.md
+    - Benchmarks: ai-llm/benchmarks.md
+  - Deployment:
+    - Docker: deployment/docker.md
+    - Kubernetes: deployment/kubernetes.md
+    - Helm: deployment/helm.md
+    - Air-Gapped: deployment/air-gapped.md
+  - Reference:
+    - API Reference: reference/api.md
+    - CLI Reference: reference/cli.md
+    - Environment Variables: reference/env-vars.md
+    - Changelog: reference/changelog.md
+
+# Extra
+extra:
+  version:
+    provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/cloudbro-kube-ai/k13d
+  generator: false
+
+# Custom CSS
+extra_css:
+  - stylesheets/extra.css
+
+# Copyright
+copyright: Copyright &copy; 2024-2026 cloudbro-kube-ai

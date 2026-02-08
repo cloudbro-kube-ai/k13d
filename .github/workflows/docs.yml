@@ -1,0 +1,110 @@
+name: Documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs-site/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs-site/**'
+      - 'docs/**'
+      - 'README.md'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  # Build job - runs on all triggers
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install mkdocs-material mkdocs-minify-plugin mike
+
+      - name: Sync README to docs
+        run: |
+          # Copy README.md to docs as a reference
+          cp README.md docs-site/docs/reference/readme.md || true
+          # Copy CHANGELOG.md
+          cp CHANGELOG.md docs-site/docs/reference/changelog.md || true
+
+      - name: Build documentation
+        working-directory: docs-site
+        run: |
+          mkdocs build --site-dir ../site
+
+      - name: Upload documentation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: k13d-docs
+          path: site/
+          retention-days: 7
+
+  # Deploy job - only runs on push to main
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Get k13d version
+        id: version
+        run: |
+          VERSION=$(grep -m1 'version:' docs-site/mkdocs.yml | awk '{print $2}' || echo "latest")
+          if [ -z "$VERSION" ]; then
+            # Try to get version from git tag
+            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "latest")
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: |
+          pip install mkdocs-material mkdocs-minify-plugin mike
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync README to docs
+        run: |
+          # Copy README.md to docs as a reference
+          cp README.md docs-site/docs/reference/readme.md || true
+          # Copy CHANGELOG.md
+          cp CHANGELOG.md docs-site/docs/reference/changelog.md || true
+
+      - name: Build and deploy docs
+        working-directory: docs-site
+        run: |
+          mike deploy --push --update-aliases ${{ steps.version.outputs.version }} latest
+          mike set-default --push latest
