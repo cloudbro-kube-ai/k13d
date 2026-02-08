@@ -41,5 +41,11 @@ package-lock.json
 .build/
 k13d_test
 
+# GoReleaser build output
+dist/
+
+# Golden file test artifacts
+*.golden.actual
+
 # MkDocs build output
 docs-site/site/
