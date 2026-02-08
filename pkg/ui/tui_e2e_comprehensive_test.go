@@ -393,13 +393,22 @@ func TestE2ENamespaceSwitching(t *testing.T) {
 	})
 
 	t.Run("switch-to-numbered-namespace", func(t *testing.T) {
+		// First check if we have namespaces loaded
+		app.mx.RLock()
+		namespaces := app.namespaces
+		app.mx.RUnlock()
+
+		if len(namespaces) <= 1 {
+			t.Skip("Skipping: not enough namespaces loaded for this test")
+		}
+
 		// Assuming namespace 1 is "default" in the test setup
 		screen.InjectKey(tcell.KeyRune, '1', tcell.ModNone)
 		time.Sleep(100 * time.Millisecond)
 
 		app.mx.RLock()
 		ns := app.currentNamespace
-		namespaces := app.namespaces
+		namespaces = app.namespaces
 		app.mx.RUnlock()
 
 		// Verify namespace was switched

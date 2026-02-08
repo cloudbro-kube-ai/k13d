@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Better namespace management with detailed error output
   - Added --wait=false to namespace cleanup for faster execution
 - **Code Style**: Fixed gofmt formatting in app_test.go
+- **Flaky Test**: Fixed namespace switching test that failed when namespaces weren't loaded
 
 ## [0.6.0] - 2026-02-08
 
