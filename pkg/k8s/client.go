@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -612,6 +613,90 @@ func (c *Client) GetGVR(resource string) (schema.GroupVersionResource, bool) {
 	}
 	gvr, ok := m[strings.ToLower(resource)]
 	return gvr, ok
+}
+
+// WatchResource starts a Watch on the given resource type.
+// Uses typed clientset methods for fake clientset test compatibility.
+func (c *Client) WatchResource(ctx context.Context, resource, namespace string) (watch.Interface, error) {
+	opts := metav1.ListOptions{}
+	switch strings.ToLower(resource) {
+	// Core resources
+	case "pods":
+		return c.Clientset.CoreV1().Pods(namespace).Watch(ctx, opts)
+	case "services":
+		return c.Clientset.CoreV1().Services(namespace).Watch(ctx, opts)
+	case "nodes":
+		return c.Clientset.CoreV1().Nodes().Watch(ctx, opts)
+	case "namespaces":
+		return c.Clientset.CoreV1().Namespaces().Watch(ctx, opts)
+	case "events":
+		return c.Clientset.CoreV1().Events(namespace).Watch(ctx, opts)
+	case "configmaps":
+		return c.Clientset.CoreV1().ConfigMaps(namespace).Watch(ctx, opts)
+	case "secrets":
+		return c.Clientset.CoreV1().Secrets(namespace).Watch(ctx, opts)
+	case "persistentvolumes":
+		return c.Clientset.CoreV1().PersistentVolumes().Watch(ctx, opts)
+	case "persistentvolumeclaims":
+		return c.Clientset.CoreV1().PersistentVolumeClaims(namespace).Watch(ctx, opts)
+	case "serviceaccounts":
+		return c.Clientset.CoreV1().ServiceAccounts(namespace).Watch(ctx, opts)
+	case "endpoints":
+		return c.Clientset.CoreV1().Endpoints(namespace).Watch(ctx, opts)
+	case "limitranges":
+		return c.Clientset.CoreV1().LimitRanges(namespace).Watch(ctx, opts)
+	case "resourcequotas":
+		return c.Clientset.CoreV1().ResourceQuotas(namespace).Watch(ctx, opts)
+	case "replicationcontrollers":
+		return c.Clientset.CoreV1().ReplicationControllers(namespace).Watch(ctx, opts)
+
+	// Apps resources
+	case "deployments":
+		return c.Clientset.AppsV1().Deployments(namespace).Watch(ctx, opts)
+	case "statefulsets":
+		return c.Clientset.AppsV1().StatefulSets(namespace).Watch(ctx, opts)
+	case "daemonsets":
+		return c.Clientset.AppsV1().DaemonSets(namespace).Watch(ctx, opts)
+	case "replicasets":
+		return c.Clientset.AppsV1().ReplicaSets(namespace).Watch(ctx, opts)
+
+	// Batch resources
+	case "jobs":
+		return c.Clientset.BatchV1().Jobs(namespace).Watch(ctx, opts)
+	case "cronjobs":
+		return c.Clientset.BatchV1().CronJobs(namespace).Watch(ctx, opts)
+
+	// Networking resources
+	case "ingresses":
+		return c.Clientset.NetworkingV1().Ingresses(namespace).Watch(ctx, opts)
+	case "networkpolicies":
+		return c.Clientset.NetworkingV1().NetworkPolicies(namespace).Watch(ctx, opts)
+
+	// RBAC resources
+	case "roles":
+		return c.Clientset.RbacV1().Roles(namespace).Watch(ctx, opts)
+	case "rolebindings":
+		return c.Clientset.RbacV1().RoleBindings(namespace).Watch(ctx, opts)
+	case "clusterroles":
+		return c.Clientset.RbacV1().ClusterRoles().Watch(ctx, opts)
+	case "clusterrolebindings":
+		return c.Clientset.RbacV1().ClusterRoleBindings().Watch(ctx, opts)
+
+	// Storage resources
+	case "storageclasses":
+		return c.Clientset.StorageV1().StorageClasses().Watch(ctx, opts)
+
+	// Policy resources
+	case "poddisruptionbudgets":
+		return c.Clientset.PolicyV1().PodDisruptionBudgets(namespace).Watch(ctx, opts)
+
+	// Autoscaling resources
+	case "horizontalpodautoscalers":
+		return c.Clientset.AutoscalingV2().HorizontalPodAutoscalers(namespace).Watch(ctx, opts)
+
+	default:
+		return nil, fmt.Errorf("watch not supported for resource: %s", resource)
+	}
 }
 
 // GetRestConfig returns the REST config for the client

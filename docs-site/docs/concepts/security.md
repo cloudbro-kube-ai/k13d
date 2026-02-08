@@ -59,6 +59,7 @@ All AI-generated commands pass through the safety analyzer before execution.
 | **Write** | Resource modifications | Requires approval | `apply`, `create`, `patch` |
 | **Dangerous** | Destructive operations | Warning + approval | `delete`, `drain`, `taint` |
 | **Interactive** | Requires TTY | Requires approval | `exec`, `attach`, `edit` |
+| **Unknown** | Unrecognized commands | Requires approval (configurable) | Non-kubectl/helm commands |
 
 ### AST-Based Analysis
 
@@ -81,13 +82,16 @@ k13d uses AST parsing for accurate command analysis:
 ### Configuration
 
 ```yaml
-safety:
-  auto_approve_readonly: true    # Auto-approve read-only commands
-  require_approval_for_write: true
-  block_dangerous: false         # Block dangerous commands entirely
-  blocked_patterns:              # Regex patterns to block
-    - "rm -rf /"
-    - "kubectl delete ns kube-system"
+authorization:
+  tool_approval:
+    auto_approve_read_only: true       # Auto-approve read-only commands
+    require_approval_for_write: true   # Require approval for write commands
+    require_approval_for_unknown: true # Require approval for unknown commands
+    block_dangerous: false             # Block dangerous commands entirely
+    blocked_patterns:                  # Regex patterns to block
+      - "rm -rf /"
+      - "kubectl delete ns kube-system"
+    approval_timeout_seconds: 60       # Timeout for approval prompts
 ```
 
 ## Audit Logging

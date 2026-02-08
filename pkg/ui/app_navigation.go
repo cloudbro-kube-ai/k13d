@@ -354,6 +354,9 @@ func formatAge(t time.Time) string {
 // navigateTo changes resource, namespace, and filter atomically (deadlock-safe)
 // This is a centralized helper to avoid scattered Lock patterns
 func (a *App) navigateTo(resource, namespace, filter string) {
+	// Stop watch before switching resources
+	a.stopWatch()
+
 	a.mx.Lock()
 	a.currentResource = resource
 	a.currentNamespace = namespace
@@ -371,6 +374,7 @@ func (a *App) navigateTo(resource, namespace, filter string) {
 		a.updateHeader()
 		a.updateStatusBar()
 		a.refresh()
+		a.startWatch() // Start watch for new resource/namespace
 
 		// Apply default sort from views config after data is loaded (k9s views.yaml pattern)
 		if a.viewsConfig != nil {

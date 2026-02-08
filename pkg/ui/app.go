@@ -18,6 +18,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gdamore/tcell/v2"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
+	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/safety"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/i18n"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
@@ -166,6 +167,11 @@ type App struct {
 		Args    string
 		Command string
 	}
+
+	// Watch state (protected by watchMu)
+	watcher     *k8s.ResourceWatcher // Active resource watcher (nil when inactive)
+	watchCancel context.CancelFunc   // Cancel function for watcher context
+	watchMu     sync.Mutex           // Protects watcher lifecycle operations
 
 	// Logger
 	logger *slog.Logger
@@ -594,8 +600,6 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 			// Tool approval callback - kubectl-ai style Decision Required
 			a.logger.Info("Tool callback invoked", "tool", toolName, "args", args)
 
-			filter := ai.NewCommandFilter()
-
 			// Parse command from args
 			var cmdArgs struct {
 				Command   string `json:"command"`
@@ -618,10 +622,10 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 			a.logger.Info("Analyzed command", "fullCmd", fullCmd)
 
 			// Analyze command safety
-			report := filter.AnalyzeCommand(fullCmd)
+			classification := safety.Classify(fullCmd)
 
 			// Read-only commands: auto-approve
-			if report.Type == ai.CommandTypeReadOnly {
+			if classification.IsReadOnly {
 				return true
 			}
 
@@ -636,9 +640,9 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 				sb.WriteString(fullResponse.String())
 				sb.WriteString("\n\n[yellow::b]━━━ DECISION REQUIRED ━━━[white::-]\n\n")
 
-				if report.IsDangerous {
+				if classification.IsDangerous {
 					sb.WriteString("[red]⚠ DANGEROUS COMMAND[white]\n")
-				} else if report.Type == ai.CommandTypeWrite {
+				} else if classification.Category == "write" {
 					sb.WriteString("[yellow]? WRITE OPERATION[white]\n")
 				} else {
 					sb.WriteString("[gray]? COMMAND APPROVAL[white]\n")
@@ -646,7 +650,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 
 				sb.WriteString(fmt.Sprintf("\n[cyan]%s[white]\n\n", fullCmd))
 
-				for _, w := range report.Warnings {
+				for _, w := range classification.Warnings {
 					sb.WriteString(fmt.Sprintf("[red]• %s[white]\n", w))
 				}
 
@@ -756,21 +760,19 @@ func (a *App) analyzeAndShowDecisions(question, response string) {
 	}
 
 	// Analyze commands for safety
-	filter := ai.NewCommandFilter()
-
 	a.aiMx.Lock()
 	a.pendingDecisions = nil
 
 	var hasDecisions bool
 	for _, cmd := range commands {
-		report := filter.AnalyzeCommand(cmd)
-		if report.RequiresConfirmation || report.IsDangerous {
+		classification := safety.Classify(cmd)
+		if classification.RequiresApproval || classification.IsDangerous {
 			hasDecisions = true
 			a.pendingDecisions = append(a.pendingDecisions, PendingDecision{
 				Command:     cmd,
 				Description: getCommandDescription(cmd),
-				IsDangerous: report.IsDangerous,
-				Warnings:    report.Warnings,
+				IsDangerous: classification.IsDangerous,
+				Warnings:    classification.Warnings,
 			})
 		}
 	}
@@ -1792,7 +1794,11 @@ func (a *App) setupKeybindings() {
 				a.showHelp()
 				return nil
 			case 'r':
-				go a.refresh()
+				a.stopWatch()
+				go func() {
+					a.refresh()
+					a.startWatch()
+				}()
 				return nil
 			case 'n':
 				a.cycleNamespace()
@@ -2073,6 +2079,19 @@ func (a *App) updateHeader() {
 		aiStatus = "[#9ece6a]● Online[-]"
 	}
 
+	// Watch state indicator
+	watchStatus := ""
+	a.watchMu.Lock()
+	if a.watcher != nil {
+		switch a.watcher.State() {
+		case k8s.WatchStateActive:
+			watchStatus = " [#9ece6a]◉ Live[-]"
+		case k8s.WatchStateFallback:
+			watchStatus = " [#e0af68]○ Poll[-]"
+		}
+	}
+	a.watchMu.Unlock()
+
 	// Build namespace quick-select preview (show first 9 namespaces with numbers)
 	nsPreview := ""
 	if len(namespaces) > 1 {
@@ -2100,10 +2119,10 @@ func (a *App) updateHeader() {
 	}
 
 	header := fmt.Sprintf(
-		" %s [#565f89]%s %s[-]                                        [#bb9af7]AI[-] %s\n"+
+		" %s [#565f89]%s %s[-]                                        [#bb9af7]AI[-] %s%s\n"+
 			" [#565f89]⎈ Context:[-] [#7aa2f7]%s[-]  [#565f89]Cluster:[-] [#7aa2f7]%s[-]  [#565f89]NS:[-] %s  [#565f89]Resource:[-] [#7dcfff]%s[-]\n"+
 			" [#565f89]Namespaces:[-]%s",
-		HeaderLogo(), Tagline, Version, aiStatus, ctxName, cluster, currentNsDisplay, resource, nsPreview,
+		HeaderLogo(), Tagline, Version, aiStatus, watchStatus, ctxName, cluster, currentNsDisplay, resource, nsPreview,
 	)
 
 	// Use QueueUpdateDraw only after Application.Run() has started (k9s pattern)
@@ -2318,6 +2337,63 @@ func (a *App) refresh() {
 	a.logger.Info("Refresh completed", "resource", resource, "count", len(rows))
 }
 
+// startWatch starts a resource watcher for the current resource/namespace.
+// It stops any existing watcher first. Safe to call from any goroutine.
+func (a *App) startWatch() {
+	if a.k8s == nil || atomic.LoadInt32(&a.stopping) == 1 {
+		return
+	}
+
+	a.watchMu.Lock()
+
+	// Stop existing watcher first
+	a.stopWatchLocked()
+
+	a.mx.RLock()
+	resource := a.currentResource
+	namespace := a.currentNamespace
+	a.mx.RUnlock()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	a.watchCancel = cancel
+
+	onChange := func() {
+		// Trigger a refresh through the existing mechanism
+		go a.refresh()
+	}
+
+	cfg := k8s.DefaultWatcherConfig()
+	a.watcher = k8s.NewResourceWatcher(a.k8s, resource, namespace, onChange, a.logger, cfg)
+	a.watcher.Start(ctx)
+
+	a.logger.Info("Started watch", "resource", resource, "namespace", namespace)
+
+	// Release watchMu before updateHeader (which also reads watchMu for the indicator)
+	a.watchMu.Unlock()
+
+	// Update header to show watch indicator
+	a.updateHeader()
+}
+
+// stopWatch stops the current resource watcher. Safe to call from any goroutine.
+func (a *App) stopWatch() {
+	a.watchMu.Lock()
+	defer a.watchMu.Unlock()
+	a.stopWatchLocked()
+}
+
+// stopWatchLocked stops the watcher (caller must hold watchMu).
+func (a *App) stopWatchLocked() {
+	if a.watcher != nil {
+		a.watcher.Stop()
+		a.watcher = nil
+	}
+	if a.watchCancel != nil {
+		a.watchCancel()
+		a.watchCancel = nil
+	}
+}
+
 // QueueUpdateDraw queues up a UI action and redraws.
 // Note: Unlike k9s, we don't wrap in goroutine here because tview's
 // QueueUpdateDraw safely queues a function to be executed on the main UI thread.
@@ -2363,6 +2439,9 @@ func (a *App) IsRunning() bool {
 func (a *App) Stop() {
 	// Set stopping flag immediately to prevent new QueueUpdateDraw calls
 	atomic.StoreInt32(&a.stopping, 1)
+
+	// Stop resource watcher
+	a.stopWatch()
 
 	// Stop briefing pulse animation to prevent goroutine leaks
 	if a.briefing != nil {
@@ -2425,6 +2504,7 @@ func (a *App) Run() error {
 		// Small delay before refresh to ensure screen is fully initialized
 		time.AfterFunc(50*time.Millisecond, func() {
 			a.refresh()
+			a.startWatch() // Start watching after initial data load
 		})
 
 		// Start briefing pulse animation if visible

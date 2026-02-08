@@ -85,9 +85,9 @@ func TestClassifier_Classify(t *testing.T) {
 		{
 			name:             "kubectl delete namespace",
 			command:          "kubectl delete namespace production",
-			expectedCategory: "write",
+			expectedCategory: "dangerous",
 			requiresApproval: true,
-			isDangerous:      true, // Namespace deletion is flagged as dangerous
+			isDangerous:      true,
 		},
 
 		// Piped commands (should require approval regardless of base command)

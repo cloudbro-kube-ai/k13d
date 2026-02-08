@@ -249,19 +249,25 @@ func (a *Analyzer) checkDangerousPatterns(report *Report, parsed *ParsedCommand)
 	// Special case: delete with namespace
 	if parsed.Verb == "delete" {
 		if parsed.Resource == "namespace" || parsed.Resource == "ns" {
+			report.Type = TypeDangerous
 			report.IsDangerous = true
+			report.RequiresApproval = true
 			report.Warnings = append(report.Warnings, "Deleting namespace removes all resources in it")
 		}
 
 		// delete with --all
 		if parsed.HasFlag("--all") || parsed.HasFlag("-all") {
+			report.Type = TypeDangerous
 			report.IsDangerous = true
+			report.RequiresApproval = true
 			report.Warnings = append(report.Warnings, "Delete all resources of this type")
 		}
 
 		// delete in all namespaces
 		if parsed.HasFlag("--all-namespaces") || parsed.HasFlag("-A") {
+			report.Type = TypeDangerous
 			report.IsDangerous = true
+			report.RequiresApproval = true
 			report.Warnings = append(report.Warnings, "Delete affects all namespaces")
 		}
 	}

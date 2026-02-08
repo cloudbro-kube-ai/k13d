@@ -312,9 +312,11 @@ All AI commands pass through safety analysis:
 
 | Level | Commands | Action |
 |-------|----------|--------|
-| **Read** | get, describe, logs | Auto-approve (configurable) |
+| **Read-Only** | get, describe, logs | Auto-approve (configurable) |
 | **Write** | apply, create, patch | Require approval |
 | **Dangerous** | delete, drain, rm -rf | Warning + approval |
+| **Interactive** | exec, attach, port-forward | Require approval |
+| **Unknown** | Non-kubectl/helm commands | Require approval (configurable) |
 
 ### TUI Safety Prompt
 
@@ -340,11 +342,12 @@ All AI commands pass through safety analysis:
 ### Blocked Patterns
 
 ```yaml
-safety:
-  blocked_patterns:
-    - "rm -rf /"
-    - "kubectl delete ns kube-system"
-    - ":(){:|:&};"  # Fork bomb
+authorization:
+  tool_approval:
+    blocked_patterns:
+      - "rm -rf /"
+      - "kubectl delete ns kube-system"
+      - ":(){:|:&};"  # Fork bomb
 ```
 
 ---

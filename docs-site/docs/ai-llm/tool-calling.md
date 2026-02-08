@@ -199,11 +199,12 @@ k13d parses commands as an Abstract Syntax Tree:
 Configure blocked command patterns:
 
 ```yaml
-safety:
-  blocked_patterns:
-    - "rm -rf /"
-    - "kubectl delete ns kube-system"
-    - ":(){ :|:& };:"  # Fork bomb
+authorization:
+  tool_approval:
+    blocked_patterns:
+      - "rm -rf /"
+      - "kubectl delete ns kube-system"
+      - ":(){ :|:& };:"  # Fork bomb
 ```
 
 ## Configuration
@@ -211,18 +212,22 @@ safety:
 ### Tool Approval Settings
 
 ```yaml
-safety:
-  # Auto-approve read-only commands
-  auto_approve_readonly: true
+authorization:
+  tool_approval:
+    # Auto-approve read-only commands
+    auto_approve_read_only: true
 
-  # Require approval for write commands
-  require_approval_for_write: true
+    # Require approval for write commands
+    require_approval_for_write: true
 
-  # Block dangerous commands entirely
-  block_dangerous: false
+    # Require approval for unknown commands
+    require_approval_for_unknown: true
 
-  # Approval timeout in seconds
-  approval_timeout: 60
+    # Block dangerous commands entirely
+    block_dangerous: false
+
+    # Approval timeout in seconds
+    approval_timeout_seconds: 60
 ```
 
 ### Custom Tool Definitions

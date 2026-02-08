@@ -393,13 +393,14 @@ func TestAnalyzerDeleteNamespace(t *testing.T) {
 	analyzer := NewAnalyzer()
 
 	tests := []struct {
-		cmd         string
-		isDangerous bool
-		hasWarning  bool
+		cmd          string
+		isDangerous  bool
+		hasWarning   bool
+		expectedType CommandType
 	}{
-		{"kubectl delete namespace production", true, true},
-		{"kubectl delete ns staging", true, true},
-		{"kubectl delete pod nginx", false, false},
+		{"kubectl delete namespace production", true, true, TypeDangerous},
+		{"kubectl delete ns staging", true, true, TypeDangerous},
+		{"kubectl delete pod nginx", false, false, TypeWrite},
 	}
 
 	for _, tt := range tests {
@@ -407,6 +408,9 @@ func TestAnalyzerDeleteNamespace(t *testing.T) {
 			report := analyzer.Analyze(tt.cmd)
 			if report.IsDangerous != tt.isDangerous {
 				t.Errorf("IsDangerous = %v, want %v", report.IsDangerous, tt.isDangerous)
+			}
+			if report.Type != tt.expectedType {
+				t.Errorf("Type = %v, want %v", report.Type, tt.expectedType)
 			}
 
 			hasNsWarning := false
@@ -432,6 +436,9 @@ func TestAnalyzerDeleteAllNamespaces(t *testing.T) {
 	if !report.IsDangerous {
 		t.Error("Delete with --all-namespaces should be dangerous")
 	}
+	if report.Type != TypeDangerous {
+		t.Errorf("Type = %v, want %v", report.Type, TypeDangerous)
+	}
 
 	hasAllNsWarning := false
 	for _, w := range report.Warnings {
@@ -454,6 +461,8 @@ func TestAnalyzerReportType(t *testing.T) {
 	}{
 		{"kubectl get pods", TypeReadOnly},
 		{"kubectl apply -f deploy.yaml", TypeWrite},
+		{"kubectl delete namespace production", TypeDangerous},
+		{"kubectl delete pods --all", TypeDangerous},
 		{"kubectl drain node1", TypeDangerous},
 		{"kubectl exec -it pod -- bash", TypeInteractive},
 		{"ls -la", TypeUnknown},

@@ -11038,6 +11038,16 @@ ${escapeHtml(execInfo.result)}</div>
             });
 
             topologyGraph.render();
+
+            // Force fit-view after render to reset zoom/pan state.
+            // G6 autoFit:'view' may not reliably reset viewport when
+            // re-creating graphs in the same container (e.g. switching
+            // from focused subgraph back to full topology).
+            requestAnimationFrame(() => {
+                if (topologyGraph) {
+                    try { topologyGraph.fitView(); } catch(e) {}
+                }
+            });
         }
 
         function showTopologyDetail(nodeData) {

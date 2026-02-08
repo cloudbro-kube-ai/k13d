@@ -84,6 +84,7 @@ func NewTestApp(cfg TestAppConfig) *App {
 		navMx:               sync.Mutex{},
 		aiMx:                sync.RWMutex{},
 		cancelLock:          sync.Mutex{},
+		watchMu:             sync.Mutex{},
 		skipBriefing:        cfg.SkipBriefing, // Disable briefing to prevent pulse animation blocking
 	}
 
@@ -468,6 +469,7 @@ func CreateMinimalTestApp() *App {
 		navMx:               sync.Mutex{},
 		aiMx:                sync.RWMutex{},
 		cancelLock:          sync.Mutex{},
+		watchMu:             sync.Mutex{},
 		pendingToolApproval: make(chan bool, 1),
 	}
 }
