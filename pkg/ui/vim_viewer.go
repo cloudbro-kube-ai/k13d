@@ -150,7 +150,7 @@ func (v *VimViewer) setupInputCapture() {
 
 // close closes the viewer and returns focus to the table
 func (v *VimViewer) close() {
-	v.app.pages.RemovePage(v.pageName)
+	v.app.closeModal(v.pageName)
 	v.app.SetFocus(v.app.table)
 }
 

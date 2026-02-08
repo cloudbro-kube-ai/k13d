@@ -11,6 +11,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
+	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
 	"github.com/rivo/tview"
 )
@@ -103,6 +104,18 @@ func (a *App) recordTUIAudit(action, resource, details string, success bool, err
 	db.RecordAudit(entry)
 }
 
+// showModal adds a modal page with a full terminal sync to prevent ghosting
+func (a *App) showModal(name string, p tview.Primitive, resize bool) {
+	a.pages.AddPage(name, p, resize, true)
+	a.requestSync()
+}
+
+// closeModal removes a modal page with a full terminal sync to clear artifacts
+func (a *App) closeModal(name string) {
+	a.pages.RemovePage(name)
+	a.requestSync()
+}
+
 // showLogs shows logs for selected pod with Vim-style navigation
 func (a *App) showLogs() {
 	a.mx.RLock()
@@ -127,7 +140,7 @@ func (a *App) showLogs() {
 
 	logView.SetContent("[yellow]Loading...[white]")
 
-	a.pages.AddPage("logs", logView, true, true)
+	a.showModal("logs", logView, true)
 	a.SetFocus(logView)
 
 	// Fetch logs
@@ -175,7 +188,7 @@ func (a *App) describeResource() {
 	descView.SetBorder(true).
 		SetTitle(fmt.Sprintf(" %s: %s (Press Esc to close) ", resource, name))
 
-	a.pages.AddPage("describe", descView, true, true)
+	a.showModal("describe", descView, true)
 	a.SetFocus(descView)
 
 	// Fetch YAML
@@ -203,7 +216,7 @@ func (a *App) describeResource() {
 
 	descView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
-			a.pages.RemovePage("describe")
+			a.closeModal("describe")
 			a.SetFocus(a.table)
 			return nil
 		}
@@ -249,7 +262,7 @@ func (a *App) confirmDelete() {
 		SetText(fmt.Sprintf("[red]Delete %s?[white]\n\n%s/%s\n\nThis action cannot be undone.", resource, ns, name)).
 		AddButtons([]string{"Cancel", "Delete"}).
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			a.pages.RemovePage("delete-confirm")
+			a.closeModal("delete-confirm")
 			a.SetFocus(a.table)
 
 			if buttonLabel == "Delete" {
@@ -259,7 +272,7 @@ func (a *App) confirmDelete() {
 
 	modal.SetBackgroundColor(tcell.ColorDarkRed)
 
-	a.pages.AddPage("delete-confirm", modal, true, true)
+	a.showModal("delete-confirm", modal, true)
 }
 
 // confirmDeleteMultiple confirms deletion of multiple selected resources (k9s style)
@@ -298,7 +311,7 @@ func (a *App) confirmDeleteMultiple() {
 		SetText(fmt.Sprintf("[red]Delete %d %s?[white]\n\nThis action cannot be undone.", len(items), resource)).
 		AddButtons([]string{"Cancel", "Delete All"}).
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			a.pages.RemovePage("delete-confirm")
+			a.closeModal("delete-confirm")
 			a.SetFocus(a.table)
 
 			if buttonLabel == "Delete All" {
@@ -314,7 +327,7 @@ func (a *App) confirmDeleteMultiple() {
 
 	modal.SetBackgroundColor(tcell.ColorDarkRed)
 
-	a.pages.AddPage("delete-confirm", modal, true, true)
+	a.showModal("delete-confirm", modal, true)
 }
 
 // deleteResource deletes the specified resource
@@ -430,7 +443,7 @@ func (a *App) portForward() {
 		remotePort = text
 	})
 	form.AddButton("Forward", func() {
-		a.pages.RemovePage("port-forward")
+		a.closeModal("port-forward")
 		a.SetFocus(a.table)
 
 		if localPort == "" || remotePort == "" {
@@ -441,11 +454,11 @@ func (a *App) portForward() {
 		go a.startPortForward(ns, name, resource, localPort, remotePort)
 	})
 	form.AddButton("Cancel", func() {
-		a.pages.RemovePage("port-forward")
+		a.closeModal("port-forward")
 		a.SetFocus(a.table)
 	})
 
-	a.pages.AddPage("port-forward", centered(form, 50, 12), true, true)
+	a.showModal("port-forward", centered(form, 50, 12), true)
 }
 
 // startPortForward starts port forwarding in background
@@ -531,20 +544,20 @@ func (a *App) showPortForwards() {
 				a.flashMsg(fmt.Sprintf("Stopped port-forward localhost:%s", pf.LocalPort), false)
 			}
 		}
-		a.pages.RemovePage("portforwards")
+		a.closeModal("portforwards")
 		a.SetFocus(a.table)
 	})
 
 	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
-			a.pages.RemovePage("portforwards")
+			a.closeModal("portforwards")
 			a.SetFocus(a.table)
 			return nil
 		}
 		return event
 	})
 
-	a.pages.AddPage("portforwards", centered(list, 65, 20), true, true)
+	a.showModal("portforwards", centered(list, 65, 20), true)
 	a.SetFocus(list)
 }
 
@@ -586,7 +599,7 @@ func (a *App) showContextSwitcher() {
 
 	list.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
 		selectedCtx := contexts[index]
-		a.pages.RemovePage("context-switcher")
+		a.closeModal("context-switcher")
 		a.SetFocus(a.table)
 
 		if selectedCtx == currentCtx {
@@ -609,14 +622,14 @@ func (a *App) showContextSwitcher() {
 
 	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
-			a.pages.RemovePage("context-switcher")
+			a.closeModal("context-switcher")
 			a.SetFocus(a.table)
 			return nil
 		}
 		return event
 	})
 
-	a.pages.AddPage("context-switcher", centered(list, 60, min(len(contexts)+4, 20)), true, true)
+	a.showModal("context-switcher", centered(list, 60, min(len(contexts)+4, 20)), true)
 }
 
 // showHealth displays system health status
@@ -666,25 +679,25 @@ func (a *App) showHealth() {
 
 	health.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
-			a.pages.RemovePage("health")
+			a.closeModal("health")
 			a.SetFocus(a.table)
 			return nil
 		}
 		return event
 	})
 
-	a.pages.AddPage("health", centered(health, 60, 18), true, true)
+	a.showModal("health", centered(health, 60, 18), true)
 }
 
 // showAbout displays about modal with logo
 func (a *App) showAbout() {
 	about := AboutModal()
-	a.pages.AddPage("about", centered(about, 60, 35), true, true)
+	a.showModal("about", centered(about, 60, 35), true)
 	a.SetFocus(about)
 
 	about.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc || event.Rune() == 'q' {
-			a.pages.RemovePage("about")
+			a.closeModal("about")
 			a.SetFocus(a.table)
 			return nil
 		}
@@ -766,12 +779,12 @@ func (a *App) showHelp() {
 		SetText(helpText)
 	help.SetBorder(true).SetTitle(" Help ")
 
-	a.pages.AddPage("help", centered(help, 75, 55), true, true)
+	a.showModal("help", centered(help, 75, 55), true)
 	a.SetFocus(help)
 
 	help.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc || event.Rune() == 'q' || event.Rune() == '?' {
-			a.pages.RemovePage("help")
+			a.closeModal("help")
 			a.SetFocus(a.table)
 			return nil
 		}
@@ -806,7 +819,7 @@ func (a *App) showYAML() {
 
 	yamlView.SetContent("[yellow]Loading...[white]")
 
-	a.pages.AddPage("yaml", yamlView, true, true)
+	a.showModal("yaml", yamlView, true)
 	a.SetFocus(yamlView)
 
 	// Fetch YAML
@@ -858,7 +871,7 @@ func (a *App) showLogsPrevious() {
 
 	logView.SetContent("[yellow]Loading...[white]")
 
-	a.pages.AddPage("logs", logView, true, true)
+	a.showModal("logs", logView, true)
 	a.SetFocus(logView)
 
 	// Fetch previous logs
@@ -1091,7 +1104,7 @@ func (a *App) killPod() {
 		SetText(fmt.Sprintf("[red]Kill pod?[white]\n\n%s/%s\n\nThis will force delete the pod.", ns, name)).
 		AddButtons([]string{"Cancel", "Kill"}).
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			a.pages.RemovePage("kill-confirm")
+			a.closeModal("kill-confirm")
 			a.SetFocus(a.table)
 
 			if buttonLabel == "Kill" {
@@ -1117,7 +1130,7 @@ func (a *App) killPod() {
 		})
 
 	modal.SetBackgroundColor(tcell.ColorDarkRed)
-	a.pages.AddPage("kill-confirm", modal, true, true)
+	a.showModal("kill-confirm", modal, true)
 }
 
 // showBenchmark runs benchmark on service (k9s b key) - placeholder
@@ -1148,7 +1161,7 @@ func (a *App) triggerCronJob() {
 		SetText(fmt.Sprintf("Trigger CronJob?\n\n%s/%s\n\nThis will create a new job from this cronjob.", ns, name)).
 		AddButtons([]string{"Cancel", "Trigger"}).
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			a.pages.RemovePage("trigger-confirm")
+			a.closeModal("trigger-confirm")
 			a.SetFocus(a.table)
 
 			if buttonLabel == "Trigger" {
@@ -1173,7 +1186,7 @@ func (a *App) triggerCronJob() {
 			}
 		})
 
-	a.pages.AddPage("trigger-confirm", modal, true, true)
+	a.showModal("trigger-confirm", modal, true)
 }
 
 // showRelatedResource shows related resources (k9s z key)
@@ -1272,7 +1285,7 @@ func (a *App) scaleResource() {
 			return
 		}
 
-		a.pages.RemovePage("scale-dialog")
+		a.closeModal("scale-dialog")
 		a.SetFocus(a.table)
 
 		go func() {
@@ -1302,11 +1315,11 @@ func (a *App) scaleResource() {
 		}()
 	})
 	form.AddButton("Cancel", func() {
-		a.pages.RemovePage("scale-dialog")
+		a.closeModal("scale-dialog")
 		a.SetFocus(a.table)
 	})
 
-	a.pages.AddPage("scale-dialog", centered(form, 50, 10), true, true)
+	a.showModal("scale-dialog", centered(form, 50, 10), true)
 }
 
 // restartResource restarts a deployment/statefulset (k9s Shift+R key)
@@ -1343,7 +1356,7 @@ func (a *App) restartResource() {
 		SetText(fmt.Sprintf("Restart %s?\n\n%s/%s\n\nThis will trigger a rolling restart.", resource, ns, name)).
 		AddButtons([]string{"Cancel", "Restart"}).
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			a.pages.RemovePage("restart-confirm")
+			a.closeModal("restart-confirm")
 			a.SetFocus(a.table)
 
 			if buttonLabel == "Restart" {
@@ -1375,7 +1388,7 @@ func (a *App) restartResource() {
 			}
 		})
 
-	a.pages.AddPage("restart-confirm", modal, true, true)
+	a.showModal("restart-confirm", modal, true)
 }
 
 // showDescribe shows describe output for selected resource (like kubectl describe) with Vim-style navigation
@@ -1416,7 +1429,7 @@ func (a *App) showDescribe() {
 	descView.SetContent("[yellow]Loading...[white]")
 
 	// Add to pages
-	a.pages.AddPage("describe", descView, true, true)
+	a.showModal("describe", descView, true)
 	a.SetFocus(descView)
 
 	// Fetch describe output in background
@@ -1787,7 +1800,7 @@ func (a *App) showSettings() {
 	})
 
 	form.AddButton("Close", func() {
-		a.pages.RemovePage("settings")
+		a.closeModal("settings")
 		a.SetFocus(a.table)
 	})
 
@@ -1801,13 +1814,13 @@ func (a *App) showSettings() {
 	flex.SetBackgroundColor(tcell.ColorDefault)
 
 	// Wrap in centered container
-	a.pages.AddPage("settings", centered(flex, 70, 28), true, true)
+	a.showModal("settings", centered(flex, 70, 28), true)
 	a.SetFocus(form)
 
 	// Handle escape
 	flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
-			a.pages.RemovePage("settings")
+			a.closeModal("settings")
 			a.SetFocus(a.table)
 			return nil
 		}
@@ -1829,4 +1842,217 @@ func (a *App) showSettings() {
 			statusView.SetText(initialStatus)
 		})
 	}()
+}
+
+// showModelSelector displays a modal for switching AI model profiles
+func (a *App) showModelSelector() {
+	if a.config == nil || len(a.config.Models) == 0 {
+		a.flashMsg("No model profiles configured. Add models in config.yaml", true)
+		return
+	}
+
+	list := tview.NewList().
+		ShowSecondaryText(true).
+		SetHighlightFullLine(true)
+	list.SetBorder(true).SetTitle(" Select AI Model (Enter to switch, Esc to cancel) ")
+
+	for _, m := range a.config.Models {
+		prefix := "  "
+		if m.Name == a.config.ActiveModel {
+			prefix = "* "
+		}
+		mainText := prefix + m.Name
+		secondText := fmt.Sprintf("  %s / %s", m.Provider, m.Model)
+		if m.Description != "" {
+			secondText += " - " + m.Description
+		}
+		list.AddItem(mainText, secondText, 0, nil)
+	}
+
+	list.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+		if index < len(a.config.Models) {
+			name := a.config.Models[index].Name
+			a.closeModal("model-selector")
+			a.SetFocus(a.table)
+			a.switchModel(name)
+		}
+	})
+
+	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			a.closeModal("model-selector")
+			a.SetFocus(a.table)
+			return nil
+		}
+		return event
+	})
+
+	height := len(a.config.Models)*2 + 4
+	if height > 20 {
+		height = 20
+	}
+	a.showModal("model-selector", centered(list, 65, height), true)
+	a.SetFocus(list)
+}
+
+// switchModel switches to a named AI model profile
+func (a *App) switchModel(name string) {
+	if a.config == nil {
+		a.flashMsg("No config available", true)
+		return
+	}
+
+	if !a.config.SetActiveModel(name) {
+		a.flashMsg(fmt.Sprintf("Model '%s' not found", name), true)
+		return
+	}
+
+	// Save config
+	if err := a.config.Save(); err != nil {
+		a.flashMsg(fmt.Sprintf("Config save failed: %v", err), true)
+		return
+	}
+
+	// Reinitialize AI client with new model
+	newClient, err := ai.NewClient(&a.config.LLM)
+	if err != nil {
+		a.flashMsg(fmt.Sprintf("Failed to init model '%s': %v", name, err), true)
+		return
+	}
+	a.aiClient = newClient
+	a.flashMsg(fmt.Sprintf("Switched to model: %s (%s/%s)", name, a.config.LLM.Provider, a.config.LLM.Model), false)
+	a.updateHeader()
+}
+
+// showPlugins displays a modal listing all configured plugins
+func (a *App) showPlugins() {
+	var sb strings.Builder
+	sb.WriteString("[cyan::b]Configured Plugins[white::-]\n\n")
+
+	if a.plugins == nil || len(a.plugins.Plugins) == 0 {
+		sb.WriteString("[gray]No plugins configured.\n\n")
+		sb.WriteString("Add plugins in: ~/.config/k13d/plugins.yaml\n\n")
+		sb.WriteString("Example:\n")
+		sb.WriteString("[yellow]plugins:\n")
+		sb.WriteString("  dive:\n")
+		sb.WriteString("    shortCut: Ctrl-I\n")
+		sb.WriteString("    description: Dive into container image\n")
+		sb.WriteString("    scopes: [pods]\n")
+		sb.WriteString("    command: dive\n")
+		sb.WriteString("    args: [$IMAGE][white]\n")
+	} else {
+		sb.WriteString(fmt.Sprintf("  %-15s %-12s %-20s %s\n", "NAME", "SHORTCUT", "SCOPES", "DESCRIPTION"))
+		sb.WriteString(fmt.Sprintf("  %-15s %-12s %-20s %s\n", "────", "────────", "──────", "───────────"))
+		for name, plugin := range a.plugins.Plugins {
+			scopes := strings.Join(plugin.Scopes, ", ")
+			sb.WriteString(fmt.Sprintf("  %-15s %-12s %-20s %s\n", name, plugin.ShortCut, scopes, plugin.Description))
+		}
+		sb.WriteString(fmt.Sprintf("\n[gray]Total: %d plugins loaded[white]\n", len(a.plugins.Plugins)))
+	}
+
+	sb.WriteString("\n[gray]Config: ~/.config/k13d/plugins.yaml[white]")
+	sb.WriteString("\n[gray]Variables: $NAMESPACE, $NAME, $CONTEXT, $IMAGE, $LABELS.key, $ANNOTATIONS.key[white]")
+	sb.WriteString("\n\n[gray]Press Esc to close[white]")
+
+	pluginView := tview.NewTextView().
+		SetDynamicColors(true).
+		SetScrollable(true).
+		SetText(sb.String())
+	pluginView.SetBorder(true).SetTitle(" Plugins (Esc to close) ")
+
+	a.showModal("plugins", centered(pluginView, 80, 30), true)
+	a.SetFocus(pluginView)
+
+	pluginView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc || event.Rune() == 'q' {
+			a.closeModal("plugins")
+			a.SetFocus(a.table)
+			return nil
+		}
+		return event
+	})
+}
+
+// executePlugin runs a plugin command with the current resource context
+func (a *App) executePlugin(name string, plugin config.PluginConfig) {
+	row, _ := a.table.GetSelection()
+	if row <= 0 {
+		a.flashMsg("No resource selected for plugin", true)
+		return
+	}
+
+	// Build plugin context from selected resource
+	a.mx.RLock()
+	ns := a.currentNamespace
+	a.mx.RUnlock()
+
+	// Get resource name from table
+	resourceName := ""
+	resourceNs := ns
+	if a.table.GetColumnCount() > 1 {
+		cell0 := a.table.GetCell(row, 0)
+		cell1 := a.table.GetCell(row, 1)
+		if cell0 != nil && cell1 != nil {
+			resourceNs = cell0.Text
+			resourceName = cell1.Text
+		}
+	}
+
+	ctx := &config.PluginContext{
+		Namespace: resourceNs,
+		Name:      resourceName,
+		Context:   a.getCurrentContext(),
+	}
+
+	if plugin.Confirm {
+		expandedArgs := plugin.ExpandArgs(ctx)
+		cmdStr := plugin.Command + " " + strings.Join(expandedArgs, " ")
+		modal := tview.NewModal().
+			SetText(fmt.Sprintf("Run plugin '%s'?\n\n%s", name, cmdStr)).
+			AddButtons([]string{"Cancel", "Execute"}).
+			SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+				a.closeModal("plugin-confirm")
+				a.SetFocus(a.table)
+				if buttonLabel == "Execute" {
+					go a.runPlugin(name, plugin, ctx)
+				}
+			})
+		a.showModal("plugin-confirm", modal, true)
+		return
+	}
+
+	go a.runPlugin(name, plugin, ctx)
+}
+
+// runPlugin executes a plugin command
+func (a *App) runPlugin(name string, plugin config.PluginConfig, ctx *config.PluginContext) {
+	if plugin.Background {
+		a.flashMsg(fmt.Sprintf("Running plugin '%s' in background...", name), false)
+		if err := plugin.Execute(context.Background(), ctx); err != nil {
+			a.flashMsg(fmt.Sprintf("Plugin '%s' error: %v", name, err), true)
+		}
+		return
+	}
+
+	// Foreground execution - suspend TUI
+	a.flashMsg(fmt.Sprintf("Running plugin '%s'...", name), false)
+	a.Suspend(func() {
+		if err := plugin.Execute(context.Background(), ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "Plugin '%s' error: %v\n", name, err)
+		}
+	})
+	a.requestSync()
+	a.refresh()
+}
+
+// getCurrentContext returns the current k8s context name
+func (a *App) getCurrentContext() string {
+	if a.k8s == nil {
+		return ""
+	}
+	ctxName, _, _, err := a.k8s.GetContextInfo()
+	if err != nil {
+		return ""
+	}
+	return ctxName
 }

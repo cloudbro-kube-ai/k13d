@@ -90,6 +90,9 @@ var commands = []struct {
 	{"health", "status", "Show cluster health", "action"},
 	{"context", "ctx", "Switch context", "action"},
 	{"help", "?", "Show help", "action"},
+	{"model", "models", "Switch AI model", "action"},
+	{"alias", "aliases", "Show command aliases", "action"},
+	{"plugins", "plugin", "Show plugins", "action"},
 }
 
 // App is the main TUI application with k9s-style stability patterns
@@ -149,6 +152,8 @@ type App struct {
 	stopping    int32 // 1 when Stop() is called (set immediately, before tview processes)
 	hasToolCall int32 // 1 if there's a pending tool call (atomic for lock-free check)
 	needsSync   int32 // 1 when a full terminal sync is needed (namespace/resource switch)
+	lastAIDraw  int64 // Unix nanos of last AI streaming draw (throttle rapid updates)
+	lastSync    int64 // Unix nanos of last screen.Sync() (for periodic safety sync)
 	cancelFn    context.CancelFunc
 	cancelLock  sync.Mutex
 
@@ -167,6 +172,11 @@ type App struct {
 
 	// Test mode flags
 	skipBriefing bool // Skip briefing panel in test mode to prevent pulse animation blocking
+
+	// Extensibility configs (k9s pattern)
+	customAliases *config.AliasConfig // User-defined resource aliases
+	viewsConfig   *config.ViewConfig  // Per-resource view settings (sort defaults)
+	plugins       *config.PluginsFile // Plugin definitions
 
 	// RBAC authorization (Teleport-inspired)
 	tuiRole    string // TUI user role (default: "admin" for backward compatibility)
@@ -234,6 +244,17 @@ func NewAppWithNamespace(initialNamespace string) *App {
 		cmdHistoryIdx:       -1, // Not browsing history
 		pendingToolApproval: make(chan bool, 1),
 		logger:              logger,
+	}
+
+	// Load extensibility configs (k9s pattern: aliases, views, plugins)
+	if aliases, err := config.LoadAliases(); err == nil {
+		app.customAliases = aliases
+	}
+	if views, err := config.LoadViews(); err == nil {
+		app.viewsConfig = views
+	}
+	if plugins, err := config.LoadPlugins(); err == nil {
+		app.plugins = plugins
 	}
 
 	app.setupUI()
@@ -491,9 +512,16 @@ type PendingDecision struct {
 
 // askAI sends a question to the AI and displays the response
 func (a *App) askAI(question string) {
+	// Preserve existing conversation history
+	existingText := a.aiPanel.GetText(false)
+	historyPrefix := ""
+	if strings.TrimSpace(existingText) != "" {
+		historyPrefix = existingText + "\n\n[gray]────────────────────────────────[white]\n\n"
+	}
+
 	// Show loading state
 	a.QueueUpdateDraw(func() {
-		a.aiPanel.SetText(fmt.Sprintf("[yellow]Question:[white] %s\n\n[gray]Thinking...", question))
+		a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Question:[white] %s\n\n[gray]Thinking...", question))
 	})
 
 	// Get current context
@@ -534,7 +562,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 	// Call AI
 	if a.aiClient == nil || !a.aiClient.IsReady() {
 		a.QueueUpdateDraw(func() {
-			a.aiPanel.SetText(fmt.Sprintf("[yellow]Q:[white] %s\n\n[red]AI is not available.[white]\n\nConfigure LLM in config file:\n[gray]~/.kube-ai-dashboard/config.yaml", question))
+			a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[red]AI is not available.[white]\n\nConfigure LLM in config file:\n[gray]~/.kube-ai-dashboard/config.yaml", question))
 		})
 		return
 	}
@@ -546,14 +574,21 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 	if a.aiClient.SupportsTools() {
 		// Use agentic mode with tool calling
 		a.QueueUpdateDraw(func() {
-			a.aiPanel.SetText(fmt.Sprintf("[yellow]Q:[white] %s\n\n[cyan]🤖 Agentic Mode[white] - AI can execute kubectl commands\n\n[gray]Thinking...", question))
+			a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[cyan]🤖 Agentic Mode[white] - AI can execute kubectl commands\n\n[gray]Thinking...", question))
 		})
 
 		err = a.aiClient.AskWithTools(ctx, prompt, func(chunk string) {
 			fullResponse.WriteString(chunk)
+			// Throttle streaming draws to reduce ghosting (50ms minimum interval)
+			now := time.Now().UnixNano()
+			last := atomic.LoadInt64(&a.lastAIDraw)
+			if now-last < 50_000_000 {
+				return // Skip this draw, next chunk will catch up
+			}
+			atomic.StoreInt64(&a.lastAIDraw, now)
 			response := fullResponse.String()
 			a.QueueUpdateDraw(func() {
-				a.aiPanel.SetText(fmt.Sprintf("[yellow]Q:[white] %s\n\n[cyan]🤖 Agentic Mode[white]\n\n[green]A:[white] %s", question, response))
+				a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[cyan]🤖 Agentic Mode[white]\n\n[green]A:[white] %s", question, response))
 			})
 		}, func(toolName string, args string) bool {
 			// Tool approval callback - kubectl-ai style Decision Required
@@ -596,6 +631,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 			// Show Decision Required UI
 			a.QueueUpdateDraw(func() {
 				var sb strings.Builder
+				sb.WriteString(historyPrefix)
 				sb.WriteString(fmt.Sprintf("[yellow]Q:[white] %s\n\n", question))
 				sb.WriteString(fullResponse.String())
 				sb.WriteString("\n\n[yellow::b]━━━ DECISION REQUIRED ━━━[white::-]\n\n")
@@ -659,16 +695,37 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 		// Fallback to regular streaming
 		err = a.aiClient.Ask(ctx, prompt, func(chunk string) {
 			fullResponse.WriteString(chunk)
+			// Throttle streaming draws to reduce ghosting (50ms minimum interval)
+			now := time.Now().UnixNano()
+			last := atomic.LoadInt64(&a.lastAIDraw)
+			if now-last < 50_000_000 {
+				return // Skip this draw, next chunk will catch up
+			}
+			atomic.StoreInt64(&a.lastAIDraw, now)
 			response := fullResponse.String()
 			a.QueueUpdateDraw(func() {
-				a.aiPanel.SetText(fmt.Sprintf("[yellow]Q:[white] %s\n\n[green]A:[white] %s", question, response))
+				a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[green]A:[white] %s", question, response))
 			})
 		})
 	}
 
+	// Ensure final response is always drawn (in case last chunk was throttled)
+	if err == nil {
+		finalResponse := fullResponse.String()
+		if finalResponse != "" {
+			a.QueueUpdateDraw(func() {
+				prefix := "[cyan]🤖 Agentic Mode[white]\n\n"
+				if !a.aiClient.SupportsTools() {
+					prefix = ""
+				}
+				a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n%s[green]A:[white] %s", question, prefix, finalResponse))
+			})
+		}
+	}
+
 	if err != nil {
 		a.QueueUpdateDraw(func() {
-			a.aiPanel.SetText(fmt.Sprintf("[yellow]Q:[white] %s\n\n[red]Error:[white] %v", question, err))
+			a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[red]Error:[white] %v", question, err))
 		})
 		return
 	}
@@ -857,13 +914,13 @@ func (a *App) executeAllDecisions() {
 			SetText("[red]WARNING:[white] Some commands are dangerous!\n\nAre you sure you want to execute ALL commands?").
 			AddButtons([]string{"Cancel", "Execute All"}).
 			SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-				a.pages.RemovePage("confirm-all")
+				a.closeModal("confirm-all")
 				if buttonLabel == "Execute All" {
 					go a.doExecuteAll()
 				}
 			})
 		modal.SetBackgroundColor(tcell.ColorDarkRed)
-		a.pages.AddPage("confirm-all", modal, true, true)
+		a.showModal("confirm-all", modal, true)
 	} else {
 		go a.doExecuteAll()
 	}
@@ -909,7 +966,7 @@ func (a *App) setupAutocomplete() {
 	var suggestions []string
 	var selectedIdx int
 
-	// Update hint as user types
+	// Update hint and dropdown as user types
 	a.cmdInput.SetChangedFunc(func(text string) {
 		suggestions = a.getCompletions(text)
 		selectedIdx = 0
@@ -923,8 +980,15 @@ func (a *App) setupAutocomplete() {
 			} else {
 				a.cmdHint.SetText("[gray] → " + hint)
 			}
+			// Show dropdown when 2+ matches for k9s-style autocomplete popup
+			if len(suggestions) >= 2 {
+				a.showAutocompleteDropdown(suggestions, selectedIdx)
+			} else {
+				a.hideAutocompleteDropdown()
+			}
 		} else {
 			a.cmdHint.SetText("")
+			a.hideAutocompleteDropdown()
 		}
 	})
 
@@ -944,6 +1008,7 @@ func (a *App) setupAutocomplete() {
 					a.cmdInput.SetText(selected)
 				}
 				a.cmdHint.SetText("")
+				a.hideAutocompleteDropdown()
 			}
 			return nil
 
@@ -957,6 +1022,10 @@ func (a *App) setupAutocomplete() {
 					a.cmdHint.SetText("[gray]" + remaining)
 				} else {
 					a.cmdHint.SetText("[gray] → " + hint)
+				}
+				// Update dropdown selection
+				if len(suggestions) >= 2 {
+					a.showAutocompleteDropdown(suggestions, selectedIdx)
 				}
 			}
 			return nil
@@ -974,6 +1043,10 @@ func (a *App) setupAutocomplete() {
 					a.cmdHint.SetText("[gray]" + remaining)
 				} else {
 					a.cmdHint.SetText("[gray] → " + hint)
+				}
+				// Update dropdown selection
+				if len(suggestions) >= 2 {
+					a.showAutocompleteDropdown(suggestions, selectedIdx)
 				}
 			} else if len(a.cmdHistory) > 0 {
 				// Browse command history
@@ -996,6 +1069,7 @@ func (a *App) setupAutocomplete() {
 					a.selectNamespaceByNumber(num)
 					a.cmdInput.SetText("")
 					a.cmdHint.SetText("")
+					a.hideAutocompleteDropdown()
 					a.cmdInput.SetLabel(" : ")
 					a.SetFocus(a.table)
 					return nil
@@ -1008,6 +1082,7 @@ func (a *App) setupAutocomplete() {
 			a.cmdHistoryIdx = -1
 			a.cmdInput.SetText("")
 			a.cmdHint.SetText("")
+			a.hideAutocompleteDropdown()
 			a.cmdInput.SetLabel(" : ")
 			a.handleCommand(cmd)
 			a.SetFocus(a.table)
@@ -1016,6 +1091,7 @@ func (a *App) setupAutocomplete() {
 		case tcell.KeyEsc:
 			a.cmdInput.SetText("")
 			a.cmdHint.SetText("")
+			a.hideAutocompleteDropdown()
 			a.cmdInput.SetLabel(" : ")
 			a.SetFocus(a.table)
 			return nil
@@ -1120,6 +1196,15 @@ func (a *App) getCompletions(input string) []string {
 		}
 	}
 
+	// Match custom aliases (k9s aliases.yaml pattern)
+	if a.customAliases != nil {
+		for alias, target := range a.customAliases.GetAll() {
+			if strings.HasPrefix(alias, inputLower) || strings.HasPrefix(target, inputLower) {
+				matches = append(matches, alias)
+			}
+		}
+	}
+
 	// Also match API resources from cluster (including CRDs)
 	a.mx.RLock()
 	apiResources := a.apiResources
@@ -1171,6 +1256,101 @@ func (a *App) showNamespaceHint() {
 	}
 
 	a.cmdHint.SetText(strings.Join(hints, " "))
+}
+
+// showAutocompleteDropdown shows the autocomplete dropdown as an overlay
+func (a *App) showAutocompleteDropdown(suggestions []string, selectedIdx int) {
+	a.cmdDropdown.Clear()
+
+	for _, s := range suggestions {
+		desc := ""
+		// Find description from commands list
+		for _, c := range commands {
+			if c.name == s || c.alias == s {
+				desc = fmt.Sprintf("[gray]%s", c.desc)
+				break
+			}
+		}
+		// Check custom aliases
+		if desc == "" && a.customAliases != nil {
+			if target, ok := a.customAliases.GetAll()[s]; ok {
+				desc = fmt.Sprintf("[gray]→ %s", target)
+			}
+		}
+		a.cmdDropdown.AddItem(s, desc, 0, nil)
+	}
+
+	if selectedIdx >= 0 && selectedIdx < len(suggestions) {
+		a.cmdDropdown.SetCurrentItem(selectedIdx)
+	}
+
+	// Calculate dropdown height (max 10 items + 2 border)
+	height := len(suggestions)*2 + 2 // 2 lines per item (main + secondary) + border
+	if height > 22 {
+		height = 22
+	}
+
+	// Position dropdown at bottom of screen, above command bar
+	dropdownContainer := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(nil, 0, 1, false).                // Spacer pushes to bottom
+		AddItem(a.cmdDropdown, height, 0, false). // Dropdown
+		AddItem(nil, 2, 0, false)                 // Space for status bar + cmd bar
+
+	a.pages.AddPage("autocomplete", dropdownContainer, true, true)
+	// Keep focus on command input
+	a.SetFocus(a.cmdInput)
+}
+
+// hideAutocompleteDropdown removes the autocomplete dropdown overlay
+func (a *App) hideAutocompleteDropdown() {
+	a.pages.RemovePage("autocomplete")
+}
+
+// matchPluginShortcut checks if a key event matches a plugin shortcut string
+// Supports formats: "Ctrl-X", "Shift-X", "Alt-X", "Ctrl-Shift-X", single keys like "p"
+func matchPluginShortcut(event *tcell.EventKey, shortcut string) bool {
+	hasCtrl, hasShift, hasAlt, key := config.ParseShortcut(shortcut)
+
+	// Check modifiers
+	mod := event.Modifiers()
+	if hasCtrl != (mod&tcell.ModCtrl != 0) {
+		return false
+	}
+	if hasAlt != (mod&tcell.ModAlt != 0) {
+		return false
+	}
+
+	// For shift, check if the rune is uppercase or if Shift modifier is set
+	if hasShift {
+		if mod&tcell.ModShift == 0 && !(event.Rune() >= 'A' && event.Rune() <= 'Z') {
+			return false
+		}
+	}
+
+	// Check key
+	if len(key) == 1 {
+		targetRune := rune(key[0])
+		if hasShift {
+			// Match uppercase version
+			if event.Rune() != targetRune && event.Rune() != rune(strings.ToUpper(key)[0]) {
+				return false
+			}
+		} else if hasCtrl {
+			// Ctrl+key: tcell uses KeyCtrlA = 1, etc.
+			ctrlKey := tcell.Key(targetRune - 'A' + 1)
+			if strings.ToLower(key) == strings.ToUpper(key) {
+				// Non-letter, just match rune
+				return event.Rune() == targetRune
+			}
+			lowerRune := rune(strings.ToLower(key)[0])
+			ctrlKey = tcell.Key(lowerRune - 'a' + 1)
+			return event.Key() == ctrlKey
+		} else {
+			return event.Rune() == targetRune
+		}
+	}
+
+	return true
 }
 
 // parseNamespaceNumber parses input as namespace number
@@ -1759,6 +1939,21 @@ func (a *App) setupKeybindings() {
 			a.aiBriefing() // Ctrl+I = AI-generated briefing
 			return nil
 		}
+
+		// Check plugin shortcuts for current resource (k9s plugin pattern)
+		if a.plugins != nil {
+			a.mx.RLock()
+			resource := a.currentResource
+			a.mx.RUnlock()
+
+			for name, plugin := range a.plugins.GetPluginsForScope(resource) {
+				if matchPluginShortcut(event, plugin.ShortCut) {
+					go a.executePlugin(name, plugin)
+					return nil
+				}
+			}
+		}
+
 		return event
 	})
 
@@ -2198,10 +2393,17 @@ func (a *App) Run() error {
 	// - Always clear the internal buffer to prevent ghosting artifacts
 	// - When needsSync is set (namespace/resource switch), force full terminal sync
 	//   to ensure no stale pixels remain from the previous view
+	// - Periodic safety sync every 500ms to catch any stale artifacts during rapid updates
 	a.SetBeforeDrawFunc(func(screen tcell.Screen) bool {
 		screen.Clear()
+		now := time.Now().UnixNano()
 		if atomic.CompareAndSwapInt32(&a.needsSync, 1, 0) {
 			screen.Sync()
+			atomic.StoreInt64(&a.lastSync, now)
+		} else if now-atomic.LoadInt64(&a.lastSync) > 500_000_000 {
+			// Safety net: periodic sync every 500ms during rapid updates
+			screen.Sync()
+			atomic.StoreInt64(&a.lastSync, now)
 		}
 		return false // Don't skip the draw
 	})

@@ -252,6 +252,11 @@ func (a *App) handleCommand(cmd string) {
 		a.mx.RUnlock()
 	}
 
+	// Resolve custom aliases first (k9s aliases.yaml pattern)
+	if a.customAliases != nil && resourceCmd != "" {
+		resourceCmd = a.customAliases.Resolve(resourceCmd)
+	}
+
 	// Use the resource command if found
 	if resourceCmd != "" {
 		// Use the commands list to handle all resource types dynamically
@@ -267,8 +272,12 @@ func (a *App) handleCommand(cmd string) {
 	}
 
 	// Fallback: Use the commands list for simple commands without flags
+	resolvedCmd := cmd
+	if a.customAliases != nil {
+		resolvedCmd = a.customAliases.Resolve(cmd)
+	}
 	for _, c := range commands {
-		if cmd == c.name || cmd == c.alias {
+		if resolvedCmd == c.name || resolvedCmd == c.alias || cmd == c.name || cmd == c.alias {
 			if c.category == "resource" {
 				// Use navigateTo with target namespace (deadlock-safe)
 				a.navigateTo(c.name, targetNs, "")
@@ -278,14 +287,24 @@ func (a *App) handleCommand(cmd string) {
 	}
 
 	// Handle actions
-	switch cmd {
-	case "health", "status":
+	switch {
+	case cmd == "health" || cmd == "status":
 		a.showHealth()
-	case "context", "ctx":
+	case cmd == "context" || cmd == "ctx":
 		a.showContextSwitcher()
-	case "help", "?":
+	case cmd == "help" || cmd == "?":
 		a.showHelp()
-	case "q", "quit", "exit":
+	case cmd == "alias" || cmd == "aliases":
+		a.showAliases()
+	case cmd == "plugins" || cmd == "plugin":
+		a.showPlugins()
+	case cmd == "model" || cmd == "models":
+		a.showModelSelector()
+	case strings.HasPrefix(cmd, "model "):
+		// Direct model switch: :model gpt-4o
+		modelName := strings.TrimPrefix(cmd, "model ")
+		a.switchModel(strings.TrimSpace(modelName))
+	case cmd == "q" || cmd == "quit" || cmd == "exit":
 		a.Stop()
 	}
 }
@@ -339,7 +358,7 @@ func (a *App) navigateTo(resource, namespace, filter string) {
 	a.currentResource = resource
 	a.currentNamespace = namespace
 	a.filterText = filter
-	// Reset sort when changing resources
+	// Reset sort when changing resources - apply view config defaults if available
 	a.sortColumn = -1
 	a.sortAscending = true
 	a.mx.Unlock()
@@ -352,6 +371,22 @@ func (a *App) navigateTo(resource, namespace, filter string) {
 		a.updateHeader()
 		a.updateStatusBar()
 		a.refresh()
+
+		// Apply default sort from views config after data is loaded (k9s views.yaml pattern)
+		if a.viewsConfig != nil {
+			if viewCfg := a.viewsConfig.GetViewConfig(resource); viewCfg != nil && viewCfg.SortColumn != "" {
+				a.sortByColumnName(viewCfg.SortColumn)
+				a.mx.Lock()
+				a.sortAscending = viewCfg.SortAscending
+				a.mx.Unlock()
+				a.mx.RLock()
+				filter := a.filterText
+				a.mx.RUnlock()
+				a.QueueUpdateDraw(func() {
+					a.applyFilterText(filter)
+				})
+			}
+		}
 	}()
 }
 
@@ -525,4 +560,47 @@ func parseAgeToSec(age string) int {
 		}
 	}
 	return total
+}
+
+// showAliases displays a modal listing all aliases (built-in + custom)
+func (a *App) showAliases() {
+	var sb strings.Builder
+	sb.WriteString("[cyan::b]Built-in Aliases[white::-]\n\n")
+	sb.WriteString(fmt.Sprintf("  %-20s %-20s %s\n", "ALIAS", "RESOURCE", "CATEGORY"))
+	sb.WriteString(fmt.Sprintf("  %-20s %-20s %s\n", "─────", "────────", "────────"))
+	for _, c := range commands {
+		if c.alias != "" {
+			sb.WriteString(fmt.Sprintf("  %-20s %-20s %s\n", c.alias, c.name, c.category))
+		}
+	}
+
+	if a.customAliases != nil && len(a.customAliases.GetAll()) > 0 {
+		sb.WriteString("\n[yellow::b]Custom Aliases[white::-]\n\n")
+		sb.WriteString(fmt.Sprintf("  %-20s %s\n", "ALIAS", "TARGET"))
+		sb.WriteString(fmt.Sprintf("  %-20s %s\n", "─────", "──────"))
+		for alias, target := range a.customAliases.GetAll() {
+			sb.WriteString(fmt.Sprintf("  %-20s %s\n", alias, target))
+		}
+	}
+
+	sb.WriteString("\n[gray]Config: ~/.config/k13d/aliases.yaml[white]")
+	sb.WriteString("\n[gray]Press Esc to close[white]")
+
+	aliasView := tview.NewTextView().
+		SetDynamicColors(true).
+		SetScrollable(true).
+		SetText(sb.String())
+	aliasView.SetBorder(true).SetTitle(" Aliases (Esc to close) ")
+
+	a.showModal("aliases", centered(aliasView, 70, 40), true)
+	a.SetFocus(aliasView)
+
+	aliasView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc || event.Rune() == 'q' {
+			a.closeModal("aliases")
+			a.SetFocus(a.table)
+			return nil
+		}
+		return event
+	})
 }
