@@ -47,7 +47,7 @@ func GetNetworkPoliciesView(ctx context.Context, client *k8s.Client, namespace, 
 			{Text: np.Name},
 			{Text: podSelector},
 			{Text: policyTypes},
-			{Text: formatAge(time.Since(np.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(np.CreationTimestamp.Time))},
 		})
 	}
 

@@ -24,7 +24,7 @@ func GetNamespacesView(ctx context.Context, client *k8s.Client, filter string) (
 		rows = append(rows, []TableCell{
 			{Text: ns.Name},
 			{Text: status},
-			{Text: formatAge(time.Since(ns.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(ns.CreationTimestamp.Time))},
 		})
 	}
 

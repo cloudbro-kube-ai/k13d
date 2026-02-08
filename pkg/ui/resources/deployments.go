@@ -32,7 +32,7 @@ func GetDeploymentsView(ctx context.Context, client *k8s.Client, namespace, filt
 			{Text: ready},
 			{Text: upToDate},
 			{Text: available},
-			{Text: formatAge(time.Since(dep.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(dep.CreationTimestamp.Time))},
 		})
 	}
 

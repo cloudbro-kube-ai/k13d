@@ -21,9 +21,9 @@ func GetEventsView(ctx context.Context, client *k8s.Client, namespace, filter st
 			continue
 		}
 
-		lastSeen := formatAge(time.Since(ev.LastTimestamp.Time))
+		lastSeen := FormatAge(time.Since(ev.LastTimestamp.Time))
 		if ev.LastTimestamp.IsZero() {
-			lastSeen = formatAge(time.Since(ev.EventTime.Time))
+			lastSeen = FormatAge(time.Since(ev.EventTime.Time))
 		}
 
 		rows = append(rows, []TableCell{

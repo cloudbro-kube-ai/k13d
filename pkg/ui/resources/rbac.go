@@ -23,7 +23,7 @@ func GetRolesView(ctx context.Context, client *k8s.Client, namespace, filter str
 		rows = append(rows, []TableCell{
 			{Text: r.Namespace},
 			{Text: r.Name},
-			{Text: formatAge(time.Since(r.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(r.CreationTimestamp.Time))},
 		})
 	}
 	return ResourceView{Headers: headers, Rows: rows}, nil
@@ -44,7 +44,7 @@ func GetRoleBindingsView(ctx context.Context, client *k8s.Client, namespace, fil
 			{Text: b.Namespace},
 			{Text: b.Name},
 			{Text: fmt.Sprintf("%s/%s", b.RoleRef.Kind, b.RoleRef.Name)},
-			{Text: formatAge(time.Since(b.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(b.CreationTimestamp.Time))},
 		})
 	}
 	return ResourceView{Headers: headers, Rows: rows}, nil
@@ -63,7 +63,7 @@ func GetClusterRolesView(ctx context.Context, client *k8s.Client, filter string)
 		}
 		rows = append(rows, []TableCell{
 			{Text: r.Name},
-			{Text: formatAge(time.Since(r.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(r.CreationTimestamp.Time))},
 		})
 	}
 	return ResourceView{Headers: headers, Rows: rows}, nil
@@ -83,7 +83,7 @@ func GetClusterRoleBindingsView(ctx context.Context, client *k8s.Client, filter 
 		rows = append(rows, []TableCell{
 			{Text: b.Name},
 			{Text: fmt.Sprintf("%s/%s", b.RoleRef.Kind, b.RoleRef.Name)},
-			{Text: formatAge(time.Since(b.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(b.CreationTimestamp.Time))},
 		})
 	}
 	return ResourceView{Headers: headers, Rows: rows}, nil

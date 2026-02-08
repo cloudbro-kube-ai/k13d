@@ -32,7 +32,7 @@ func GetPersistentVolumesView(ctx context.Context, client *k8s.Client, filter st
 			{Text: string(p.Status.Phase)},
 			{Text: claim},
 			{Text: p.Spec.StorageClassName},
-			{Text: formatAge(time.Since(p.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(p.CreationTimestamp.Time))},
 		})
 	}
 	return ResourceView{Headers: headers, Rows: rows}, nil
@@ -61,7 +61,7 @@ func GetPersistentVolumeClaimsView(ctx context.Context, client *k8s.Client, name
 			{Text: p.Spec.Resources.Requests.Storage().String()},
 			{Text: fmt.Sprintf("%v", p.Spec.AccessModes)},
 			{Text: storageClass},
-			{Text: formatAge(time.Since(p.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(p.CreationTimestamp.Time))},
 		})
 	}
 	return ResourceView{Headers: headers, Rows: rows}, nil
@@ -96,7 +96,7 @@ func GetStorageClassesView(ctx context.Context, client *k8s.Client, filter strin
 			{Text: reclaim},
 			{Text: binding},
 			{Text: allow},
-			{Text: formatAge(time.Since(s.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(s.CreationTimestamp.Time))},
 		})
 	}
 	return ResourceView{Headers: headers, Rows: rows}, nil

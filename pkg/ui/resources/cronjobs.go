@@ -43,7 +43,7 @@ func GetCronJobsView(ctx context.Context, client *k8s.Client, namespace, filter 
 
 		lastSchedule := "<none>"
 		if cj.Status.LastScheduleTime != nil {
-			lastSchedule = formatAge(time.Since(cj.Status.LastScheduleTime.Time))
+			lastSchedule = FormatAge(time.Since(cj.Status.LastScheduleTime.Time))
 		}
 
 		rows = append(rows, []TableCell{
@@ -53,7 +53,7 @@ func GetCronJobsView(ctx context.Context, client *k8s.Client, namespace, filter 
 			{Text: suspend, Color: suspendColor},
 			{Text: active, Color: activeColor},
 			{Text: lastSchedule},
-			{Text: formatAge(time.Since(cj.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(cj.CreationTimestamp.Time))},
 		})
 	}
 

@@ -219,6 +219,55 @@ func ParseLLMError(err error, provider string) *APIError {
 	}
 }
 
+// HTTPError is a convenience wrapper for common HTTP error responses.
+// Use this as a drop-in replacement for http.Error() calls.
+func HTTPError(w http.ResponseWriter, message string, statusCode int) {
+	WriteErrorSimple(w, statusCode, message)
+}
+
+// BadRequest writes a 400 Bad Request error response
+func BadRequest(w http.ResponseWriter, message string) {
+	WriteError(w, NewAPIError(ErrCodeBadRequest, message))
+}
+
+// Unauthorized writes a 401 Unauthorized error response
+func Unauthorized(w http.ResponseWriter, message string) {
+	WriteError(w, NewAPIError(ErrCodeUnauthorized, message))
+}
+
+// Forbidden writes a 403 Forbidden error response
+func Forbidden(w http.ResponseWriter, message string) {
+	WriteError(w, NewAPIError(ErrCodeForbidden, message))
+}
+
+// NotFound writes a 404 Not Found error response
+func NotFound(w http.ResponseWriter, message string) {
+	WriteError(w, NewAPIError(ErrCodeNotFound, message))
+}
+
+// InternalError writes a 500 Internal Server Error response
+func InternalError(w http.ResponseWriter, message string) {
+	WriteError(w, NewAPIError(ErrCodeInternalError, message))
+}
+
+// K8sError writes an error response for Kubernetes API errors
+func K8sError(w http.ResponseWriter, err error) {
+	WriteError(w, ParseK8sError(err))
+}
+
+// LLMError writes an error response for LLM API errors
+func LLMError(w http.ResponseWriter, err error, provider string) {
+	WriteError(w, ParseLLMError(err, provider))
+}
+
+// MethodNotAllowed writes a 405 Method Not Allowed response
+func MethodNotAllowed(w http.ResponseWriter, allowedMethods ...string) {
+	if len(allowedMethods) > 0 {
+		w.Header().Set("Allow", strings.Join(allowedMethods, ", "))
+	}
+	WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
+}
+
 // FriendlyErrorMessage returns a user-friendly error message for display
 func FriendlyErrorMessage(err error) string {
 	if err == nil {

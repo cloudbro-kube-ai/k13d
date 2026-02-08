@@ -57,7 +57,7 @@ func GetJobsView(ctx context.Context, client *k8s.Client, namespace, filter stri
 			{Text: job.Name},
 			{Text: completionsStr, Color: color},
 			{Text: duration},
-			{Text: formatAge(time.Since(job.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(job.CreationTimestamp.Time))},
 		})
 	}
 

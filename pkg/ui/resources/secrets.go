@@ -26,7 +26,7 @@ func GetSecretsView(ctx context.Context, client *k8s.Client, namespace, filter s
 			{Text: s.Name},
 			{Text: string(s.Type)},
 			{Text: fmt.Sprintf("%d", len(s.Data))},
-			{Text: formatAge(time.Since(s.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(s.CreationTimestamp.Time))},
 		})
 	}
 

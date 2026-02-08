@@ -38,7 +38,7 @@ func GetIngressesView(ctx context.Context, client *k8s.Client, namespace, filter
 			{Text: class},
 			{Text: address},
 			{Text: "80, 443"},
-			{Text: formatAge(time.Since(ing.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(ing.CreationTimestamp.Time))},
 		})
 	}
 

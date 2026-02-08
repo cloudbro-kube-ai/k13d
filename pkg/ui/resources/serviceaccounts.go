@@ -24,7 +24,7 @@ func GetServiceAccountsView(ctx context.Context, client *k8s.Client, namespace, 
 			{Text: s.Namespace},
 			{Text: s.Name},
 			{Text: fmt.Sprintf("%d", len(s.Secrets))},
-			{Text: formatAge(time.Since(s.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(s.CreationTimestamp.Time))},
 		})
 	}
 	return ResourceView{Headers: headers, Rows: rows}, nil

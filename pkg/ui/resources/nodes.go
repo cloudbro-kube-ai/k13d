@@ -49,7 +49,7 @@ func GetNodesView(ctx context.Context, client *k8s.Client, filter string) (Resou
 			{Text: n.Status.NodeInfo.KubeletVersion},
 			{Text: cpu},
 			{Text: mem},
-			{Text: formatAge(time.Since(n.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(n.CreationTimestamp.Time))},
 		})
 	}
 

@@ -60,19 +60,9 @@ func GetPodsView(ctx context.Context, client *k8s.Client, namespace, filter stri
 			{Text: fmt.Sprintf("%d", restarts)},
 			{Text: cpu},
 			{Text: mem},
-			{Text: formatAge(time.Since(p.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(p.CreationTimestamp.Time))},
 		})
 	}
 
 	return ResourceView{Headers: headers, Rows: rows}, nil
-}
-
-func formatAge(dur time.Duration) string {
-	if dur.Hours() > 24 {
-		return fmt.Sprintf("%dd", int(dur.Hours()/24))
-	} else if dur.Hours() > 1 {
-		return fmt.Sprintf("%dh", int(dur.Hours()))
-	} else {
-		return fmt.Sprintf("%dm", int(dur.Minutes()))
-	}
 }

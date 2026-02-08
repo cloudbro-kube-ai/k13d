@@ -25,7 +25,7 @@ func GetConfigMapsView(ctx context.Context, client *k8s.Client, namespace, filte
 			{Text: cm.Namespace},
 			{Text: cm.Name},
 			{Text: fmt.Sprintf("%d", len(cm.Data))},
-			{Text: formatAge(time.Since(cm.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(cm.CreationTimestamp.Time))},
 		})
 	}
 

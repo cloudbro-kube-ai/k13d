@@ -80,7 +80,7 @@ func GetHPAView(ctx context.Context, client *k8s.Client, namespace, filter strin
 			{Text: minPods},
 			{Text: maxPods},
 			{Text: replicas, Color: replicasColor},
-			{Text: formatAge(time.Since(hpa.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(hpa.CreationTimestamp.Time))},
 		})
 	}
 

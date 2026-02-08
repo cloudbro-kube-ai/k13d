@@ -28,7 +28,7 @@ func GetStatefulSetsView(ctx context.Context, client *k8s.Client, namespace, fil
 			{Text: sts.Namespace},
 			{Text: sts.Name},
 			{Text: ready},
-			{Text: formatAge(time.Since(sts.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(sts.CreationTimestamp.Time))},
 		})
 	}
 

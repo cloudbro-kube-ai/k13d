@@ -58,7 +58,7 @@ func GetDaemonSetsView(ctx context.Context, client *k8s.Client, namespace, filte
 			{Text: upToDate},
 			{Text: available},
 			{Text: nodeSelector},
-			{Text: formatAge(time.Since(ds.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(ds.CreationTimestamp.Time))},
 		})
 	}
 

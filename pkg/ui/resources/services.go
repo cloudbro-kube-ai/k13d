@@ -42,7 +42,7 @@ func GetServicesView(ctx context.Context, client *k8s.Client, namespace, filter 
 			{Text: svc.Spec.ClusterIP},
 			{Text: externalIP},
 			{Text: strings.Join(ports, ",")},
-			{Text: formatAge(time.Since(svc.CreationTimestamp.Time))},
+			{Text: FormatAge(time.Since(svc.CreationTimestamp.Time))},
 		})
 	}
 
