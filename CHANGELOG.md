@@ -5,6 +5,39 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2026-02-08
+
+### Added
+- **Unified Command Classification**: New safety classification system for consistent tool approval
+  - `pkg/ai/safety/classifier.go` - Unified command classifier using AST parsing
+  - `pkg/ai/safety/enforcer.go` - Policy-based approval enforcement
+  - Detects piped commands, chained commands, and file redirects
+  - 27 comprehensive tests for classifier and enforcer
+
+- **Tool Approval Policy Configuration**: Configurable approval behavior
+  - `ToolApprovalPolicy` in config with AutoApproveReadOnly, BlockDangerous options
+  - BlockedPatterns for regex-based command blocking
+  - Configurable timeout for approval requests
+
+- **Frontend Modular Structure**: Foundation for index.html refactoring
+  - `scripts/build-frontend.go` - CSS/JS bundler for Go embed compatibility
+  - `css/variables.css` - CSS custom properties (Tokyo Night theme)
+  - `css/base.css` - Reset, typography, utility classes
+  - `js/core/utils.js` - Common helper functions with IIFE pattern
+  - `make frontend-build` target in Makefile
+
+### Fixed
+- **Security**: Piped/chained commands now properly require approval
+  - Previously `kubectl get | xargs rm` was auto-approved as "read-only"
+  - Now correctly identified as requiring approval
+- **Classification**: Unknown commands now require approval (were wrongly auto-approved)
+- **Interactive Commands**: `kubectl exec` now classified as "interactive" (was "write")
+
+### Changed
+- **classifyCommand()**: Now uses unified `safety.Classify()` internally
+  - Provides consistent classification across TUI and Web UI
+  - Backward compatible API
+
 ## [0.6.2] - 2026-02-08
 
 ### Added
