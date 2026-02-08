@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/safety"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -292,35 +293,17 @@ func formatLabelSelector(selector *metav1.LabelSelector) string {
 // Command Classification
 // ==========================================
 
-// classifyCommand categorizes a kubectl command for safety
+// classifyCommand categorizes a kubectl command for safety.
+// This function now uses the unified safety.Classifier which provides
+// consistent classification across TUI and Web UI, including detection
+// of piped commands, chained commands, and file redirects.
+//
+// Deprecated: For new code, use safety.Classify() directly for full classification
+// or safety.Evaluate() for policy-based decisions.
 func classifyCommand(command string) string {
-	command = strings.ToLower(command)
-
-	// Dangerous commands
-	dangerousPatterns := []string{
-		"delete", "--force", "--grace-period=0", "drain", "cordon",
-		"taint", "--all", "replace --force", "rollout undo",
-	}
-	for _, pattern := range dangerousPatterns {
-		if strings.Contains(command, pattern) {
-			return "dangerous"
-		}
-	}
-
-	// Write commands
-	writePatterns := []string{
-		"create", "apply", "patch", "edit", "scale", "set",
-		"label", "annotate", "expose", "run", "exec", "cp",
-		"rollout restart", "rollout pause", "rollout resume",
-	}
-	for _, pattern := range writePatterns {
-		if strings.Contains(command, pattern) {
-			return "write"
-		}
-	}
-
-	// Read-only commands
-	return "read-only"
+	// Use unified classifier from safety package
+	classification := safety.Classify(command)
+	return classification.Category
 }
 
 // ==========================================

@@ -37,6 +37,36 @@ type AuthorizationConfig struct {
 	Impersonation ImpersonationConfigYAML `yaml:"impersonation" json:"impersonation"`
 	// JWT configuration
 	JWT JWTConfigYAML `yaml:"jwt" json:"jwt"`
+	// ToolApproval controls AI tool execution approval policy
+	ToolApproval ToolApprovalPolicy `yaml:"tool_approval" json:"tool_approval"`
+}
+
+// ToolApprovalPolicy controls which AI tool commands require user approval
+type ToolApprovalPolicy struct {
+	// AutoApproveReadOnly allows read-only commands without approval (default: true)
+	AutoApproveReadOnly bool `yaml:"auto_approve_read_only" json:"auto_approve_read_only"`
+	// RequireApprovalForWrite requires approval for write operations (default: true)
+	RequireApprovalForWrite bool `yaml:"require_approval_for_write" json:"require_approval_for_write"`
+	// RequireApprovalForUnknown requires approval for unknown/unrecognized commands (default: true)
+	RequireApprovalForUnknown bool `yaml:"require_approval_for_unknown" json:"require_approval_for_unknown"`
+	// BlockDangerous blocks dangerous commands entirely instead of allowing with approval (default: false)
+	BlockDangerous bool `yaml:"block_dangerous" json:"block_dangerous"`
+	// BlockedPatterns is a list of regex patterns that should be blocked entirely
+	BlockedPatterns []string `yaml:"blocked_patterns" json:"blocked_patterns"`
+	// ApprovalTimeoutSeconds is the timeout for waiting for user approval (default: 60)
+	ApprovalTimeoutSeconds int `yaml:"approval_timeout_seconds" json:"approval_timeout_seconds"`
+}
+
+// DefaultToolApprovalPolicy returns the default tool approval policy
+func DefaultToolApprovalPolicy() ToolApprovalPolicy {
+	return ToolApprovalPolicy{
+		AutoApproveReadOnly:       true,
+		RequireApprovalForWrite:   true,
+		RequireApprovalForUnknown: true,
+		BlockDangerous:            false,
+		BlockedPatterns:           []string{},
+		ApprovalTimeoutSeconds:    60,
+	}
 }
 
 // RoleConfig defines a custom RBAC role in config
@@ -276,6 +306,7 @@ func NewDefaultConfig() *Config {
 				TokenDuration: "1h",
 				RefreshWindow: "15m",
 			},
+			ToolApproval: DefaultToolApprovalPolicy(),
 		},
 		Language:     "ko",
 		BeginnerMode: true,
