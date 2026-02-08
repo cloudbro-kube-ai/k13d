@@ -1,0 +1,56 @@
+# Gitleaks configuration for k13d
+# https://github.com/gitleaks/gitleaks
+
+title = "k13d gitleaks config"
+
+[extend]
+# Extend the default gitleaks config
+useDefault = true
+
+# Paths to ignore during scanning
+[allowlist]
+paths = [
+    '''go\.sum$''',
+    '''go\.mod$''',
+    '''\.github/workflows/.*\.yml$''',
+    '''vendor/.*''',
+    '''testdata/.*''',
+    '''tests/mocks/.*''',
+    '''docs/.*\.md$''',
+    '''benchmarks/tasks/.*\.yaml$''',
+]
+
+# Regex patterns that are allowed (false positives)
+regexes = [
+    # Example placeholder tokens in documentation
+    '''sk-[a-zA-Z0-9]{20,}.*example''',
+    '''your-api-key-here''',
+    '''<your-.*-here>''',
+    '''YOUR_.*_KEY''',
+    '''REPLACE_WITH_.*''',
+]
+
+# Additional custom rules for k13d-specific patterns
+[[rules]]
+id = "k13d-llm-api-key"
+description = "Potential LLM API key (OpenAI, Anthropic, etc.)"
+regex = '''(?i)(openai|anthropic|claude|ollama)[-_]?(api)?[-_]?(key|token|secret)\s*[:=]\s*['\"]?([a-zA-Z0-9-_]{20,})['\"]?'''
+keywords = ["openai", "anthropic", "claude", "api_key", "api-key"]
+
+[[rules]]
+id = "k13d-kubeconfig-token"
+description = "Kubernetes bearer token"
+regex = '''bearer\s+[a-zA-Z0-9\-_.]{50,}'''
+keywords = ["bearer"]
+
+# Stopwords - commonly flagged but not secrets
+[[rules.allowlist]]
+stopwords = [
+    "example",
+    "placeholder",
+    "dummy",
+    "test",
+    "fake",
+    "mock",
+    "sample",
+]
