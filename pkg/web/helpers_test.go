@@ -793,7 +793,7 @@ func TestClassifyCommand(t *testing.T) {
 		// The unified classifier correctly identifies these as "write"
 		// because they modify state but don't have dangerous patterns
 		{"kubectl delete pod nginx", "write"},
-		{"kubectl delete namespace production", "dangerous"}, // namespace deletion is promoted to dangerous
+		{"kubectl delete namespace production", "dangerous"},   // namespace deletion is promoted to dangerous
 		{"kubectl delete pod nginx --grace-period=0", "write"}, // grace-period=0 alone doesn't trigger dangerous (needs --force too)
 		{"kubectl rollout undo deployment nginx", "write"},
 		{"kubectl apply -f deployment.yaml", "write"},
