@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture - k13d Documentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/sidebar.css">
+    <link rel="stylesheet" href="../css/content.css">
+    <link rel="stylesheet" href="../css/code.css">
+</head>
+<body>
+    <header class="top-nav">
+        <div class="nav-left">
+            <a href="../index.html" class="logo">
+                <span class="logo-text">k13d</span>
+                <span class="version-badge">v0.6.3</span>
+            </a>
+        </div>
+        <div class="nav-center">
+            <nav class="main-nav">
+                <a href="../index.html" class="nav-link active">Docs</a>
+                <a href="api-reference.html" class="nav-link">API</a>
+                <a href="benchmarks.html" class="nav-link">Benchmarks</a>
+                <a href="https://github.com/cloudbro-kube-ai/k13d" class="nav-link" target="_blank">GitHub</a>
+            </nav>
+        </div>
+        <div class="nav-right">
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="Search docs..." autocomplete="off">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </div>
+            <button class="theme-toggle" id="theme-toggle" title="Toggle theme">
+                <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="5"></circle>
+                </svg>
+                <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar" id="sidebar">
+            <nav class="sidebar-nav">
+                <div class="sidebar-section">
+                    <h3 class="sidebar-heading">Getting Started</h3>
+                    <ul class="sidebar-links">
+                        <li><a href="../index.html">Overview</a></li>
+                        <li><a href="installation.html">Installation</a></li>
+                        <li><a href="quick-start.html">Quick Start</a></li>
+                        <li><a href="configuration.html">Configuration</a></li>
+                    </ul>
+                </div>
+                <div class="sidebar-section">
+                    <h3 class="sidebar-heading">Concepts</h3>
+                    <ul class="sidebar-links">
+                        <li><a href="architecture.html" class="active">Architecture</a></li>
+                        <li><a href="ai-assistant.html">AI Assistant</a></li>
+                        <li><a href="mcp-integration.html">MCP Integration</a></li>
+                        <li><a href="security.html">Security & RBAC</a></li>
+                    </ul>
+                </div>
+                <div class="sidebar-section">
+                    <h3 class="sidebar-heading">User Guide</h3>
+                    <ul class="sidebar-links">
+                        <li><a href="tui-guide.html">TUI Dashboard</a></li>
+                        <li><a href="web-guide.html">Web Dashboard</a></li>
+                        <li><a href="keyboard-shortcuts.html">Keyboard Shortcuts</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <article class="content">
+                <h1>Architecture</h1>
+                <p class="lead">
+                    k13d is designed as a modular, extensible Kubernetes management tool
+                    with a clean separation between UI, AI, and Kubernetes layers.
+                </p>
+
+                <!-- High-Level Architecture -->
+                <section class="section" id="overview">
+                    <h2>High-Level Overview</h2>
+                    <div class="architecture-diagram">
+<pre class="ascii-diagram">
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              k13d                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌────────────────┐    ┌────────────────┐    ┌────────────────┐        │
+│  │   TUI Layer    │    │   Web Layer    │    │  AI/Agent Layer │        │
+│  │  (tview/tcell) │    │  (net/http)    │    │  (OpenAI API)   │        │
+│  └───────┬────────┘    └───────┬────────┘    └───────┬────────┘        │
+│          │                     │                     │                  │
+│          └─────────────────────┼─────────────────────┘                  │
+│                                │                                         │
+│                    ┌───────────▼───────────┐                            │
+│                    │   Core Services       │                            │
+│                    │  • K8s Client         │                            │
+│                    │  • Config Manager     │                            │
+│                    │  • Session Manager    │                            │
+│                    │  • Audit Logger       │                            │
+│                    └───────────┬───────────┘                            │
+│                                │                                         │
+├────────────────────────────────┼────────────────────────────────────────┤
+│                                │                                         │
+│  ┌──────────────┐  ┌──────────▼──────────┐  ┌──────────────┐           │
+│  │   SQLite DB  │  │   Kubernetes API    │  │  LLM Provider │           │
+│  │  (Audit Log) │  │   (client-go)       │  │  (OpenAI/...)│           │
+│  └──────────────┘  └─────────────────────┘  └──────────────┘           │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+</pre>
+                    </div>
+                </section>
+
+                <!-- Component Details -->
+                <section class="section" id="components">
+                    <h2>Core Components</h2>
+
+                    <h3>TUI Layer (pkg/ui)</h3>
+                    <p>
+                        Built with <a href="https://github.com/rivo/tview" target="_blank">tview</a>
+                        and <a href="https://github.com/gdamore/tcell" target="_blank">tcell</a>,
+                        the TUI provides a k9s-style terminal interface.
+                    </p>
+                    <ul>
+                        <li><code>app.go</code> - Main application lifecycle and state</li>
+                        <li><code>dashboard.go</code> - Resource table and navigation</li>
+                        <li><code>assistant.go</code> - AI chat panel integration</li>
+                        <li><code>resources/</code> - Resource-specific view generators</li>
+                    </ul>
+
+                    <h3>Web Layer (pkg/web)</h3>
+                    <p>
+                        Standard library <code>net/http</code> server with embedded static files
+                        using Go's <code>embed</code> package.
+                    </p>
+                    <ul>
+                        <li><code>server.go</code> - HTTP server and routing</li>
+                        <li><code>auth.go</code> - Authentication (local, LDAP, token)</li>
+                        <li><code>authz.go</code> - RBAC authorization</li>
+                        <li><code>handlers_*.go</code> - API endpoint handlers</li>
+                        <li><code>static/</code> - Embedded frontend assets</li>
+                    </ul>
+
+                    <h3>AI Layer (pkg/ai)</h3>
+                    <p>
+                        Agentic AI system with tool calling capabilities inspired by
+                        <a href="https://github.com/GoogleCloudPlatform/kubectl-ai" target="_blank">kubectl-ai</a>.
+                    </p>
+                    <ul>
+                        <li><code>client.go</code> - OpenAI-compatible HTTP client</li>
+                        <li><code>agent/</code> - Agent loop implementation</li>
+                        <li><code>providers/</code> - LLM provider adapters</li>
+                        <li><code>tools/</code> - Tool definitions (kubectl, bash)</li>
+                        <li><code>safety/</code> - Command classification and safety</li>
+                    </ul>
+
+                    <h3>Kubernetes Layer (pkg/k8s)</h3>
+                    <p>
+                        Wrapper around <code>client-go</code> providing a simplified interface
+                        for resource operations.
+                    </p>
+                    <ul>
+                        <li><code>client.go</code> - Main client with all resource methods</li>
+                        <li><code>interface.go</code> - Reader/Writer interfaces</li>
+                        <li><code>metrics.go</code> - Metrics API integration</li>
+                    </ul>
+                </section>
+
+                <!-- Data Flow -->
+                <section class="section" id="data-flow">
+                    <h2>Data Flow</h2>
+                    <h3>AI Tool Execution Flow</h3>
+                    <div class="architecture-diagram">
+<pre class="ascii-diagram">
+User Input                                      Kubernetes Cluster
+    │                                                   ▲
+    ▼                                                   │
+┌────────────┐    ┌────────────┐    ┌────────────┐    │
+│  Web/TUI   │───▶│  AI Agent  │───▶│   Tools    │────┘
+│  Interface │    │   Loop     │    │  Registry  │
+└────────────┘    └─────┬──────┘    └────────────┘
+                        │
+                        ▼
+              ┌─────────────────┐
+              │  Tool Approval  │  (if dangerous)
+              │    Callback     │
+              └─────────────────┘
+                        │
+                        ▼
+              ┌─────────────────┐
+              │   Audit Log     │
+              │   (SQLite)      │
+              └─────────────────┘
+</pre>
+                    </div>
+
+                    <h3>Authentication Flow</h3>
+                    <div class="architecture-diagram">
+<pre class="ascii-diagram">
+┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+│  Client  │───▶│  Auth    │───▶│  RBAC    │───▶│ Resource │
+│ Request  │    │ Handler  │    │  Check   │    │  Access  │
+└──────────┘    └────┬─────┘    └────┬─────┘    └──────────┘
+                     │               │
+                     ▼               ▼
+              ┌──────────┐    ┌──────────┐
+              │  JWT     │    │ Decision │
+              │  Token   │    │  Logged  │
+              └──────────┘    └──────────┘
+</pre>
+                    </div>
+                </section>
+
+                <!-- Directory Structure -->
+                <section class="section" id="directory">
+                    <h2>Directory Structure</h2>
+                    <pre><code class="language-bash">k13d/
+├── cmd/
+│   └── kube-ai-dashboard-cli/   <span class="comment"># Main entry point</span>
+├── pkg/
+│   ├── ai/                      <span class="comment"># AI client & agent</span>
+│   │   ├── agent/               <span class="comment"># Agent loop</span>
+│   │   ├── providers/           <span class="comment"># LLM adapters</span>
+│   │   ├── tools/               <span class="comment"># kubectl, bash</span>
+│   │   └── safety/              <span class="comment"># Command classification</span>
+│   ├── ui/                      <span class="comment"># TUI components</span>
+│   │   └── resources/           <span class="comment"># Resource views</span>
+│   ├── web/                     <span class="comment"># Web server</span>
+│   │   └── static/              <span class="comment"># Frontend assets</span>
+│   ├── k8s/                     <span class="comment"># Kubernetes client</span>
+│   ├── config/                  <span class="comment"># Configuration</span>
+│   ├── db/                      <span class="comment"># SQLite database</span>
+│   ├── mcp/                     <span class="comment"># MCP integration</span>
+│   └── i18n/                    <span class="comment"># Translations</span>
+├── deploy/                      <span class="comment"># Deployment configs</span>
+│   ├── docker/                  <span class="comment"># Docker files</span>
+│   └── kubernetes/              <span class="comment"># K8s manifests</span>
+├── docs/                        <span class="comment"># Documentation</span>
+└── benchmarks/                  <span class="comment"># AI benchmarks</span></code></pre>
+                </section>
+
+                <!-- Key Patterns -->
+                <section class="section" id="patterns">
+                    <h2>Key Design Patterns</h2>
+
+                    <h3>Single Binary Distribution</h3>
+                    <p>
+                        k13d compiles to a single binary with all assets embedded using
+                        Go's <code>embed</code> package. No external dependencies at runtime.
+                    </p>
+
+                    <h3>CGO-Free</h3>
+                    <p>
+                        Uses <code>modernc.org/sqlite</code> for a pure Go SQLite implementation,
+                        enabling easy cross-compilation without CGO.
+                    </p>
+
+                    <h3>Provider Abstraction</h3>
+                    <p>
+                        LLM providers implement a common interface, allowing easy switching
+                        between OpenAI, Ollama, Azure, Anthropic, and embedded models.
+                    </p>
+
+                    <h3>Tool Registry</h3>
+                    <p>
+                        Tools are registered in a central registry with metadata for
+                        function calling. MCP servers dynamically add tools at runtime.
+                    </p>
+                </section>
+
+                <nav class="content-nav">
+                    <div class="nav-prev">
+                        <a href="configuration.html">
+                            <span class="nav-label">Previous</span>
+                            <span class="nav-title">← Configuration</span>
+                        </a>
+                    </div>
+                    <div class="nav-next">
+                        <a href="ai-assistant.html">
+                            <span class="nav-label">Next</span>
+                            <span class="nav-title">AI Assistant →</span>
+                        </a>
+                    </div>
+                </nav>
+            </article>
+
+            <aside class="toc">
+                <h4>On this page</h4>
+                <ul>
+                    <li><a href="#overview">High-Level Overview</a></li>
+                    <li><a href="#components">Core Components</a></li>
+                    <li><a href="#data-flow">Data Flow</a></li>
+                    <li><a href="#directory">Directory Structure</a></li>
+                    <li><a href="#patterns">Key Design Patterns</a></li>
+                </ul>
+            </aside>
+        </main>
+    </div>
+
+    <div class="search-modal" id="search-modal">
+        <div class="search-results" id="search-results"></div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script src="../js/search.js"></script>
+
+    <style>
+        .ascii-diagram {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            line-height: 1.4;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            overflow-x: auto;
+            color: var(--accent-cyan);
+        }
+        .architecture-diagram {
+            margin: var(--spacing-lg) 0;
+        }
+    </style>
+</body>
+</html>
