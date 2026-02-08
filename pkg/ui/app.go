@@ -1303,7 +1303,16 @@ func (a *App) showAutocompleteDropdown(suggestions []string, selectedIdx int) {
 
 // hideAutocompleteDropdown removes the autocomplete dropdown overlay
 func (a *App) hideAutocompleteDropdown() {
+	if !a.pages.HasPage("autocomplete") {
+		return
+	}
+	// Check focus BEFORE RemovePage: tview's Pages.RemovePage triggers Focus()
+	// delegation which moves focus to the table, stealing it from cmdInput.
+	restoreFocus := a.cmdInput.HasFocus()
 	a.pages.RemovePage("autocomplete")
+	if restoreFocus {
+		a.SetFocus(a.cmdInput)
+	}
 }
 
 // matchPluginShortcut checks if a key event matches a plugin shortcut string
