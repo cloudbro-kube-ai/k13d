@@ -147,6 +147,7 @@ nav:
     - API Reference: reference/api.md
     - CLI Reference: reference/cli.md
     - Environment Variables: reference/env-vars.md
+    - Teleport Comparison: reference/teleport-comparison.md
     - Changelog: reference/changelog.md
 
 # Extra
