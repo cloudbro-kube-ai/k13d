@@ -70,6 +70,8 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     needs: test
+    # Skip if Docker Hub credentials are not configured
+    if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
