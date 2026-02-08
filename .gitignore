@@ -40,3 +40,6 @@ package-lock.json
 # Benchmark results
 .build/
 k13d_test
+
+# MkDocs build output
+docs-site/site/
