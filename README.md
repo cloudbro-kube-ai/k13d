@@ -45,6 +45,19 @@
 
 ## Quick Start
 
+### macOS Gatekeeper
+
+macOS may block the binary with *"Apple could not verify k13d is free of malware"*. To fix:
+
+```bash
+# Option 1: Remove quarantine attribute
+xattr -d com.apple.quarantine ./k13d
+xattr -d com.apple.provenance ./k13d
+
+# Option 2: Allow in System Settings
+# Go to System Settings > Privacy & Security > click "Allow Anyway"
+```
+
 ### TUI Mode (Default)
 
 ```bash

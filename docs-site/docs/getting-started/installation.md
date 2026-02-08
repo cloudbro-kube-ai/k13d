@@ -156,6 +156,28 @@ make build-offline
 
 ---
 
+## macOS Gatekeeper
+
+!!! warning "macOS Security Warning"
+    macOS may block the binary with *"Apple could not verify k13d is free of malware"*.
+
+### Option 1: Remove Quarantine Attribute
+
+```bash
+# Remove quarantine and provenance attributes
+xattr -d com.apple.quarantine ./k13d
+xattr -d com.apple.provenance ./k13d
+```
+
+### Option 2: Allow in System Settings
+
+1. Open **System Settings** → **Privacy & Security**
+2. Scroll down to find the blocked app message
+3. Click **"Allow Anyway"**
+4. Run the binary again and click **"Open"** when prompted
+
+---
+
 ## Verifying Installation
 
 ```bash
