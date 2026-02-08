@@ -5,6 +5,47 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Screen Ghosting Fix**: Eliminated TUI visual artifacts during modal transitions and AI streaming
+  - Added 50ms draw throttle for AI streaming callbacks to prevent goroutine contention
+  - Added periodic 500ms safety sync in `SetBeforeDrawFunc` as repaint safety net
+  - Created `showModal()`/`closeModal()` helpers that trigger `screen.Sync()` on every modal transition
+
+- **AI Chat History Preservation**: Previous Q&A sessions are now preserved when asking new questions
+  - Chat history separated by visual dividers (`────────────────────────────`)
+  - Scroll up to review previous conversations within the same session
+
+- **Autocomplete Dropdown**: k9s-style command autocomplete with dropdown overlay
+  - Shows dropdown when 2+ completions match typed text
+  - Navigate with Up/Down arrows, select with Tab/Enter, dismiss with Esc
+  - Single-match dimmed hint text preserved for quick completion
+
+- **Configurable Resource Aliases** (`aliases.yaml`): Custom command shortcuts
+  - Define short aliases for resource commands (e.g., `pp` → `pods`)
+  - `:alias` command to view all configured aliases
+  - Aliases merged with built-in commands in autocomplete
+
+- **Per-Resource Sort Defaults** (`views.yaml`): Remember sort preferences per resource
+  - Configure default sort column and direction per resource type
+  - Applied automatically when navigating to a resource
+
+- **LLM Model Switching** (`:model` command): Switch AI models from TUI
+  - `:model` shows modal with all configured model profiles
+  - `:model <name>` switches directly to a named profile
+  - Active model marked with `*` in selector
+
+- **Plugin System TUI Integration**: External plugins now accessible from TUI
+  - Plugins loaded from `plugins.yaml` on startup
+  - Plugin keyboard shortcuts active on matching resource scopes
+  - `:plugins` command shows all available plugins
+  - Supports foreground (with TUI suspend) and background execution
+
+### Changed
+- All 37+ `AddPage()`/`RemovePage()` calls migrated to `showModal()`/`closeModal()` helpers
+- Command handling refactored to support prefix matching (`:model <name>`)
+
 ## [0.6.3] - 2026-02-08
 
 ### Added

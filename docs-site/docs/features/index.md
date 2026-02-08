@@ -21,6 +21,11 @@ k13d provides comprehensive Kubernetes management with both TUI and Web interfac
 | **Audit Logging** | ✅ | ✅ | Track all operations |
 | **i18n** | ✅ | ✅ | Multi-language support |
 | **Vim Navigation** | ✅ | ❌ | h/j/k/l keybindings |
+| **Autocomplete** | ✅ | ❌ | Dropdown command suggestions |
+| **Resource Aliases** | ✅ | ❌ | Custom command shortcuts |
+| **Plugin System** | ✅ | ❌ | External tool integration |
+| **Model Switching** | ✅ | ✅ | Switch AI model profiles |
+| **Chat History** | ✅ | ✅ | Preserved Q&A sessions |
 
 ## Quick Links
 

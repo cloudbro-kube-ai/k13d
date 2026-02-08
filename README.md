@@ -161,9 +161,18 @@ kubectl port-forward -n k13d svc/k13d 8080:80
 
 ## Configuration
 
-### Config File
+### Config Files
 
-`~/.config/k13d/config.yaml`:
+```
+~/.config/k13d/
+├── config.yaml       # Main configuration (LLM, language, model profiles)
+├── hotkeys.yaml      # Custom hotkey bindings
+├── plugins.yaml      # External plugins
+├── aliases.yaml      # Resource command aliases (e.g., pp → pods)
+└── views.yaml        # Per-resource sort defaults
+```
+
+`config.yaml`:
 
 ```yaml
 llm:
@@ -215,6 +224,14 @@ enable_audit: true
 | `/` | Filter | `S` | Scale |
 | `Tab` | AI panel | `R` | Restart |
 | `?` | Help | `q` | Quit |
+
+### Management Commands
+
+| Command | Action |
+|---------|--------|
+| `:alias` | View resource aliases |
+| `:model` | Switch AI model profile |
+| `:plugins` | View available plugins |
 
 ---
 

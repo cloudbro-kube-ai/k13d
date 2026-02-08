@@ -153,9 +153,70 @@ Use `/pattern/` for regex matching:
 /^api-.*/
 ```
 
+## Management Commands
+
+In addition to resource commands, k13d provides management commands:
+
+| Command | Action |
+|---------|--------|
+| `:alias` | Show all configured resource aliases |
+| `:model` | Open model selector (switch AI model profile) |
+| `:model <name>` | Switch directly to a named model profile |
+| `:plugins` | Show all available plugins with shortcuts |
+| `:health` or `:status` | Check system health |
+| `:audit` | View audit log |
+
+### Resource Aliases
+
+You can define custom aliases in `~/.config/k13d/aliases.yaml`:
+
+```yaml
+aliases:
+  pp: pods
+  dep: deployments
+  sec: secrets
+  cm: configmaps
+```
+
+After configuring, type `:pp` to navigate to Pods. Use `:alias` to see all active aliases (both built-in and custom).
+
+### Per-Resource Sort Defaults
+
+Configure default sort column and direction in `~/.config/k13d/views.yaml`:
+
+```yaml
+views:
+  pods:
+    sortColumn: AGE
+    sortAscending: false
+  deployments:
+    sortColumn: NAME
+    sortAscending: true
+```
+
+Sort preferences are applied automatically when navigating to the resource.
+
+## Autocomplete
+
+When typing a command (`:po`, `:dep`, etc.), k13d shows autocomplete suggestions:
+
+- **Single match**: Dimmed hint text appears next to cursor (press `Tab` to accept)
+- **Multiple matches**: Dropdown overlay appears above the command bar
+  - **Up/Down arrows**: Navigate suggestions
+  - **Tab or Enter**: Select suggestion
+  - **Esc**: Dismiss dropdown
+  - Custom aliases are included in autocomplete results
+
 ## AI Assistant Synergy
 
 The AI Assistant is fully integrated with the Dashboard.
+
+### Chat History
+
+AI conversations are preserved within each session. When you ask a new question:
+- Previous Q&A is kept above, separated by a visual divider
+- Scroll up in the AI panel to review past conversations
+- History is maintained for the duration of the TUI session
 
 ### Asking Questions
 
@@ -200,6 +261,32 @@ The AI automatically analyzes suggested commands:
 
 If the AI mentions a resource, you can jump to it using the command bar:
 - `:view pods nginx-bot-123 my-namespace`
+
+## LLM Model Switching
+
+Switch between configured AI model profiles directly from the TUI:
+
+- **`:model`** - Opens a modal showing all configured profiles. The active model is marked with `*`.
+- **`:model gpt-4o`** - Switch directly to a named model profile.
+
+Model profiles are defined in `~/.config/k13d/config.yaml` under the `models` section. See the [Configuration Guide](CONFIGURATION_GUIDE.md) for details.
+
+## Plugins
+
+k13d supports external plugins that extend the TUI with custom commands.
+
+### Using Plugins
+
+- **`:plugins`** - Show all configured plugins with their shortcuts and scopes.
+- Plugin keyboard shortcuts are active when viewing matching resource types.
+- **Foreground plugins** temporarily suspend the TUI and restore it after the command finishes.
+- **Background plugins** run silently without interrupting your workflow.
+
+### Plugin Configuration
+
+Plugins are defined in `~/.config/k13d/plugins.yaml`. See the [Configuration Guide](CONFIGURATION_GUIDE.md) for details.
+
+---
 
 ## Web UI Mode
 
@@ -315,6 +402,14 @@ Ctrl+U/F: Page      s: Shell (pods)       A: Execute all
 :: Command          R: Restart
 ?: Help             F: Port-forward
 q: Quit             t: Trigger (cj)
+
+Commands             Management
+─────────────────    ─────────────────
+:pods, :po           :alias  - Show aliases
+:deploy              :model  - Switch AI model
+:svc                 :plugins - Show plugins
+:ns                  :health - System status
+:ctx                 :audit  - Audit log
 ```
 
 ---

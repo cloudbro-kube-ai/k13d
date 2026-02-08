@@ -7,11 +7,22 @@ All notable changes to k13d are documented here.
 ### Added
 - Documentation site with MkDocs Material
 - GitHub Pages deployment
+- **Screen Ghosting Fix**: 50ms draw throttle for AI streaming + 500ms periodic safety sync + modal transition sync
+- **AI Chat History Preservation**: Previous Q&A sessions preserved with visual dividers within TUI session
+- **Autocomplete Dropdown**: k9s-style dropdown overlay when 2+ command completions match
+- **Configurable Resource Aliases** (`aliases.yaml`): Custom command shortcuts (e.g., `pp` → `pods`) with `:alias` viewer
+- **Per-Resource Sort Defaults** (`views.yaml`): Remember sort column and direction per resource type
+- **LLM Model Switching**: `:model` command to switch AI model profiles, `:model <name>` for direct switch
+- **Plugin System TUI Integration**: Plugins from `plugins.yaml` now accessible via keyboard shortcuts and `:plugins` command
 
 ### Changed
+- All modal open/close calls migrated to `showModal()`/`closeModal()` helpers with screen sync
+- Command handling refactored for prefix matching (`:model <name>`)
 - Improved error handling consistency
 
 ### Fixed
+- TUI screen ghosting (visual artifacts) during modal transitions and AI streaming
+- AI chat history lost when new response arrives
 - Minor bug fixes
 
 ---

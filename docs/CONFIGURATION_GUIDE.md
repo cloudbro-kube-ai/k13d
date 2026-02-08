@@ -9,6 +9,8 @@
 ├── config.yaml       # Main configuration
 ├── hotkeys.yaml      # Custom hotkey bindings
 ├── plugins.yaml      # External plugins
+├── aliases.yaml      # Resource command aliases
+├── views.yaml        # Per-resource view settings (sort defaults)
 └── skins/
     └── default.yaml  # Theme customization
 ```
@@ -290,6 +292,96 @@ plugins:
 | `args` | Command arguments | `[]` |
 | `background` | Run in background | `false` |
 | `confirm` | Require confirmation | `false` |
+
+---
+
+## Resource Aliases (aliases.yaml)
+
+Define custom command aliases to quickly navigate to resources. Aliases are resolved before built-in commands and appear in autocomplete suggestions.
+
+### Example aliases.yaml
+
+```yaml
+aliases:
+  pp: pods
+  dep: deployments
+  sec: secrets
+  cm: configmaps
+  ing: ingresses
+  ep: endpoints
+  pf: portforwards
+```
+
+### How It Works
+
+- Type `:pp` to navigate to Pods (resolved to `pods` via alias)
+- Built-in aliases (like `:po` → `pods`) are always available
+- Custom aliases override built-in ones if there's a conflict
+- Use `:alias` in the TUI to view all active aliases
+
+---
+
+## Per-Resource View Settings (views.yaml)
+
+Configure default sort column and direction for each resource type. Settings are applied automatically when navigating to the resource.
+
+### Example views.yaml
+
+```yaml
+views:
+  pods:
+    sortColumn: AGE
+    sortAscending: false
+  deployments:
+    sortColumn: NAME
+    sortAscending: true
+  services:
+    sortColumn: TYPE
+    sortAscending: true
+  nodes:
+    sortColumn: STATUS
+    sortAscending: true
+```
+
+### View Options
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `sortColumn` | Column name to sort by (e.g., `AGE`, `NAME`, `STATUS`) | None (default order) |
+| `sortAscending` | Sort direction (`true` = ascending, `false` = descending) | `true` |
+
+**Note:** Column names must match the exact header text displayed in the TUI table (case-sensitive).
+
+---
+
+## Model Profiles
+
+Configure multiple LLM model profiles in `config.yaml` and switch between them using the `:model` command in the TUI.
+
+```yaml
+# Multiple model profiles
+models:
+  - name: gpt-4
+    provider: openai
+    model: gpt-4
+  - name: gpt-4o
+    provider: openai
+    model: gpt-4o
+  - name: local-llama
+    provider: ollama
+    model: llama3.2
+    endpoint: http://localhost:11434
+
+# Active model profile
+active_model: gpt-4
+```
+
+### TUI Model Commands
+
+| Command | Action |
+|---------|--------|
+| `:model` | Show model selector modal |
+| `:model gpt-4o` | Switch directly to named profile |
 
 ---
 

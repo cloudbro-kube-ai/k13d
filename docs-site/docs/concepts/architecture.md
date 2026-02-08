@@ -63,7 +63,7 @@ k13d is designed as a single-binary application that combines a TUI dashboard, w
 | **ai/sessions** | `pkg/ai/sessions/` | Conversation session management |
 | **k8s** | `pkg/k8s/` | Kubernetes client wrapper |
 | **db** | `pkg/db/` | SQLite audit logging |
-| **config** | `pkg/config/` | Configuration management |
+| **config** | `pkg/config/` | Configuration management (config, aliases, views, hotkeys, plugins) |
 | **i18n** | `pkg/i18n/` | Internationalization |
 
 ## AI Agent State Machine

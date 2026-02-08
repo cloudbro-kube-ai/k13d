@@ -161,23 +161,32 @@ type Agent struct {
 
 ```
 App (tview.Application)
-├── Header          # 클러스터/네임스페이스 정보
-├── Dashboard       # 리소스 테이블
+├── Header            # 클러스터/네임스페이스 정보
+├── Dashboard         # 리소스 테이블
 │   └── ResourceView
 │       ├── PodView
 │       ├── DeploymentView
 │       ├── ServiceView
 │       └── ... (20+ views)
-├── AIPanel         # AI 어시스턴트
-│   ├── OutputView  # 응답 스트리밍
-│   ├── InputField  # 질문 입력
-│   └── StatusBar   # 상태 표시
-├── CommandBar      # 명령어 입력 (:pods, /filter)
-└── HelpModal       # 도움말
+├── AIPanel           # AI 어시스턴트 (히스토리 보존)
+│   ├── OutputView    # 응답 스트리밍 (50ms 드로우 스로틀)
+│   ├── InputField    # 질문 입력
+│   └── StatusBar     # 상태 표시
+├── CommandBar        # 명령어 입력 (:pods, /filter)
+├── AutocompleteDropdown  # 자동완성 드롭다운 오버레이
+├── HelpModal         # 도움말
+└── Config (startup)  # 설정 로드
+    ├── customAliases   # aliases.yaml (커스텀 리소스 별칭)
+    ├── viewsConfig     # views.yaml (리소스별 정렬 기본값)
+    └── plugins         # plugins.yaml (외부 플러그인 키바인딩)
 
 AIPanel implements:
   - agent.AgentListener (이벤트 수신)
   - agent.AgentApprovalHandler (승인 처리)
+
+Modal Management:
+  - showModal() / closeModal() 헬퍼로 통합
+  - 모든 모달 전환 시 screen.Sync() 호출 (잔상 방지)
 ```
 
 ### Key Bindings
@@ -196,6 +205,17 @@ AIPanel implements:
 | `r` | Restart |
 | `Ctrl+D` | Delete |
 | `?` | 도움말 |
+
+### Management Commands
+
+| 명령어 | 기능 |
+|--------|------|
+| `:alias` | 리소스 별칭 보기 |
+| `:model` | AI 모델 프로필 선택 |
+| `:model <name>` | 특정 모델로 전환 |
+| `:plugins` | 플러그인 목록 보기 |
+| `:health` | 시스템 상태 확인 |
+| `:audit` | 감사 로그 보기 |
 
 ---
 
@@ -344,7 +364,19 @@ $XDG_CONFIG_HOME/k13d/config.yaml
 # 기본값: ~/.config/k13d/config.yaml
 ```
 
-### Config Structure
+### Config Files
+
+```
+$XDG_CONFIG_HOME/k13d/
+├── config.yaml       # 메인 설정 (LLM, 언어, 모델 프로필)
+├── hotkeys.yaml      # 커스텀 단축키
+├── plugins.yaml      # 외부 플러그인
+├── aliases.yaml      # 리소스 명령어 별칭 (pp → pods)
+├── views.yaml        # 리소스별 정렬 기본값
+└── skins/            # 테마
+```
+
+### config.yaml Structure
 
 ```yaml
 # LLM 설정
@@ -354,7 +386,7 @@ llm:
   endpoint: ""              # 커스텀 엔드포인트 (ollama 등)
   api_key: ""               # 또는 환경변수 사용
 
-# 다중 모델 프로필
+# 다중 모델 프로필 (TUI에서 :model 로 전환 가능)
 models:
   - name: gpt-4
     provider: openai
@@ -379,6 +411,27 @@ language: ko                # en, ko, zh, ja
 enable_audit: true
 beginner_mode: false
 report_path: ~/k13d-reports
+```
+
+### aliases.yaml Structure
+
+```yaml
+aliases:
+  pp: pods
+  dep: deployments
+  sec: secrets
+```
+
+### views.yaml Structure
+
+```yaml
+views:
+  pods:
+    sortColumn: AGE
+    sortAscending: false
+  deployments:
+    sortColumn: NAME
+    sortAscending: true
 ```
 
 ### Environment Variables

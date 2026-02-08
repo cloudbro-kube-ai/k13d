@@ -354,11 +354,30 @@ k13d uses MCP to extend AI capabilities with external tools. See `/docs/MCP_GUID
 | `r` | Rollout restart |
 | `Ctrl+D` | Delete (with confirmation) |
 
+### Management Commands
+| Command | Action |
+|---------|--------|
+| `:alias` | View all resource aliases |
+| `:model` | Switch AI model profile |
+| `:model <name>` | Switch to named profile directly |
+| `:plugins` | View available plugins |
+
 ### AI Assistant Features
 - **Context Awareness**: Receives YAML, events, and logs
 - **Tool Use**: kubectl, bash, MCP integration
 - **Safety**: Dangerous commands require approval
 - **Beginner Mode**: Simple explanations for complex resources
+- **Chat History**: Previous Q&A preserved within session
+- **Model Switching**: Switch LLM profiles via `:model` command
+
+### Configuration Files
+| File | Purpose |
+|------|---------|
+| `config.yaml` | Main config (LLM, language, model profiles) |
+| `hotkeys.yaml` | Custom hotkey bindings |
+| `plugins.yaml` | External plugins |
+| `aliases.yaml` | Resource command aliases |
+| `views.yaml` | Per-resource view settings (sort defaults) |
 
 ---
 

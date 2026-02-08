@@ -171,6 +171,43 @@ beginner_mode: true
 
 ---
 
+## Chat History (TUI)
+
+In the TUI, AI conversations are preserved within each session:
+
+- Previous Q&A sessions are kept above the latest response
+- Separated by visual dividers (`────────────────────────────`)
+- Scroll up in the AI panel to review past conversations
+- History maintained for the duration of the TUI session
+
+---
+
+## Model Switching (TUI)
+
+Switch between configured AI model profiles directly from the TUI:
+
+| Command | Action |
+|---------|--------|
+| `:model` | Opens a modal with all configured profiles (active marked with `*`) |
+| `:model gpt-4o` | Switch directly to a named profile |
+
+Model profiles are defined in `~/.config/k13d/config.yaml`:
+
+```yaml
+models:
+  - name: gpt-4
+    provider: openai
+    model: gpt-4
+  - name: local-llama
+    provider: ollama
+    model: llama3.2
+    endpoint: http://localhost:11434
+
+active_model: gpt-4
+```
+
+---
+
 ## Streaming Responses
 
 Real-time response streaming for immediate feedback.

@@ -146,6 +146,67 @@ Zero external dependencies - built-in llama.cpp.
 
 ---
 
+## Configuration Files
+
+k13d uses multiple configuration files in `~/.config/k13d/`:
+
+| File | Purpose |
+|------|---------|
+| `config.yaml` | Main configuration (LLM, language, model profiles) |
+| `hotkeys.yaml` | Custom hotkey bindings |
+| `plugins.yaml` | External plugin definitions |
+| `aliases.yaml` | Resource command aliases |
+| `views.yaml` | Per-resource view settings (sort defaults) |
+
+### Resource Aliases (aliases.yaml)
+
+Define custom command shortcuts:
+
+```yaml title="~/.config/k13d/aliases.yaml"
+aliases:
+  pp: pods
+  dep: deployments
+  sec: secrets
+  cm: configmaps
+```
+
+Type `:pp` to navigate to Pods. Use `:alias` in TUI to view all aliases.
+
+### Per-Resource Sort Defaults (views.yaml)
+
+Configure default sort column and direction per resource:
+
+```yaml title="~/.config/k13d/views.yaml"
+views:
+  pods:
+    sortColumn: AGE
+    sortAscending: false
+  deployments:
+    sortColumn: NAME
+    sortAscending: true
+```
+
+Sort preferences are applied automatically when navigating to each resource.
+
+### Model Profiles
+
+Configure multiple LLM profiles and switch between them with `:model`:
+
+```yaml title="~/.config/k13d/config.yaml"
+models:
+  - name: gpt-4
+    provider: openai
+    model: gpt-4
+  - name: local-llama
+    provider: ollama
+    model: llama3.2
+    endpoint: http://localhost:11434
+
+active_model: gpt-4
+```
+
+---
+
 ## Environment Variables
 
 All configuration can be overridden with environment variables:

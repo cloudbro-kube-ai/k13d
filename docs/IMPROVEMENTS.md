@@ -87,13 +87,13 @@ Compared k13d with k9s and web UI to identify missing features and UI/UX improve
 - **Current**: Hardcoded keybindings
 - **k9s**: YAML-based hotkey definitions
 - **Implementation**: Load from config file
-- **Status**: TODO
+- **Status**: DONE (hotkeys.yaml support)
 
 ### 13. Column Sorting
 - **Current**: Fixed order
 - **k9s**: Click header to sort
 - **Implementation**: Add sort by column
-- **Status**: TODO
+- **Status**: DONE (sort with visual indicators + per-resource defaults via views.yaml)
 
 ### 14. Resource Age Formatting
 - **Current**: Simple duration (1h, 2d)
@@ -138,26 +138,35 @@ Compared k13d with k9s and web UI to identify missing features and UI/UX improve
 Phase 1 (v0.2.0):
 [x] Autocomplete with hints
 [x] AI input field
-[ ] Filter/Search (/)
-[ ] Delete with confirmation
+[x] Filter/Search (/)
+[x] Delete with confirmation
 
 Phase 2 (v0.3.0):
-[ ] Pod exec/shell
-[ ] Port forwarding
-[ ] Context switching
-[ ] Health status
+[x] Pod exec/shell
+[x] Port forwarding
+[x] Context switching
+[x] Health status
 
 Phase 3 (v0.4.0):
 [ ] Live watching
-[ ] YAML highlighting
+[x] YAML highlighting
 [ ] Metrics display
-[ ] Streaming logs
+[x] Streaming logs
 
 Phase 4 (v0.5.0):
-[ ] Hotkey customization
-[ ] Audit viewer
-[ ] Column sorting
+[x] Hotkey customization
+[x] Audit viewer
+[x] Column sorting
 [ ] Breadcrumbs
+
+Phase 5 (v0.7.0 - Current):
+[x] Screen ghosting fix (draw throttle + safety sync)
+[x] AI chat history preservation
+[x] Autocomplete dropdown overlay
+[x] Resource aliases (aliases.yaml)
+[x] Per-resource sort defaults (views.yaml)
+[x] LLM model switching (:model command)
+[x] Plugin system TUI integration
 ```
 
 ---

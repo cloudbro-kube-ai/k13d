@@ -100,6 +100,41 @@ k13d --context production
 | `:ns kube-system` | Switch to kube-system |
 | `:ns all` | View all namespaces |
 
+### Management Commands
+
+| Command | Description |
+|---------|-------------|
+| `:alias` | View all configured resource aliases |
+| `:model` | Open AI model profile selector |
+| `:model <name>` | Switch directly to a named model profile |
+| `:plugins` | View available plugins with shortcuts |
+| `:health` | Check system status |
+| `:audit` | View audit log |
+
+## Autocomplete
+
+When typing a command, k13d provides smart autocomplete:
+
+- **Single match**: Dimmed hint text appears (press ++tab++ to accept)
+- **Multiple matches**: Dropdown overlay appears above command bar
+  - ++arrow-up++ / ++arrow-down++ to navigate
+  - ++tab++ or ++enter++ to select
+  - ++esc++ to dismiss
+  - Custom aliases from `aliases.yaml` included in results
+
+## Resource Aliases
+
+Define custom command shortcuts in `~/.config/k13d/aliases.yaml`:
+
+```yaml
+aliases:
+  pp: pods
+  dep: deployments
+  sec: secrets
+```
+
+Type `:pp` to navigate to Pods. Use `:alias` to see all aliases.
+
 ## Resource Actions
 
 ### General Actions
@@ -145,6 +180,18 @@ k13d --context production
 2. Type your question
 3. Press ++enter++ to send
 4. View the response in the output area
+
+### Chat History
+
+Previous Q&A sessions are preserved within each TUI session. Scroll up to review past conversations, separated by visual dividers.
+
+### Model Switching
+
+Switch AI models on the fly:
+
+- Type `:model` to see all configured profiles
+- Type `:model gpt-4o` to switch directly
+- Active model marked with `*` in selector
 
 ### AI Actions on Resources
 
@@ -205,6 +252,27 @@ The status bar shows:
 - Active filter
 - Kubernetes context
 - Current namespace
+
+## Plugins
+
+Extend k13d with external tools via `~/.config/k13d/plugins.yaml`.
+
+- Type `:plugins` to see all available plugins
+- Plugin shortcuts are active when viewing matching resource types
+- Foreground plugins suspend TUI; background plugins run silently
+
+## Per-Resource Sort Defaults
+
+Configure default sort in `~/.config/k13d/views.yaml`:
+
+```yaml
+views:
+  pods:
+    sortColumn: AGE
+    sortAscending: false
+```
+
+Applied automatically when navigating to the resource.
 
 ## Customization
 
@@ -279,6 +347,9 @@ ui:
 :svc          # services
 :deploy       # deployments
 :no           # nodes
+:alias        # view all aliases
+:model        # switch AI model
+:plugins      # view plugins
 ```
 
 ### 3. Filter + Action

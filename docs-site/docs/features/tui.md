@@ -72,6 +72,28 @@ Different resource views with real-time updates.
 | `:events` | View events |
 | `:helm` | View Helm releases |
 
+### Management Commands
+
+| Command | Description |
+|---------|-------------|
+| `:alias` | View all configured resource aliases |
+| `:model` | Open AI model profile selector |
+| `:model <name>` | Switch directly to a named model profile |
+| `:plugins` | View available plugins with shortcuts |
+| `:health` or `:status` | Check system status |
+| `:audit` | View audit log |
+
+### Autocomplete
+
+When typing a command, k13d shows autocomplete suggestions:
+
+- **Single match**: Dimmed hint text appears next to cursor (press `Tab` to complete)
+- **Multiple matches**: Dropdown overlay appears above the command bar
+  - **Up/Down arrows**: Navigate suggestions
+  - **Tab or Enter**: Select suggestion
+  - **Esc**: Dismiss dropdown
+  - Custom aliases from `aliases.yaml` are included in suggestions
+
 ---
 
 ## Resource Actions
@@ -129,6 +151,15 @@ The AI panel is accessible by pressing `Tab` to switch focus.
 | **Output View** | Streaming AI responses |
 | **Tool Execution** | AI executes kubectl/bash commands |
 | **Context** | AI receives selected resource context |
+| **Chat History** | Previous Q&A preserved within session |
+
+### Chat History
+
+AI conversations are preserved within each TUI session:
+
+- Previous Q&A sessions are kept above, separated by visual dividers (`────────────────────────────`)
+- Scroll up in the AI panel to review past conversations
+- History is maintained for the duration of the TUI session
 
 ### AI Conversation
 
@@ -139,6 +170,15 @@ Example AI interaction showing:
 - Natural language question input
 - AI response with analysis
 - Tool execution results
+
+### LLM Model Switching
+
+Switch between configured AI model profiles:
+
+- **`:model`** - Opens a modal showing all profiles (active marked with `*`)
+- **`:model gpt-4o`** - Switch directly to a named profile
+
+Model profiles are defined in `~/.config/k13d/config.yaml` under the `models` section.
 
 ### AI Actions
 
@@ -178,6 +218,67 @@ When AI needs to execute a command, an approval dialog appears:
 /^nginx         # Starts with "nginx"
 /nginx$         # Ends with "nginx"
 /nginx.*running # Regex pattern
+```
+
+---
+
+## Resource Aliases
+
+Define custom command aliases in `~/.config/k13d/aliases.yaml`:
+
+```yaml
+aliases:
+  pp: pods
+  dep: deployments
+  sec: secrets
+  cm: configmaps
+```
+
+- Type `:pp` to navigate to Pods (resolved via alias)
+- Use `:alias` to view all active aliases (built-in + custom)
+- Custom aliases appear in autocomplete suggestions
+
+---
+
+## Per-Resource Sort Defaults
+
+Configure default sort column and direction in `~/.config/k13d/views.yaml`:
+
+```yaml
+views:
+  pods:
+    sortColumn: AGE
+    sortAscending: false
+  deployments:
+    sortColumn: NAME
+    sortAscending: true
+```
+
+Sort preferences are applied automatically when navigating to each resource type.
+
+---
+
+## Plugin System
+
+k13d supports external plugins that extend the TUI with custom commands.
+
+- **`:plugins`** - Show all configured plugins with shortcuts and scopes
+- Plugin keyboard shortcuts are active when viewing matching resource types
+- **Foreground plugins**: Temporarily suspend TUI, restore after command finishes
+- **Background plugins**: Run silently without interrupting workflow
+
+Configure in `~/.config/k13d/plugins.yaml`:
+
+```yaml
+plugins:
+  dive:
+    shortCut: Ctrl-I
+    description: "Dive into container image layers"
+    scopes: [pods]
+    command: dive
+    args: [$IMAGE]
+    background: false
+    confirm: false
 ```
 
 ---
@@ -326,6 +427,11 @@ k13d TUI uses a Tokyo Night-inspired color scheme:
 │   Shift+L      AI Analyze                │
 │   h            Explain This              │
 │   Y/N          Approve/Reject            │
+│                                          │
+│ Commands                                 │
+│   :alias       View aliases              │
+│   :model       Switch AI model           │
+│   :plugins     View plugins              │
 │                                          │
 │ Global                                   │
 │   ?            Help                      │

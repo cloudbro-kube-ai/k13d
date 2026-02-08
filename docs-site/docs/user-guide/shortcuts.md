@@ -115,6 +115,17 @@ Complete reference for k13d keyboard shortcuts in both TUI and Web interfaces.
 | `:q` | Quit |
 | `:help` | Show help |
 
+### Management Commands
+
+| Command | Description |
+|---------|-------------|
+| `:alias` | View all resource aliases (built-in + custom) |
+| `:model` | Open AI model profile selector |
+| `:model <name>` | Switch directly to named model profile |
+| `:plugins` | View available plugins with shortcuts |
+| `:health` | Check system status |
+| `:audit` | View audit log |
+
 ### Filter Mode
 
 | Key | Action |
@@ -241,6 +252,11 @@ keybindings:
 │   Shift+L      AI Analyze                │
 │   h            Explain This              │
 │   Y/N          Approve/Reject            │
+│                                          │
+│ Commands                                 │
+│   :alias       View aliases              │
+│   :model       Switch AI model           │
+│   :plugins     View plugins              │
 │                                          │
 │ Global                                   │
 │   ?            Help                      │

@@ -84,6 +84,10 @@ It bridges the gap between traditional cluster management and natural language A
 | **Deep Resource Support** | Pods, Deployments, Services, Nodes, Events, ConfigMaps, Secrets, RBAC... |
 | **Interactive Operations** | Scale, Restart, Port-Forward, Delete with confirmation |
 | **Real-time Updates** | Live resource watching with instant refresh |
+| **Smart Autocomplete** | Dropdown suggestions with custom alias support |
+| **Plugin System** | Extend TUI with external tools via `plugins.yaml` |
+| **Model Switching** | Switch AI profiles on the fly with `:model` command |
+| **Configurable Aliases** | Custom resource shortcuts via `aliases.yaml` |
 
 ### :globe_with_meridians: Web Dashboard
 
