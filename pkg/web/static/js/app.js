@@ -1011,7 +1011,7 @@
                 document.getElementById('debug-toggle').style.background = 'var(--accent-purple)';
             }
             loadNamespaces();
-            loadData();
+            showOverviewPanel();
             setupResizeHandle();
             setupHealthCheck();
             // Initialize auto-refresh
@@ -1452,8 +1452,9 @@
             });
             document.getElementById('panel-title').textContent = resource.charAt(0).toUpperCase() + resource.slice(1);
 
-            // Hide topology view and show main panel
+            // Hide topology view and overview panel, show main panel
             hideTopologyView();
+            hideOverviewPanel();
 
             // Update active column filters display
             updateActiveColumnFiltersDisplay();
@@ -4315,7 +4316,8 @@ ${escapeHtml(execInfo.result)}</div>
             const topoNav = document.querySelector('.nav-item[data-resource="topology"]');
             if (topoNav) topoNav.classList.add('active');
 
-            // Hide main panel, show topology
+            // Hide main panel and overview, show topology
+            hideOverviewPanel();
             const mainPanel = document.querySelector('.main-panel');
             const topoContainer = document.getElementById('topology-container');
             if (mainPanel) mainPanel.style.display = 'none';
@@ -9224,6 +9226,87 @@ spec:
                 if (firstChild) monitoringSection.insertBefore(metricsItem, firstChild);
             }
         }, 100);
+
+        // ==========================================
+        // Cluster Overview
+        // ==========================================
+
+        async function loadClusterOverview() {
+            try {
+                const resp = await apiFetch('/api/overview');
+                if (!resp.ok) return;
+                const data = await resp.json();
+
+                // Update context badge
+                const ctxEl = document.getElementById('overview-context');
+                if (ctxEl && data.context) {
+                    ctxEl.textContent = data.context;
+                }
+
+                // Update cards
+                const nodesEl = document.getElementById('ov-nodes-ready');
+                if (nodesEl) nodesEl.textContent = `${data.nodes?.ready || 0}/${data.nodes?.total || 0}`;
+
+                const podsEl = document.getElementById('ov-pods-running');
+                if (podsEl) podsEl.textContent = `${data.pods?.running || 0}/${data.pods?.total || 0}`;
+
+                const deployEl = document.getElementById('ov-deploy-healthy');
+                if (deployEl) deployEl.textContent = `${data.deployments?.healthy || 0}/${data.deployments?.total || 0}`;
+
+                const nsEl = document.getElementById('ov-namespaces');
+                if (nsEl) nsEl.textContent = `${data.namespaces || 0}`;
+            } catch (e) {
+                console.error('Failed to load cluster overview:', e);
+            }
+        }
+
+        async function loadRecentEvents() {
+            try {
+                const resp = await apiFetch('/api/resources/events?namespace=');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const eventsEl = document.getElementById('overview-events');
+                if (!eventsEl) return;
+
+                const events = (data.items || []).slice(0, 10);
+                if (events.length === 0) {
+                    eventsEl.innerHTML = '<p class="text-muted">No recent events</p>';
+                    return;
+                }
+
+                eventsEl.innerHTML = events.map(evt => {
+                    const typeLower = (evt.type || 'normal').toLowerCase();
+                    const typeClass = typeLower === 'warning' ? 'warning' : 'normal';
+                    const msg = K13D?.Utils?.escapeHtml ? K13D.Utils.escapeHtml(evt.message || '') : (evt.message || '');
+                    return `<div class="overview-event-item ${typeClass}">
+                        <span class="event-type ${typeClass}">${evt.type || 'Normal'}</span>
+                        <span class="event-message">${msg.substring(0, 120)}${msg.length > 120 ? '...' : ''}</span>
+                        <span class="event-time">${evt.lastSeen || evt.age || ''}</span>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                console.error('Failed to load recent events:', e);
+            }
+        }
+
+        function showOverviewPanel() {
+            const overviewPanel = document.getElementById('overview-panel');
+            const mainPanel = document.getElementById('main-panel');
+            if (overviewPanel) overviewPanel.classList.add('active');
+            if (mainPanel) mainPanel.style.display = 'none';
+            hideTopologyView();
+            // Deselect all nav items
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            loadClusterOverview();
+            loadRecentEvents();
+        }
+
+        function hideOverviewPanel() {
+            const overviewPanel = document.getElementById('overview-panel');
+            const mainPanel = document.getElementById('main-panel');
+            if (overviewPanel) overviewPanel.classList.remove('active');
+            if (mainPanel) mainPanel.style.display = '';
+        }
 
         // Init
         init();

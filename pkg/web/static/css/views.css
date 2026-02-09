@@ -4739,6 +4739,209 @@
         }
 
 /* ============================================
+ * Cluster Overview Panel (Dashboard Home)
+ * ============================================ */
+
+.overview-panel {
+    padding: 24px;
+    display: none;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.overview-panel.active {
+    display: block;
+}
+
+.overview-panel .overview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.overview-panel .overview-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.overview-panel .overview-context {
+    font-size: 13px;
+    color: var(--accent-blue);
+    background: rgba(122, 162, 247, 0.1);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.overview-panel .overview-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.overview-panel .overview-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.overview-panel .overview-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.overview-panel .overview-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.overview-panel .overview-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.overview-panel .overview-card-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.overview-panel .overview-card-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.overview-sections {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 900px) {
+    .overview-sections {
+        grid-template-columns: 1fr;
+    }
+}
+
+.overview-section {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.overview-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 16px 0;
+}
+
+.overview-panel .overview-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+
+.overview-action-btn {
+    padding: 8px 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-weight: 500;
+}
+
+.overview-action-btn:hover {
+    background: var(--accent-blue);
+    color: #fff;
+    border-color: var(--accent-blue);
+}
+
+.overview-events {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.overview-event-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    font-size: 12px;
+    border-left: 3px solid var(--border-color);
+}
+
+.overview-event-item.warning {
+    border-left-color: var(--accent-yellow);
+}
+
+.overview-event-item.normal {
+    border-left-color: var(--accent-green);
+}
+
+.overview-event-item .event-type {
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    min-width: 60px;
+}
+
+.overview-event-item .event-type.warning {
+    color: var(--accent-yellow);
+}
+
+.overview-event-item .event-type.normal {
+    color: var(--accent-green);
+}
+
+.overview-event-item .event-message {
+    color: var(--text-secondary);
+    flex: 1;
+    line-height: 1.4;
+}
+
+.overview-event-item .event-time {
+    color: var(--text-secondary);
+    font-size: 11px;
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+/* ============================================
  * Light Theme Overrides
  * Override hardcoded dark colors for light mode
  * ============================================ */
