@@ -155,8 +155,13 @@ type App struct {
 	needsSync   int32 // 1 when a full terminal sync is needed (namespace/resource switch)
 	lastAIDraw  int64 // Unix nanos of last AI streaming draw (throttle rapid updates)
 	lastSync    int64 // Unix nanos of last screen.Sync() (for periodic safety sync)
-	cancelFn    context.CancelFunc
-	cancelLock  sync.Mutex
+	flashSeq    int64 // Monotonic sequence for flash messages (prevents stale clears)
+
+	// Context management (k9s pattern for graceful shutdown)
+	appCtx     context.Context    // Root application context
+	appCancel  context.CancelFunc // Cancels all operations on Stop()
+	cancelFn   context.CancelFunc // Refresh-specific cancellation
+	cancelLock sync.Mutex         // Protects cancelFn updates
 
 	// AI tool approval state (protected by aiMx)
 	aiMx                sync.RWMutex
@@ -185,13 +190,35 @@ type App struct {
 	plugins       *config.PluginsFile // Plugin definitions
 
 	// RBAC authorization (Teleport-inspired)
-	tuiRole    string // TUI user role (default: "admin" for backward compatibility)
-	authorizer TUIAuthorizer
+	tuiRole      string // TUI user role (default: "admin" for backward compatibility)
+	authorizer   TUIAuthorizer
+	warnedNoRBAC bool // True after first "no RBAC" warning has been shown
 }
 
 // TUIAuthorizer interface for RBAC authorization in TUI (decoupled from web package)
 type TUIAuthorizer interface {
 	IsAllowed(role, resource string, action string, namespace string) (bool, string)
+}
+
+// safeGo wraps goroutines with panic recovery (k9s RunE pattern)
+func (a *App) safeGo(name string, fn func()) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				a.logger.Error("goroutine panic recovered", "name", name, "error", r, "stack", string(debug.Stack()))
+				a.flashMsg(fmt.Sprintf("Internal error in %s. The operation has been recovered. Please try again or check logs for details.", name), true)
+			}
+		}()
+		fn()
+	}()
+}
+
+// getAppContext returns the root app context, falling back to Background if nil (test safety)
+func (a *App) getAppContext() context.Context {
+	if a.appCtx != nil {
+		return a.appCtx
+	}
+	return context.Background()
 }
 
 // NewApp creates a new TUI application with default (all) namespace
@@ -233,6 +260,9 @@ func NewAppWithNamespace(initialNamespace string) *App {
 		initialNamespace = ""
 	}
 
+	// Create root application context (k9s pattern for graceful shutdown)
+	appCtx, appCancel := context.WithCancel(context.Background())
+
 	app := &App{
 		Application:         tview.NewApplication(),
 		config:              cfg,
@@ -250,6 +280,8 @@ func NewAppWithNamespace(initialNamespace string) *App {
 		cmdHistoryIdx:       -1, // Not browsing history
 		pendingToolApproval: make(chan bool, 1),
 		logger:              logger,
+		appCtx:              appCtx,
+		appCancel:           appCancel,
 	}
 
 	// Load extensibility configs (k9s pattern: aliases, views, plugins)
@@ -267,10 +299,10 @@ func NewAppWithNamespace(initialNamespace string) *App {
 	app.setupKeybindings()
 
 	// Load API resources in background (for autocomplete)
-	go app.loadAPIResources()
+	app.safeGo("loadAPIResources", app.loadAPIResources)
 
 	// Load namespaces in background (for header preview)
-	go app.loadNamespaces()
+	app.safeGo("loadNamespaces", app.loadNamespaces)
 
 	return app
 }
@@ -281,7 +313,7 @@ func (a *App) loadAPIResources() {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(a.getAppContext(), 10*time.Second)
 	defer cancel()
 
 	resources, err := a.k8s.GetAPIResources(ctx)
@@ -304,7 +336,7 @@ func (a *App) loadNamespaces() {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(a.getAppContext(), 10*time.Second)
 	defer cancel()
 
 	nss, err := a.k8s.ListNamespaces(ctx)
@@ -486,7 +518,9 @@ func (a *App) setupAIInput() {
 			question := a.aiInput.GetText()
 			if question != "" {
 				a.aiInput.SetText("")
-				go a.askAI(question)
+				a.safeGo("askAI", func() {
+					a.askAI(question)
+				})
 			}
 		}
 	})
@@ -551,7 +585,7 @@ func (a *App) askAI(question string) {
 	}
 
 	// Build context for AI
-	ctx := context.Background()
+	ctx := a.getAppContext()
 	prompt := fmt.Sprintf(`User is viewing Kubernetes %s`, resource)
 	if ns != "" {
 		prompt += fmt.Sprintf(` in namespace "%s"`, ns)
@@ -890,7 +924,7 @@ func (a *App) executeDecision(idx int) {
 	})
 
 	// Refresh if it was a modifying command
-	go a.refresh()
+	a.safeGo("refresh-after-execute", a.refresh)
 }
 
 // executeAllDecisions executes all pending decisions
@@ -918,13 +952,13 @@ func (a *App) executeAllDecisions() {
 			SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 				a.closeModal("confirm-all")
 				if buttonLabel == "Execute All" {
-					go a.doExecuteAll()
+					a.safeGo("doExecuteAll", a.doExecuteAll)
 				}
 			})
 		modal.SetBackgroundColor(tcell.ColorDarkRed)
 		a.showModal("confirm-all", modal, true)
 	} else {
-		go a.doExecuteAll()
+		a.safeGo("doExecuteAll", a.doExecuteAll)
 	}
 }
 
@@ -959,7 +993,7 @@ func (a *App) doExecuteAll() {
 	})
 
 	a.flashMsg(fmt.Sprintf("Executed %d commands", len(decisions)), false)
-	go a.refresh()
+	a.safeGo("refresh-after-batch", a.refresh)
 }
 
 // setupAutocomplete configures the command input with autocomplete
@@ -1383,31 +1417,14 @@ func (a *App) requestSync() {
 
 // switchToAllNamespaces switches to all namespaces (k9s style: 0 key)
 func (a *App) switchToAllNamespaces() {
-	a.mx.Lock()
-	a.currentNamespace = ""
-	// Clear filter when switching namespace to avoid stale highlighting
-	a.filterText = ""
-	a.filterRegex = false
+	a.mx.RLock()
 	resource := a.currentResource
-	a.mx.Unlock()
-
-	// Force full terminal sync to prevent ghosting during namespace switch
-	a.requestSync()
-
-	// Clear table immediately to prevent visual artifacts
-	a.QueueUpdateDraw(func() {
-		a.table.Clear()
-		a.table.SetTitle(fmt.Sprintf(" %s - Loading... ", resource))
-		a.table.SetCell(0, 0, tview.NewTableCell("Loading...").SetTextColor(tcell.ColorYellow))
-	})
+	a.mx.RUnlock()
 
 	a.flashMsg("Switched to: all namespaces", false)
 
-	// Run async to prevent UI blocking
-	go func() {
-		a.updateHeader()
-		a.refresh()
-	}()
+	// navigateTo() handles stop-watch, state mutation, refresh, and start-watch safely
+	a.navigateTo(resource, "", "")
 }
 
 // selectNamespaceByNumber selects namespace by number (for command mode)
@@ -1416,15 +1433,11 @@ func (a *App) selectNamespaceByNumber(num int) {
 
 	if num >= len(a.namespaces) {
 		a.mx.Unlock()
-		a.flashMsg(fmt.Sprintf("Namespace %d not available (max: %d)", num, len(a.namespaces)-1), true)
+		a.flashMsg(fmt.Sprintf("Namespace #%d not found. Available namespace indices: 0-%d", num, len(a.namespaces)-1), true)
 		return
 	}
 
 	selectedNs := a.namespaces[num]
-	a.currentNamespace = selectedNs
-	// Clear filter when switching namespace to avoid stale highlighting
-	a.filterText = ""
-	a.filterRegex = false
 	nsName := selectedNs
 	if nsName == "" {
 		nsName = "all"
@@ -1437,23 +1450,10 @@ func (a *App) selectNamespaceByNumber(num int) {
 	resource := a.currentResource
 	a.mx.Unlock()
 
-	// Force full terminal sync to prevent ghosting during namespace switch
-	a.requestSync()
-
-	// Clear table immediately to prevent visual artifacts
-	a.QueueUpdateDraw(func() {
-		a.table.Clear()
-		a.table.SetTitle(fmt.Sprintf(" %s - Loading... ", resource))
-		a.table.SetCell(0, 0, tview.NewTableCell("Loading...").SetTextColor(tcell.ColorYellow))
-	})
-
 	a.flashMsg(fmt.Sprintf("Switched to namespace: %s", nsName), false)
 
-	// Run async to prevent UI blocking
-	go func() {
-		a.updateHeader()
-		a.refresh()
-	}()
+	// navigateTo() handles stop-watch, state mutation, refresh, and start-watch safely
+	a.navigateTo(resource, selectedNs, "")
 }
 
 // addRecentNamespace adds a namespace to the recent list (must be called with lock held)
@@ -1795,21 +1795,23 @@ func (a *App) setupKeybindings() {
 				return nil
 			case 'r':
 				a.stopWatch()
-				go func() {
+				a.safeGo("refresh-and-watch", func() {
 					a.refresh()
 					a.startWatch()
-				}()
+				})
 				return nil
 			case 'n':
 				a.cycleNamespace()
 				return nil
 			// k9s style: 0 = all namespaces, 1-9 = select namespace by number
 			case '0':
-				go a.switchToAllNamespaces()
+				a.safeGo("switchToAllNamespaces", a.switchToAllNamespaces)
 				return nil
 			case '1', '2', '3', '4', '5', '6', '7', '8', '9':
 				num := int(event.Rune() - '0')
-				go a.selectNamespaceByNumber(num)
+				a.safeGo("selectNamespaceByNumber", func() {
+					a.selectNamespaceByNumber(num)
+				})
 				return nil
 			case 'l':
 				a.showLogs()
@@ -2035,19 +2037,22 @@ func (a *App) flashMsg(msg string, isError bool) {
 	if isError {
 		color = "[red]"
 	}
+	seq := atomic.AddInt64(&a.flashSeq, 1)
 	a.QueueUpdateDraw(func() {
 		// Clear before setting to prevent ghosting
 		a.flash.Clear()
 		a.flash.SetText(color + msg + "[white]")
 	})
 
-	// Clear after 3 seconds
-	go func() {
+	// Clear after 3 seconds, but only if no newer flash message was shown
+	a.safeGo("flashMsg-clear", func() {
 		time.Sleep(3 * time.Second)
-		a.QueueUpdateDraw(func() {
-			a.flash.Clear()
-		})
-	}()
+		if atomic.LoadInt64(&a.flashSeq) == seq {
+			a.QueueUpdateDraw(func() {
+				a.flash.Clear()
+			})
+		}
+	})
 }
 
 // updateHeader updates the header text (thread-safe)
@@ -2062,6 +2067,20 @@ func (a *App) updateHeader() {
 			cluster = "N/A"
 		}
 	}
+
+	// Read watch state FIRST (before mx) to prevent lock ordering deadlock
+	// with startWatch() which acquires watchMu → mx
+	watchStatus := ""
+	a.watchMu.Lock()
+	if a.watcher != nil {
+		switch a.watcher.State() {
+		case k8s.WatchStateActive:
+			watchStatus = " [#9ece6a]◉ Live[-]"
+		case k8s.WatchStateFallback:
+			watchStatus = " [#e0af68]○ Poll[-]"
+		}
+	}
+	a.watchMu.Unlock()
 
 	a.mx.RLock()
 	ns := a.currentNamespace
@@ -2078,19 +2097,6 @@ func (a *App) updateHeader() {
 	if a.aiClient != nil && a.aiClient.IsReady() {
 		aiStatus = "[#9ece6a]● Online[-]"
 	}
-
-	// Watch state indicator
-	watchStatus := ""
-	a.watchMu.Lock()
-	if a.watcher != nil {
-		switch a.watcher.State() {
-		case k8s.WatchStateActive:
-			watchStatus = " [#9ece6a]◉ Live[-]"
-		case k8s.WatchStateFallback:
-			watchStatus = " [#e0af68]○ Poll[-]"
-		}
-	}
-	a.watchMu.Unlock()
 
 	// Build namespace quick-select preview (show first 9 namespaces with numbers)
 	nsPreview := ""
@@ -2202,7 +2208,13 @@ func (a *App) prepareContext() context.Context {
 		a.cancelFn() // Cancel previous operation
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	// Derive from root app context so Stop() cancels all operations (k9s pattern)
+	// Fallback to Background if appCtx is nil (e.g., in tests)
+	parentCtx := a.appCtx
+	if parentCtx == nil {
+		parentCtx = context.Background()
+	}
+	ctx, cancel := context.WithCancel(parentCtx)
 	a.cancelFn = cancel
 	return ctx
 }
@@ -2267,7 +2279,7 @@ func (a *App) refresh() {
 			return
 		}
 		a.logger.Error("Fetch failed after retries", "error", err, "resource", resource)
-		a.flashMsg(fmt.Sprintf("Error: %v", err), true)
+		a.flashMsg(fmt.Sprintf("Failed to load %s: %v. Check cluster connectivity and permissions.", resource, err), true)
 		a.queueUpdateDrawDirect(func() {
 			a.table.Clear()
 			a.table.SetTitle(fmt.Sprintf(" %s - Error ", resource))
@@ -2354,7 +2366,12 @@ func (a *App) startWatch() {
 	namespace := a.currentNamespace
 	a.mx.RUnlock()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	// Derive from root app context with fallback (k9s pattern)
+	parentCtx := a.appCtx
+	if parentCtx == nil {
+		parentCtx = context.Background()
+	}
+	ctx, cancel := context.WithCancel(parentCtx)
 	a.watchCancel = cancel
 
 	onChange := func() {
@@ -2439,6 +2456,18 @@ func (a *App) IsRunning() bool {
 func (a *App) Stop() {
 	// Set stopping flag immediately to prevent new QueueUpdateDraw calls
 	atomic.StoreInt32(&a.stopping, 1)
+
+	// Cancel root context - this cascades to ALL operations (k9s pattern)
+	if a.appCancel != nil {
+		a.appCancel()
+	}
+
+	// Cancel in-flight refresh operations (prevents backoff delays during shutdown)
+	a.cancelLock.Lock()
+	if a.cancelFn != nil {
+		a.cancelFn()
+	}
+	a.cancelLock.Unlock()
 
 	// Stop resource watcher
 	a.stopWatch()

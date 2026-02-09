@@ -54,6 +54,10 @@ type Server struct {
 
 	// Access request management (Teleport-inspired)
 	accessRequestManager *AccessRequestManager
+
+	// Rate limiters
+	apiRateLimiter  *RateLimiter
+	authRateLimiter *RateLimiter
 }
 
 // PendingToolApproval represents a tool call waiting for user approval
@@ -167,6 +171,11 @@ func NewServer(cfg *config.Config, port int, versionInfo *VersionInfo) (*Server,
 	accessReqManager := NewAccessRequestManager(30 * time.Minute)
 	fmt.Printf("  Access Request Manager: Ready (TTL: 30m)\n")
 
+	// Initialize rate limiters
+	apiRateLimiter := NewRateLimiter(100, 1*time.Minute)   // 100 requests per minute for API
+	authRateLimiter := NewRateLimiter(10, 1*time.Minute)   // 10 requests per minute for auth
+	fmt.Printf("  Rate Limiting: API (100/min), Auth (10/min)\n")
+
 	server := &Server{
 		cfg:                  cfg,
 		aiClient:             aiClient,
@@ -180,6 +189,8 @@ func NewServer(cfg *config.Config, port int, versionInfo *VersionInfo) (*Server,
 		port:                 port,
 		versionInfo:          versionInfo,
 		pendingApprovals:     make(map[string]*PendingToolApproval),
+		apiRateLimiter:       apiRateLimiter,
+		authRateLimiter:      authRateLimiter,
 	}
 
 	server.reportGenerator = NewReportGenerator(server)
@@ -294,6 +305,11 @@ func NewServerWithAuth(cfg *config.Config, port int, authOpts *AuthOptions, vers
 	accessReqManager := NewAccessRequestManager(30 * time.Minute)
 	fmt.Printf("  Access Request Manager: Ready (TTL: 30m)\n")
 
+	// Initialize rate limiters
+	apiRateLimiter := NewRateLimiter(100, 1*time.Minute)   // 100 requests per minute for API
+	authRateLimiter := NewRateLimiter(10, 1*time.Minute)   // 10 requests per minute for auth
+	fmt.Printf("  Rate Limiting: API (100/min), Auth (10/min)\n")
+
 	server := &Server{
 		cfg:                  cfg,
 		aiClient:             aiClient,
@@ -308,6 +324,8 @@ func NewServerWithAuth(cfg *config.Config, port int, authOpts *AuthOptions, vers
 		embeddedLLM:          authOpts.EmbeddedLLM,
 		versionInfo:          versionInfo,
 		pendingApprovals:     make(map[string]*PendingToolApproval),
+		apiRateLimiter:       apiRateLimiter,
+		authRateLimiter:      authRateLimiter,
 	}
 
 	server.reportGenerator = NewReportGenerator(server)
@@ -379,11 +397,169 @@ func (s *Server) registerMCPTools(serverName string) {
 	}
 }
 
+// recoveryMiddleware wraps a handler to catch and handle panics
+func recoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				// Log the panic with stack trace
+				fmt.Printf("PANIC in HTTP handler: %v\nPath: %s %s\n", err, r.Method, r.URL.Path)
+
+				// Audit the panic event
+				if db.DB != nil {
+					username := r.Header.Get("X-Username")
+					if username == "" {
+						username = "anonymous"
+					}
+					db.RecordAudit(db.AuditEntry{
+						User:       username,
+						Action:     "http_panic",
+						Resource:   r.URL.Path,
+						Details:    fmt.Sprintf("Panic recovered: %v", err),
+						ActionType: db.ActionTypeMutation,
+						Source:     "web",
+						Success:    false,
+					})
+				}
+
+				// Return 500 error to client
+				WriteError(w, NewAPIError(ErrCodeInternalError, "An unexpected error occurred"))
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+// withRecovery wraps a HandlerFunc with panic recovery
+func withRecovery(handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				// Log the panic with stack trace
+				fmt.Printf("PANIC in HTTP handler: %v\nPath: %s %s\n", err, r.Method, r.URL.Path)
+
+				// Audit the panic event
+				if db.DB != nil {
+					username := r.Header.Get("X-Username")
+					if username == "" {
+						username = "anonymous"
+					}
+					db.RecordAudit(db.AuditEntry{
+						User:       username,
+						Action:     "http_panic",
+						Resource:   r.URL.Path,
+						Details:    fmt.Sprintf("Panic recovered: %v", err),
+						ActionType: db.ActionTypeMutation,
+						Source:     "web",
+						Success:    false,
+					})
+				}
+
+				// Return 500 error to client
+				WriteError(w, NewAPIError(ErrCodeInternalError, "An unexpected error occurred"))
+			}
+		}()
+		handler(w, r)
+	}
+}
+
+// requestLoggingMiddleware logs all HTTP requests
+func requestLoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		// Wrap response writer to capture status code
+		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		// Process request
+		next.ServeHTTP(rw, r)
+
+		// Log request (exclude health checks to reduce noise)
+		if r.URL.Path != "/api/health" {
+			duration := time.Since(start)
+			username := r.Header.Get("X-Username")
+			if username == "" {
+				username = "anonymous"
+			}
+
+			fmt.Printf("[%s] %s %s - %d (%s) - User: %s\n",
+				start.Format("2006-01-02 15:04:05"),
+				r.Method,
+				r.URL.Path,
+				rw.statusCode,
+				duration,
+				username,
+			)
+		}
+	})
+}
+
+// responseWriter wraps http.ResponseWriter to capture status code
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+	written    bool
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	if !rw.written {
+		rw.statusCode = code
+		rw.written = true
+		rw.ResponseWriter.WriteHeader(code)
+	}
+}
+
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	if !rw.written {
+		rw.WriteHeader(http.StatusOK)
+	}
+	return rw.ResponseWriter.Write(b)
+}
+
+// timeoutMiddleware adds request timeouts to prevent hanging requests
+func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Skip timeout for WebSocket connections and streaming endpoints
+			if r.Header.Get("Upgrade") == "websocket" ||
+			   r.Header.Get("Accept") == "text/event-stream" ||
+			   r.URL.Path == "/api/chat/agentic" { // AI streaming responses
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Create timeout context
+			ctx, cancel := context.WithTimeout(r.Context(), timeout)
+			defer cancel()
+
+			// Channel to signal completion
+			done := make(chan struct{})
+
+			// Process request in goroutine
+			go func() {
+				next.ServeHTTP(w, r.WithContext(ctx))
+				close(done)
+			}()
+
+			// Wait for completion or timeout
+			select {
+			case <-done:
+				// Request completed successfully
+			case <-ctx.Done():
+				// Timeout occurred
+				if ctx.Err() == context.DeadlineExceeded {
+					WriteError(w, NewAPIError(ErrCodeTimeout, "Request timed out"))
+				}
+			}
+		})
+	}
+}
+
 func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
 	// Public routes (no auth required)
-	mux.HandleFunc("/api/health", s.handleHealth)
+	mux.HandleFunc("/api/health", withRecovery(s.handleHealth))
 	mux.HandleFunc("/api/version", s.handleVersion)
 	mux.HandleFunc("/api/auth/login", s.authManager.HandleLogin)
 	mux.HandleFunc("/api/auth/logout", s.authManager.HandleLogout)
@@ -404,8 +580,8 @@ func (s *Server) Start() error {
 	// Session management for conversation history
 	mux.HandleFunc("/api/sessions", s.authManager.AuthMiddleware(s.handleSessions))
 	mux.HandleFunc("/api/sessions/", s.authManager.AuthMiddleware(s.handleSession))
-	mux.HandleFunc("/api/k8s/", s.authManager.AuthMiddleware(s.handleK8sResource))
-	mux.HandleFunc("/api/crd/", s.authManager.AuthMiddleware(s.handleCustomResources))
+	mux.HandleFunc("/api/k8s/", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionView)(s.handleK8sResource)))
+	mux.HandleFunc("/api/crd/", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionView)(s.handleCustomResources)))
 	mux.HandleFunc("/api/audit", s.authManager.AuthMiddleware(s.handleAuditLogs))
 	mux.HandleFunc("/api/reports", s.authManager.AuthMiddleware(s.reportGenerator.HandleReports))
 	mux.HandleFunc("/api/reports/preview", s.authManager.AuthMiddleware(s.reportGenerator.HandleReportPreview))
@@ -552,12 +728,27 @@ func (s *Server) Start() error {
 		mux.Handle("/", http.FileServer(http.FS(staticFS)))
 	}
 
-	// Apply middleware chain: security headers -> CORS -> CSRF -> handler
-	handler := securityHeadersMiddleware(corsMiddleware(s.authManager.CSRFMiddleware(mux)))
+	// Apply middleware chain: recovery -> request logging -> rate limiting -> timeout -> security headers -> CORS -> CSRF -> handler
+	handler := recoveryMiddleware(
+		requestLoggingMiddleware(
+			RateLimitMiddleware(s.apiRateLimiter, s.authRateLimiter)(
+				timeoutMiddleware(60 * time.Second)(
+					securityHeadersMiddleware(
+						corsMiddleware(
+							s.authManager.CSRFMiddleware(mux),
+						),
+					),
+				),
+			),
+		),
+	)
 
 	s.server = &http.Server{
-		Addr:    fmt.Sprintf(":%d", s.port),
-		Handler: handler,
+		Addr:         fmt.Sprintf(":%d", s.port),
+		Handler:      handler,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second, // Allow longer writes for streaming responses
+		IdleTimeout:  120 * time.Second,
 	}
 
 	fmt.Printf("\n  Web server started at http://localhost:%d\n", s.port)
@@ -627,6 +818,12 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 
 		// Referrer policy
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+
+		// HTTP Strict Transport Security (only for HTTPS)
+		if r.TLS != nil {
+			// max-age=31536000 (1 year), includeSubDomains
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
 
 		// Content Security Policy
 		w.Header().Set("Content-Security-Policy",

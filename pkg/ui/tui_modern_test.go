@@ -70,8 +70,10 @@ func NewTUITestContext(t *testing.T) *TUITestContext {
 		close(ctx.done)
 	}()
 
-	// Wait for initial render
-	time.Sleep(100 * time.Millisecond)
+	// Wait for tview's Run() to initialize and enter the event loop.
+	// SimulationScreen doesn't generate events, so we post a no-op event
+	// and wait for the event loop to be ready to process it.
+	time.Sleep(200 * time.Millisecond)
 
 	return ctx
 }

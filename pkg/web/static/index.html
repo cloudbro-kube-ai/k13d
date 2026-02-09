@@ -14437,8 +14437,20 @@ spec:
         let currentTerminal = null;
         let currentTerminalWs = null;
         let terminalFitAddon = null;
+        let terminalReconnectAttempts = 0;
+        let terminalReconnectTimer = null;
+        let terminalHeartbeatInterval = null;
+        let terminalPodName = null;
+        let terminalNamespace = null;
+        let terminalContainer = null;
+        let terminalShouldReconnect = true;
 
         function openTerminal(podName, namespace, container = '') {
+            // Store connection params for reconnection
+            terminalPodName = podName;
+            terminalNamespace = namespace;
+            terminalContainer = container;
+            terminalShouldReconnect = true;
             const modal = document.getElementById('terminal-modal');
             document.getElementById('terminal-pod-name').textContent = podName;
             document.getElementById('terminal-container-name').textContent = container || 'default';
@@ -14480,54 +14492,119 @@ spec:
             currentTerminal.open(terminalContainer);
             terminalFitAddon.fit();
 
-            // Connect WebSocket
+            // Connect WebSocket with reconnection support
+            connectTerminalWebSocket();
+        }
+
+        function connectTerminalWebSocket() {
+            // Clean up existing connection
+            if (terminalHeartbeatInterval) {
+                clearInterval(terminalHeartbeatInterval);
+                terminalHeartbeatInterval = null;
+            }
+            if (currentTerminalWs) {
+                currentTerminalWs.onclose = null; // Prevent reconnection loop
+                currentTerminalWs.close();
+                currentTerminalWs = null;
+            }
+
+            // Build WebSocket URL
             const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${wsProtocol}//${window.location.host}/api/terminal/${namespace}/${podName}${container ? '?container=' + container : ''}`;
+            const wsUrl = `${wsProtocol}//${window.location.host}/api/terminal/${terminalNamespace}/${terminalPodName}${terminalContainer ? '?container=' + terminalContainer : ''}`;
 
             currentTerminalWs = new WebSocket(wsUrl);
 
             currentTerminalWs.onopen = () => {
-                currentTerminal.writeln('\x1b[32mConnected to pod: ' + podName + '\x1b[0m');
-                currentTerminal.writeln('');
+                // Reset reconnect attempts on successful connection
+                terminalReconnectAttempts = 0;
 
-                const dims = terminalFitAddon.proposeDimensions();
-                if (dims) {
-                    currentTerminalWs.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }));
+                if (currentTerminal) {
+                    currentTerminal.writeln('\x1b[32m● Connected to pod: ' + terminalPodName + '\x1b[0m');
+                    currentTerminal.writeln('');
+
+                    const dims = terminalFitAddon.proposeDimensions();
+                    if (dims) {
+                        currentTerminalWs.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }));
+                    }
                 }
+
+                // Start heartbeat/keepalive (ping every 30 seconds)
+                terminalHeartbeatInterval = setInterval(() => {
+                    if (currentTerminalWs && currentTerminalWs.readyState === WebSocket.OPEN) {
+                        currentTerminalWs.send(JSON.stringify({ type: 'ping' }));
+                    }
+                }, 30000);
             };
 
             currentTerminalWs.onmessage = (event) => {
                 try {
                     const msg = JSON.parse(event.data);
-                    if (msg.type === 'output') currentTerminal.write(msg.data);
-                    else if (msg.type === 'error') currentTerminal.writeln('\x1b[31mError: ' + msg.data + '\x1b[0m');
+                    if (msg.type === 'output') {
+                        if (currentTerminal) currentTerminal.write(msg.data);
+                    } else if (msg.type === 'error') {
+                        if (currentTerminal) currentTerminal.writeln('\x1b[31mError: ' + msg.data + '\x1b[0m');
+                    } else if (msg.type === 'pong') {
+                        // Heartbeat response received
+                    }
                 } catch (e) {
-                    currentTerminal.write(event.data);
+                    if (currentTerminal) currentTerminal.write(event.data);
                 }
             };
 
-            currentTerminalWs.onclose = () => currentTerminal.writeln('\x1b[33m\r\nConnection closed.\x1b[0m');
+            currentTerminalWs.onclose = (event) => {
+                // Clear heartbeat
+                if (terminalHeartbeatInterval) {
+                    clearInterval(terminalHeartbeatInterval);
+                    terminalHeartbeatInterval = null;
+                }
+
+                if (!currentTerminal) return;
+
+                // Show disconnection message
+                currentTerminal.writeln('\x1b[33m\r\n● Connection closed.\x1b[0m');
+
+                // Attempt reconnection with exponential backoff
+                if (terminalShouldReconnect) {
+                    const delay = Math.min(1000 * Math.pow(2, terminalReconnectAttempts), 30000); // Max 30s
+                    terminalReconnectAttempts++;
+
+                    currentTerminal.writeln('\x1b[90mReconnecting in ' + (delay/1000) + 's... (attempt ' + terminalReconnectAttempts + ')\x1b[0m');
+
+                    terminalReconnectTimer = setTimeout(() => {
+                        if (terminalShouldReconnect && currentTerminal) {
+                            currentTerminal.writeln('\x1b[36m● Reconnecting...\x1b[0m');
+                            connectTerminalWebSocket();
+                        }
+                    }, delay);
+                }
+            };
+
             currentTerminalWs.onerror = (err) => {
-                const isRemoteAccess = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-                currentTerminal.writeln('\x1b[31m');
-                currentTerminal.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                currentTerminal.writeln('  WebSocket Connection Failed');
-                currentTerminal.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                currentTerminal.writeln('\x1b[0m');
-                if (isRemoteAccess) {
-                    currentTerminal.writeln('\x1b[33mYou are accessing from a remote IP address.\x1b[0m');
-                    currentTerminal.writeln('\x1b[33mWebSocket connections require additional configuration.\x1b[0m');
-                    currentTerminal.writeln('');
-                    currentTerminal.writeln('\x1b[36mSolution 1: Enable development mode\x1b[0m');
-                    currentTerminal.writeln('  export K13D_DEV=true');
-                    currentTerminal.writeln('');
-                    currentTerminal.writeln('\x1b[36mSolution 2: Allow your origin explicitly\x1b[0m');
-                    currentTerminal.writeln('  export K13D_WS_ALLOWED_ORIGINS="' + window.location.origin + '"');
-                    currentTerminal.writeln('');
-                    currentTerminal.writeln('\x1b[90mThen restart k13d server.\x1b[0m');
-                } else {
-                    currentTerminal.writeln('\x1b[33mFailed to connect to terminal WebSocket.\x1b[0m');
-                    currentTerminal.writeln('\x1b[33mPlease check if the pod is running and accessible.\x1b[0m');
+                if (!currentTerminal) return;
+
+                // Only show detailed error on first connection attempt
+                if (terminalReconnectAttempts === 0) {
+                    const isRemoteAccess = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+                    currentTerminal.writeln('\x1b[31m');
+                    currentTerminal.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    currentTerminal.writeln('  ✗ WebSocket Connection Failed');
+                    currentTerminal.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    currentTerminal.writeln('\x1b[0m');
+                    if (isRemoteAccess) {
+                        currentTerminal.writeln('\x1b[33mYou are accessing from a remote IP address.\x1b[0m');
+                        currentTerminal.writeln('\x1b[33mWebSocket connections require additional configuration.\x1b[0m');
+                        currentTerminal.writeln('');
+                        currentTerminal.writeln('\x1b[36mSolution 1: Enable development mode\x1b[0m');
+                        currentTerminal.writeln('  export K13D_DEV=true');
+                        currentTerminal.writeln('');
+                        currentTerminal.writeln('\x1b[36mSolution 2: Allow your origin explicitly\x1b[0m');
+                        currentTerminal.writeln('  export K13D_WS_ALLOWED_ORIGINS="' + window.location.origin + '"');
+                        currentTerminal.writeln('');
+                        currentTerminal.writeln('\x1b[90mThen restart k13d server.\x1b[0m');
+                    } else {
+                        currentTerminal.writeln('\x1b[33mFailed to connect to terminal WebSocket.\x1b[0m');
+                        currentTerminal.writeln('\x1b[33mPlease check if the pod is running and accessible.\x1b[0m');
+                    }
                 }
             };
 
@@ -14550,10 +14627,43 @@ spec:
         function handleTerminalResize() { if (terminalFitAddon) terminalFitAddon.fit(); }
 
         function closeTerminal() {
-            document.getElementById('terminal-modal').classList.remove('active');
-            if (currentTerminalWs) { currentTerminalWs.close(); currentTerminalWs = null; }
-            if (currentTerminal) { currentTerminal.dispose(); currentTerminal = null; }
+            // Disable reconnection
+            terminalShouldReconnect = false;
+
+            // Clear timers
+            if (terminalReconnectTimer) {
+                clearTimeout(terminalReconnectTimer);
+                terminalReconnectTimer = null;
+            }
+            if (terminalHeartbeatInterval) {
+                clearInterval(terminalHeartbeatInterval);
+                terminalHeartbeatInterval = null;
+            }
+
+            // Close WebSocket
+            if (currentTerminalWs) {
+                currentTerminalWs.onclose = null; // Prevent reconnection
+                currentTerminalWs.close();
+                currentTerminalWs = null;
+            }
+
+            // Dispose terminal
+            if (currentTerminal) {
+                currentTerminal.dispose();
+                currentTerminal = null;
+            }
+
+            // Remove event listeners
             window.removeEventListener('resize', handleTerminalResize);
+
+            // Hide modal
+            document.getElementById('terminal-modal').classList.remove('active');
+
+            // Reset state
+            terminalReconnectAttempts = 0;
+            terminalPodName = null;
+            terminalNamespace = null;
+            terminalContainer = null;
         }
 
         // ==========================================

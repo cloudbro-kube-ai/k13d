@@ -45,10 +45,10 @@ func (a *App) drillDown() {
 	switch resource {
 	case "nodes", "namespaces", "persistentvolumes", "storageclasses",
 		"clusterroles", "clusterrolebindings", "customresourcedefinitions":
-		selectedName = a.table.GetCell(row, 0).Text
+		selectedName = a.getTableCellText(row, 0)
 	default:
-		selectedNs = a.table.GetCell(row, 0).Text
-		selectedName = a.table.GetCell(row, 1).Text
+		selectedNs = a.getTableCellText(row, 0)
+		selectedName = a.getTableCellText(row, 1)
 	}
 
 	// Determine drill-down behavior based on resource type
@@ -370,7 +370,7 @@ func (a *App) navigateTo(resource, namespace, filter string) {
 	a.requestSync()
 
 	// Always run UI updates in goroutine after releasing lock
-	go func() {
+	a.safeGo("navigateTo-refresh", func() {
 		a.updateHeader()
 		a.updateStatusBar()
 		a.refresh()
@@ -391,7 +391,7 @@ func (a *App) navigateTo(resource, namespace, filter string) {
 				})
 			}
 		}
-	}()
+	})
 }
 
 // sortByColumnName finds and sorts by column name (k9s Shift+N/A/S/R style)
@@ -410,7 +410,7 @@ func (a *App) sortByColumnName(colName string) {
 	}
 
 	// Column not found, show message
-	a.flashMsg(fmt.Sprintf("Column '%s' not found", colName), true)
+	a.flashMsg(fmt.Sprintf("Column '%s' not found in current view. Check available columns in the table header.", colName), true)
 }
 
 // sortByColumn sorts the table by the specified column (k9s Shift+N/A/S/R style)

@@ -193,12 +193,12 @@ func (w *ResourceWatcher) watchLoop(ctx context.Context) error {
 			})
 
 		case <-debounceCh:
-			if w.onChange != nil {
+			if !w.isStopped() && w.onChange != nil {
 				w.onChange()
 			}
 
 		case <-relistTicker.C:
-			if w.onChange != nil {
+			if !w.isStopped() && w.onChange != nil {
 				w.onChange()
 			}
 		}
@@ -225,7 +225,7 @@ func (w *ResourceWatcher) pollLoop(ctx context.Context) {
 		case <-w.stopCh:
 			return
 		case <-ticker.C:
-			if w.onChange != nil {
+			if !w.isStopped() && w.onChange != nil {
 				w.onChange()
 			}
 			iterations++
