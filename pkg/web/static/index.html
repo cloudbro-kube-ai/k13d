@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>k13d - kube-ai-dashboard</title>
-    <!-- IBM Plex fonts for professional, formal appearance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- xterm.js for terminal (local for air-gapped environments) -->
+    <!-- All assets vendored locally for air-gapped environments -->
+    <!-- xterm.js for terminal -->
     <link rel="stylesheet" href="vendor/xterm.css" />
     <script src="vendor/xterm.min.js"></script>
     <script src="vendor/xterm-addon-fit.min.js"></script>
@@ -29,8 +26,8 @@
 
         :root {
             /* Typography */
-            --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            --font-mono: 'IBM Plex Mono', 'SF Mono', 'Monaco', 'Consolas', monospace;
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-mono: 'SF Mono', 'Monaco', 'Consolas', 'Liberation Mono', monospace;
             --font-weight-normal: 400;
             --font-weight-medium: 500;
             --font-weight-semibold: 600;
@@ -52,7 +49,7 @@
         }
 
         body {
-            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: var(--font-sans);
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
@@ -65,7 +62,7 @@
 
         /* Monospace font for code/terminal elements */
         code, pre, .terminal, .log-content, .yaml-content, .json-content {
-            font-family: 'IBM Plex Mono', 'SF Mono', 'Monaco', 'Consolas', monospace;
+            font-family: var(--font-mono);
         }
 
         /* Login Page - Beautiful animated design */
@@ -148,7 +145,7 @@
 
         /* ASCII Art Logo */
         .login-ascii-logo {
-            font-family: 'IBM Plex Mono', monospace;
+            font-family: var(--font-mono);
             font-size: 10px;
             line-height: 1.1;
             color: var(--accent-blue);
@@ -3130,7 +3127,7 @@
             border: 1px solid var(--border-color);
             border-radius: 0 0 8px 8px;
             overflow: auto;
-            font-family: 'IBM Plex Mono', 'SF Mono', 'Monaco', monospace;
+            font-family: var(--font-mono);
             font-size: 12px;
             line-height: 1.6;
             padding: 0;
@@ -10946,7 +10943,7 @@ ${escapeHtml(execInfo.result)}</div>
                             const isCompact = (kind === 'Pod' || kind === 'ConfigMap' || kind === 'Secret');
                             return isCompact ? 9 : 10;
                         },
-                        labelFontFamily: 'IBM Plex Mono, monospace',
+                        labelFontFamily: 'SF Mono, Monaco, Consolas, Liberation Mono, monospace',
                         labelPlacement: (d) => {
                             // Place label below for small shapes so text doesn't overflow
                             const kind = d.data?.kind;

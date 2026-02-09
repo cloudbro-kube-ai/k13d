@@ -5,10 +5,15 @@
 #   1. Build binary locally: go build -o k13d ./cmd/kube-ai-dashboard-cli/main.go
 #   2. Build Docker image: docker build -f Dockerfile.prebuilt -t k13d:latest .
 
-FROM alpine:3.19
+FROM alpine:3.21
 
 # Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata curl
+# - ca-certificates: For HTTPS connections
+# - tzdata: For timezone support
+# - curl: For health checks
+# - bash: Required for AI agent shell commands
+# - kubectl: Required for AI agent Kubernetes operations
+RUN apk add --no-cache ca-certificates tzdata curl bash kubectl
 
 # Create non-root user
 RUN adduser -D -g '' k13d
@@ -17,8 +22,9 @@ RUN adduser -D -g '' k13d
 COPY k13d /usr/local/bin/k13d
 RUN chmod +x /usr/local/bin/k13d
 
-# Create config and kubeconfig directories
-RUN mkdir -p /home/k13d/.config/k13d /home/k13d/.kube && \
+# Create config, kubeconfig, and data directories
+# data directory is writable for SQLite audit DB and user locks
+RUN mkdir -p /home/k13d/.config/k13d /home/k13d/.kube /home/k13d/data && \
     chown -R k13d:k13d /home/k13d
 
 # Switch to non-root user
@@ -27,9 +33,12 @@ WORKDIR /home/k13d
 
 # Environment variables for configuration
 ENV K13D_PORT=8080 \
-    K13D_AUTH_MODE=local \
-    K13D_USERNAME=admin \
-    K13D_PASSWORD=admin
+    K13D_AUTH_MODE=token \
+    K13D_LLM_PROVIDER=ollama \
+    K13D_LLM_MODEL=llama3 \
+    K13D_LLM_ENDPOINT="" \
+    K13D_JWT_SECRET="" \
+    K13D_DEFAULT_ROLE=admin
 
 # Expose web UI port
 EXPOSE 8080

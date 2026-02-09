@@ -108,6 +108,43 @@ func (s *SSEWriter) Write(data string) error {
 }
 
 func NewServer(cfg *config.Config, port int, versionInfo *VersionInfo) (*Server, error) {
+	// Default auth config: use audit flag to control auth
+	authConfig := &AuthConfig{
+		Enabled:         cfg.EnableAudit,
+		AuthMode:        "local",
+		SessionDuration: 24 * time.Hour,
+		DefaultAdmin:    "admin",
+		// DefaultPassword: intentionally empty for secure random generation
+	}
+
+	return newServer(cfg, port, authConfig, false, versionInfo)
+}
+
+// NewServerWithAuth creates a new server with custom authentication options
+func NewServerWithAuth(cfg *config.Config, port int, authOpts *AuthOptions, versionInfo *VersionInfo) (*Server, error) {
+	authConfig := &AuthConfig{
+		Enabled:         !authOpts.Disabled,
+		AuthMode:        authOpts.Mode,
+		SessionDuration: 24 * time.Hour,
+	}
+
+	// Set default admin credentials
+	if authOpts.DefaultAdmin != "" {
+		authConfig.DefaultAdmin = authOpts.DefaultAdmin
+	} else {
+		authConfig.DefaultAdmin = "admin"
+	}
+	// Only set password if explicitly provided; otherwise leave empty
+	// so that auth.go generates a secure random password
+	if authOpts.DefaultPassword != "" {
+		authConfig.DefaultPassword = authOpts.DefaultPassword
+	}
+
+	return newServer(cfg, port, authConfig, authOpts.EmbeddedLLM, versionInfo)
+}
+
+// newServer contains the shared initialization logic for both constructors.
+func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM bool, versionInfo *VersionInfo) (*Server, error) {
 	var aiClient *ai.Client
 	var err error
 
@@ -144,148 +181,14 @@ func NewServer(cfg *config.Config, port int, versionInfo *VersionInfo) (*Server,
 	}
 
 	// Initialize auth manager
-	// Note: DefaultPassword left empty so NewAuthManager generates a secure random password
-	authConfig := &AuthConfig{
-		Enabled:         cfg.EnableAudit, // Use audit flag to control auth for now
-		AuthMode:        "local",         // Use local authentication
-		SessionDuration: 24 * time.Hour,
-		DefaultAdmin:    "admin",
-		// DefaultPassword: intentionally empty for secure random generation
-	}
 	authManager := NewAuthManager(authConfig)
-	fmt.Printf("  Authentication: %s\n", map[bool]string{true: "Enabled", false: "Disabled"}[authConfig.Enabled])
-
-	// Initialize session store for AI conversation history
-	sessionStore, err := session.NewStore()
-	if err != nil {
-		fmt.Printf("  Session Store: Failed to initialize (%v)\n", err)
+	if authConfig.Enabled {
+		fmt.Printf("  Authentication: Enabled (mode: %s)\n", authConfig.AuthMode)
 	} else {
-		fmt.Printf("  Session Store: Ready\n")
+		fmt.Printf("  Authentication: Disabled\n")
 	}
 
-	// Initialize RBAC authorizer (Teleport-inspired)
-	authorizer := NewAuthorizer()
-	fmt.Printf("  RBAC Authorizer: Ready (roles: admin, user, viewer)\n")
-
-	// Initialize access request manager (Teleport-inspired)
-	accessReqManager := NewAccessRequestManager(30 * time.Minute)
-	fmt.Printf("  Access Request Manager: Ready (TTL: 30m)\n")
-
-	// Initialize rate limiters
-	apiRateLimiter := NewRateLimiter(100, 1*time.Minute)   // 100 requests per minute for API
-	authRateLimiter := NewRateLimiter(10, 1*time.Minute)   // 10 requests per minute for auth
-	fmt.Printf("  Rate Limiting: API (100/min), Auth (10/min)\n")
-
-	server := &Server{
-		cfg:                  cfg,
-		aiClient:             aiClient,
-		k8sClient:            k8sClient,
-		helmClient:           helmClient,
-		mcpClient:            mcp.NewClient(),
-		authManager:          authManager,
-		authorizer:           authorizer,
-		accessRequestManager: accessReqManager,
-		sessionStore:         sessionStore,
-		port:                 port,
-		versionInfo:          versionInfo,
-		pendingApprovals:     make(map[string]*PendingToolApproval),
-		apiRateLimiter:       apiRateLimiter,
-		authRateLimiter:      authRateLimiter,
-	}
-
-	server.reportGenerator = NewReportGenerator(server)
-	fmt.Printf("  Reports: Ready\n")
-
-	// Metrics collector is disabled by default to avoid performance issues
-	// It can still collect on-demand via /api/metrics/collect
-	fmt.Printf("  Metrics Collector: Disabled (on-demand collection available)\n")
-
-	// Initialize security scanner
-	server.securityScanner = security.NewScanner(k8sClient)
-	scannerInfo := "Basic checks"
-	if server.securityScanner.TrivyAvailable() {
-		scannerInfo += ", Trivy"
-	}
-	if server.securityScanner.KubeBenchAvailable() {
-		scannerInfo += ", kube-bench"
-	}
-	fmt.Printf("  Security Scanner: Ready (%s)\n", scannerInfo)
-
-	// Initialize MCP servers
-	server.initMCPServers()
-
-	// Load persisted user locks
-	authManager.LoadUserLocks()
-
-	return server, nil
-}
-
-// NewServerWithAuth creates a new server with custom authentication options
-func NewServerWithAuth(cfg *config.Config, port int, authOpts *AuthOptions, versionInfo *VersionInfo) (*Server, error) {
-	var aiClient *ai.Client
-	var err error
-
-	fmt.Printf("Starting k13d web server...\n")
-	fmt.Printf("  LLM Provider: %s, Model: %s\n", cfg.LLM.Provider, cfg.LLM.Model)
-
-	if cfg.LLM.Endpoint != "" {
-		aiClient, err = ai.NewClient(&cfg.LLM)
-		if err != nil {
-			fmt.Printf("  AI client creation failed: %v\n", err)
-			aiClient = nil
-		} else {
-			fmt.Printf("  AI client: Ready\n")
-		}
-	} else {
-		fmt.Printf("  AI client: Not configured\n")
-	}
-
-	k8sClient, err := k8s.NewClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create k8s client: %w", err)
-	}
-	fmt.Printf("  K8s client: Ready\n")
-
-	// Initialize Helm client (uses default kubeconfig)
-	helmClient := helm.NewClient("", "")
-	fmt.Printf("  Helm client: Ready\n")
-
-	// Initialize database
-	if err := db.Init(""); err != nil {
-		fmt.Printf("  Database: Failed to initialize (%v)\n", err)
-	} else {
-		fmt.Printf("  Database: Ready\n")
-	}
-
-	// Initialize auth manager based on CLI options
-	authConfig := &AuthConfig{
-		Enabled:         !authOpts.Disabled,
-		AuthMode:        authOpts.Mode,
-		SessionDuration: 24 * time.Hour,
-	}
-
-	// Set default admin credentials
-	if authOpts.DefaultAdmin != "" {
-		authConfig.DefaultAdmin = authOpts.DefaultAdmin
-	} else {
-		authConfig.DefaultAdmin = "admin"
-	}
-	// Only set password if explicitly provided; otherwise leave empty
-	// so that auth.go generates a secure random password
-	if authOpts.DefaultPassword != "" {
-		authConfig.DefaultPassword = authOpts.DefaultPassword
-	}
-	// Note: If DefaultPassword is empty, NewAuthManager will generate a secure random password
-
-	authManager := NewAuthManager(authConfig)
-
-	if authOpts.Disabled {
-		fmt.Printf("  Authentication: Disabled (WARNING: not recommended for production)\n")
-	} else {
-		fmt.Printf("  Authentication: Enabled (mode: %s)\n", authOpts.Mode)
-	}
-
-	if authOpts.EmbeddedLLM {
+	if embeddedLLM {
 		fmt.Printf("  Embedded LLM: Enabled (LLM settings locked)\n")
 	}
 
@@ -306,8 +209,8 @@ func NewServerWithAuth(cfg *config.Config, port int, authOpts *AuthOptions, vers
 	fmt.Printf("  Access Request Manager: Ready (TTL: 30m)\n")
 
 	// Initialize rate limiters
-	apiRateLimiter := NewRateLimiter(100, 1*time.Minute)   // 100 requests per minute for API
-	authRateLimiter := NewRateLimiter(10, 1*time.Minute)   // 10 requests per minute for auth
+	apiRateLimiter := NewRateLimiter(100, 1*time.Minute) // 100 requests per minute for API
+	authRateLimiter := NewRateLimiter(10, 1*time.Minute) // 10 requests per minute for auth
 	fmt.Printf("  Rate Limiting: API (100/min), Auth (10/min)\n")
 
 	server := &Server{
@@ -321,7 +224,7 @@ func NewServerWithAuth(cfg *config.Config, port int, authOpts *AuthOptions, vers
 		accessRequestManager: accessReqManager,
 		sessionStore:         sessionStore,
 		port:                 port,
-		embeddedLLM:          authOpts.EmbeddedLLM,
+		embeddedLLM:          embeddedLLM,
 		versionInfo:          versionInfo,
 		pendingApprovals:     make(map[string]*PendingToolApproval),
 		apiRateLimiter:       apiRateLimiter,
@@ -522,8 +425,8 @@ func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Skip timeout for WebSocket connections and streaming endpoints
 			if r.Header.Get("Upgrade") == "websocket" ||
-			   r.Header.Get("Accept") == "text/event-stream" ||
-			   r.URL.Path == "/api/chat/agentic" { // AI streaming responses
+				r.Header.Get("Accept") == "text/event-stream" ||
+				r.URL.Path == "/api/chat/agentic" { // AI streaming responses
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -558,117 +461,84 @@ func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
-	// Public routes (no auth required)
+	// --- Public routes (no auth required) ---
 	mux.HandleFunc("/api/health", withRecovery(s.handleHealth))
 	mux.HandleFunc("/api/version", s.handleVersion)
+
+	// Authentication (public for login/logout flow)
 	mux.HandleFunc("/api/auth/login", s.authManager.HandleLogin)
 	mux.HandleFunc("/api/auth/logout", s.authManager.HandleLogout)
 	mux.HandleFunc("/api/auth/kubeconfig", s.authManager.HandleKubeconfigLogin)
 	mux.HandleFunc("/api/auth/status", s.authManager.HandleAuthStatus)
 	mux.HandleFunc("/api/auth/csrf-token", s.authManager.HandleCSRFToken)
-	// OIDC/SSO routes (public for OAuth flow)
+
+	// OIDC/SSO (public for OAuth flow)
 	mux.HandleFunc("/api/auth/oidc/login", s.authManager.HandleOIDCLogin)
 	mux.HandleFunc("/api/auth/oidc/callback", s.authManager.HandleOIDCCallback)
 	mux.HandleFunc("/api/auth/oidc/status", s.authManager.HandleOIDCStatus)
 
-	// Protected routes
+	// Prometheus scrape endpoint (no auth for scraping)
+	if s.cfg.Prometheus.ExposeMetrics {
+		mux.HandleFunc("/metrics", s.handlePrometheusMetrics)
+	}
+
+	// --- Protected routes (auth required) ---
+
+	// Auth - current user
 	mux.HandleFunc("/api/auth/me", s.authManager.AuthMiddleware(s.authManager.HandleCurrentUser))
-	// All chat requests use agentic mode
+
+	// AI chat and tool approval
 	mux.HandleFunc("/api/chat/agentic", s.authManager.AuthMiddleware(s.handleAgenticChat))
 	mux.HandleFunc("/api/tool/approve", s.authManager.AuthMiddleware(s.handleToolApprove))
 
-	// Session management for conversation history
+	// AI session management
 	mux.HandleFunc("/api/sessions", s.authManager.AuthMiddleware(s.handleSessions))
 	mux.HandleFunc("/api/sessions/", s.authManager.AuthMiddleware(s.handleSession))
-	mux.HandleFunc("/api/k8s/", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionView)(s.handleK8sResource)))
-	mux.HandleFunc("/api/crd/", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionView)(s.handleCustomResources)))
-	mux.HandleFunc("/api/audit", s.authManager.AuthMiddleware(s.handleAuditLogs))
-	mux.HandleFunc("/api/reports", s.authManager.AuthMiddleware(s.reportGenerator.HandleReports))
-	mux.HandleFunc("/api/reports/preview", s.authManager.AuthMiddleware(s.reportGenerator.HandleReportPreview))
+
+	// AI / LLM configuration and status
 	mux.HandleFunc("/api/settings", s.authManager.AuthMiddleware(s.handleSettings))
 	mux.HandleFunc("/api/settings/llm", s.authManager.AuthMiddleware(s.handleLLMSettings))
-
-	// LLM connection test endpoint
 	mux.HandleFunc("/api/llm/test", s.authManager.AuthMiddleware(s.handleLLMTest))
 	mux.HandleFunc("/api/llm/status", s.authManager.AuthMiddleware(s.handleLLMStatus))
 	mux.HandleFunc("/api/ai/ping", s.authManager.AuthMiddleware(s.handleAIPing))
-
-	// Ollama helper endpoints
 	mux.HandleFunc("/api/llm/ollama/status", s.authManager.AuthMiddleware(s.handleOllamaStatus))
 	mux.HandleFunc("/api/llm/ollama/pull", s.authManager.AuthMiddleware(s.handleOllamaPull))
-
-	// K8s safety analysis endpoint (guardrails)
-	mux.HandleFunc("/api/safety/analyze", s.authManager.AuthMiddleware(s.handleSafetyAnalysis))
-
-	// LLM usage tracking endpoints
 	mux.HandleFunc("/api/llm/usage", s.authManager.AuthMiddleware(s.handleLLMUsage))
 	mux.HandleFunc("/api/llm/usage/stats", s.authManager.AuthMiddleware(s.handleLLMUsageStats))
-
-	// Model management endpoints
 	mux.HandleFunc("/api/models", s.authManager.AuthMiddleware(s.handleModels))
 	mux.HandleFunc("/api/models/active", s.authManager.AuthMiddleware(s.handleActiveModel))
 
-	// MCP server management endpoints
+	// MCP server management
 	mux.HandleFunc("/api/mcp/servers", s.authManager.AuthMiddleware(s.handleMCPServers))
 	mux.HandleFunc("/api/mcp/tools", s.authManager.AuthMiddleware(s.handleMCPTools))
 
-	// WebSocket terminal handler
+	// Kubernetes resources (read-only, RBAC view)
+	mux.HandleFunc("/api/k8s/apply", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionApply)(s.handleYamlApply)))
+	mux.HandleFunc("/api/k8s/", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionView)(s.handleK8sResource)))
+	mux.HandleFunc("/api/crd/", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionView)(s.handleCustomResources)))
+	mux.HandleFunc("/api/overview", s.authManager.AuthMiddleware(s.handleClusterOverview))
+	mux.HandleFunc("/api/topology/", s.authManager.AuthMiddleware(s.handleTopology))
+	mux.HandleFunc("/api/search", s.authManager.AuthMiddleware(s.handleGlobalSearch))
+	mux.HandleFunc("/api/safety/analyze", s.authManager.AuthMiddleware(s.handleSafetyAnalysis))
+
+	// Pod operations
+	mux.HandleFunc("/api/pods/", s.authManager.AuthMiddleware(s.handlePodLogs))
+	mux.HandleFunc("/api/workload/pods", s.authManager.AuthMiddleware(s.handleWorkloadPods))
+
+	// WebSocket terminal
 	terminalHandler := NewTerminalHandler(s.k8sClient)
 	mux.HandleFunc("/api/terminal/", s.authManager.AuthMiddleware(terminalHandler.HandleTerminal))
 
-	// Metrics endpoints (real-time)
-	mux.HandleFunc("/api/metrics/pods", s.authManager.AuthMiddleware(s.handlePodMetrics))
-	mux.HandleFunc("/api/metrics/nodes", s.authManager.AuthMiddleware(s.handleNodeMetrics))
-
-	// Time-series metrics endpoints (historical)
-	mux.HandleFunc("/api/metrics/history/cluster", s.authManager.AuthMiddleware(s.handleClusterMetricsHistory))
-	mux.HandleFunc("/api/metrics/history/nodes", s.authManager.AuthMiddleware(s.handleNodeMetricsHistory))
-	mux.HandleFunc("/api/metrics/history/pods", s.authManager.AuthMiddleware(s.handlePodMetricsHistory))
-	mux.HandleFunc("/api/metrics/history/summary", s.authManager.AuthMiddleware(s.handleMetricsSummary))
-	mux.HandleFunc("/api/metrics/history/aggregated", s.authManager.AuthMiddleware(s.handleAggregatedMetrics))
-	mux.HandleFunc("/api/metrics/collect", s.authManager.AuthMiddleware(s.handleMetricsCollectNow))
-
-	// Prometheus integration endpoints
-	if s.cfg.Prometheus.ExposeMetrics {
-		mux.HandleFunc("/metrics", s.handlePrometheusMetrics) // No auth for Prometheus scraping
-	}
-	mux.HandleFunc("/api/prometheus/settings", s.authManager.AuthMiddleware(s.handlePrometheusSettings))
-	mux.HandleFunc("/api/prometheus/test", s.authManager.AuthMiddleware(s.handlePrometheusTest))
-	mux.HandleFunc("/api/prometheus/query", s.authManager.AuthMiddleware(s.handlePrometheusQuery))
-
-	// Security scanning endpoints
-	mux.HandleFunc("/api/security/scan", s.authManager.AuthMiddleware(s.handleSecurityScan))
-	mux.HandleFunc("/api/security/scan/quick", s.authManager.AuthMiddleware(s.handleSecurityQuickScan))
-	mux.HandleFunc("/api/security/scans", s.authManager.AuthMiddleware(s.handleSecurityScanHistory))
-	mux.HandleFunc("/api/security/scans/stats", s.authManager.AuthMiddleware(s.handleSecurityScanStats))
-	mux.HandleFunc("/api/security/scan/", s.authManager.AuthMiddleware(s.handleSecurityScanDetail))
-
-	// Trivy CVE scanner management
-	mux.HandleFunc("/api/security/trivy/status", s.authManager.AuthMiddleware(s.handleTrivyStatus))
-	mux.HandleFunc("/api/security/trivy/install", s.authManager.AuthMiddleware(s.handleTrivyInstall))
-	mux.HandleFunc("/api/security/trivy/instructions", s.authManager.AuthMiddleware(s.handleTrivyInstructions))
-
-	// Port forwarding endpoints (RBAC-protected)
-	mux.HandleFunc("/api/portforward/start", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("pods", ActionPortForward)(s.handlePortForwardStart)))
-	mux.HandleFunc("/api/portforward/list", s.authManager.AuthMiddleware(s.handlePortForwardList))
-	mux.HandleFunc("/api/portforward/", s.authManager.AuthMiddleware(s.handlePortForwardStop))
-
-	// Deployment operations (RBAC-protected)
+	// Workload operations (RBAC-protected)
 	mux.HandleFunc("/api/deployment/scale", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("deployments", ActionScale)(s.handleDeploymentScale)))
 	mux.HandleFunc("/api/deployment/restart", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("deployments", ActionRestart)(s.handleDeploymentRestart)))
 	mux.HandleFunc("/api/deployment/pause", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("deployments", ActionEdit)(s.handleDeploymentPause)))
 	mux.HandleFunc("/api/deployment/resume", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("deployments", ActionEdit)(s.handleDeploymentResume)))
 	mux.HandleFunc("/api/deployment/rollback", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("deployments", ActionEdit)(s.handleDeploymentRollback)))
 	mux.HandleFunc("/api/deployment/history", s.authManager.AuthMiddleware(s.handleDeploymentHistory))
-
-	// StatefulSet operations (RBAC-protected)
 	mux.HandleFunc("/api/statefulset/scale", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("statefulsets", ActionScale)(s.handleStatefulSetScale)))
 	mux.HandleFunc("/api/statefulset/restart", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("statefulsets", ActionRestart)(s.handleStatefulSetRestart)))
-
-	// DaemonSet operations (RBAC-protected)
 	mux.HandleFunc("/api/daemonset/restart", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("daemonsets", ActionRestart)(s.handleDaemonSetRestart)))
-
-	// CronJob operations (RBAC-protected)
 	mux.HandleFunc("/api/cronjob/trigger", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("cronjobs", ActionCreate)(s.handleCronJobTrigger)))
 	mux.HandleFunc("/api/cronjob/suspend", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("cronjobs", ActionEdit)(s.handleCronJobSuspend)))
 
@@ -677,23 +547,10 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/node/drain", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("nodes", ActionEdit)(s.handleNodeDrain)))
 	mux.HandleFunc("/api/node/pods", s.authManager.AuthMiddleware(s.handleNodePods))
 
-	// Pod logs endpoint
-	mux.HandleFunc("/api/pods/", s.authManager.AuthMiddleware(s.handlePodLogs))
-
-	// Workload pods endpoint (get pods for deployment, daemonset, statefulset, replicaset)
-	mux.HandleFunc("/api/workload/pods", s.authManager.AuthMiddleware(s.handleWorkloadPods))
-
-	// Cluster overview endpoint
-	mux.HandleFunc("/api/overview", s.authManager.AuthMiddleware(s.handleClusterOverview))
-
-	// Topology endpoint (resource relationship graph)
-	mux.HandleFunc("/api/topology/", s.authManager.AuthMiddleware(s.handleTopology))
-
-	// Global search endpoint
-	mux.HandleFunc("/api/search", s.authManager.AuthMiddleware(s.handleGlobalSearch))
-
-	// YAML apply endpoint (RBAC-protected)
-	mux.HandleFunc("/api/k8s/apply", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionApply)(s.handleYamlApply)))
+	// Port forwarding (RBAC-protected)
+	mux.HandleFunc("/api/portforward/start", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("pods", ActionPortForward)(s.handlePortForwardStart)))
+	mux.HandleFunc("/api/portforward/list", s.authManager.AuthMiddleware(s.handlePortForwardList))
+	mux.HandleFunc("/api/portforward/", s.authManager.AuthMiddleware(s.handlePortForwardStop))
 
 	// Helm operations (RBAC-protected for mutations)
 	mux.HandleFunc("/api/helm/releases", s.authManager.AuthMiddleware(s.handleHelmReleases))
@@ -705,12 +562,39 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/helm/repos", s.authManager.AuthMiddleware(s.handleHelmRepos))
 	mux.HandleFunc("/api/helm/search", s.authManager.AuthMiddleware(s.handleHelmSearch))
 
-	// Admin-only endpoints (user management)
+	// Metrics (real-time and historical)
+	mux.HandleFunc("/api/metrics/pods", s.authManager.AuthMiddleware(s.handlePodMetrics))
+	mux.HandleFunc("/api/metrics/nodes", s.authManager.AuthMiddleware(s.handleNodeMetrics))
+	mux.HandleFunc("/api/metrics/history/cluster", s.authManager.AuthMiddleware(s.handleClusterMetricsHistory))
+	mux.HandleFunc("/api/metrics/history/nodes", s.authManager.AuthMiddleware(s.handleNodeMetricsHistory))
+	mux.HandleFunc("/api/metrics/history/pods", s.authManager.AuthMiddleware(s.handlePodMetricsHistory))
+	mux.HandleFunc("/api/metrics/history/summary", s.authManager.AuthMiddleware(s.handleMetricsSummary))
+	mux.HandleFunc("/api/metrics/history/aggregated", s.authManager.AuthMiddleware(s.handleAggregatedMetrics))
+	mux.HandleFunc("/api/metrics/collect", s.authManager.AuthMiddleware(s.handleMetricsCollectNow))
+	mux.HandleFunc("/api/prometheus/settings", s.authManager.AuthMiddleware(s.handlePrometheusSettings))
+	mux.HandleFunc("/api/prometheus/test", s.authManager.AuthMiddleware(s.handlePrometheusTest))
+	mux.HandleFunc("/api/prometheus/query", s.authManager.AuthMiddleware(s.handlePrometheusQuery))
+
+	// Security scanning
+	mux.HandleFunc("/api/security/scan", s.authManager.AuthMiddleware(s.handleSecurityScan))
+	mux.HandleFunc("/api/security/scan/quick", s.authManager.AuthMiddleware(s.handleSecurityQuickScan))
+	mux.HandleFunc("/api/security/scans", s.authManager.AuthMiddleware(s.handleSecurityScanHistory))
+	mux.HandleFunc("/api/security/scans/stats", s.authManager.AuthMiddleware(s.handleSecurityScanStats))
+	mux.HandleFunc("/api/security/scan/", s.authManager.AuthMiddleware(s.handleSecurityScanDetail))
+	mux.HandleFunc("/api/security/trivy/status", s.authManager.AuthMiddleware(s.handleTrivyStatus))
+	mux.HandleFunc("/api/security/trivy/install", s.authManager.AuthMiddleware(s.handleTrivyInstall))
+	mux.HandleFunc("/api/security/trivy/instructions", s.authManager.AuthMiddleware(s.handleTrivyInstructions))
+
+	// Audit and reports
+	mux.HandleFunc("/api/audit", s.authManager.AuthMiddleware(s.handleAuditLogs))
+	mux.HandleFunc("/api/reports", s.authManager.AuthMiddleware(s.reportGenerator.HandleReports))
+	mux.HandleFunc("/api/reports/preview", s.authManager.AuthMiddleware(s.reportGenerator.HandleReportPreview))
+
+	// --- Admin-only routes ---
 	mux.HandleFunc("/api/admin/users", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.handleAdminUsers)))
 	mux.HandleFunc("/api/admin/users/", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.handleAdminUserAction)))
 	mux.HandleFunc("/api/admin/reset-password", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleResetPassword)))
 	mux.HandleFunc("/api/admin/status", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleAuthStatus)))
-	// Emergency user locking (Teleport-inspired)
 	mux.HandleFunc("/api/admin/lock", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleLockUser)))
 	mux.HandleFunc("/api/admin/unlock", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleUnlockUser)))
 
@@ -825,12 +709,12 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		}
 
-		// Content Security Policy
+		// Content Security Policy (all assets vendored locally for air-gapped support)
 		w.Header().Set("Content-Security-Policy",
 			"default-src 'self'; "+
 				"script-src 'self' 'unsafe-inline'; "+
-				"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "+
-				"font-src 'self' https://fonts.gstatic.com; "+
+				"style-src 'self' 'unsafe-inline'; "+
+				"font-src 'self'; "+
 				"img-src 'self' data:; "+
 				"connect-src 'self' ws: wss:; "+
 				"frame-ancestors 'none'")
