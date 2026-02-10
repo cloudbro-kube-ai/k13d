@@ -6,14 +6,12 @@ on:
       - main
     paths:
       - 'docs-site/**'
-      - 'docs/**'
       - 'README.md'
       - 'CHANGELOG.md'
       - '.github/workflows/docs.yml'
   pull_request:
     paths:
       - 'docs-site/**'
-      - 'docs/**'
       - 'README.md'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
@@ -41,13 +39,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install mkdocs-material mkdocs-minify-plugin mike
-
-      - name: Sync README to docs
-        run: |
-          # Copy README.md to docs as a reference
-          cp README.md docs-site/docs/reference/readme.md || true
-          # Copy CHANGELOG.md
-          cp CHANGELOG.md docs-site/docs/reference/changelog.md || true
 
       - name: Build documentation
         working-directory: docs-site
@@ -98,13 +89,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Sync README to docs
-        run: |
-          # Copy README.md to docs as a reference
-          cp README.md docs-site/docs/reference/readme.md || true
-          # Copy CHANGELOG.md
-          cp CHANGELOG.md docs-site/docs/reference/changelog.md || true
 
       - name: Build and deploy docs to gh-pages
         working-directory: docs-site

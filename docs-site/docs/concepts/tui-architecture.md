@@ -754,6 +754,6 @@ Key files:
 
 ## Next Steps
 
-- [User Guide](./USER_GUIDE.md) - How to use k13d
-- [MCP Guide](./MCP_GUIDE.md) - AI tool integration
-- [Architecture Guide](./ARCHITECTURE.md) - System overview
+- [User Guide](../user-guide/tui.md) - How to use k13d
+- [MCP Integration](./mcp-integration.md) - AI tool integration
+- [Architecture](./architecture.md) - System overview

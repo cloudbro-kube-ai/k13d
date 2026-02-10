@@ -1,0 +1,157 @@
+# Documentation Drift Detection Rules
+# 이 파일은 코드 변경이 문서에 미치는 영향을 정의합니다.
+#
+# 사용법: /check-drift 스킬이 이 규칙을 참조합니다.
+
+version: "1.0"
+
+# 심각도 설명
+# - high: 사용자에게 직접 영향, 즉시 업데이트 필요
+# - medium: 기능 문서화 필요, 릴리즈 전 업데이트
+# - low: 내부 문서, 선택적 업데이트
+
+rules:
+  # Go 버전 변경
+  - id: go-version-bump
+    name: "Go 버전 변경"
+    description: "go.mod의 Go 버전이 변경되면 여러 문서 업데이트 필요"
+    watch:
+      - go.mod
+    pattern: "^go (\\d+\\.\\d+)"
+    severity: high
+    affects:
+      - file: README.md
+        section: "Badges / Requirements"
+        action: "Go 버전 배지 업데이트"
+      - file: CLAUDE.md
+        section: "Version Information"
+        action: "Go 버전 정보 업데이트"
+      - file: docs-site/docs/getting-started/installation.md
+        section: "Prerequisites"
+        action: "최소 Go 버전 요구사항 업데이트"
+
+  # CLI 플래그 추가/변경
+  - id: cli-flag-changed
+    name: "CLI 플래그 변경"
+    description: "main.go의 flag 정의 변경"
+    watch:
+      - cmd/kube-ai-dashboard-cli/main.go
+    pattern: 'flag\.(String|Bool|Int|Duration)\("([^"]+)"'
+    severity: high
+    affects:
+      - file: docs-site/docs/reference/cli.md
+        section: "Command Line Options"
+        action: "CLI 옵션 테이블에 새 플래그 추가"
+      - file: docs-site/docs/reference/env-vars.md
+        section: "Environment Variables"
+        action: "대응하는 환경변수 문서화 (있는 경우)"
+
+  # TUI 키바인딩 변경
+  - id: tui-keybinding-changed
+    name: "TUI 키바인딩 변경"
+    description: "TUI 단축키 추가 또는 변경"
+    watch:
+      - pkg/ui/app.go
+      - pkg/ui/app_actions.go
+      - pkg/ui/app_navigation.go
+    pattern: "case tcell\\.Key(\\w+):|KeyRune.*'(.)'"
+    severity: medium
+    affects:
+      - file: docs-site/docs/user-guide/shortcuts.md
+        section: "Keyboard Shortcuts"
+        action: "단축키 테이블 업데이트"
+      - file: docs-site/docs/concepts/tui-architecture.md
+        section: "Input Handling"
+        action: "키 핸들러 문서 업데이트"
+
+  # Web API 엔드포인트 변경
+  - id: web-api-changed
+    name: "Web API 엔드포인트 변경"
+    description: "HTTP 핸들러 추가 또는 변경"
+    watch:
+      - pkg/web/server.go
+      - pkg/web/handlers.go
+      - pkg/web/api.go
+    pattern: 'http\.Handle(Func)?\("(/[^"]+)"'
+    severity: high
+    affects:
+      - file: docs-site/docs/reference/api.md
+        section: "API Endpoints"
+        action: "API 엔드포인트 문서화"
+      - file: docs-site/docs/features/web-ui.md
+        section: "API Reference"
+        action: "Web UI API 목록 업데이트"
+
+  # 설정 스키마 변경
+  - id: config-schema-changed
+    name: "설정 스키마 변경"
+    description: "Config 구조체 필드 추가 또는 변경"
+    watch:
+      - pkg/config/config.go
+      - pkg/config/hotkeys.go
+      - pkg/config/plugins.go
+      - pkg/config/aliases.go
+      - pkg/config/views.go
+    pattern: 'type (\w+Config) struct|`yaml:"([^"]+)"`'
+    severity: high
+    affects:
+      - file: docs-site/docs/getting-started/configuration.md
+        section: "Configuration Reference"
+        action: "새 설정 필드 문서화"
+      - file: docs-site/docs/user-guide/tui.md
+        section: "Customization"
+        action: "설정 예시 업데이트"
+
+  # AI/LLM 프로바이더 변경
+  - id: ai-provider-changed
+    name: "AI 프로바이더 변경"
+    description: "AI 프로바이더 또는 도구 추가/변경"
+    watch:
+      - pkg/ai/providers/*.go
+      - pkg/ai/tools/*.go
+      - pkg/ai/agent/*.go
+    pattern: "type (\\w+Provider) struct|func.*Tool.*\\("
+    exclude: "_test.go"
+    severity: medium
+    affects:
+      - file: docs-site/docs/ai-llm/providers.md
+        section: "Supported Providers"
+        action: "프로바이더 목록 또는 도구 문서 업데이트"
+      - file: docs-site/docs/ai-llm/tool-calling.md
+        section: "Available Tools"
+        action: "새 도구 문서화"
+      - file: docs-site/docs/concepts/ai-assistant.md
+        section: "Architecture"
+        action: "아키텍처 다이어그램 업데이트 (필요시)"
+
+  # MCP 통합 변경
+  - id: mcp-changed
+    name: "MCP 통합 변경"
+    description: "MCP 클라이언트/서버 코드 변경"
+    watch:
+      - pkg/mcp/*.go
+    pattern: "func.*(MCP|Server|Tool)|type.*(MCP|Server)"
+    severity: high
+    affects:
+      - file: docs-site/docs/concepts/mcp-integration.md
+        section: "MCP Architecture"
+        action: "MCP 문서 업데이트"
+
+  # 주요 의존성 업데이트
+  - id: major-dependency-updated
+    name: "주요 의존성 업데이트"
+    description: "Kubernetes client-go 등 주요 의존성 버전 변경"
+    watch:
+      - go.mod
+    pattern: 'k8s\.io/(client-go|api|apimachinery) v(\d+)\.(\d+)'
+    severity: medium
+    affects:
+      - file: docs-site/docs/getting-started/installation.md
+        section: "Compatibility"
+        action: "Kubernetes 버전 호환성 매트릭스 업데이트"
+      - file: README.md
+        section: "Requirements"
+        action: "k8s 버전 요구사항 업데이트"
+      - file: CLAUDE.md
+        section: "Key Dependencies"
+        action: "의존성 버전 정보 업데이트"

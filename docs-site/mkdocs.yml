@@ -96,6 +96,9 @@ markdown_extensions:
   - pymdownx.mark
   - pymdownx.smartsymbols
   - pymdownx.snippets:
+      base_path:
+        - docs-site/docs
+        - .  # Repository root for README.md, CHANGELOG.md
       auto_append:
         - includes/abbreviations.md
   - pymdownx.superfences:
@@ -125,6 +128,7 @@ nav:
     - Security: features/security.md
   - Concepts:
     - Architecture: concepts/architecture.md
+    - TUI Architecture: concepts/tui-architecture.md
     - AI Assistant: concepts/ai-assistant.md
     - MCP Integration: concepts/mcp-integration.md
     - Security & RBAC: concepts/security.md
@@ -148,6 +152,8 @@ nav:
     - CLI Reference: reference/cli.md
     - Environment Variables: reference/env-vars.md
     - Teleport Comparison: reference/teleport-comparison.md
+    - Feature Gap Analysis: reference/feature-gap-analysis.md
+    - TUI Testing Strategy: reference/tui-testing.md
     - Changelog: reference/changelog.md
 
 # Extra
