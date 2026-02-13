@@ -253,7 +253,7 @@ spec:
   containers:
     - name: k13d
       # Change to your private registry
-      image: youngjukim/k13d:latest
+      image: fjvbn2003/k13d:latest
       # For air-gapped: use IfNotPresent or Never
       imagePullPolicy: IfNotPresent
 

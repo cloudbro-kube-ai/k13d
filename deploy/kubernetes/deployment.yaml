@@ -183,7 +183,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: k13d
-          image: youngjukim/k13d:latest
+          image: fjvbn2003/k13d:latest
           imagePullPolicy: Always
           ports:
             - name: http

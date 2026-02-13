@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   k13d:
-    image: youngjukim/k13d:latest
+    image: fjvbn2003/k13d:latest
     build:
       context: ../..
       dockerfile: deploy/docker/Dockerfile

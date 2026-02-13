@@ -29,20 +29,19 @@ This guide covers deploying k13d in a Kubernetes cluster with various configurat
 ### Using kubectl
 
 ```bash
-# Create namespace
-kubectl create namespace k13d
-
-# Apply all-in-one manifest
-kubectl apply -f https://raw.githubusercontent.com/cloudbro-kube-ai/k13d/main/deploy/kubernetes/all-in-one.yaml
+# Apply single-pod manifest (includes namespace, RBAC, and service)
+kubectl apply -f https://raw.githubusercontent.com/cloudbro-kube-ai/k13d/main/deploy/kubernetes/single-pod.yaml
 
 # Wait for pod to be ready
-kubectl wait --for=condition=ready pod -l app=k13d -n k13d --timeout=120s
+kubectl wait --for=condition=ready pod/k13d -n k13d --timeout=120s
 
 # Port forward to access
-kubectl port-forward -n k13d svc/k13d 8080:80
+kubectl port-forward -n k13d pod/k13d 8080:8080
 
 # Open http://localhost:8080
 ```
+
+Docker Hub image: `fjvbn2003/k13d:latest`
 
 ### Using Helm
 
@@ -87,7 +86,7 @@ spec:
       serviceAccountName: k13d
       containers:
       - name: k13d
-        image: cloudbro-kube-ai/k13d:latest
+        image: fjvbn2003/k13d:latest
         ports:
         - containerPort: 8080
         env:
@@ -343,7 +342,7 @@ spec:
       containers:
       # k13d container
       - name: k13d
-        image: cloudbro-kube-ai/k13d:latest
+        image: fjvbn2003/k13d:latest
         ports:
         - containerPort: 8080
         env:

@@ -113,7 +113,7 @@ docker run -d \
   -e K13D_LLM_PROVIDER=solar \
   -e K13D_LLM_MODEL=solar-pro2 \
   -e K13D_LLM_API_KEY=your-api-key \
-  cloudbro-kube-ai/k13d:latest
+  fjvbn2003/k13d:latest
 ```
 
 ### Docker Compose
@@ -132,26 +132,30 @@ See [Kubernetes Installation Guide](./INSTALLATION_K8S.md) for detailed instruct
 ### Quick Start with kubectl
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/cloudbro-kube-ai/k13d/main/deploy/kubernetes/all-in-one.yaml
-kubectl port-forward -n k13d svc/k13d 8080:80
+kubectl apply -f https://raw.githubusercontent.com/cloudbro-kube-ai/k13d/main/deploy/kubernetes/single-pod.yaml
+kubectl port-forward -n k13d pod/k13d 8080:8080
 ```
 
 ---
 
 ## Air-Gapped Installation
 
-For environments without internet access:
+For environments without internet access. Docker Hub image: `fjvbn2003/k13d:latest`
 
 ### 1. Prepare on Connected Machine
 
 ```bash
-# Build and save Docker image
-docker build -t k13d:latest .
-docker save k13d:latest | gzip > k13d-image.tar.gz
+# Option A: Pull from Docker Hub (recommended)
+docker pull fjvbn2003/k13d:latest
+docker save fjvbn2003/k13d:latest | gzip > k13d-image.tar.gz
 
-# Download embedded LLM model (optional)
-./k13d --download-model
-tar -czf k13d-llm-models.tar.gz ~/.local/share/k13d/llm/
+# Option B: Build from source
+docker build -t fjvbn2003/k13d:latest -f deploy/docker/Dockerfile .
+docker save fjvbn2003/k13d:latest | gzip > k13d-image.tar.gz
+
+# Save Ollama image for AI features (optional)
+docker pull ollama/ollama:latest
+docker save ollama/ollama:latest | gzip > ollama-image.tar.gz
 ```
 
 ### 2. Transfer and Install
@@ -159,21 +163,35 @@ tar -czf k13d-llm-models.tar.gz ~/.local/share/k13d/llm/
 ```bash
 # On air-gapped machine
 docker load < k13d-image.tar.gz
-
-# Restore LLM models
-tar -xzf k13d-llm-models.tar.gz -C ~/
+docker load < ollama-image.tar.gz  # if using AI features
 ```
 
-### 3. Run with Embedded LLM
+### 3. Run (Docker)
 
 ```bash
+# Without AI
 docker run -d \
   --name k13d \
   -p 8080:8080 \
   -v ~/.kube/config:/home/k13d/.kube/config:ro \
-  -v ~/.local/share/k13d/llm:/home/k13d/.local/share/k13d/llm:ro \
-  k13d:latest \
-  --embedded-llm
+  fjvbn2003/k13d:latest
+
+# With Ollama AI (use docker-compose.airgapped.yaml)
+docker compose -f deploy/docker/docker-compose.yaml \
+  -f deploy/docker/docker-compose.airgapped.yaml up -d
+```
+
+### 4. Run (Kubernetes)
+
+```bash
+# Deploy single-pod (no AI)
+kubectl apply -f deploy/kubernetes/single-pod.yaml
+
+# Deploy with Ollama sidecar (AI features)
+kubectl apply -f deploy/kubernetes/single-pod-with-ollama.yaml
+
+# Access
+kubectl port-forward -n k13d pod/k13d 8080:8080
 ```
 
 ---
