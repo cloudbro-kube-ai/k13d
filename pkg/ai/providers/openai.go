@@ -170,7 +170,7 @@ func (p *OpenAIProvider) AskNonStreaming(ctx context.Context, prompt string) (st
 	reqBody := openAIChatRequest{
 		Model: p.config.Model,
 		Messages: []ChatMessage{
-			{Role: "system", Content: "You are a helpful Kubernetes assistant."},
+			{Role: "system", Content: "You are a helpful Kubernetes assistant. Help users manage Kubernetes clusters using natural language. When users ask to create resources, generate the appropriate kubectl commands."},
 			{Role: "user", Content: prompt},
 		},
 		Stream:          false,

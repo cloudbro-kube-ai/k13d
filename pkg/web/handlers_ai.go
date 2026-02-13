@@ -81,7 +81,15 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			Details:  fmt.Sprintf("Provider: %s, Model: %s, JSONMode: %v", llmSettings.Provider, llmSettings.Model, llmSettings.UseJSONMode),
 		})
 
-		json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":         "ok",
+			"message":        "LLM settings updated successfully",
+			"provider":       s.cfg.LLM.Provider,
+			"model":          s.cfg.LLM.Model,
+			"endpoint":       s.aiClient.GetEndpoint(),
+			"ready":          s.aiClient.IsReady(),
+			"supports_tools": s.aiClient.SupportsTools(),
+		})
 
 	default:
 		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -745,30 +753,48 @@ func getLLMCapabilities(client *ai.Client, provider string) LLMCapabilities {
 	case "openai":
 		caps.JSONMode = true
 		caps.MaxTokens = 128000 // GPT-4 turbo
-		if !caps.ToolCalling {
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available with tool calling support"
+		} else {
 			caps.Recommendation = "Consider using GPT-4 or GPT-3.5-turbo for full tool calling support"
 		}
 	case "anthropic":
 		caps.JSONMode = true
 		caps.MaxTokens = 200000 // Claude 3
-		if !caps.ToolCalling {
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available with tool calling support"
+		} else {
 			caps.Recommendation = "Consider using Claude 3 Opus, Sonnet, or Haiku for tool calling support"
 		}
 	case "gemini":
 		caps.JSONMode = true
 		caps.MaxTokens = 32000
-		if !caps.ToolCalling {
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available with Gemini function calling"
+		} else {
 			caps.Recommendation = "Consider using Gemini Pro for tool calling support"
 		}
 	case "ollama":
 		caps.JSONMode = true
-		caps.Recommendation = "Ollama models vary in capabilities. Try llama3, mistral, or codellama for better results"
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available. Ollama tool calling enabled"
+		} else {
+			caps.Recommendation = "Ollama models vary in capabilities. Try llama3, mistral, or qwen2.5 for tool calling support"
+		}
 	case "bedrock":
 		caps.JSONMode = true
-		caps.Recommendation = "AWS Bedrock capabilities depend on the selected model"
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available via AWS Bedrock"
+		} else {
+			caps.Recommendation = "AWS Bedrock capabilities depend on the selected model"
+		}
 	case "azopenai":
 		caps.JSONMode = true
-		caps.Recommendation = "Azure OpenAI capabilities depend on the deployed model"
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available via Azure OpenAI"
+		} else {
+			caps.Recommendation = "Azure OpenAI capabilities depend on the deployed model"
+		}
 	default:
 		caps.JSONMode = false
 		caps.Recommendation = "Unknown provider - capabilities may be limited"
@@ -840,9 +866,14 @@ func (s *Server) handleOllamaStatus(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	// Try to connect to Ollama's default endpoint
+	// Use configured Ollama endpoint, falling back to default
+	ollamaEndpoint := "http://localhost:11434"
+	if s.cfg.LLM.Provider == "ollama" && s.cfg.LLM.Endpoint != "" {
+		ollamaEndpoint = strings.TrimSuffix(s.cfg.LLM.Endpoint, "/")
+	}
+
 	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get("http://localhost:11434/api/tags")
+	resp, err := client.Get(ollamaEndpoint + "/api/tags")
 
 	if err != nil {
 		json.NewEncoder(w).Encode(OllamaStatusResponse{
@@ -909,7 +940,12 @@ func (s *Server) handleOllamaPull(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Send pull request to Ollama
+	// Use configured Ollama endpoint, falling back to default
+	ollamaEndpoint := "http://localhost:11434"
+	if s.cfg.LLM.Provider == "ollama" && s.cfg.LLM.Endpoint != "" {
+		ollamaEndpoint = strings.TrimSuffix(s.cfg.LLM.Endpoint, "/")
+	}
+
 	client := &http.Client{Timeout: 10 * time.Minute} // Model pull can take a while
 
 	pullBody, _ := json.Marshal(map[string]interface{}{
@@ -917,7 +953,7 @@ func (s *Server) handleOllamaPull(w http.ResponseWriter, r *http.Request) {
 		"stream": false,
 	})
 
-	resp, err := client.Post("http://localhost:11434/api/pull", "application/json", strings.NewReader(string(pullBody)))
+	resp, err := client.Post(ollamaEndpoint+"/api/pull", "application/json", strings.NewReader(string(pullBody)))
 	if err != nil {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": fmt.Sprintf("Failed to connect to Ollama: %v", err),

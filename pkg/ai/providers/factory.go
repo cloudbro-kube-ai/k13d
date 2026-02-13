@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"math"
 	"math/rand"
@@ -248,7 +249,7 @@ func isRetryableError(err error) bool {
 func newHTTPClient(skipTLS bool) *http.Client {
 	transport := &http.Transport{}
 	if skipTLS {
-		transport.TLSClientConfig = nil // Would need crypto/tls import for proper skip
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 	return &http.Client{
 		Transport: transport,

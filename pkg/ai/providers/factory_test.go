@@ -3,6 +3,7 @@ package providers
 import (
 	"context"
 	"errors"
+	"net/http"
 	"os"
 	"testing"
 )
@@ -867,6 +868,83 @@ func TestFactoryCreateSolarProvider(t *testing.T) {
 	// Solar uses OpenAI provider internally, so name should be "openai"
 	if provider.Name() != "openai" {
 		t.Errorf("Provider name = %q, want \"openai\"", provider.Name())
+	}
+}
+
+// Compile-time checks: Ollama and Gemini must implement ToolProvider
+var _ ToolProvider = (*OllamaProvider)(nil)
+var _ ToolProvider = (*GeminiProvider)(nil)
+var _ ToolProvider = (*OpenAIProvider)(nil)
+var _ ToolProvider = (*EmbeddedProvider)(nil)
+
+func TestOllamaToolProviderInterface(t *testing.T) {
+	provider, err := NewOllamaProvider(&ProviderConfig{
+		Provider: "ollama",
+		Model:    "llama3.2",
+		Endpoint: "http://localhost:11434",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create Ollama provider: %v", err)
+	}
+
+	// Verify it implements ToolProvider
+	if _, ok := provider.(ToolProvider); !ok {
+		t.Error("OllamaProvider should implement ToolProvider")
+	}
+
+	// Verify retryProvider wrapping preserves tool support
+	retryProv := CreateWithRetry(provider, DefaultRetryConfig())
+	rp := retryProv.(*retryProvider)
+	if !rp.SupportsTools() {
+		t.Error("retryProvider wrapping OllamaProvider should report SupportsTools() = true")
+	}
+}
+
+func TestGeminiToolProviderInterface(t *testing.T) {
+	provider, err := NewGeminiProvider(&ProviderConfig{
+		Provider: "gemini",
+		Model:    "gemini-1.5-flash",
+		APIKey:   "test-key",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create Gemini provider: %v", err)
+	}
+
+	// Verify it implements ToolProvider
+	if _, ok := provider.(ToolProvider); !ok {
+		t.Error("GeminiProvider should implement ToolProvider")
+	}
+
+	// Verify retryProvider wrapping preserves tool support
+	retryProv := CreateWithRetry(provider, DefaultRetryConfig())
+	rp := retryProv.(*retryProvider)
+	if !rp.SupportsTools() {
+		t.Error("retryProvider wrapping GeminiProvider should report SupportsTools() = true")
+	}
+}
+
+func TestTLSSkipVerifyEnabled(t *testing.T) {
+	client := newHTTPClient(true)
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Expected *http.Transport")
+	}
+	if transport.TLSClientConfig == nil {
+		t.Fatal("TLSClientConfig should not be nil when skipTLS is true")
+	}
+	if !transport.TLSClientConfig.InsecureSkipVerify {
+		t.Error("InsecureSkipVerify should be true when skipTLS is true")
+	}
+}
+
+func TestTLSSkipVerifyDisabled(t *testing.T) {
+	client := newHTTPClient(false)
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Expected *http.Transport")
+	}
+	if transport.TLSClientConfig != nil {
+		t.Error("TLSClientConfig should be nil when skipTLS is false")
 	}
 }
 

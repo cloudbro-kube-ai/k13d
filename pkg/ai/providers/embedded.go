@@ -74,7 +74,7 @@ func NewEmbeddedProvider(cfg *ProviderConfig) (Provider, error) {
 			Model:    model,
 			Endpoint: endpoint,
 		},
-		httpClient: &http.Client{},
+		httpClient: newHTTPClient(cfg.SkipTLSVerify),
 		endpoint:   endpoint,
 	}, nil
 }
