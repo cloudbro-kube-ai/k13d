@@ -22,4 +22,4 @@
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
             lLogs sShell dDescribe nNS 0All /Filter :Cmd ?Help qQuit
- /                        Type to filter (use /regex/ for regex), Enter to
+ /                        Filter: text | /regex/ | -f fuzzy | -l label=value |

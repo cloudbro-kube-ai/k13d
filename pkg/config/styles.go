@@ -3,10 +3,15 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"gopkg.in/yaml.v3"
 )
+
+// getConfigDirFunc is the function used to resolve the config directory.
+// It defaults to GetConfigDir and can be overridden in tests.
+var getConfigDirFunc = GetConfigDir
 
 // Color represents a color that can be specified as hex string or name
 type Color string
@@ -270,4 +275,152 @@ func ListSkins() ([]string, error) {
 	}
 
 	return skins, nil
+}
+
+// ContextSkinConfig maps Kubernetes context names to skin names.
+// This allows different visual themes per context (e.g., red borders for production).
+type ContextSkinConfig struct {
+	Mappings map[string]string `yaml:"mappings"` // context name or glob -> skin name
+}
+
+// LoadContextSkins loads the context-skin mappings from config.
+// Returns an empty config (not an error) when the file is missing or malformed.
+func LoadContextSkins() (*ContextSkinConfig, error) {
+	configDir, err := getConfigDirFunc()
+	if err != nil {
+		return &ContextSkinConfig{Mappings: make(map[string]string)}, nil
+	}
+
+	path := filepath.Join(configDir, "context-skins.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return &ContextSkinConfig{Mappings: make(map[string]string)}, nil
+		}
+		return nil, err
+	}
+
+	var cfg ContextSkinConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return &ContextSkinConfig{Mappings: make(map[string]string)}, nil
+	}
+	if cfg.Mappings == nil {
+		cfg.Mappings = make(map[string]string)
+	}
+	return &cfg, nil
+}
+
+// GetSkinForContext returns the skin name for a given Kubernetes context.
+// It first checks for an exact match, then tries glob patterns.
+// Falls back to "default" if no mapping exists.
+func (c *ContextSkinConfig) GetSkinForContext(contextName string) string {
+	if c == nil || c.Mappings == nil {
+		return "default"
+	}
+	if skin, ok := c.Mappings[contextName]; ok {
+		return skin
+	}
+	// Check for glob patterns (e.g., "prod-*" matches "prod-us-east")
+	for pattern, skin := range c.Mappings {
+		if strings.Contains(pattern, "*") && matchGlob(pattern, contextName) {
+			return skin
+		}
+	}
+	return "default"
+}
+
+// matchGlob performs simple glob matching supporting only the * wildcard.
+// Each * matches zero or more characters.
+func matchGlob(pattern, name string) bool {
+	if pattern == "*" {
+		return true
+	}
+	parts := strings.Split(pattern, "*")
+	if len(parts) == 1 {
+		return pattern == name
+	}
+
+	// The name must start with the first part and end with the last part.
+	// Intermediate parts must appear in order in between.
+	rest := name
+
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+		idx := strings.Index(rest, part)
+		if idx < 0 {
+			return false
+		}
+		// First segment must be a prefix
+		if i == 0 && idx != 0 {
+			return false
+		}
+		// Last segment must be a suffix
+		if i == len(parts)-1 && idx+len(part) != len(rest) {
+			return false
+		}
+		rest = rest[idx+len(part):]
+	}
+	return true
+}
+
+// BuiltInContextSkins returns pre-defined skins for common environments.
+// These can be referenced by name in context-skins.yaml mappings.
+func BuiltInContextSkins() map[string]*StyleConfig {
+	return map[string]*StyleConfig{
+		"production":  productionSkin(),
+		"staging":     stagingSkin(),
+		"development": developmentSkin(),
+	}
+}
+
+func productionSkin() *StyleConfig {
+	s := DefaultStyles()
+	s.K13s.Frame.BorderColor = "#ff5555" // Red borders
+	s.K13s.Frame.FocusBorderColor = "#ff5555"
+	s.K13s.Frame.TitleColor = "#ff5555"
+	s.K13s.StatusBar.BgColor = "#ff5555" // Red status bar
+	return s
+}
+
+func stagingSkin() *StyleConfig {
+	s := DefaultStyles()
+	s.K13s.Frame.BorderColor = "#ffb86c" // Orange/yellow borders
+	s.K13s.Frame.FocusBorderColor = "#ffb86c"
+	s.K13s.Frame.TitleColor = "#ffb86c"
+	s.K13s.StatusBar.BgColor = "#ffb86c"
+	return s
+}
+
+func developmentSkin() *StyleConfig {
+	s := DefaultStyles()
+	s.K13s.Frame.BorderColor = "#50fa7b" // Green borders
+	s.K13s.Frame.FocusBorderColor = "#50fa7b"
+	s.K13s.Frame.TitleColor = "#50fa7b"
+	s.K13s.StatusBar.BgColor = "#50fa7b"
+	return s
+}
+
+// LoadStylesForContext loads the appropriate skin for a Kubernetes context.
+// It first checks context-skins.yaml for a mapping, then tries built-in skins,
+// and finally falls back to the user's custom skin file or default styles.
+func LoadStylesForContext(contextName string) (*StyleConfig, error) {
+	contextSkins, err := LoadContextSkins()
+	if err != nil {
+		return DefaultStyles(), nil
+	}
+
+	skinName := contextSkins.GetSkinForContext(contextName)
+	if skinName == "default" {
+		return DefaultStyles(), nil
+	}
+
+	// Check built-in skins first
+	if builtIn, ok := BuiltInContextSkins()[skinName]; ok {
+		return builtIn, nil
+	}
+
+	// Fall back to user-defined skin file
+	return LoadStyles(skinName)
 }

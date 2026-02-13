@@ -150,9 +150,13 @@ func (a *App) showLogs() {
 
 	// Use VimViewer for Vim-style navigation and search
 	logView := NewVimViewer(a, "logs",
-		fmt.Sprintf(" Logs: %s/%s [gray](Esc:close /search n/N:next/prev Ctrl+D/U:scroll)[white] ", ns, name))
+		fmt.Sprintf(" Logs: %s/%s [gray](Esc:close /search s:autoscroll w:wrap m:mark)[white] ", ns, name))
+	logView.isLogView = true
+	logView.autoScroll = true
+	logView.textWrap = true
 
 	logView.SetContent("[yellow]Loading...[white]")
+	logView.updateTitle()
 
 	a.showModal("logs", logView, true)
 	a.SetFocus(logView)
@@ -828,8 +832,16 @@ func (a *App) showYAML() {
 	}
 
 	// Use VimViewer for Vim-style navigation and search
-	yamlView := NewVimViewer(a, "yaml",
-		fmt.Sprintf(" YAML: %s/%s [gray](Esc:close /search n/N:next/prev Ctrl+D/U:scroll)[white] ", resource, name))
+	isSecret := resource == "secrets" || resource == "sec"
+	title := fmt.Sprintf(" YAML: %s/%s [gray](Esc:close /search n/N:next/prev Ctrl+D/U:scroll)[white] ", resource, name)
+	if isSecret {
+		title = fmt.Sprintf(" YAML: %s/%s [gray](Esc:close /search x:decode)[white] ", resource, name)
+	}
+	yamlView := NewVimViewer(a, "yaml", title)
+	if isSecret {
+		yamlView.isSecretView = true
+		yamlView.updateTitle()
+	}
 
 	yamlView.SetContent("[yellow]Loading...[white]")
 
@@ -855,6 +867,9 @@ func (a *App) showYAML() {
 				yamlView.SetContent(fmt.Sprintf("[red]Error: %v", err))
 			} else {
 				yamlView.SetContent(yaml)
+				if isSecret {
+					yamlView.rawYAML = yaml
+				}
 			}
 		})
 	})
@@ -881,9 +896,13 @@ func (a *App) showLogsPrevious() {
 
 	// Use VimViewer for Vim-style navigation and search
 	logView := NewVimViewer(a, "logs",
-		fmt.Sprintf(" Previous Logs: %s/%s [gray](Esc:close /search n/N:next/prev Ctrl+D/U:scroll)[white] ", ns, name))
+		fmt.Sprintf(" Previous Logs: %s/%s [gray](Esc:close /search s:autoscroll w:wrap m:mark)[white] ", ns, name))
+	logView.isLogView = true
+	logView.autoScroll = true
+	logView.textWrap = true
 
 	logView.SetContent("[yellow]Loading...[white]")
+	logView.updateTitle()
 
 	a.showModal("logs", logView, true)
 	a.SetFocus(logView)

@@ -304,6 +304,17 @@ func (a *App) handleCommand(cmd string) {
 		// Direct model switch: :model gpt-4o
 		modelName := strings.TrimPrefix(cmd, "model ")
 		a.switchModel(strings.TrimSpace(modelName))
+	case cmd == "pulse" || cmd == "pulses" || cmd == "pu":
+		a.showPulse()
+	case strings.HasPrefix(cmd, "xray ") || strings.HasPrefix(cmd, "xr "):
+		parts := strings.Fields(cmd)
+		resourceType := ""
+		if len(parts) >= 2 {
+			resourceType = parts[1]
+		}
+		a.showXRay(resourceType)
+	case cmd == "xray" || cmd == "xr":
+		a.showXRay("")
 	case cmd == "q" || cmd == "quit" || cmd == "exit":
 		a.Stop()
 	}
