@@ -16,11 +16,17 @@ type Config struct {
 	Storage       StorageConfig       `yaml:"storage" json:"storage"`             // Data storage configuration
 	Prometheus    PrometheusConfig    `yaml:"prometheus" json:"prometheus"`       // Prometheus integration configuration
 	Authorization AuthorizationConfig `yaml:"authorization" json:"authorization"` // RBAC authorization (Teleport-inspired)
+	Anonymization AnonymizationConfig `yaml:"anonymization" json:"anonymization"` // Data anonymization before LLM calls
 	ReportPath    string              `yaml:"report_path" json:"report_path"`
 	EnableAudit   bool                `yaml:"enable_audit" json:"enable_audit"`
 	Language      string              `yaml:"language" json:"language"`
 	BeginnerMode  bool                `yaml:"beginner_mode" json:"beginner_mode"`
 	LogLevel      string              `yaml:"log_level" json:"log_level"`
+}
+
+// AnonymizationConfig holds settings for data anonymization before LLM calls
+type AnonymizationConfig struct {
+	Enabled bool `yaml:"enabled" json:"enabled"` // Default: false
 }
 
 // AuthorizationConfig holds RBAC authorization settings (Teleport-inspired)
@@ -308,11 +314,12 @@ func NewDefaultConfig() *Config {
 			},
 			ToolApproval: DefaultToolApprovalPolicy(),
 		},
-		Language:     "ko",
-		BeginnerMode: true,
-		LogLevel:     "debug",
-		ReportPath:   "report.md",
-		EnableAudit:  true,
+		Anonymization: AnonymizationConfig{Enabled: false},
+		Language:      "ko",
+		BeginnerMode:  true,
+		LogLevel:      "debug",
+		ReportPath:    "report.md",
+		EnableAudit:   true,
 	}
 }
 

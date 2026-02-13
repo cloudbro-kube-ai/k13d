@@ -94,6 +94,9 @@ var commands = []struct {
 	{"model", "models", "Switch AI model", "action"},
 	{"alias", "aliases", "Show command aliases", "action"},
 	{"plugins", "plugin", "Show plugins", "action"},
+	{"pulse", "pu", "Cluster health pulse", "action"},
+	{"xray", "xr", "XRay resource hierarchy", "action"},
+	{"applications", "app", "Application-centric view", "action"},
 }
 
 // App is the main TUI application with k9s-style stability patterns
@@ -1539,7 +1542,7 @@ func (a *App) reorderNamespacesByRecent() []string {
 // startFilter activates filter mode
 func (a *App) startFilter() {
 	a.cmdInput.SetLabel(" / ")
-	a.cmdHint.SetText("[gray]Type to filter (use /regex/ for regex), Enter to confirm, Esc to clear")
+	a.cmdHint.SetText("[gray]Filter: text | /regex/ | -f fuzzy | -l label=value | Esc to clear")
 	a.cmdInput.SetText(a.filterText)
 	a.SetFocus(a.cmdInput)
 
@@ -1605,7 +1608,40 @@ func (a *App) startFilter() {
 	})
 }
 
-// applyFilterText filters the table based on the given text with regex support (k9s style)
+// filterMode indicates the active filter type.
+type filterMode int
+
+const (
+	filterModeText  filterMode = iota // Default substring/regex filter
+	filterModeFuzzy                   // Fuzzy find (-f prefix)
+	filterModeLabel                   // Label filter (-l prefix)
+)
+
+// detectFilterMode parses a filter string and returns the mode and the actual pattern.
+func detectFilterMode(filter string) (filterMode, string) {
+	if strings.HasPrefix(filter, "-f ") {
+		return filterModeFuzzy, strings.TrimPrefix(filter, "-f ")
+	}
+	if strings.HasPrefix(filter, "-l ") {
+		return filterModeLabel, strings.TrimPrefix(filter, "-l ")
+	}
+	return filterModeText, filter
+}
+
+// nameColumnIndex returns the index of the name column for fuzzy matching.
+// For cluster-scoped resources, name is column 0; for namespaced, column 1.
+func nameColumnIndex(resource string) int {
+	switch resource {
+	case "nodes", "no", "namespaces", "ns", "persistentvolumes", "pv",
+		"storageclasses", "sc", "clusterroles", "cr",
+		"clusterrolebindings", "crb", "customresourcedefinitions", "crd":
+		return 0
+	default:
+		return 1
+	}
+}
+
+// applyFilterText filters the table based on the given text with regex, fuzzy, and label support (k9s style)
 func (a *App) applyFilterText(filter string) {
 	// Read all needed state upfront to avoid lock inside QueueUpdateDraw
 	a.mx.RLock()
@@ -1620,12 +1656,17 @@ func (a *App) applyFilterText(filter string) {
 		return
 	}
 
-	// Check for regex pattern /pattern/
+	// Detect filter mode
+	mode, pattern := detectFilterMode(filter)
+
+	// For text mode, check for regex pattern /pattern/
 	isRegex := false
-	filterPattern := filter
-	if strings.HasPrefix(filter, "/") && strings.HasSuffix(filter, "/") && len(filter) > 2 {
-		filterPattern = filter[1 : len(filter)-1]
-		isRegex = true
+	filterPattern := pattern
+	if mode == filterModeText {
+		if strings.HasPrefix(pattern, "/") && strings.HasSuffix(pattern, "/") && len(pattern) > 2 {
+			filterPattern = pattern[1 : len(pattern)-1]
+			isRegex = true
+		}
 	}
 
 	// Compile regex if needed
@@ -1636,8 +1677,28 @@ func (a *App) applyFilterText(filter string) {
 		if err != nil {
 			// Invalid regex, treat as plain text
 			isRegex = false
-			filterPattern = filter
+			filterPattern = pattern
 		}
+	}
+
+	// Pre-filter rows for fuzzy and label modes
+	var filteredRows [][]string
+	switch mode {
+	case filterModeFuzzy:
+		if pattern != "" {
+			nameCol := nameColumnIndex(resource)
+			filteredRows = FuzzyFilter(rows, pattern, nameCol)
+		} else {
+			filteredRows = rows
+		}
+	case filterModeLabel:
+		if pattern != "" {
+			filteredRows = LabelFilter(rows, pattern)
+		} else {
+			filteredRows = rows
+		}
+	default:
+		filteredRows = nil // Will use inline filtering below
 	}
 
 	filterLower := strings.ToLower(filterPattern)
@@ -1666,10 +1727,17 @@ func (a *App) applyFilterText(filter string) {
 			a.table.SetCell(0, i, cell)
 		}
 
+		// Determine which rows to render
+		renderRows := filteredRows
+		if mode == filterModeText {
+			renderRows = rows // Text mode uses inline filtering
+		}
+
 		// Filter and set rows
 		rowIdx := 1
-		for _, row := range rows {
-			if filterPattern != "" {
+		for _, row := range renderRows {
+			// Text mode inline filtering (regex or substring)
+			if mode == filterModeText && filterPattern != "" {
 				match := false
 				for _, cell := range row {
 					if isRegex && re != nil {
@@ -1689,6 +1757,7 @@ func (a *App) applyFilterText(filter string) {
 				}
 			}
 
+			nameCol := nameColumnIndex(resource)
 			for c, text := range row {
 				color := tcell.ColorWhite
 				if c == 2 { // Usually status column
@@ -1696,11 +1765,20 @@ func (a *App) applyFilterText(filter string) {
 				}
 				// Highlight matching text
 				displayText := text
-				if filterPattern != "" {
-					if isRegex && re != nil {
-						displayText = a.highlightRegexMatch(text, re)
-					} else if strings.Contains(strings.ToLower(text), filterLower) {
-						displayText = a.highlightMatch(text, filterLower)
+				switch mode {
+				case filterModeFuzzy:
+					if pattern != "" && c == nameCol {
+						displayText = highlightFuzzyMatch(text, pattern)
+					}
+				case filterModeLabel:
+					// No highlighting for label mode
+				default:
+					if filterPattern != "" {
+						if isRegex && re != nil {
+							displayText = a.highlightRegexMatch(text, re)
+						} else if strings.Contains(strings.ToLower(text), filterLower) {
+							displayText = a.highlightMatch(text, filterLower)
+						}
 					}
 				}
 				cell := tview.NewTableCell(displayText).
@@ -1714,10 +1792,17 @@ func (a *App) applyFilterText(filter string) {
 		// Note: resource was read upfront before QueueUpdateDraw to avoid deadlock
 		filterInfo := ""
 		if filter != "" {
-			if isRegex {
-				filterInfo = fmt.Sprintf(" [regex: %s]", filterPattern)
-			} else {
-				filterInfo = fmt.Sprintf(" [filter: %s]", filter)
+			switch mode {
+			case filterModeFuzzy:
+				filterInfo = fmt.Sprintf(" [fuzzy: %s]", pattern)
+			case filterModeLabel:
+				filterInfo = fmt.Sprintf(" [label: %s]", pattern)
+			default:
+				if isRegex {
+					filterInfo = fmt.Sprintf(" [regex: %s]", filterPattern)
+				} else {
+					filterInfo = fmt.Sprintf(" [filter: %s]", filter)
+				}
 			}
 		}
 		a.table.SetTitle(fmt.Sprintf(" %s (%d/%d)%s ", resource, rowIdx-1, len(rows), filterInfo))
@@ -2188,7 +2273,15 @@ func (a *App) updateStatusBar() {
 		indicators = append(indicators, fmt.Sprintf("[#1a1b26]Sort:%s%s[-]", headers[sortCol], dir))
 	}
 	if filter != "" {
-		indicators = append(indicators, fmt.Sprintf("[#1a1b26]Filter:%s[-]", filter))
+		mode, pattern := detectFilterMode(filter)
+		switch mode {
+		case filterModeFuzzy:
+			indicators = append(indicators, fmt.Sprintf("[#1a1b26]Fuzzy:%s[-]", pattern))
+		case filterModeLabel:
+			indicators = append(indicators, fmt.Sprintf("[#1a1b26]Label:%s[-]", pattern))
+		default:
+			indicators = append(indicators, fmt.Sprintf("[#1a1b26]Filter:%s[-]", filter))
+		}
 	}
 	if len(indicators) > 0 {
 		shortcuts += " │ " + strings.Join(indicators, " ")

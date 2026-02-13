@@ -58,6 +58,9 @@ type Server struct {
 	// Rate limiters
 	apiRateLimiter  *RateLimiter
 	authRateLimiter *RateLimiter
+
+	// Self-healing rules store
+	healingStore *HealingStore
 }
 
 // PendingToolApproval represents a tool call waiting for user approval
@@ -229,6 +232,7 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 		pendingApprovals:     make(map[string]*PendingToolApproval),
 		apiRateLimiter:       apiRateLimiter,
 		authRateLimiter:      authRateLimiter,
+		healingStore:         NewHealingStore(),
 	}
 
 	server.reportGenerator = NewReportGenerator(server)
@@ -524,9 +528,14 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/k8s/", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionView)(s.handleK8sResource)))
 	mux.HandleFunc("/api/crd/", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionView)(s.handleCustomResources)))
 	mux.HandleFunc("/api/overview", s.authManager.AuthMiddleware(s.handleClusterOverview))
+	mux.HandleFunc("/api/applications", s.authManager.AuthMiddleware(s.handleApplications))
 	mux.HandleFunc("/api/topology/", s.authManager.AuthMiddleware(s.handleTopology))
+	mux.HandleFunc("/api/cost", s.authManager.AuthMiddleware(s.handleCostEstimate))
+	mux.HandleFunc("/api/healing/rules", s.authManager.AuthMiddleware(s.handleHealingRules))
+	mux.HandleFunc("/api/healing/events", s.authManager.AuthMiddleware(s.handleHealingEvents))
 	mux.HandleFunc("/api/search", s.authManager.AuthMiddleware(s.handleGlobalSearch))
 	mux.HandleFunc("/api/safety/analyze", s.authManager.AuthMiddleware(s.handleSafetyAnalysis))
+	mux.HandleFunc("/api/validate", s.authManager.AuthMiddleware(s.handleValidate))
 
 	// Pod operations
 	mux.HandleFunc("/api/pods/", s.authManager.AuthMiddleware(s.handlePodLogs))

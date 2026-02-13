@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/analyzers"
+	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/anonymizer"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/providers"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/safety"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/sessions"
@@ -48,6 +50,10 @@ type Agent struct {
 	Input  chan *Message // Messages from UI to Agent
 	Output chan *Message // Messages from Agent to UI
 
+	// Anonymization & Analysis
+	anonymizer       *anonymizer.Anonymizer
+	analyzerRegistry *analyzers.Registry
+
 	// Internal
 	pendingToolCalls []*ToolCallInfo
 	ctx              context.Context
@@ -64,7 +70,9 @@ type Config struct {
 	Provider            providers.Provider
 	ToolRegistry        *tools.Registry
 	SessionStore        sessions.Store
-	Language            string // Display language for responses (e.g., "ko", "en")
+	Language            string              // Display language for responses (e.g., "ko", "en")
+	EnableAnonymization bool                // Enable data anonymization before LLM calls
+	AnalyzerRegistry    *analyzers.Registry // SRE analyzers for pre-AI diagnostics
 }
 
 // DefaultConfig returns default agent configuration
@@ -106,6 +114,15 @@ func New(cfg *Config) *Agent {
 	// Check if provider supports tools
 	if tp, ok := cfg.Provider.(providers.ToolProvider); ok {
 		a.toolProvider = tp
+	}
+
+	// Initialize anonymizer
+	a.anonymizer = anonymizer.New(cfg.EnableAnonymization)
+
+	// Initialize analyzer registry
+	a.analyzerRegistry = cfg.AnalyzerRegistry
+	if a.analyzerRegistry == nil {
+		a.analyzerRegistry = analyzers.DefaultRegistry()
 	}
 
 	return a

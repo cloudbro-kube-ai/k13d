@@ -23,6 +23,7 @@ type TopologyNode struct {
 	Namespace string            `json:"namespace"`
 	Status    string            `json:"status"`
 	Info      map[string]string `json:"info,omitempty"`
+	Group     string            `json:"group,omitempty"` // app.kubernetes.io/name for grouping
 }
 
 // TopologyEdge represents a relationship between two resources.
@@ -210,13 +211,17 @@ func (s *Server) buildTopology(ctx context.Context, namespace string) (*Topology
 		if d.Status.ReadyReplicas == 0 && replicas > 0 {
 			status = "failed"
 		}
-		addNode(TopologyNode{
+		node := TopologyNode{
 			ID: id, Kind: "Deployment", Name: d.Name, Namespace: d.Namespace,
 			Status: status,
 			Info: map[string]string{
 				"replicas": fmt.Sprintf("%d/%d", d.Status.ReadyReplicas, replicas),
 			},
-		})
+		}
+		if group, ok := d.Labels["app.kubernetes.io/name"]; ok {
+			node.Group = group
+		}
+		addNode(node)
 		ownerIndex[string(d.UID)] = id
 	}
 
@@ -258,13 +263,17 @@ func (s *Server) buildTopology(ctx context.Context, namespace string) (*Topology
 		if ss.Status.ReadyReplicas < replicas {
 			status = "pending"
 		}
-		addNode(TopologyNode{
+		node := TopologyNode{
 			ID: id, Kind: "StatefulSet", Name: ss.Name, Namespace: ss.Namespace,
 			Status: status,
 			Info: map[string]string{
 				"replicas": fmt.Sprintf("%d/%d", ss.Status.ReadyReplicas, replicas),
 			},
-		})
+		}
+		if group, ok := ss.Labels["app.kubernetes.io/name"]; ok {
+			node.Group = group
+		}
+		addNode(node)
 		ownerIndex[string(ss.UID)] = id
 	}
 
@@ -275,13 +284,17 @@ func (s *Server) buildTopology(ctx context.Context, namespace string) (*Topology
 		if ds.Status.NumberReady < ds.Status.DesiredNumberScheduled {
 			status = "pending"
 		}
-		addNode(TopologyNode{
+		node := TopologyNode{
 			ID: id, Kind: "DaemonSet", Name: ds.Name, Namespace: ds.Namespace,
 			Status: status,
 			Info: map[string]string{
 				"ready": fmt.Sprintf("%d/%d", ds.Status.NumberReady, ds.Status.DesiredNumberScheduled),
 			},
-		})
+		}
+		if group, ok := ds.Labels["app.kubernetes.io/name"]; ok {
+			node.Group = group
+		}
+		addNode(node)
 		ownerIndex[string(ds.UID)] = id
 	}
 
@@ -387,10 +400,14 @@ func (s *Server) buildTopology(ctx context.Context, namespace string) (*Topology
 		}
 		info["restarts"] = fmt.Sprintf("%d", restarts)
 
-		addNode(TopologyNode{
+		podNode := TopologyNode{
 			ID: id, Kind: "Pod", Name: p.Name, Namespace: p.Namespace,
 			Status: status, Info: info,
-		})
+		}
+		if group, ok := p.Labels["app.kubernetes.io/name"]; ok {
+			podNode.Group = group
+		}
+		addNode(podNode)
 
 		// ownerReferences edges
 		for _, ref := range p.OwnerReferences {
@@ -442,7 +459,7 @@ func (s *Server) buildTopology(ctx context.Context, namespace string) (*Topology
 		for _, p := range svc.Spec.Ports {
 			ports = append(ports, fmt.Sprintf("%d/%s", p.Port, p.Protocol))
 		}
-		addNode(TopologyNode{
+		svcNode := TopologyNode{
 			ID: id, Kind: "Service", Name: svc.Name, Namespace: svc.Namespace,
 			Status: "running",
 			Info: map[string]string{
@@ -450,7 +467,11 @@ func (s *Server) buildTopology(ctx context.Context, namespace string) (*Topology
 				"clusterIP": svc.Spec.ClusterIP,
 				"ports":     strings.Join(ports, ", "),
 			},
-		})
+		}
+		if group, ok := svc.Labels["app.kubernetes.io/name"]; ok {
+			svcNode.Group = group
+		}
+		addNode(svcNode)
 
 		// Service → Pods via label selector
 		if len(svc.Spec.Selector) > 0 {
