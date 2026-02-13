@@ -96,6 +96,7 @@ var commands = []struct {
 	{"plugins", "plugin", "Show plugins", "action"},
 	{"pulse", "pu", "Cluster health pulse", "action"},
 	{"xray", "xr", "XRay resource hierarchy", "action"},
+	{"applications", "app", "Application-centric view", "action"},
 }
 
 // App is the main TUI application with k9s-style stability patterns

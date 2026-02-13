@@ -95,6 +95,12 @@ func (r *Registry) AnalyzeAll(ctx context.Context, resource *ResourceInfo) []Fin
 	return findings
 }
 
+// ValidateCross runs cross-resource validation across multiple resources.
+func (r *Registry) ValidateCross(ctx context.Context, resources []*ResourceInfo) []Finding {
+	cv := &CrossValidator{}
+	return cv.ValidateCross(ctx, resources)
+}
+
 // DefaultRegistry creates a registry with all built-in analyzers.
 func DefaultRegistry() *Registry {
 	r := NewRegistry()

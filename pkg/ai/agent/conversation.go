@@ -116,6 +116,12 @@ func (a *Agent) AskWithContext(ctx context.Context, question string, resourceCon
 	fullQuestion := question
 	if resourceContext != "" {
 		fullQuestion = fmt.Sprintf("%s\n\nContext:\n%s", question, resourceContext)
+
+		// Run pre-analysis on the resource context
+		preAnalysis := a.runPreAnalysis(ctx, resourceContext)
+		if preAnalysis != "" {
+			fullQuestion += preAnalysis
+		}
 	}
 	return a.Ask(ctx, fullQuestion)
 }
@@ -148,13 +154,17 @@ func (a *Agent) callLLM() error {
 	// Build prompt with conversation history
 	prompt := a.buildPromptWithHistory()
 
+	// Anonymize prompt before sending to LLM
+	anonymizedPrompt := a.anonymizer.Anonymize(prompt)
+
 	// Collect response for session history
 	var responseBuilder strings.Builder
 
-	// Streaming callback - collect response and emit
+	// Streaming callback - collect response, deanonymize, and emit
 	streamCallback := func(chunk string) {
-		responseBuilder.WriteString(chunk)
-		a.emitStreamChunk(chunk)
+		deanonymized := a.anonymizer.Deanonymize(chunk)
+		responseBuilder.WriteString(deanonymized)
+		a.emitStreamChunk(deanonymized)
 	}
 
 	// Check if we have tool support
@@ -166,13 +176,13 @@ func (a *Agent) callLLM() error {
 			return a.handleToolCall(call)
 		}
 
-		err := a.toolProvider.AskWithTools(a.ctx, prompt, toolDefs, streamCallback, toolCallback)
+		err := a.toolProvider.AskWithTools(a.ctx, anonymizedPrompt, toolDefs, streamCallback, toolCallback)
 		if err != nil {
 			return err
 		}
 	} else {
 		// Basic asking without tools
-		err := a.provider.Ask(a.ctx, prompt, streamCallback)
+		err := a.provider.Ask(a.ctx, anonymizedPrompt, streamCallback)
 		if err != nil {
 			return err
 		}
@@ -307,6 +317,9 @@ func (a *Agent) handleToolCall(call providers.ToolCall) providers.ToolResult {
 
 	result := a.toolRegistry.Execute(a.ctx, registryCall)
 	executionDuration := time.Since(startTime)
+
+	// Anonymize tool result before sending back to LLM
+	result.Content = a.anonymizer.Anonymize(result.Content)
 
 	// Store result in tool call info
 	toolCall.Result = result.Content

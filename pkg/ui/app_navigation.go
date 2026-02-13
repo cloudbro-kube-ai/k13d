@@ -315,6 +315,8 @@ func (a *App) handleCommand(cmd string) {
 		a.showXRay(resourceType)
 	case cmd == "xray" || cmd == "xr":
 		a.showXRay("")
+	case cmd == "app" || cmd == "apps" || cmd == "applications":
+		a.showApplications()
 	case cmd == "q" || cmd == "quit" || cmd == "exit":
 		a.Stop()
 	}
