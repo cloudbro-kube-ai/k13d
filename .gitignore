@@ -3,6 +3,7 @@
 /k13d_test
 k13d-bench
 k13d-eval
+/eval
 build/
 *.exe
 *.exe~

@@ -2,8 +2,8 @@ apiVersion: v2
 name: k13d
 description: A Helm chart for k13d - Kubernetes AI Dashboard CLI
 type: application
-version: 0.4.0
-appVersion: "0.4.0"
+version: 0.7.5
+appVersion: "0.7.5"
 keywords:
   - kubernetes
   - dashboard
