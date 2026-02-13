@@ -205,6 +205,90 @@ func (s *MetricsStore) SavePodMetrics(ctx context.Context, m *PodMetrics) error 
 	return err
 }
 
+// SaveNodeMetricsBatch saves multiple node metrics in a single transaction.
+func (s *MetricsStore) SaveNodeMetricsBatch(ctx context.Context, metrics []NodeMetrics) error {
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx,
+		`INSERT INTO node_metrics
+		(timestamp, context, node_name, cpu_millis, memory_mb, cpu_capacity, mem_capacity, pod_count, is_ready, is_schedulable)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return fmt.Errorf("prepare: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, m := range metrics {
+		ts := m.Timestamp
+		if ts.IsZero() {
+			ts = time.Now()
+		}
+		isReady := 0
+		if m.IsReady {
+			isReady = 1
+		}
+		isSchedulable := 0
+		if m.IsSchedulable {
+			isSchedulable = 1
+		}
+		if _, err := stmt.ExecContext(ctx, ts, m.Context, m.NodeName, m.CPUMillis, m.MemoryMB,
+			m.CPUCapacity, m.MemCapacity, m.PodCount, isReady, isSchedulable); err != nil {
+			return fmt.Errorf("insert node %s: %w", m.NodeName, err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// SavePodMetricsBatch saves multiple pod metrics in a single transaction.
+func (s *MetricsStore) SavePodMetricsBatch(ctx context.Context, metrics []PodMetrics) error {
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx,
+		`INSERT INTO pod_metrics
+		(timestamp, context, namespace, pod_name, cpu_millis, memory_mb, status, restarts)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return fmt.Errorf("prepare: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, m := range metrics {
+		ts := m.Timestamp
+		if ts.IsZero() {
+			ts = time.Now()
+		}
+		if _, err := stmt.ExecContext(ctx, ts, m.Context, m.Namespace, m.PodName,
+			m.CPUMillis, m.MemoryMB, m.Status, m.Restarts); err != nil {
+			return fmt.Errorf("insert pod %s/%s: %w", m.Namespace, m.PodName, err)
+		}
+	}
+
+	return tx.Commit()
+}
+
 // GetClusterMetrics retrieves cluster metrics for a time range
 func (s *MetricsStore) GetClusterMetrics(ctx context.Context, contextName string, start, end time.Time, limit int) ([]ClusterMetrics, error) {
 	s.mu.RLock()

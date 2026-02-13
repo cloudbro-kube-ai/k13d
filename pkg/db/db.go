@@ -96,7 +96,25 @@ func initSQLite(dbPath string) (*sql.DB, error) {
 		return nil, err
 	}
 
-	return sql.Open("sqlite", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Enable WAL mode for concurrent read/write performance
+	pragmas := []string{
+		"PRAGMA journal_mode=WAL",
+		"PRAGMA synchronous=NORMAL",
+		"PRAGMA busy_timeout=5000",
+		"PRAGMA cache_size=-64000",
+	}
+	for _, p := range pragmas {
+		if _, execErr := db.Exec(p); execErr != nil {
+			fmt.Printf("Warning: failed to set %s: %v\n", p, execErr)
+		}
+	}
+
+	return db, nil
 }
 
 func initPostgres(cfg DBConfig) (*sql.DB, error) {
