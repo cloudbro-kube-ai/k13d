@@ -8020,8 +8020,8 @@ spec:
             modal.classList.add('active');
 
             // Initialize xterm.js
-            const terminalContainer = document.getElementById('terminal-container');
-            terminalContainer.innerHTML = '';
+            const terminalEl = document.getElementById('terminal-container');
+            terminalEl.innerHTML = '';
 
             currentTerminal = new Terminal({
                 cursorBlink: true,
@@ -8051,7 +8051,7 @@ spec:
                 currentTerminal.loadAddon(webLinksAddon);
             }
 
-            currentTerminal.open(terminalContainer);
+            currentTerminal.open(terminalEl);
             terminalFitAddon.fit();
 
             // Connect WebSocket with reconnection support
