@@ -33,6 +33,25 @@ builds:
       - -X main.date={{.Date}}
       - -X main.builtBy=goreleaser
 
+  # kubectl plugin build
+  - id: kubectl-k13d
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/kubectl-k13d/main.go
+    binary: kubectl-k13d
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+
   # Separate build for Trivy-bundled archive (linux/darwin only)
   - id: k13d-trivy
     env:
@@ -71,6 +90,19 @@ archives:
       - docs/*
     # Wrap in directory for easier extraction
     wrap_in_directory: true
+
+  # kubectl plugin archive (linux/darwin only, for Krew)
+  - id: k13d-plugin
+    ids:
+      - kubectl-k13d
+    formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}-plugin_v{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+      - README.md
+      - LICENSE
+    wrap_in_directory: false
 
   # Trivy-bundled archive (linux/darwin only)
   - id: k13d-with-trivy

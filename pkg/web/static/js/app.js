@@ -9327,7 +9327,7 @@ spec:
         // ============================
         // Custom View Helpers
         // ============================
-        const customViewIds = ['overview-container','metrics-dashboard-container','topology-tree-container','applications-container','validate-container','healing-container','helm-container'];
+        const customViewIds = ['overview-container','metrics-dashboard-container','topology-tree-container','applications-container','validate-container','healing-container','helm-container','rbac-viz-container','netpol-viz-container','timeline-container','gitops-container','templates-container','backups-container'];
 
         function hideAllCustomViews() {
             customViewIds.forEach(id => {
@@ -9355,7 +9355,7 @@ spec:
         function syncCustomViewNamespaces() {
             const src = document.getElementById('namespace-select');
             if (!src) return;
-            ['metrics-dash-ns-select','topo-tree-ns-select','apps-ns-select','validate-ns-select','helm-ns-select'].forEach(id => {
+            ['metrics-dash-ns-select','topo-tree-ns-select','apps-ns-select','validate-ns-select','helm-ns-select','rbac-viz-ns-select','netpol-viz-ns-select','timeline-ns-select','gitops-ns-select'].forEach(id => {
                 const sel = document.getElementById(id);
                 if (!sel) return;
                 const prev = sel.value;
@@ -9983,9 +9983,513 @@ spec:
         }
 
         // ============================
-        // Overview Quick Actions (add new features)
+        // Multi-Cluster Context Switcher
         // ============================
-        // Extend existing overview with new quick action buttons handled by overview panel
+        async function loadClusterContexts() {
+            try {
+                const resp = await fetchWithAuth('/api/contexts');
+                const data = await resp.json();
+                const list = document.getElementById('cluster-dropdown-list');
+                const nameEl = document.getElementById('cluster-name');
+                if (!list) return;
+                if (data.current) nameEl.textContent = data.current;
+                list.innerHTML = (data.contexts || []).map(ctx => `
+                    <div class="cluster-dropdown-item ${ctx.name === data.current ? 'active' : ''}" onclick="switchClusterContext('${escapeHtml(ctx.name)}')">
+                        <span class="ctx-icon"></span>
+                        <div style="flex:1;">
+                            <div style="font-weight:${ctx.name === data.current ? '600' : '400'}">${escapeHtml(ctx.name)}</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">${escapeHtml(ctx.cluster || '')}</div>
+                        </div>
+                        ${ctx.name === data.current ? '<span style="color:var(--accent-green);">●</span>' : ''}
+                    </div>
+                `).join('');
+            } catch (e) { console.warn('Failed to load contexts:', e); }
+        }
+
+        function toggleClusterDropdown() {
+            const dd = document.getElementById('cluster-dropdown');
+            dd.classList.toggle('active');
+            if (dd.classList.contains('active')) loadClusterContexts();
+        }
+
+        async function switchClusterContext(name) {
+            try {
+                await fetchWithAuth('/api/contexts/switch', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({context: name})
+                });
+                document.getElementById('cluster-name').textContent = name;
+                document.getElementById('cluster-dropdown').classList.remove('active');
+                refreshData();
+            } catch (e) { alert('Failed to switch context: ' + e.message); }
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const sw = document.getElementById('cluster-switcher');
+            if (sw && !sw.contains(e.target)) {
+                document.getElementById('cluster-dropdown')?.classList.remove('active');
+            }
+        });
+
+        // ============================
+        // RBAC Visualization View
+        // ============================
+        function showRBACVizView() {
+            showCustomView('rbac-viz-container', 'rbac-viz');
+            loadRBACVizData();
+        }
+
+        async function loadRBACVizData() {
+            const body = document.getElementById('rbac-viz-body');
+            const ns = document.getElementById('rbac-viz-ns-select')?.value || '';
+            const filter = document.getElementById('rbac-viz-filter')?.value || '';
+            body.innerHTML = '<div class="loading-placeholder">Loading RBAC data...</div>';
+            try {
+                let url = '/api/rbac/visualization';
+                const params = [];
+                if (ns) params.push(`namespace=${encodeURIComponent(ns)}`);
+                if (filter) params.push(`subject_kind=${encodeURIComponent(filter)}`);
+                if (params.length) url += '?' + params.join('&');
+                const resp = await fetchWithAuth(url);
+                const data = await resp.json();
+                if (!data.subjects || data.subjects.length === 0) {
+                    body.innerHTML = '<div class="loading-placeholder">No RBAC bindings found</div>';
+                    return;
+                }
+                body.innerHTML = data.subjects.map(s => {
+                    const iconClass = s.kind === 'ServiceAccount' ? 'sa' : s.kind === 'User' ? 'user' : 'group';
+                    const initial = s.kind === 'ServiceAccount' ? 'SA' : s.kind === 'User' ? 'U' : 'G';
+                    return `<div class="rbac-card">
+                        <div class="rbac-card-header">
+                            <div class="rbac-subject-icon ${iconClass}">${initial}</div>
+                            <div>
+                                <div style="font-weight:600;">${escapeHtml(s.name)}</div>
+                                <div style="font-size:11px;color:var(--text-secondary);">${escapeHtml(s.kind)}${s.namespace ? ' · ' + escapeHtml(s.namespace) : ''}</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                            ${(s.roles || []).map(r => `<span class="rbac-role-badge ${r.cluster_scope ? 'cluster' : ''}">${r.cluster_scope ? '⊕ ' : ''}${escapeHtml(r.role_name)}</span>`).join('')}
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed to load RBAC: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        // ============================
+        // Network Policy Visualization
+        // ============================
+        function showNetPolVizView() {
+            showCustomView('netpol-viz-container', 'netpol-viz');
+            loadNetPolVizData();
+        }
+
+        async function loadNetPolVizData() {
+            const body = document.getElementById('netpol-viz-body');
+            const ns = document.getElementById('netpol-viz-ns-select')?.value || '';
+            body.innerHTML = '<div class="loading-placeholder">Loading network policies...</div>';
+            try {
+                const params = ns ? `?namespace=${encodeURIComponent(ns)}` : '';
+                const resp = await fetchWithAuth(`/api/netpol/visualization${params}`);
+                const data = await resp.json();
+                if (!data.policies || data.policies.length === 0) {
+                    body.innerHTML = '<div class="loading-placeholder">No network policies found</div>';
+                    return;
+                }
+                body.innerHTML = data.policies.map(p => `
+                    <div class="netpol-card">
+                        <div class="netpol-card-header">
+                            <div>
+                                <div style="font-weight:600;">${escapeHtml(p.name)}</div>
+                                <div style="font-size:11px;color:var(--text-secondary);">${escapeHtml(p.namespace)}</div>
+                            </div>
+                            <div class="netpol-selector">Selector: ${escapeHtml(p.pod_selector || '*')}</div>
+                        </div>
+                        <div class="netpol-direction">
+                            <div class="netpol-direction-col">
+                                <div class="netpol-direction-label">↓ Ingress (${(p.ingress_rules || []).length} rules)</div>
+                                ${(p.ingress_rules || []).map(r => `<div class="netpol-rule">${escapeHtml(r)}</div>`).join('') || '<div style="font-size:12px;color:var(--text-secondary);">No ingress rules</div>'}
+                            </div>
+                            <div class="netpol-direction-col">
+                                <div class="netpol-direction-label">↑ Egress (${(p.egress_rules || []).length} rules)</div>
+                                ${(p.egress_rules || []).map(r => `<div class="netpol-rule">${escapeHtml(r)}</div>`).join('') || '<div style="font-size:12px;color:var(--text-secondary);">No egress rules</div>'}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        // ============================
+        // Event Timeline View
+        // ============================
+        function showTimelineView() {
+            showCustomView('timeline-container', 'timeline');
+            loadTimelineData();
+        }
+
+        async function loadTimelineData() {
+            const body = document.getElementById('timeline-body');
+            const ns = document.getElementById('timeline-ns-select')?.value || '';
+            const hours = document.getElementById('timeline-hours')?.value || '24';
+            const warningsOnly = document.getElementById('timeline-warnings-only')?.checked || false;
+            body.innerHTML = '<div class="loading-placeholder">Loading events...</div>';
+            try {
+                const params = new URLSearchParams();
+                if (ns) params.set('namespace', ns);
+                params.set('hours', hours);
+                if (warningsOnly) params.set('warnings_only', 'true');
+                const resp = await fetchWithAuth(`/api/events/timeline?${params}`);
+                const data = await resp.json();
+                let html = `<div class="timeline-stats">
+                    <div class="timeline-stat"><div class="timeline-stat-value">${data.total || 0}</div><div class="timeline-stat-label">Total Events</div></div>
+                    <div class="timeline-stat"><div class="timeline-stat-value" style="color:var(--accent-green);">${data.normal_count || 0}</div><div class="timeline-stat-label">Normal</div></div>
+                    <div class="timeline-stat"><div class="timeline-stat-value" style="color:var(--accent-red);">${data.warning_count || 0}</div><div class="timeline-stat-label">Warning</div></div>
+                </div>`;
+                if (data.groups && data.groups.length > 0) {
+                    html += '<div class="timeline-container"><div class="timeline-line"></div>';
+                    data.groups.forEach(g => {
+                        const dotClass = g.has_warning ? 'warning' : '';
+                        html += `<div class="timeline-group">
+                            <div class="timeline-dot ${dotClass}"></div>
+                            <div class="timeline-time">${escapeHtml(g.time_label)} (${g.count} events)</div>
+                            ${g.events.slice(0, 10).map(e => `
+                                <div class="timeline-event">
+                                    <span class="evt-type ${escapeHtml(e.type)}">${escapeHtml(e.type)}</span>
+                                    <span class="evt-reason">${escapeHtml(e.reason || '')}</span>
+                                    <span class="evt-msg">${escapeHtml(e.message || '').substring(0, 120)}</span>
+                                </div>
+                            `).join('')}
+                            ${g.events.length > 10 ? `<div style="font-size:11px;color:var(--text-secondary);padding:4px 12px;">...and ${g.events.length - 10} more</div>` : ''}
+                        </div>`;
+                    });
+                    html += '</div>';
+                } else {
+                    html += '<div class="loading-placeholder">No events in the selected time range</div>';
+                }
+                body.innerHTML = html;
+            } catch (e) {
+                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        // ============================
+        // GitOps View
+        // ============================
+        function showGitOpsView() {
+            showCustomView('gitops-container', 'gitops');
+            loadGitOpsData();
+        }
+
+        async function loadGitOpsData() {
+            const body = document.getElementById('gitops-body');
+            const ns = document.getElementById('gitops-ns-select')?.value || '';
+            body.innerHTML = '<div class="loading-placeholder">Loading GitOps status...</div>';
+            try {
+                const params = ns ? `?namespace=${encodeURIComponent(ns)}` : '';
+                const resp = await fetchWithAuth(`/api/gitops/status${params}`);
+                const data = await resp.json();
+                const argoApps = data.argocd || [];
+                const fluxApps = data.flux || [];
+                if (argoApps.length === 0 && fluxApps.length === 0) {
+                    body.innerHTML = `<div class="gitops-empty">
+                        <div style="font-size:48px;margin-bottom:16px;">🔄</div>
+                        <h3>No GitOps Resources Found</h3>
+                        <p style="margin-top:8px;">${escapeHtml(data.message || 'Install ArgoCD or Flux to enable GitOps features')}</p>
+                    </div>`;
+                    return;
+                }
+                let html = '';
+                if (argoApps.length > 0) {
+                    html += `<h3 style="margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span style="font-size:20px;">🐙</span> ArgoCD Applications (${argoApps.length})</h3>`;
+                    html += argoApps.map(a => {
+                        const status = (a.sync_status || 'unknown').toLowerCase();
+                        const health = (a.health_status || 'unknown').toLowerCase();
+                        const dotClass = status === 'synced' ? 'synced' : status === 'outofsync' ? 'outofsync' : 'unknown';
+                        return `<div class="gitops-card">
+                            <div class="gitops-status-dot ${dotClass}"></div>
+                            <div class="gitops-info">
+                                <div class="gitops-name">${escapeHtml(a.name)}</div>
+                                <div class="gitops-meta">${escapeHtml(a.namespace)} · Health: ${escapeHtml(a.health_status || 'Unknown')}</div>
+                                <div class="gitops-repo">${escapeHtml(a.repo_url || '')}</div>
+                            </div>
+                            <span class="gitops-badge ${dotClass}">${escapeHtml(a.sync_status || 'Unknown')}</span>
+                        </div>`;
+                    }).join('');
+                }
+                if (fluxApps.length > 0) {
+                    html += `<h3 style="margin:20px 0 12px;display:flex;align-items:center;gap:8px;"><span style="font-size:20px;">🌊</span> Flux Kustomizations (${fluxApps.length})</h3>`;
+                    html += fluxApps.map(f => {
+                        const ready = f.ready ? 'synced' : 'degraded';
+                        return `<div class="gitops-card">
+                            <div class="gitops-status-dot ${ready}"></div>
+                            <div class="gitops-info">
+                                <div class="gitops-name">${escapeHtml(f.name)}</div>
+                                <div class="gitops-meta">${escapeHtml(f.namespace)} · Source: ${escapeHtml(f.source || '')}</div>
+                            </div>
+                            <span class="gitops-badge ${ready}">${f.ready ? 'Ready' : 'Not Ready'}</span>
+                        </div>`;
+                    }).join('');
+                }
+                body.innerHTML = html;
+            } catch (e) {
+                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        // ============================
+        // Templates View
+        // ============================
+        let allTemplates = [];
+
+        function showTemplatesView() {
+            showCustomView('templates-container', 'templates');
+            loadTemplatesData();
+        }
+
+        async function loadTemplatesData() {
+            const body = document.getElementById('templates-body');
+            body.innerHTML = '<div class="loading-placeholder">Loading templates...</div>';
+            try {
+                const resp = await fetchWithAuth('/api/templates');
+                const data = await resp.json();
+                allTemplates = data.templates || [];
+                renderTemplates(allTemplates);
+            } catch (e) {
+                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        function filterTemplates() {
+            const cat = document.getElementById('templates-category')?.value || '';
+            const filtered = cat ? allTemplates.filter(t => t.category === cat) : allTemplates;
+            renderTemplates(filtered);
+        }
+
+        function renderTemplates(templates) {
+            const body = document.getElementById('templates-body');
+            if (!templates.length) {
+                body.innerHTML = '<div class="loading-placeholder">No templates available</div>';
+                return;
+            }
+            const icons = {webserver:'🌐',database:'💾',cache:'⚡',queue:'📨',monitoring:'📊',batch:'⏱️'};
+            body.innerHTML = `<div class="templates-grid">${templates.map((t, i) => `
+                <div class="template-card" onclick="openTemplateDeploy(${i})">
+                    <div class="template-card-icon">${icons[t.category] || '📦'}</div>
+                    <div class="template-card-name">${escapeHtml(t.name)}</div>
+                    <div class="template-card-desc">${escapeHtml(t.description)}</div>
+                    <span class="template-card-category">${escapeHtml(t.category)}</span>
+                </div>
+            `).join('')}</div>`;
+        }
+
+        function openTemplateDeploy(idx) {
+            const t = allTemplates[idx];
+            if (!t) return;
+            document.getElementById('template-deploy-name').textContent = t.name;
+            document.getElementById('template-deploy-yaml').value = t.yaml || '';
+            document.getElementById('template-deploy-ns').value = 'default';
+            document.getElementById('template-deploy-resname').value = '';
+            document.getElementById('template-deploy-modal').classList.add('active');
+        }
+
+        function closeTemplateDeployModal() {
+            document.getElementById('template-deploy-modal').classList.remove('active');
+        }
+
+        async function applyTemplate() {
+            const yaml = document.getElementById('template-deploy-yaml').value;
+            const ns = document.getElementById('template-deploy-ns').value || 'default';
+            try {
+                await fetchWithAuth('/api/templates/apply', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({yaml, namespace: ns})
+                });
+                alert('Template deployed successfully!');
+                closeTemplateDeployModal();
+            } catch (e) {
+                alert('Deploy failed: ' + e.message);
+            }
+        }
+
+        // ============================
+        // Backups (Velero) View
+        // ============================
+        let backupsCurrentTab = 'backups';
+
+        function showBackupsView() {
+            showCustomView('backups-container', 'backups');
+            loadBackupsData();
+        }
+
+        function switchBackupsTab(tab, btn) {
+            backupsCurrentTab = tab;
+            document.querySelectorAll('#backups-container .view-tab').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            loadBackupsData();
+        }
+
+        async function loadBackupsData() {
+            const body = document.getElementById('backups-body');
+            body.innerHTML = '<div class="loading-placeholder">Loading backups...</div>';
+            try {
+                const endpoint = backupsCurrentTab === 'schedules' ? '/api/velero/schedules' : '/api/velero/backups';
+                const resp = await fetchWithAuth(endpoint);
+                const data = await resp.json();
+                if (!data.installed) {
+                    body.innerHTML = `<div class="velero-not-installed">
+                        <div style="font-size:48px;margin-bottom:12px;">🗄️</div>
+                        <h3>Velero Not Installed</h3>
+                        <p style="margin-top:8px;">${escapeHtml(data.message || 'Install Velero to enable backup management')}</p>
+                        <p style="margin-top:12px;font-size:12px;color:var(--text-secondary);">
+                            <code style="background:var(--bg-tertiary);padding:4px 8px;border-radius:4px;">velero install --provider aws --bucket my-bucket</code>
+                        </p>
+                    </div>`;
+                    return;
+                }
+                const items = data.items || [];
+                if (items.length === 0) {
+                    body.innerHTML = `<div class="loading-placeholder">No ${backupsCurrentTab} found</div>`;
+                    return;
+                }
+                body.innerHTML = items.map(b => {
+                    const status = (b.status || 'unknown').toLowerCase();
+                    const icon = status === 'completed' ? '✅' : status === 'failed' ? '❌' : status === 'inprogress' ? '⏳' : '📋';
+                    const badgeClass = status === 'completed' ? 'completed' : status === 'failed' ? 'failed' : 'inprogress';
+                    return `<div class="backup-card">
+                        <div class="backup-status-icon">${icon}</div>
+                        <div class="backup-info">
+                            <div class="backup-name">${escapeHtml(b.name)}</div>
+                            <div class="backup-meta">${escapeHtml(b.namespace || '')} · ${escapeHtml(b.age || b.schedule || '')}</div>
+                        </div>
+                        <span class="backup-badge ${badgeClass}">${escapeHtml(b.status || 'Unknown')}</span>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        // ============================
+        // Resource Diff Modal
+        // ============================
+        async function showResourceDiff(kind, name, namespace) {
+            document.getElementById('diff-resource-label').textContent = `${kind}/${name} (${namespace || 'default'})`;
+            document.getElementById('diff-left').textContent = 'Loading...';
+            document.getElementById('diff-right').textContent = 'Loading...';
+            document.getElementById('diff-modal').classList.add('active');
+            try {
+                const resp = await fetchWithAuth('/api/diff', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({kind, name, namespace})
+                });
+                const data = await resp.json();
+                document.getElementById('diff-left').textContent = data.last_applied || '(no last-applied annotation found)';
+                document.getElementById('diff-right').textContent = data.current || '(failed to get current)';
+            } catch (e) {
+                document.getElementById('diff-left').textContent = 'Error: ' + e.message;
+                document.getElementById('diff-right').textContent = '';
+            }
+        }
+
+        function closeDiffModal() {
+            document.getElementById('diff-modal').classList.remove('active');
+        }
+
+        // ============================
+        // AI Auto-Troubleshoot
+        // ============================
+        async function runAutoTroubleshoot() {
+            const ns = currentNamespace || '';
+            const aiInput = document.getElementById('ai-input');
+            const prompt = ns
+                ? `Analyze namespace "${ns}" for issues. Check for CrashLoopBackOff pods, OOMKilled, pending pods, failed deployments, and recent warning events. Provide a diagnosis and remediation steps.`
+                : `Analyze the entire cluster for issues. Check all namespaces for CrashLoopBackOff pods, OOMKilled, pending pods, failed deployments, and recent warning events. Provide a diagnosis and remediation steps.`;
+            if (aiInput) {
+                aiInput.value = prompt;
+                sendMessage();
+            }
+        }
+
+        // ============================
+        // Notification Settings
+        // ============================
+        async function loadNotificationSettings() {
+            try {
+                const resp = await fetchWithAuth('/api/notifications/config');
+                const data = await resp.json();
+                if (data.enabled !== undefined) document.getElementById('notif-enabled').checked = data.enabled;
+                if (data.platform) document.getElementById('notif-platform').value = data.platform;
+                if (data.webhook_url) document.getElementById('notif-webhook-url').value = data.webhook_url;
+                if (data.channel) document.getElementById('notif-channel').value = data.channel;
+            } catch (e) { console.warn('Failed to load notification settings:', e); }
+        }
+
+        async function saveNotificationSettings() {
+            try {
+                await fetchWithAuth('/api/notifications/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        enabled: document.getElementById('notif-enabled').checked,
+                        platform: document.getElementById('notif-platform').value,
+                        webhook_url: document.getElementById('notif-webhook-url').value,
+                        channel: document.getElementById('notif-channel').value,
+                        events: {
+                            crash_loop: document.getElementById('notif-evt-crash')?.checked,
+                            oom_killed: document.getElementById('notif-evt-oom')?.checked,
+                            node_not_ready: document.getElementById('notif-evt-node')?.checked,
+                            deploy_failed: document.getElementById('notif-evt-deploy')?.checked,
+                            security_critical: document.getElementById('notif-evt-security')?.checked
+                        }
+                    })
+                });
+                const result = document.getElementById('notif-test-result');
+                result.style.display = 'block';
+                result.style.background = 'rgba(46,160,67,0.15)';
+                result.style.color = 'var(--accent-green)';
+                result.textContent = 'Settings saved!';
+                setTimeout(() => { result.style.display = 'none'; }, 3000);
+            } catch (e) { alert('Failed to save: ' + e.message); }
+        }
+
+        async function testNotification() {
+            const result = document.getElementById('notif-test-result');
+            result.style.display = 'block';
+            result.style.background = 'rgba(56,132,244,0.15)';
+            result.style.color = 'var(--accent-blue)';
+            result.textContent = 'Sending test notification...';
+            try {
+                await fetchWithAuth('/api/notifications/test', {method: 'POST'});
+                result.style.background = 'rgba(46,160,67,0.15)';
+                result.style.color = 'var(--accent-green)';
+                result.textContent = 'Test notification sent!';
+            } catch (e) {
+                result.style.background = 'rgba(248,81,73,0.15)';
+                result.style.color = 'var(--accent-red)';
+                result.textContent = 'Failed: ' + e.message;
+            }
+        }
+
+        function updateNotifPlaceholder() {
+            const platform = document.getElementById('notif-platform').value;
+            const urlInput = document.getElementById('notif-webhook-url');
+            const placeholders = {
+                slack: 'https://hooks.slack.com/services/...',
+                discord: 'https://discord.com/api/webhooks/...',
+                teams: 'https://outlook.office.com/webhook/...',
+                custom: 'https://your-webhook-url.com/hook'
+            };
+            urlInput.placeholder = placeholders[platform] || placeholders.custom;
+        }
 
         // Init
         init();
+        loadClusterContexts();

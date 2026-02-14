@@ -176,6 +176,17 @@ kubectl port-forward -n k13d svc/k13d 8080:80
 | Theme/Skins | ❌ | ✅ | 5 themes: Tokyo Night, Production, Staging, Dev, Light |
 | Multi-user Auth | ❌ | ✅ | RBAC, JWT, LDAP/SSO |
 | Trivy Scanner | ✅ | ✅ | CVE vulnerability scanning (auto-download) |
+| Multi-Cluster | ❌ | ✅ | Context switching between kubeconfig clusters |
+| RBAC Viewer | ❌ | ✅ | Visual RBAC subject→role relationship viewer |
+| Net Policy Map | ❌ | ✅ | Network policy ingress/egress visualization |
+| Event Timeline | ❌ | ✅ | Cluster events grouped by time with stats |
+| GitOps | ❌ | ✅ | ArgoCD/Flux application sync status |
+| Templates | ❌ | ✅ | One-click deploy common K8s patterns |
+| Backups (Velero) | ❌ | ✅ | Velero backup/schedule management |
+| Resource Diff | ❌ | ✅ | Side-by-side YAML diff (current vs last-applied) |
+| Notifications | ❌ | ✅ | Slack/Discord/Teams webhook alerts |
+| AI Troubleshoot | ❌ | ✅ | One-click AI cluster diagnosis |
+| kubectl Plugin | ✅ | ✅ | Install as `kubectl k13d` |
 | i18n | ✅ | ✅ | English, 한국어, 中文, 日本語 |
 
 ---
@@ -298,6 +309,17 @@ go build -o k13d-bench ./cmd/bench/
 | `/api/validate` | GET | Cross-resource validation |
 | `/api/healing/rules` | GET/POST | Auto-healing rules |
 | `/api/helm/releases` | GET | Helm release management |
+| `/api/contexts` | GET | List kubeconfig contexts |
+| `/api/contexts/switch` | POST | Switch cluster context |
+| `/api/rbac/visualization` | GET | RBAC relationship graph |
+| `/api/netpol/visualization` | GET | Network policy map |
+| `/api/events/timeline` | GET | Event timeline (grouped) |
+| `/api/gitops/status` | GET | ArgoCD/Flux status |
+| `/api/templates` | GET | Resource templates |
+| `/api/velero/backups` | GET | Velero backup list |
+| `/api/notifications/config` | GET/POST | Notification webhook config |
+| `/api/troubleshoot` | POST | AI auto-troubleshoot |
+| `/api/diff` | POST | Resource YAML diff |
 
 ---
 

@@ -105,6 +105,17 @@ It bridges the gap between traditional cluster management and natural language A
 | **Metrics Dashboard** | Cluster health cards with CPU/Memory bars |
 | **5 Color Themes** | Tokyo Night, Production, Staging, Dev, Light |
 | **Trivy Scanner** | CVE vulnerability scanning with auto-download |
+| **Multi-Cluster** | Context switcher for multiple kubeconfig clusters |
+| **RBAC Viewer** | Visual subject→role relationship viewer |
+| **Net Policy Map** | Network policy ingress/egress visualization |
+| **Event Timeline** | Events grouped by time with warning stats |
+| **GitOps** | ArgoCD/Flux application sync status |
+| **Templates** | One-click deploy for common K8s patterns |
+| **Backups (Velero)** | Backup and schedule management |
+| **Resource Diff** | Side-by-side YAML diff |
+| **Notifications** | Slack/Discord/Teams webhook alerts |
+| **AI Troubleshoot** | One-click AI cluster diagnosis |
+| **kubectl Plugin** | Install as `kubectl k13d` |
 
 ### :robot: Agentic AI Assistant
 

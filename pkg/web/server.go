@@ -539,6 +539,40 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/pulse", s.authManager.AuthMiddleware(s.handlePulse))
 	mux.HandleFunc("/api/xray", s.authManager.AuthMiddleware(s.handleXRay))
 
+	// Multi-cluster context management
+	mux.HandleFunc("/api/contexts", s.authManager.AuthMiddleware(s.handleContexts))
+	mux.HandleFunc("/api/contexts/switch", s.authManager.AuthMiddleware(s.handleContextSwitch))
+
+	// RBAC visualization
+	mux.HandleFunc("/api/rbac/visualization", s.authManager.AuthMiddleware(s.handleRBACVisualization))
+
+	// Network Policy visualization
+	mux.HandleFunc("/api/netpol/visualization", s.authManager.AuthMiddleware(s.handleNetworkPolicyVisualization))
+
+	// GitOps status (ArgoCD / Flux)
+	mux.HandleFunc("/api/gitops/status", s.authManager.AuthMiddleware(s.handleGitOpsStatus))
+
+	// Resource templates
+	mux.HandleFunc("/api/templates", s.authManager.AuthMiddleware(s.handleTemplates))
+	mux.HandleFunc("/api/templates/apply", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionApply)(s.handleTemplateApply)))
+
+	// Notification webhook configuration
+	mux.HandleFunc("/api/notifications/config", s.authManager.AuthMiddleware(s.handleNotificationConfig))
+	mux.HandleFunc("/api/notifications/test", s.authManager.AuthMiddleware(s.handleNotificationTest))
+
+	// AI troubleshooting
+	mux.HandleFunc("/api/troubleshoot", s.authManager.AuthMiddleware(s.handleTroubleshoot))
+
+	// Velero backup status
+	mux.HandleFunc("/api/velero/backups", s.authManager.AuthMiddleware(s.handleVeleroBackups))
+	mux.HandleFunc("/api/velero/schedules", s.authManager.AuthMiddleware(s.handleVeleroSchedules))
+
+	// Resource diff
+	mux.HandleFunc("/api/diff", s.authManager.AuthMiddleware(s.handleResourceDiff))
+
+	// Event timeline
+	mux.HandleFunc("/api/events/timeline", s.authManager.AuthMiddleware(s.handleEventTimeline))
+
 	// Pod operations
 	mux.HandleFunc("/api/pods/", s.authManager.AuthMiddleware(s.handlePodLogs))
 	mux.HandleFunc("/api/workload/pods", s.authManager.AuthMiddleware(s.handleWorkloadPods))

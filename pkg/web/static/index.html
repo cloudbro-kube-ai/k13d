@@ -148,6 +148,19 @@
                 <span class="search-shortcut">⌘K</span>
                 <div class="search-results" id="search-results"></div>
             </div>
+            <div class="cluster-switcher" id="cluster-switcher">
+                <button class="cluster-switcher-btn" onclick="toggleClusterDropdown()" title="Switch Cluster Context">
+                    <span class="cluster-icon">⎈</span>
+                    <span class="cluster-name" id="cluster-name">default</span>
+                    <span class="cluster-arrow">▾</span>
+                </button>
+                <div class="cluster-dropdown" id="cluster-dropdown">
+                    <div class="cluster-dropdown-header">Kubernetes Contexts</div>
+                    <div class="cluster-dropdown-list" id="cluster-dropdown-list">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
             <div class="health-indicator">
                 <span class="health-dot ok" id="health-dot"></span>
                 <span id="health-status">Connected</span>
@@ -318,6 +331,15 @@
                     <div class="nav-item" data-resource="applications" onclick="showApplicationsView()">
                         <span>Applications</span>
                     </div>
+                    <div class="nav-item" data-resource="rbac-viz" onclick="showRBACVizView()">
+                        <span>RBAC Viewer</span>
+                    </div>
+                    <div class="nav-item" data-resource="netpol-viz" onclick="showNetPolVizView()">
+                        <span>Net Policy Map</span>
+                    </div>
+                    <div class="nav-item" data-resource="timeline" onclick="showTimelineView()">
+                        <span>Event Timeline</span>
+                    </div>
                 </div>
 
                 <div class="nav-section">
@@ -330,6 +352,15 @@
                     </div>
                     <div class="nav-item" data-resource="helm" onclick="showHelmView()">
                         <span>Helm</span>
+                    </div>
+                    <div class="nav-item" data-resource="gitops" onclick="showGitOpsView()">
+                        <span>GitOps</span>
+                    </div>
+                    <div class="nav-item" data-resource="templates" onclick="showTemplatesView()">
+                        <span>Templates</span>
+                    </div>
+                    <div class="nav-item" data-resource="backups" onclick="showBackupsView()">
+                        <span>Backups</span>
                     </div>
                 </div>
 
@@ -623,6 +654,121 @@
                     </div>
                 </div>
 
+                <!-- RBAC Visualization Container -->
+                <div class="custom-view-container" id="rbac-viz-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2>RBAC Viewer</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <select id="rbac-viz-ns-select" onchange="loadRBACVizData()">
+                                <option value="">Cluster-wide</option>
+                            </select>
+                            <select id="rbac-viz-filter" onchange="loadRBACVizData()">
+                                <option value="">All Subjects</option>
+                                <option value="ServiceAccount">ServiceAccounts</option>
+                                <option value="User">Users</option>
+                                <option value="Group">Groups</option>
+                            </select>
+                            <button onclick="loadRBACVizData()">↻ Refresh</button>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="rbac-viz-body">
+                        <div class="loading-placeholder">Loading RBAC data...</div>
+                    </div>
+                </div>
+
+                <!-- Network Policy Visualization Container -->
+                <div class="custom-view-container" id="netpol-viz-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2>Network Policy Map</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <select id="netpol-viz-ns-select" onchange="loadNetPolVizData()">
+                                <option value="">All Namespaces</option>
+                            </select>
+                            <button onclick="loadNetPolVizData()">↻ Refresh</button>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="netpol-viz-body">
+                        <div class="loading-placeholder">Loading Network Policies...</div>
+                    </div>
+                </div>
+
+                <!-- Event Timeline Container -->
+                <div class="custom-view-container" id="timeline-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2>Event Timeline</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <select id="timeline-ns-select" onchange="loadTimelineData()">
+                                <option value="">All Namespaces</option>
+                            </select>
+                            <select id="timeline-hours" onchange="loadTimelineData()">
+                                <option value="1">Last 1 hour</option>
+                                <option value="6">Last 6 hours</option>
+                                <option value="24" selected>Last 24 hours</option>
+                                <option value="72">Last 3 days</option>
+                            </select>
+                            <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);"><input type="checkbox" id="timeline-warnings-only" onchange="loadTimelineData()"> Warnings only</label>
+                            <button onclick="loadTimelineData()">↻ Refresh</button>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="timeline-body">
+                        <div class="loading-placeholder">Loading events...</div>
+                    </div>
+                </div>
+
+                <!-- GitOps Container -->
+                <div class="custom-view-container" id="gitops-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2>GitOps</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <select id="gitops-ns-select" onchange="loadGitOpsData()">
+                                <option value="">All Namespaces</option>
+                            </select>
+                            <button onclick="loadGitOpsData()">↻ Refresh</button>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="gitops-body">
+                        <div class="loading-placeholder">Loading GitOps status...</div>
+                    </div>
+                </div>
+
+                <!-- Templates Container -->
+                <div class="custom-view-container" id="templates-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2>Resource Templates</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <select id="templates-category" onchange="filterTemplates()">
+                                <option value="">All Categories</option>
+                                <option value="webserver">Web Server</option>
+                                <option value="database">Database</option>
+                                <option value="cache">Cache</option>
+                                <option value="queue">Message Queue</option>
+                                <option value="monitoring">Monitoring</option>
+                                <option value="batch">Batch Jobs</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="templates-body">
+                        <div class="loading-placeholder">Loading templates...</div>
+                    </div>
+                </div>
+
+                <!-- Backups (Velero) Container -->
+                <div class="custom-view-container" id="backups-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2>Backups (Velero)</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <div class="view-tabs" style="display:flex;gap:4px;">
+                                <button class="view-tab active" onclick="switchBackupsTab('backups',this)">Backups</button>
+                                <button class="view-tab" onclick="switchBackupsTab('schedules',this)">Schedules</button>
+                            </div>
+                            <button onclick="loadBackupsData()">↻ Refresh</button>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="backups-body">
+                        <div class="loading-placeholder">Loading backups...</div>
+                    </div>
+                </div>
+
                 <!-- Resize Handle -->
                 <div class="resize-handle" id="resize-handle"></div>
 
@@ -650,6 +796,7 @@
                         <span>AI Assistant</span>
                         <span class="ai-status-dot" id="ai-status-dot" title="Checking connection...">●</span>
                         <span class="ai-badge" id="ai-model-badge">Loading...</span>
+                        <button class="troubleshoot-btn" onclick="runAutoTroubleshoot()" title="AI Auto-Troubleshoot">🔍 Diagnose</button>
                         <button class="debug-toggle" id="debug-toggle" onclick="toggleDebugMode()" style="margin-left: auto;" title="Toggle Debug Mode">🐛 Debug</button>
                     </div>
                     <!-- Guardrails Status -->
@@ -716,6 +863,7 @@
                     <div class="tab" onclick="switchSettingsTab('mcp')">MCP</div>
                     <div class="tab" onclick="switchSettingsTab('security')">Security</div>
                     <div class="tab" onclick="switchSettingsTab('metrics')">Metrics</div>
+                    <div class="tab" onclick="switchSettingsTab('notifications')">Notifications</div>
                     <div class="tab" id="admin-tab" onclick="switchSettingsTab('admin')" style="display:none;">Admin</div>
                     <div class="tab" onclick="switchSettingsTab('about')">About</div>
                 </div>
@@ -1354,6 +1502,51 @@
                         <p>Made with ❤️ for the Kubernetes Community</p>
                         <p class="about-license">MIT License</p>
                     </div>
+                </div>
+
+                <!-- Notifications Tab -->
+                <div id="settings-notifications" class="settings-content" style="display:none;">
+                    <div class="settings-section">
+                        <h4>Webhook Notifications</h4>
+                        <p class="settings-description" style="margin-bottom:16px;">Receive alerts for cluster events via Slack, Discord, or Microsoft Teams.</p>
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-label">Enable Notifications</div>
+                                <div class="settings-description">Send alerts to webhook URL</div>
+                            </div>
+                            <input type="checkbox" id="notif-enabled" onchange="saveNotificationSettings()">
+                        </div>
+                        <div class="form-group" style="margin-top:12px;">
+                            <label>Platform</label>
+                            <select id="notif-platform" onchange="updateNotifPlaceholder()">
+                                <option value="slack">Slack</option>
+                                <option value="discord">Discord</option>
+                                <option value="teams">Microsoft Teams</option>
+                                <option value="custom">Custom Webhook</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Webhook URL</label>
+                            <input type="text" id="notif-webhook-url" placeholder="https://hooks.slack.com/services/...">
+                        </div>
+                        <div class="form-group">
+                            <label>Channel (optional)</label>
+                            <input type="text" id="notif-channel" placeholder="#k8s-alerts">
+                        </div>
+                    </div>
+                    <div class="settings-section" style="margin-top:16px;">
+                        <h4>Event Triggers</h4>
+                        <div class="settings-row"><div><div class="settings-label">Pod CrashLoopBackOff</div></div><input type="checkbox" id="notif-evt-crash" checked></div>
+                        <div class="settings-row"><div><div class="settings-label">Pod OOMKilled</div></div><input type="checkbox" id="notif-evt-oom" checked></div>
+                        <div class="settings-row"><div><div class="settings-label">Node Not Ready</div></div><input type="checkbox" id="notif-evt-node" checked></div>
+                        <div class="settings-row"><div><div class="settings-label">Deployment Failed</div></div><input type="checkbox" id="notif-evt-deploy" checked></div>
+                        <div class="settings-row"><div><div class="settings-label">Security Scan Critical</div></div><input type="checkbox" id="notif-evt-security"></div>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:16px;">
+                        <button class="btn btn-primary" onclick="saveNotificationSettings()">Save</button>
+                        <button class="btn btn-secondary" onclick="testNotification()">Send Test</button>
+                    </div>
+                    <div id="notif-test-result" style="margin-top:12px;padding:10px;border-radius:6px;display:none;"></div>
                 </div>
 
                 <!-- Admin Tab (visible only to admins) -->
@@ -2040,6 +2233,67 @@ spec:
             </div>
             <div class="modal-footer" style="padding: 12px 24px; border-top: 1px solid var(--border-color); text-align: right;">
                 <button class="btn btn-secondary" onclick="closeReportsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Diff Modal -->
+    <div class="modal-overlay" id="diff-modal">
+        <div class="modal diff-modal">
+            <div class="modal-header">
+                <h2>Resource Diff</h2>
+                <button class="modal-close" onclick="closeDiffModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <div class="diff-toolbar" style="padding:12px 24px;border-bottom:1px solid var(--border-color);display:flex;gap:12px;align-items:center;">
+                    <span style="font-size:12px;color:var(--text-secondary);">Comparing:</span>
+                    <span class="diff-label" id="diff-resource-label" style="font-weight:600;"></span>
+                </div>
+                <div class="diff-container" id="diff-container" style="display:flex;height:60vh;overflow:hidden;">
+                    <div class="diff-pane" style="flex:1;overflow:auto;border-right:1px solid var(--border-color);padding:16px;">
+                        <div class="diff-pane-header" style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;font-weight:600;">Last Applied</div>
+                        <pre class="diff-content" id="diff-left" style="font-size:12px;white-space:pre-wrap;font-family:var(--font-mono);"></pre>
+                    </div>
+                    <div class="diff-pane" style="flex:1;overflow:auto;padding:16px;">
+                        <div class="diff-pane-header" style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;font-weight:600;">Current</div>
+                        <pre class="diff-content" id="diff-right" style="font-size:12px;white-space:pre-wrap;font-family:var(--font-mono);"></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding:12px 24px;border-top:1px solid var(--border-color);text-align:right;">
+                <button class="btn btn-secondary" onclick="closeDiffModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Deploy Modal -->
+    <div class="modal-overlay" id="template-deploy-modal">
+        <div class="modal" style="max-width:700px;">
+            <div class="modal-header">
+                <h2>Deploy Template</h2>
+                <button class="modal-close" onclick="closeTemplateDeployModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Template</label>
+                    <span id="template-deploy-name" style="font-weight:600;"></span>
+                </div>
+                <div class="form-group">
+                    <label>Target Namespace</label>
+                    <input type="text" id="template-deploy-ns" placeholder="default" value="default">
+                </div>
+                <div class="form-group">
+                    <label>Resource Name</label>
+                    <input type="text" id="template-deploy-resname" placeholder="my-app">
+                </div>
+                <div class="form-group">
+                    <label>YAML Preview</label>
+                    <textarea id="template-deploy-yaml" style="width:100%;height:300px;font-family:var(--font-mono);font-size:12px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border-color);border-radius:6px;padding:12px;resize:vertical;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding:12px 24px;border-top:1px solid var(--border-color);display:flex;justify-content:flex-end;gap:8px;">
+                <button class="btn btn-secondary" onclick="closeTemplateDeployModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="applyTemplate()">Deploy</button>
             </div>
         </div>
     </div>

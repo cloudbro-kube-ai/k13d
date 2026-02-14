@@ -29,6 +29,7 @@ PLATFORMS := \
 
 .PHONY: all build clean test lint deps help
 .PHONY: build-all build-linux build-darwin build-windows
+.PHONY: build-plugin install-plugin
 .PHONY: package package-all docker
 .PHONY: test-integration docker-test-up docker-test-down docker-test-status
 .PHONY: ollama-setup ollama-pull-models
@@ -44,6 +45,20 @@ build:
 	@mkdir -p $(BUILD_DIR)
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME) ./cmd/kube-ai-dashboard-cli/main.go
 	@echo "Build complete: $(BUILD_DIR)/$(APP_NAME)"
+
+# Build kubectl plugin for current platform
+build-plugin:
+	@echo "Building kubectl-k13d plugin..."
+	@mkdir -p $(BUILD_DIR)
+	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/kubectl-k13d ./cmd/kubectl-k13d/main.go
+	@echo "Plugin built: $(BUILD_DIR)/kubectl-k13d"
+
+# Install kubectl plugin to /usr/local/bin
+install-plugin: build-plugin
+	@echo "Installing kubectl-k13d plugin..."
+	cp $(BUILD_DIR)/kubectl-k13d /usr/local/bin/kubectl-k13d
+	@echo "Installed to /usr/local/bin/kubectl-k13d"
+	@echo "Usage: kubectl k13d"
 
 # Build for all platforms
 build-all: clean
@@ -333,6 +348,10 @@ help:
 	@echo "  build-darwin   Build for macOS (amd64, arm64)"
 	@echo "  build-windows  Build for Windows (amd64)"
 	@echo "  build-offline  Build using vendored dependencies"
+	@echo ""
+	@echo "kubectl plugin targets:"
+	@echo "  build-plugin   Build kubectl-k13d plugin"
+	@echo "  install-plugin Install kubectl plugin to /usr/local/bin"
 	@echo ""
 	@echo "Distribution targets:"
 	@echo "  package        Create release packages with checksums"

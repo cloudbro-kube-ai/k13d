@@ -2,6 +2,28 @@
 
 All notable changes to k13d are documented here.
 
+## [0.8.0] - 2026-02-14
+
+### Added
+- **Multi-Cluster**: Context switcher in top bar for switching between kubeconfig contexts
+- **RBAC Viewer**: Visual subject→role relationship viewer with filtering by kind
+- **Network Policy Map**: Ingress/egress rule visualization per policy
+- **Event Timeline**: Cluster events grouped by time windows with stats
+- **GitOps Integration**: ArgoCD Application and Flux Kustomization sync status
+- **Resource Templates**: One-click deploy for common K8s patterns (Nginx, Redis, PostgreSQL, etc.)
+- **Backups (Velero)**: Velero backup and schedule management with status tracking
+- **Resource Diff**: Side-by-side YAML comparison (current vs last-applied-configuration)
+- **Notifications**: Slack/Discord/Teams webhook alerts for cluster events
+- **AI Auto-Troubleshoot**: One-click AI-powered cluster diagnosis via Diagnose button
+- **kubectl Plugin**: Install as `kubectl k13d` via Krew or direct binary
+- **Homebrew Formula**: `brew install k13d` support
+
+### Changed
+- Sidebar reorganized with new sections: RBAC Viewer, Net Policy Map, Event Timeline under Visualization; GitOps, Templates, Backups under Operations
+- Settings modal gains Notifications tab
+
+---
+
 ## [0.7.7] - 2026-02-14
 
 ### Added
