@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 )
@@ -56,6 +58,13 @@ func (s *Server) handleNotificationConfig(w http.ResponseWriter, r *http.Request
 		if cfg.Enabled && cfg.WebhookURL == "" {
 			http.Error(w, "Webhook URL is required when notifications are enabled", http.StatusBadRequest)
 			return
+		}
+
+		if cfg.WebhookURL != "" {
+			if err := validateWebhookURL(cfg.WebhookURL); err != nil {
+				http.Error(w, "Invalid webhook URL: "+err.Error(), http.StatusBadRequest)
+				return
+			}
 		}
 
 		notifConfigMu.Lock()
@@ -153,9 +162,41 @@ func buildTestPayload(provider, channel string) ([]byte, error) {
 	}
 }
 
-func maskWebhookURL(url string) string {
-	if len(url) <= 20 {
+func maskWebhookURL(u string) string {
+	if len(u) <= 20 {
 		return "****"
 	}
-	return url[:15] + "..." + url[len(url)-5:]
+	return u[:15] + "..." + u[len(u)-5:]
+}
+
+// validateWebhookURL ensures the webhook URL is safe (HTTPS, no private IPs)
+func validateWebhookURL(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("malformed URL")
+	}
+
+	if u.Scheme != "https" {
+		return fmt.Errorf("only HTTPS URLs are allowed")
+	}
+
+	host := u.Hostname()
+
+	// Resolve the host to check for private/loopback IPs
+	ips, err := net.LookupHost(host)
+	if err != nil {
+		return fmt.Errorf("cannot resolve host")
+	}
+
+	for _, ipStr := range ips {
+		ip := net.ParseIP(ipStr)
+		if ip == nil {
+			continue
+		}
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+			return fmt.Errorf("private or loopback addresses are not allowed")
+		}
+	}
+
+	return nil
 }

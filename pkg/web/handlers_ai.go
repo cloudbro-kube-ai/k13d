@@ -175,7 +175,7 @@ func (s *Server) handleLLMTest(w http.ResponseWriter, r *http.Request) {
 		"provider":      status.Provider,
 		"model":         status.Model,
 		"endpoint":      status.Endpoint,
-		"response_time": status.ResponseTime,
+		"response_time_ms": status.ResponseTime,
 		"capabilities":  capabilities,
 	}
 
@@ -814,6 +814,76 @@ func (s *SSEWriter) WriteEvent(event string, data string) error {
 	}
 	s.flusher.Flush()
 	return nil
+}
+
+// handleAvailableModels fetches available models from the current LLM provider
+func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodGet {
+		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	// Allow querying models for a specific provider via query param
+	provider := r.URL.Query().Get("provider")
+	apiKey := r.URL.Query().Get("api_key")
+	endpoint := r.URL.Query().Get("endpoint")
+
+	var client *ai.Client
+	if provider != "" && apiKey != "" {
+		// Create temporary client with provided config
+		tempConfig := config.LLMConfig{
+			Provider: provider,
+			Model:    "temp",
+			Endpoint: endpoint,
+			APIKey:   apiKey,
+		}
+		var err error
+		client, err = ai.NewClient(&tempConfig)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"models": []string{},
+				"error":  fmt.Sprintf("Failed to create client: %v", err),
+			})
+			return
+		}
+	} else if s.aiClient != nil {
+		client = s.aiClient
+	} else {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"models": []string{},
+			"error":  "No AI client configured",
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	models, err := client.ListModels(ctx)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"models": []string{},
+			"error":  fmt.Sprintf("Failed to list models: %v", err),
+		})
+		return
+	}
+
+	// For Gemini, filter to only generateContent-capable models
+	if provider == "gemini" || s.cfg.LLM.Provider == "gemini" {
+		var filtered []string
+		for _, m := range models {
+			if strings.HasPrefix(m, "gemini-") {
+				filtered = append(filtered, m)
+			}
+		}
+		models = filtered
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"models": models,
+	})
 }
 
 // handleAIPing checks if the AI client is configured and can connect

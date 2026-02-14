@@ -626,8 +626,40 @@ func TestGeminiProviderDefaultModel(t *testing.T) {
 		t.Fatalf("Failed to create provider: %v", err)
 	}
 
-	if provider.GetModel() != "gemini-1.5-flash" {
-		t.Errorf("Expected default model 'gemini-1.5-flash', got %q", provider.GetModel())
+	if provider.GetModel() != "gemini-2.5-flash" {
+		t.Errorf("Expected default model 'gemini-2.5-flash', got %q", provider.GetModel())
+	}
+}
+
+func TestGeminiModelValidation(t *testing.T) {
+	tests := []struct {
+		model   string
+		wantErr bool
+	}{
+		{"gemini-2.5-flash", false},
+		{"gemini-2.5-pro", false},
+		{"gemini-2.0-flash", false},
+		{"gemini-1.5-pro", false},
+		{"gemini-1.5-flash", false},
+		{"gemini-pro", false},
+		{"gemini-3-pro-preview", false},
+		{"gemini-flash", true},        // missing version
+		{"gpt-4", true},               // wrong prefix
+		{"gemini", true},              // incomplete
+		{"flash", true},               // no gemini prefix
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			_, err := NewGeminiProvider(&ProviderConfig{
+				Provider: "gemini",
+				APIKey:   "test-key",
+				Model:    tt.model,
+			})
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewGeminiProvider(model=%q) error = %v, wantErr %v", tt.model, err, tt.wantErr)
+			}
+		})
 	}
 }
 
@@ -690,9 +722,13 @@ func TestProviderNames(t *testing.T) {
 
 func mustCreateProvider(t *testing.T, name string) Provider {
 	t.Helper()
+	model := "test-model"
+	if name == "gemini" {
+		model = "gemini-2.5-flash"
+	}
 	provider, err := GetFactory().Create(&ProviderConfig{
 		Provider: name,
-		Model:    "test-model",
+		Model:    model,
 		APIKey:   "test-key",
 		Region:   "us-east-1",
 	})

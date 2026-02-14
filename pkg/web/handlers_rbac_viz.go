@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sync"
 )
 
 // RBACNode represents a node in the RBAC graph
@@ -24,10 +23,25 @@ type RBACEdge struct {
 	Namespace   string `json:"namespace,omitempty"`
 }
 
+// RBACSubjectInfo represents a subject with its associated roles (for card-based UI)
+type RBACSubjectInfo struct {
+	Name      string        `json:"name"`
+	Kind      string        `json:"kind"`
+	Namespace string        `json:"namespace,omitempty"`
+	Roles     []RBACRoleRef `json:"roles"`
+}
+
+// RBACRoleRef represents a role reference for a subject
+type RBACRoleRef struct {
+	RoleName     string `json:"role_name"`
+	ClusterScope bool   `json:"cluster_scope"`
+}
+
 // RBACVisualizationResponse is the response for the RBAC visualization endpoint
 type RBACVisualizationResponse struct {
-	Nodes []RBACNode `json:"nodes"`
-	Edges []RBACEdge `json:"edges"`
+	Nodes    []RBACNode        `json:"nodes"`
+	Edges    []RBACEdge        `json:"edges"`
+	Subjects []RBACSubjectInfo `json:"subjects"`
 }
 
 func (s *Server) handleRBACVisualization(w http.ResponseWriter, r *http.Request) {
@@ -37,37 +51,48 @@ func (s *Server) handleRBACVisualization(w http.ResponseWriter, r *http.Request)
 	}
 
 	namespace := r.URL.Query().Get("namespace")
+	subjectKindFilter := r.URL.Query().Get("subject_kind") // "User", "Group", "ServiceAccount"
 	ctx := r.Context()
 
-	var (
-		mu    sync.Mutex
-		nodes []RBACNode
-		edges []RBACEdge
-	)
+	var nodes []RBACNode
+	var edges []RBACEdge
 	nodeSet := make(map[string]bool)
 
+	// subjectRoles maps subject ID to its roles
+	subjectRoles := make(map[string]*RBACSubjectInfo)
+
 	addNode := func(n RBACNode) {
-		mu.Lock()
-		defer mu.Unlock()
 		if !nodeSet[n.ID] {
 			nodes = append(nodes, n)
 			nodeSet[n.ID] = true
 		}
 	}
-	addEdge := func(e RBACEdge) {
-		mu.Lock()
-		defer mu.Unlock()
-		edges = append(edges, e)
+
+	addSubjectRole := func(subjectID, subjectKind, subjectName, subjectNS, roleName string, clusterScope bool) {
+		si, ok := subjectRoles[subjectID]
+		if !ok {
+			si = &RBACSubjectInfo{
+				Name:      subjectName,
+				Kind:      subjectKind,
+				Namespace: subjectNS,
+			}
+			subjectRoles[subjectID] = si
+		}
+		si.Roles = append(si.Roles, RBACRoleRef{
+			RoleName:     roleName,
+			ClusterScope: clusterScope,
+		})
 	}
 
 	// Fetch RoleBindings (namespaced)
 	roleBindings, err := s.k8sClient.ListRoleBindings(ctx, namespace)
 	if err == nil {
 		for _, rb := range roleBindings {
-			// Add role node
 			roleID := fmt.Sprintf("Role/%s/%s", rb.Namespace, rb.RoleRef.Name)
+			clusterScope := false
 			if rb.RoleRef.Kind == "ClusterRole" {
 				roleID = fmt.Sprintf("ClusterRole/%s", rb.RoleRef.Name)
+				clusterScope = true
 			}
 			addNode(RBACNode{
 				ID:        roleID,
@@ -76,8 +101,10 @@ func (s *Server) handleRBACVisualization(w http.ResponseWriter, r *http.Request)
 				Namespace: rb.Namespace,
 			})
 
-			// Add subject nodes and edges
 			for _, subject := range rb.Subjects {
+				if subjectKindFilter != "" && subject.Kind != subjectKindFilter {
+					continue
+				}
 				subjectID := fmt.Sprintf("%s/%s/%s", subject.Kind, subject.Namespace, subject.Name)
 				addNode(RBACNode{
 					ID:        subjectID,
@@ -85,13 +112,14 @@ func (s *Server) handleRBACVisualization(w http.ResponseWriter, r *http.Request)
 					Name:      subject.Name,
 					Namespace: subject.Namespace,
 				})
-				addEdge(RBACEdge{
+				edges = append(edges, RBACEdge{
 					Source:      subjectID,
 					Target:      roleID,
 					BindingName: rb.Name,
 					BindingKind: "RoleBinding",
 					Namespace:   rb.Namespace,
 				})
+				addSubjectRole(subjectID, subject.Kind, subject.Name, subject.Namespace, rb.RoleRef.Name, clusterScope)
 			}
 		}
 	}
@@ -108,6 +136,9 @@ func (s *Server) handleRBACVisualization(w http.ResponseWriter, r *http.Request)
 			})
 
 			for _, subject := range crb.Subjects {
+				if subjectKindFilter != "" && subject.Kind != subjectKindFilter {
+					continue
+				}
 				subjectID := fmt.Sprintf("%s/%s/%s", subject.Kind, subject.Namespace, subject.Name)
 				addNode(RBACNode{
 					ID:        subjectID,
@@ -115,19 +146,27 @@ func (s *Server) handleRBACVisualization(w http.ResponseWriter, r *http.Request)
 					Name:      subject.Name,
 					Namespace: subject.Namespace,
 				})
-				addEdge(RBACEdge{
+				edges = append(edges, RBACEdge{
 					Source:      subjectID,
 					Target:      roleID,
 					BindingName: crb.Name,
 					BindingKind: "ClusterRoleBinding",
 				})
+				addSubjectRole(subjectID, subject.Kind, subject.Name, subject.Namespace, crb.RoleRef.Name, true)
 			}
 		}
 	}
 
+	// Build subjects list from map
+	var subjects []RBACSubjectInfo
+	for _, si := range subjectRoles {
+		subjects = append(subjects, *si)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(RBACVisualizationResponse{
-		Nodes: nodes,
-		Edges: edges,
+		Nodes:    nodes,
+		Edges:    edges,
+		Subjects: subjects,
 	})
 }

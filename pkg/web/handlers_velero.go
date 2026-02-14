@@ -72,8 +72,9 @@ func (s *Server) handleVeleroBackups(w http.ResponseWriter, r *http.Request) {
 
 		// Extract included namespaces
 		if ns := getNestedSlice(item.Object, "spec", "includedNamespaces"); len(ns) > 0 {
-			first, _ := ns[0].(string)
-			backup.IncludedNS = first
+			if first, ok := ns[0].(string); ok {
+				backup.IncludedNS = first
+			}
 		}
 
 		if backup.Status == "" {

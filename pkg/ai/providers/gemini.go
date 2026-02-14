@@ -81,7 +81,12 @@ func NewGeminiProvider(cfg *ProviderConfig) (Provider, error) {
 
 	model := cfg.Model
 	if model == "" {
-		model = "gemini-1.5-flash"
+		model = "gemini-2.5-flash"
+	}
+
+	// Validate Gemini model name format
+	if err := validateGeminiModel(model); err != nil {
+		return nil, err
 	}
 
 	return &GeminiProvider{
@@ -421,4 +426,32 @@ When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`}},
 	}
 
 	return fmt.Errorf("exceeded maximum tool call iterations")
+}
+
+// validGeminiModelPrefixes lists known valid Gemini model name prefixes.
+// Models must start with "gemini-" followed by a version number.
+var validGeminiModelPrefixes = []string{
+	"gemini-3-",
+	"gemini-2.5-",
+	"gemini-2.0-",
+	"gemini-1.5-",
+	"gemini-1.0-",
+	"gemini-pro",
+	"gemini-ultra",
+	"gemini-nano",
+}
+
+// validateGeminiModel checks if the model name is a valid Gemini model.
+func validateGeminiModel(model string) error {
+	if !strings.HasPrefix(model, "gemini-") {
+		return fmt.Errorf("invalid Gemini model name %q: must start with 'gemini-' (e.g., gemini-2.0-flash, gemini-1.5-pro)", model)
+	}
+
+	for _, prefix := range validGeminiModelPrefixes {
+		if strings.HasPrefix(model, prefix) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("invalid Gemini model name %q: use a versioned name like gemini-2.5-flash, gemini-2.5-pro, gemini-2.0-flash", model)
 }

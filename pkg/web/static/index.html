@@ -979,8 +979,9 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Model</label>
-                            <input type="text" id="setting-llm-model" placeholder="solar-pro2">
+                            <label>Model <button type="button" id="fetch-models-btn" onclick="fetchAvailableModels()" style="font-size:11px;color:var(--accent-blue);background:none;border:1px solid var(--accent-blue);border-radius:4px;padding:1px 8px;margin-left:8px;cursor:pointer;display:none;">Fetch Models</button><span id="fetch-models-status" style="font-size:11px;color:var(--text-secondary);margin-left:6px;"></span></label>
+                            <input type="text" id="setting-llm-model" placeholder="solar-pro2" list="model-suggestions">
+                            <datalist id="model-suggestions"></datalist>
                         </div>
                         <div class="form-group">
                             <label>Endpoint <span id="endpoint-hint" style="font-size:11px;color:var(--text-secondary);"></span></label>

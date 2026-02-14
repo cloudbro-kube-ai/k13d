@@ -44,6 +44,7 @@ func (s *Server) handleEventTimeline(w http.ResponseWriter, r *http.Request) {
 
 	namespace := r.URL.Query().Get("namespace")
 	hoursStr := r.URL.Query().Get("hours")
+	warningsOnly := r.URL.Query().Get("warnings_only") == "true"
 	hours := 24
 	if hoursStr != "" {
 		if h, err := strconv.Atoi(hoursStr); err == nil && h > 0 && h <= 168 { // max 7 days
@@ -80,6 +81,11 @@ func (s *Server) handleEventTimeline(w http.ResponseWriter, r *http.Request) {
 
 		// Skip events outside our time range
 		if eventTime.Before(cutoff) {
+			continue
+		}
+
+		// Filter warnings only if requested
+		if warningsOnly && event.Type != "Warning" {
 			continue
 		}
 

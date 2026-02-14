@@ -52,16 +52,6 @@ func (s *Server) handleGitOpsStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if argoErr == nil {
-		if uList, ok := argoList.(interface{ GetItems() []interface{} }); ok {
-			_ = uList
-		}
-		// Use unstructured list directly
-		if ul, ok := argoList.(interface {
-			GetUnstructuredItems() []map[string]interface{}
-		}); ok {
-			_ = ul
-		}
-		// Parse via unstructured
 		items := extractUnstructuredItems(argoList)
 		for _, item := range items {
 			app := GitOpsApplication{
@@ -136,13 +126,6 @@ func (s *Server) handleGitOpsStatus(w http.ResponseWriter, r *http.Request) {
 
 // extractUnstructuredItems extracts items from an unstructured list
 func extractUnstructuredItems(list interface{}) []map[string]interface{} {
-	type itemsGetter interface {
-		GetItems() []map[string]interface{}
-	}
-	// Try the concrete unstructured list type
-	if ul, ok := list.(interface{ GetUnstructuredContent() []interface{} }); ok {
-		_ = ul
-	}
 	// Access via reflection-free approach
 	if m, ok := list.(interface{ UnstructuredContent() map[string]interface{} }); ok {
 		content := m.UnstructuredContent()

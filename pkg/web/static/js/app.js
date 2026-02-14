@@ -3132,7 +3132,7 @@ ${escapeHtml(execInfo.result)}</div>
                 'solar': { placeholder: 'https://api.upstage.ai/v1', hint: '(Default: Upstage Solar API)', model: 'solar-pro2', apiKeyHint: 'up_...' },
                 'openai': { placeholder: 'https://api.openai.com/v1', hint: '(Default: OpenAI API)', model: 'gpt-4', apiKeyHint: 'sk-...' },
                 'ollama': { placeholder: 'http://localhost:11434', hint: '(Required for Ollama)', model: 'llama3', apiKeyHint: '' },
-                'gemini': { placeholder: 'https://generativelanguage.googleapis.com/v1beta', hint: '(Default: Gemini API)', model: 'gemini-pro', apiKeyHint: '' },
+                'gemini': { placeholder: 'https://generativelanguage.googleapis.com/v1beta', hint: '(Default: Gemini API)', model: 'gemini-2.5-flash', apiKeyHint: 'AIza...' },
                 'anthropic': { placeholder: 'https://api.anthropic.com', hint: '(Default: Anthropic API)', model: 'claude-3-opus', apiKeyHint: 'sk-ant-...' },
                 'bedrock': { placeholder: '', hint: '(Uses AWS credentials)', model: '', apiKeyHint: '' },
                 'azopenai': { placeholder: 'https://your-resource.openai.azure.com', hint: '(Azure resource endpoint required)', model: '', apiKeyHint: '' }
@@ -3188,6 +3188,64 @@ ${escapeHtml(execInfo.result)}</div>
 
             // Update reasoning effort UI visibility (only for Solar)
             updateReasoningEffortUI();
+
+            // Show/hide "Fetch Models" button based on provider
+            const fetchBtn = document.getElementById('fetch-models-btn');
+            const fetchableProviders = ['gemini', 'ollama'];
+            if (fetchBtn) {
+                fetchBtn.style.display = fetchableProviders.includes(provider) ? 'inline' : 'none';
+            }
+            // Clear previous suggestions when switching providers
+            const datalist = document.getElementById('model-suggestions');
+            if (datalist) datalist.innerHTML = '';
+        }
+
+        async function fetchAvailableModels() {
+            const provider = document.getElementById('setting-llm-provider').value;
+            const apiKey = document.getElementById('setting-llm-apikey').value;
+            const endpoint = document.getElementById('setting-llm-endpoint').value;
+            const status = document.getElementById('fetch-models-status');
+            const datalist = document.getElementById('model-suggestions');
+            const btn = document.getElementById('fetch-models-btn');
+
+            if (!apiKey && provider !== 'ollama') {
+                status.textContent = 'API key required';
+                status.style.color = 'var(--accent-red)';
+                return;
+            }
+
+            btn.disabled = true;
+            status.textContent = 'Fetching...';
+            status.style.color = 'var(--text-secondary)';
+
+            try {
+                const params = new URLSearchParams({ provider, api_key: apiKey });
+                if (endpoint) params.set('endpoint', endpoint);
+                const resp = await fetchWithAuth('/api/llm/available-models?' + params);
+                const data = await resp.json();
+
+                if (data.error) {
+                    status.textContent = data.error;
+                    status.style.color = 'var(--accent-red)';
+                    return;
+                }
+
+                const models = data.models || [];
+                if (models.length === 0) {
+                    status.textContent = 'No models found';
+                    status.style.color = 'var(--accent-yellow)';
+                    return;
+                }
+
+                datalist.innerHTML = models.map(m => `<option value="${escapeHtml(m)}">`).join('');
+                status.textContent = `${models.length} models available`;
+                status.style.color = 'var(--accent-green)';
+            } catch (e) {
+                status.textContent = 'Failed to fetch';
+                status.style.color = 'var(--accent-red)';
+            } finally {
+                btn.disabled = false;
+            }
         }
 
         // Model Management Functions
@@ -4133,7 +4191,7 @@ ${escapeHtml(execInfo.result)}</div>
 
                 // Save LLM settings
                 const apiKey = document.getElementById('setting-llm-apikey').value;
-                await fetchWithAuth('/api/settings/llm', {
+                const llmResp = await fetchWithAuth('/api/settings/llm', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -4144,6 +4202,13 @@ ${escapeHtml(execInfo.result)}</div>
                         reasoning_effort: reasoningEffort
                     })
                 });
+
+                if (!llmResp.ok) {
+                    const errData = await llmResp.json().catch(() => ({}));
+                    const errMsg = errData.message || errData.error || `LLM settings error (${llmResp.status})`;
+                    showToast(errMsg, 'error');
+                    return;
+                }
 
                 // Update current language for AI responses
                 currentLanguage = document.getElementById('setting-language').value;
@@ -9105,11 +9170,15 @@ spec:
             catch (e) { return ['default']; }
         }
 
-        function showToast(message) {
+        function showToast(message, type) {
             const toast = document.createElement('div');
             toast.className = 'ai-action-toast'; toast.textContent = message;
+            if (type === 'error') {
+                toast.style.background = 'var(--accent-red)';
+                toast.style.color = '#fff';
+            }
             document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+            setTimeout(() => toast.remove(), type === 'error' ? 5000 : 3000);
         }
 
         // ==========================================
@@ -9992,17 +10061,25 @@ spec:
                 const list = document.getElementById('cluster-dropdown-list');
                 const nameEl = document.getElementById('cluster-name');
                 if (!list) return;
-                if (data.current) nameEl.textContent = data.current;
-                list.innerHTML = (data.contexts || []).map(ctx => `
-                    <div class="cluster-dropdown-item ${ctx.name === data.current ? 'active' : ''}" onclick="switchClusterContext('${escapeHtml(ctx.name)}')">
+                if (data.currentContext) nameEl.textContent = data.currentContext;
+                list.innerHTML = (data.contexts || []).map((ctx, i) => `
+                    <div class="cluster-dropdown-item ${ctx.name === data.currentContext ? 'active' : ''}" data-ctx-index="${i}">
                         <span class="ctx-icon"></span>
                         <div style="flex:1;">
-                            <div style="font-weight:${ctx.name === data.current ? '600' : '400'}">${escapeHtml(ctx.name)}</div>
+                            <div style="font-weight:${ctx.name === data.currentContext ? '600' : '400'}">${escapeHtml(ctx.name)}</div>
                             <div style="font-size:11px;color:var(--text-secondary);">${escapeHtml(ctx.cluster || '')}</div>
                         </div>
-                        ${ctx.name === data.current ? '<span style="color:var(--accent-green);">●</span>' : ''}
+                        ${ctx.name === data.currentContext ? '<span style="color:var(--accent-green);">●</span>' : ''}
                     </div>
                 `).join('');
+                // Use event delegation instead of inline onclick to prevent XSS
+                list.querySelectorAll('[data-ctx-index]').forEach(el => {
+                    el.addEventListener('click', () => {
+                        const idx = parseInt(el.dataset.ctxIndex, 10);
+                        const ctxName = (data.contexts || [])[idx]?.name;
+                        if (ctxName) switchClusterContext(ctxName);
+                    });
+                });
             } catch (e) { console.warn('Failed to load contexts:', e); }
         }
 
@@ -10146,26 +10223,29 @@ spec:
                 if (warningsOnly) params.set('warnings_only', 'true');
                 const resp = await fetchWithAuth(`/api/events/timeline?${params}`);
                 const data = await resp.json();
+                const totalEvents = (data.totalNormal || 0) + (data.totalWarning || 0);
                 let html = `<div class="timeline-stats">
-                    <div class="timeline-stat"><div class="timeline-stat-value">${data.total || 0}</div><div class="timeline-stat-label">Total Events</div></div>
-                    <div class="timeline-stat"><div class="timeline-stat-value" style="color:var(--accent-green);">${data.normal_count || 0}</div><div class="timeline-stat-label">Normal</div></div>
-                    <div class="timeline-stat"><div class="timeline-stat-value" style="color:var(--accent-red);">${data.warning_count || 0}</div><div class="timeline-stat-label">Warning</div></div>
+                    <div class="timeline-stat"><div class="timeline-stat-value">${totalEvents}</div><div class="timeline-stat-label">Total Events</div></div>
+                    <div class="timeline-stat"><div class="timeline-stat-value" style="color:var(--accent-green);">${data.totalNormal || 0}</div><div class="timeline-stat-label">Normal</div></div>
+                    <div class="timeline-stat"><div class="timeline-stat-value" style="color:var(--accent-red);">${data.totalWarning || 0}</div><div class="timeline-stat-label">Warning</div></div>
                 </div>`;
-                if (data.groups && data.groups.length > 0) {
+                if (data.windows && data.windows.length > 0) {
                     html += '<div class="timeline-container"><div class="timeline-line"></div>';
-                    data.groups.forEach(g => {
-                        const dotClass = g.has_warning ? 'warning' : '';
+                    data.windows.forEach(w => {
+                        const dotClass = w.warningCount > 0 ? 'warning' : '';
+                        const windowTime = new Date(w.timestamp).toLocaleTimeString();
+                        const windowCount = (w.normalCount || 0) + (w.warningCount || 0);
                         html += `<div class="timeline-group">
                             <div class="timeline-dot ${dotClass}"></div>
-                            <div class="timeline-time">${escapeHtml(g.time_label)} (${g.count} events)</div>
-                            ${g.events.slice(0, 10).map(e => `
+                            <div class="timeline-time">${escapeHtml(windowTime)} (${windowCount} events)</div>
+                            ${(w.events || []).slice(0, 10).map(e => `
                                 <div class="timeline-event">
                                     <span class="evt-type ${escapeHtml(e.type)}">${escapeHtml(e.type)}</span>
                                     <span class="evt-reason">${escapeHtml(e.reason || '')}</span>
                                     <span class="evt-msg">${escapeHtml(e.message || '').substring(0, 120)}</span>
                                 </div>
                             `).join('')}
-                            ${g.events.length > 10 ? `<div style="font-size:11px;color:var(--text-secondary);padding:4px 12px;">...and ${g.events.length - 10} more</div>` : ''}
+                            ${(w.events || []).length > 10 ? `<div style="font-size:11px;color:var(--text-secondary);padding:4px 12px;">...and ${(w.events || []).length - 10} more</div>` : ''}
                         </div>`;
                     });
                     html += '</div>';
@@ -10208,31 +10288,31 @@ spec:
                 if (argoApps.length > 0) {
                     html += `<h3 style="margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span style="font-size:20px;">🐙</span> ArgoCD Applications (${argoApps.length})</h3>`;
                     html += argoApps.map(a => {
-                        const status = (a.sync_status || 'unknown').toLowerCase();
-                        const health = (a.health_status || 'unknown').toLowerCase();
-                        const dotClass = status === 'synced' ? 'synced' : status === 'outofsync' ? 'outofsync' : 'unknown';
+                        const syncStatus = (a.syncStatus || 'unknown').toLowerCase();
+                        const dotClass = syncStatus === 'synced' ? 'synced' : syncStatus === 'outofsync' ? 'outofsync' : 'unknown';
                         return `<div class="gitops-card">
                             <div class="gitops-status-dot ${dotClass}"></div>
                             <div class="gitops-info">
                                 <div class="gitops-name">${escapeHtml(a.name)}</div>
-                                <div class="gitops-meta">${escapeHtml(a.namespace)} · Health: ${escapeHtml(a.health_status || 'Unknown')}</div>
-                                <div class="gitops-repo">${escapeHtml(a.repo_url || '')}</div>
+                                <div class="gitops-meta">${escapeHtml(a.namespace)} · Health: ${escapeHtml(a.status || 'Unknown')}</div>
+                                <div class="gitops-repo">${escapeHtml(a.source || '')}</div>
                             </div>
-                            <span class="gitops-badge ${dotClass}">${escapeHtml(a.sync_status || 'Unknown')}</span>
+                            <span class="gitops-badge ${dotClass}">${escapeHtml(a.syncStatus || 'Unknown')}</span>
                         </div>`;
                     }).join('');
                 }
                 if (fluxApps.length > 0) {
                     html += `<h3 style="margin:20px 0 12px;display:flex;align-items:center;gap:8px;"><span style="font-size:20px;">🌊</span> Flux Kustomizations (${fluxApps.length})</h3>`;
                     html += fluxApps.map(f => {
-                        const ready = f.ready ? 'synced' : 'degraded';
+                        const isReady = f.status === 'Ready';
+                        const readyClass = isReady ? 'synced' : 'degraded';
                         return `<div class="gitops-card">
-                            <div class="gitops-status-dot ${ready}"></div>
+                            <div class="gitops-status-dot ${readyClass}"></div>
                             <div class="gitops-info">
                                 <div class="gitops-name">${escapeHtml(f.name)}</div>
                                 <div class="gitops-meta">${escapeHtml(f.namespace)} · Source: ${escapeHtml(f.source || '')}</div>
                             </div>
-                            <span class="gitops-badge ${ready}">${f.ready ? 'Ready' : 'Not Ready'}</span>
+                            <span class="gitops-badge ${readyClass}">${isReady ? 'Ready' : 'Not Ready'}</span>
                         </div>`;
                     }).join('');
                 }
@@ -10366,7 +10446,7 @@ spec:
                         <div class="backup-status-icon">${icon}</div>
                         <div class="backup-info">
                             <div class="backup-name">${escapeHtml(b.name)}</div>
-                            <div class="backup-meta">${escapeHtml(b.namespace || '')} · ${escapeHtml(b.age || b.schedule || '')}</div>
+                            <div class="backup-meta">${escapeHtml(b.namespace || '')} · ${escapeHtml(b.created || b.schedule || '')}</div>
                         </div>
                         <span class="backup-badge ${badgeClass}">${escapeHtml(b.status || 'Unknown')}</span>
                     </div>`;
@@ -10388,11 +10468,11 @@ spec:
                 const resp = await fetchWithAuth('/api/diff', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({kind, name, namespace})
+                    body: JSON.stringify({resource: kind, name, namespace})
                 });
                 const data = await resp.json();
-                document.getElementById('diff-left').textContent = data.last_applied || '(no last-applied annotation found)';
-                document.getElementById('diff-right').textContent = data.current || '(failed to get current)';
+                document.getElementById('diff-left').textContent = data.lastApplied || '(no last-applied annotation found)';
+                document.getElementById('diff-right').textContent = data.currentYaml || '(failed to get current)';
             } catch (e) {
                 document.getElementById('diff-left').textContent = 'Error: ' + e.message;
                 document.getElementById('diff-right').textContent = '';
@@ -10426,9 +10506,12 @@ spec:
                 const resp = await fetchWithAuth('/api/notifications/config');
                 const data = await resp.json();
                 if (data.enabled !== undefined) document.getElementById('notif-enabled').checked = data.enabled;
-                if (data.platform) document.getElementById('notif-platform').value = data.platform;
+                if (data.provider) document.getElementById('notif-platform').value = data.provider;
                 if (data.webhook_url) document.getElementById('notif-webhook-url').value = data.webhook_url;
                 if (data.channel) document.getElementById('notif-channel').value = data.channel;
+                const evts = data.events || [];
+                const evtMap = {'pod_crash': 'notif-evt-crash', 'oom_killed': 'notif-evt-oom', 'node_not_ready': 'notif-evt-node', 'deploy_fail': 'notif-evt-deploy', 'security_alert': 'notif-evt-security'};
+                Object.entries(evtMap).forEach(([key, id]) => { const el = document.getElementById(id); if (el) el.checked = evts.includes(key); });
             } catch (e) { console.warn('Failed to load notification settings:', e); }
         }
 
@@ -10439,16 +10522,16 @@ spec:
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         enabled: document.getElementById('notif-enabled').checked,
-                        platform: document.getElementById('notif-platform').value,
+                        provider: document.getElementById('notif-platform').value,
                         webhook_url: document.getElementById('notif-webhook-url').value,
                         channel: document.getElementById('notif-channel').value,
-                        events: {
-                            crash_loop: document.getElementById('notif-evt-crash')?.checked,
-                            oom_killed: document.getElementById('notif-evt-oom')?.checked,
-                            node_not_ready: document.getElementById('notif-evt-node')?.checked,
-                            deploy_failed: document.getElementById('notif-evt-deploy')?.checked,
-                            security_critical: document.getElementById('notif-evt-security')?.checked
-                        }
+                        events: [
+                            document.getElementById('notif-evt-crash')?.checked ? 'pod_crash' : '',
+                            document.getElementById('notif-evt-oom')?.checked ? 'oom_killed' : '',
+                            document.getElementById('notif-evt-node')?.checked ? 'node_not_ready' : '',
+                            document.getElementById('notif-evt-deploy')?.checked ? 'deploy_fail' : '',
+                            document.getElementById('notif-evt-security')?.checked ? 'security_alert' : ''
+                        ].filter(Boolean)
                     })
                 });
                 const result = document.getElementById('notif-test-result');

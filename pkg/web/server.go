@@ -516,6 +516,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/llm/ollama/pull", s.authManager.AuthMiddleware(s.handleOllamaPull))
 	mux.HandleFunc("/api/llm/usage", s.authManager.AuthMiddleware(s.handleLLMUsage))
 	mux.HandleFunc("/api/llm/usage/stats", s.authManager.AuthMiddleware(s.handleLLMUsageStats))
+	mux.HandleFunc("/api/llm/available-models", s.authManager.AuthMiddleware(s.handleAvailableModels))
 	mux.HandleFunc("/api/models", s.authManager.AuthMiddleware(s.handleModels))
 	mux.HandleFunc("/api/models/active", s.authManager.AuthMiddleware(s.handleActiveModel))
 
@@ -541,7 +542,7 @@ func (s *Server) Start() error {
 
 	// Multi-cluster context management
 	mux.HandleFunc("/api/contexts", s.authManager.AuthMiddleware(s.handleContexts))
-	mux.HandleFunc("/api/contexts/switch", s.authManager.AuthMiddleware(s.handleContextSwitch))
+	mux.HandleFunc("/api/contexts/switch", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionEdit)(s.handleContextSwitch)))
 
 	// RBAC visualization
 	mux.HandleFunc("/api/rbac/visualization", s.authManager.AuthMiddleware(s.handleRBACVisualization))
@@ -557,8 +558,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/templates/apply", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionApply)(s.handleTemplateApply)))
 
 	// Notification webhook configuration
-	mux.HandleFunc("/api/notifications/config", s.authManager.AuthMiddleware(s.handleNotificationConfig))
-	mux.HandleFunc("/api/notifications/test", s.authManager.AuthMiddleware(s.handleNotificationTest))
+	mux.HandleFunc("/api/notifications/config", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionEdit)(s.handleNotificationConfig)))
+	mux.HandleFunc("/api/notifications/test", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionEdit)(s.handleNotificationTest)))
 
 	// AI troubleshooting
 	mux.HandleFunc("/api/troubleshoot", s.authManager.AuthMiddleware(s.handleTroubleshoot))

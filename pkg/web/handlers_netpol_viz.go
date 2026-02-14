@@ -29,11 +29,21 @@ type NetPolEdge struct {
 	Ports  string `json:"ports,omitempty"`
 }
 
+// NetPolPolicySummary represents a network policy summary for card-based UI
+type NetPolPolicySummary struct {
+	Name         string   `json:"name"`
+	Namespace    string   `json:"namespace"`
+	PodSelector  string   `json:"pod_selector"`
+	IngressRules []string `json:"ingress_rules"`
+	EgressRules  []string `json:"egress_rules"`
+}
+
 // NetPolVisualizationResponse is the response for the network policy visualization endpoint
 type NetPolVisualizationResponse struct {
-	Nodes    []NetPolNode `json:"nodes"`
-	Edges    []NetPolEdge `json:"edges"`
-	Policies int          `json:"policyCount"`
+	Nodes       []NetPolNode          `json:"nodes"`
+	Edges       []NetPolEdge          `json:"edges"`
+	Policies    []NetPolPolicySummary `json:"policies"`
+	PolicyCount int                   `json:"policyCount"`
 }
 
 func (s *Server) handleNetworkPolicyVisualization(w http.ResponseWriter, r *http.Request) {
@@ -46,7 +56,6 @@ func (s *Server) handleNetworkPolicyVisualization(w http.ResponseWriter, r *http
 	ctx := r.Context()
 
 	var (
-		mu      sync.Mutex
 		wg      sync.WaitGroup
 		pods    []corev1.Pod
 		netpols []networkingv1.NetworkPolicy
@@ -76,8 +85,6 @@ func (s *Server) handleNetworkPolicyVisualization(w http.ResponseWriter, r *http
 	nodeSet := make(map[string]bool)
 
 	addNode := func(n NetPolNode) {
-		mu.Lock()
-		defer mu.Unlock()
 		if !nodeSet[n.ID] {
 			nodes = append(nodes, n)
 			nodeSet[n.ID] = true
@@ -203,11 +210,67 @@ func (s *Server) handleNetworkPolicyVisualization(w http.ResponseWriter, r *http
 		}
 	}
 
+	// Build policy summaries for card-based UI
+	var policySummaries []NetPolPolicySummary
+	for _, np := range netpols {
+		summary := NetPolPolicySummary{
+			Name:        np.Name,
+			Namespace:   np.Namespace,
+			PodSelector: formatSelector(np.Spec.PodSelector.MatchLabels),
+		}
+		for _, ingress := range np.Spec.Ingress {
+			ports := formatPolicyPorts(ingress.Ports)
+			for _, from := range ingress.From {
+				rule := ""
+				if from.PodSelector != nil {
+					rule = "From pods: " + formatSelector(from.PodSelector.MatchLabels)
+				} else if from.NamespaceSelector != nil {
+					rule = "From ns: " + formatSelector(from.NamespaceSelector.MatchLabels)
+				} else if from.IPBlock != nil {
+					rule = "From IP: " + from.IPBlock.CIDR
+				}
+				if rule != "" && ports != "all" {
+					rule += " (" + ports + ")"
+				}
+				if rule != "" {
+					summary.IngressRules = append(summary.IngressRules, rule)
+				}
+			}
+			if len(ingress.From) == 0 {
+				summary.IngressRules = append(summary.IngressRules, "Allow all ("+ports+")")
+			}
+		}
+		for _, egress := range np.Spec.Egress {
+			ports := formatPolicyPorts(egress.Ports)
+			for _, to := range egress.To {
+				rule := ""
+				if to.PodSelector != nil {
+					rule = "To pods: " + formatSelector(to.PodSelector.MatchLabels)
+				} else if to.NamespaceSelector != nil {
+					rule = "To ns: " + formatSelector(to.NamespaceSelector.MatchLabels)
+				} else if to.IPBlock != nil {
+					rule = "To IP: " + to.IPBlock.CIDR
+				}
+				if rule != "" && ports != "all" {
+					rule += " (" + ports + ")"
+				}
+				if rule != "" {
+					summary.EgressRules = append(summary.EgressRules, rule)
+				}
+			}
+			if len(egress.To) == 0 {
+				summary.EgressRules = append(summary.EgressRules, "Allow all ("+ports+")")
+			}
+		}
+		policySummaries = append(policySummaries, summary)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(NetPolVisualizationResponse{
-		Nodes:    nodes,
-		Edges:    edges,
-		Policies: len(netpols),
+		Nodes:       nodes,
+		Edges:       edges,
+		Policies:    policySummaries,
+		PolicyCount: len(netpols),
 	})
 }
 
