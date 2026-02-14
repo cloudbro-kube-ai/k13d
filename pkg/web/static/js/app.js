@@ -8611,7 +8611,11 @@ spec:
             }).join('\n');
             const blob = new Blob([logsText], { type: 'text/plain' });
             const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-            const filename = currentLogPods.length > 1 ? `${currentLogPods[0]}-multi-logs.txt` : `${currentLogPod}-logs.txt`;
+            const dateStr = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+            const podName = currentLogPod || currentLogPods[0] || 'unknown';
+            const filename = currentLogPods.length > 1
+                ? `${podName}-multi-${dateStr}.log`
+                : `${podName}-${dateStr}.log`;
             a.download = filename; a.click();
         }
 
