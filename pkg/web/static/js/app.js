@@ -9300,7 +9300,7 @@ spec:
 
         async function loadClusterOverview() {
             try {
-                const resp = await apiFetch('/api/overview');
+                const resp = await fetchWithAuth('/api/overview');
                 if (!resp.ok) return;
                 const data = await resp.json();
 
@@ -9329,7 +9329,7 @@ spec:
 
         async function loadRecentEvents() {
             try {
-                const resp = await apiFetch('/api/resources/events?namespace=');
+                const resp = await fetchWithAuth('/api/resources/events?namespace=');
                 if (!resp.ok) return;
                 const data = await resp.json();
                 const eventsEl = document.getElementById('overview-events');
