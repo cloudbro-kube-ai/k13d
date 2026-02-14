@@ -5,6 +5,24 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.6] - 2026-02-14
+
+### Added
+- **Web UI: Metrics Dashboard**: Real-time cluster health cards with CPU/Memory bars, pod/deployment/node status, and recent events (backed by `/api/pulse`)
+- **Web UI: Topology Tree View**: Hierarchical resource ownership visualization with collapsible tree nodes (backed by `/api/xray`)
+- **Web UI: Applications View**: App-centric grouped view by `app.kubernetes.io/name` labels with health status badges
+- **Web UI: Validate View**: Cross-resource validation with severity levels (critical/warning/info) and actionable suggestions
+- **Web UI: Healing View**: Auto-remediation rules CRUD interface with event history tracking
+- **Web UI: Helm Manager**: Full Helm release management with details, values, history, rollback, and uninstall
+- **Web UI: Theme/Skin Selector**: 5 color themes in Settings - Tokyo Night (default), Production (red), Staging (yellow), Development (green), Light
+- **Cross-view Navigation**: Related views linked together (Metrics↔Charts, Topology Graph↔Tree, Validate↔Reports)
+- **Overview Quick Actions**: New buttons for Metrics, Topology Tree, Applications, Validate, and Helm
+
+### Changed
+- Sidebar reorganized: Visualization (Topology, Applications), Operations (Validate, Healing, Helm), Monitoring (Metrics, Audit Logs, Reports)
+- XRay renamed to "Topology Tree" for consistency with existing Topology graph view
+- Pulse renamed to "Metrics" for consistency with existing metrics charts
+
 ## [Unreleased]
 
 ### Added
