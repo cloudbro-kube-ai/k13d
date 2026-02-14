@@ -5,6 +5,29 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] - 2026-02-14
+
+### Added
+- **Gemini Model Validation**: Validate Gemini model names against known versioned prefixes (gemini-2.5-*, gemini-2.0-*, etc.)
+- **Fetch Available Models**: New `/api/llm/available-models` endpoint with "Fetch Models" button for Gemini and Ollama providers
+- **Model Autocomplete**: `<datalist>` suggestions populated from provider's model list
+- **SSRF Protection**: Webhook URL validation - HTTPS-only, DNS resolution check, blocks private/loopback/link-local IPs
+- **AuthzMiddleware**: Added authorization checks to context switch and notification endpoints
+- **Backend Filters**: `warnings_only` for events timeline, `subject_kind` for RBAC visualization
+- **Release Review Report**: Comprehensive `docs/RELEASE_REVIEW_REPORT.md` with findings from 6 review teams
+
+### Fixed
+- **Web UI Test Connection**: Fixed `response_time` vs `response_time_ms` field mismatch causing "undefinedms" display
+- **Settings Save Error Handling**: `saveSettings()` now checks response status and shows error toasts instead of silently failing
+- **XSS Prevention**: Replaced inline `onclick` handlers with `data-` attributes and event delegation for cluster context switching
+- **Variable Shadowing**: Fixed terminal modal crash caused by Go variable shadowing in web handlers
+- **Velero Type Assertion**: Fixed unsafe type assertion `first, _ := ns[0].(string)` with proper `ok` check
+- **CSS Theme Variables**: Added missing `--bg-hover` and `--text-muted` to all 6 theme variants
+
+### Changed
+- Default Gemini model updated from `gemini-1.5-flash` to `gemini-2.5-flash`
+- `showToast()` now supports `error` type (red background, 5s duration)
+
 ## [0.7.7] - 2026-02-14
 
 ### Added
