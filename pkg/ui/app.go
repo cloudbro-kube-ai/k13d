@@ -191,6 +191,7 @@ type App struct {
 	customAliases *config.AliasConfig // User-defined resource aliases
 	viewsConfig   *config.ViewConfig  // Per-resource view settings (sort defaults)
 	plugins       *config.PluginsFile // Plugin definitions
+	styles        *config.StyleConfig // Per-context skin/theme
 
 	// RBAC authorization (Teleport-inspired)
 	tuiRole      string // TUI user role (default: "admin" for backward compatibility)
@@ -298,6 +299,18 @@ func NewAppWithNamespace(initialNamespace string) *App {
 		app.plugins = plugins
 	}
 
+	// Load per-context skin (k9s pattern: different themes per cluster context)
+	if k8sClient != nil {
+		if ctxName, err := k8sClient.GetCurrentContext(); err == nil && ctxName != "" {
+			if styles, err := config.LoadStylesForContext(ctxName); err == nil {
+				app.styles = styles
+			}
+		}
+	}
+	if app.styles == nil {
+		app.styles = config.DefaultStyles()
+	}
+
 	app.setupUI()
 	app.setupKeybindings()
 
@@ -373,12 +386,13 @@ func (a *App) loadNamespaces() {
 
 // setupUI initializes all UI components
 func (a *App) setupUI() {
-	// Color scheme (Tokyo Night inspired - matching WebUI)
-	headerBg := tcell.NewRGBColor(36, 40, 59)       // #24283b
-	tableBorder := tcell.NewRGBColor(122, 162, 247) // #7aa2f7 (accent blue)
-	tableSelect := tcell.NewRGBColor(65, 72, 104)   // #414868
-	aiBorder := tcell.NewRGBColor(187, 154, 247)    // #bb9af7 (accent purple)
-	statusBg := tcell.NewRGBColor(158, 206, 106)    // #9ece6a (accent green)
+	// Color scheme: use per-context skin if loaded, otherwise Tokyo Night defaults
+	s := a.styles
+	headerBg := s.K13s.Body.BgColor.ToTcellColor()
+	tableBorder := s.K13s.Frame.FocusBorderColor.ToTcellColor()
+	tableSelect := s.K13s.Views.Table.RowSelected.BgColor.ToTcellColor()
+	aiBorder := tcell.NewRGBColor(187, 154, 247) // #bb9af7 (accent purple, no skin equivalent)
+	statusBg := s.K13s.StatusBar.BgColor.ToTcellColor()
 
 	// Header with gradient-like appearance
 	a.header = tview.NewTextView().
