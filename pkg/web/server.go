@@ -63,6 +63,9 @@ type Server struct {
 
 	// Self-healing rules store
 	healingStore *HealingStore
+
+	// Notification manager
+	notifManager *NotificationManager
 }
 
 // PendingToolApproval represents a tool call waiting for user approval
@@ -214,9 +217,9 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 	fmt.Printf("  Access Request Manager: Ready (TTL: 30m)\n")
 
 	// Initialize rate limiters
-	apiRateLimiter := NewRateLimiter(100, 1*time.Minute) // 100 requests per minute for API
+	apiRateLimiter := NewRateLimiter(600, 1*time.Minute) // 600 requests per minute for API (dashboard makes many concurrent calls)
 	authRateLimiter := NewRateLimiter(10, 1*time.Minute) // 10 requests per minute for auth
-	fmt.Printf("  Rate Limiting: API (100/min), Auth (10/min)\n")
+	fmt.Printf("  Rate Limiting: API (600/min), Auth (10/min)\n")
 
 	server := &Server{
 		cfg:                  cfg,
@@ -240,9 +243,35 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 	server.reportGenerator = NewReportGenerator(server)
 	fmt.Printf("  Reports: Ready\n")
 
-	// Metrics collector is disabled by default to avoid performance issues
-	// It can still collect on-demand via /api/metrics/collect
-	fmt.Printf("  Metrics Collector: Disabled (on-demand collection available)\n")
+	// Initialize notification manager
+	server.notifManager = NewNotificationManager(k8sClient, cfg)
+	if cfg.Notifications.Enabled {
+		server.notifManager.Start()
+		fmt.Printf("  Notifications: Enabled (provider: %s, poll: %ds)\n",
+			cfg.Notifications.Provider, cfg.Notifications.PollInterval)
+	} else {
+		fmt.Printf("  Notifications: Disabled\n")
+	}
+	// Sync in-memory notifConfig from persistent config
+	notifConfigMu.Lock()
+	notifConfig = &NotificationConfig{
+		Enabled:    cfg.Notifications.Enabled,
+		WebhookURL: cfg.Notifications.WebhookURL,
+		Channel:    cfg.Notifications.Channel,
+		Events:     cfg.Notifications.Events,
+		Provider:   cfg.Notifications.Provider,
+	}
+	notifConfigMu.Unlock()
+
+	// Initialize and start metrics collector for historical charts
+	metricsCollector, err := metrics.NewCollector(k8sClient, metrics.DefaultConfig())
+	if err != nil {
+		fmt.Printf("  Metrics Collector: Failed to initialize (%v)\n", err)
+	} else {
+		server.metricsCollector = metricsCollector
+		metricsCollector.Start()
+		fmt.Printf("  Metrics Collector: Running (interval: 1m, retention: 7d)\n")
+	}
 
 	// Initialize security scanner
 	server.securityScanner = security.NewScanner(k8sClient)
@@ -570,6 +599,8 @@ func (s *Server) Start() error {
 	// Notification webhook configuration
 	mux.HandleFunc("/api/notifications/config", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionEdit)(s.handleNotificationConfig)))
 	mux.HandleFunc("/api/notifications/test", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionEdit)(s.handleNotificationTest)))
+	mux.HandleFunc("/api/notifications/history", s.authManager.AuthMiddleware(s.handleNotificationHistory))
+	mux.HandleFunc("/api/notifications/status", s.authManager.AuthMiddleware(s.handleNotificationStatus))
 
 	// AI troubleshooting
 	mux.HandleFunc("/api/troubleshoot", s.authManager.AuthMiddleware(s.handleTroubleshoot))
@@ -705,6 +736,16 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) Stop() error {
+	// Stop metrics collector
+	if s.metricsCollector != nil {
+		s.metricsCollector.Stop()
+	}
+
+	// Stop notification manager
+	if s.notifManager != nil {
+		s.notifManager.Stop()
+	}
+
 	// Disconnect all MCP servers
 	if s.mcpClient != nil {
 		s.mcpClient.DisconnectAll()

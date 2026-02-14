@@ -17,6 +17,7 @@ type Config struct {
 	Prometheus    PrometheusConfig    `yaml:"prometheus" json:"prometheus"`       // Prometheus integration configuration
 	Authorization AuthorizationConfig `yaml:"authorization" json:"authorization"` // RBAC authorization (Teleport-inspired)
 	Anonymization AnonymizationConfig `yaml:"anonymization" json:"anonymization"` // Data anonymization before LLM calls
+	Notifications NotificationsConfig `yaml:"notifications" json:"notifications"` // Event notification dispatch
 	ReportPath    string              `yaml:"report_path" json:"report_path"`
 	EnableAudit   bool                `yaml:"enable_audit" json:"enable_audit"`
 	Language      string              `yaml:"language" json:"language"`
@@ -27,6 +28,28 @@ type Config struct {
 // AnonymizationConfig holds settings for data anonymization before LLM calls
 type AnonymizationConfig struct {
 	Enabled bool `yaml:"enabled" json:"enabled"` // Default: false
+}
+
+// NotificationsConfig holds event notification dispatch settings
+type NotificationsConfig struct {
+	Enabled      bool       `yaml:"enabled" json:"enabled"`
+	Provider     string     `yaml:"provider" json:"provider"`           // slack, discord, teams, email, custom
+	WebhookURL   string     `yaml:"webhook_url" json:"webhook_url"`
+	Channel      string     `yaml:"channel" json:"channel,omitempty"`
+	Events       []string   `yaml:"events" json:"events"`
+	PollInterval int        `yaml:"poll_interval" json:"poll_interval"` // seconds, default 30
+	SMTP         SMTPConfig `yaml:"smtp" json:"smtp,omitempty"`
+}
+
+// SMTPConfig holds email notification settings
+type SMTPConfig struct {
+	Host     string   `yaml:"host" json:"host"`
+	Port     int      `yaml:"port" json:"port"`
+	Username string   `yaml:"username" json:"username"`
+	Password string   `yaml:"password" json:"-"` // never expose in JSON
+	From     string   `yaml:"from" json:"from"`
+	To       []string `yaml:"to" json:"to"`
+	UseTLS   bool     `yaml:"use_tls" json:"use_tls"`
 }
 
 // AuthorizationConfig holds RBAC authorization settings (Teleport-inspired)
@@ -315,6 +338,13 @@ func NewDefaultConfig() *Config {
 			ToolApproval: DefaultToolApprovalPolicy(),
 		},
 		Anonymization: AnonymizationConfig{Enabled: false},
+		Notifications: NotificationsConfig{
+			Enabled:      false,
+			Provider:     "slack",
+			Events:       []string{},
+			PollInterval: 30,
+			SMTP:         SMTPConfig{Port: 587, UseTLS: true},
+		},
 		Language:      "ko",
 		BeginnerMode:  true,
 		LogLevel:      "debug",

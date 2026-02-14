@@ -9396,7 +9396,7 @@ spec:
         // ============================
         // Custom View Helpers
         // ============================
-        const customViewIds = ['overview-container','metrics-dashboard-container','topology-tree-container','applications-container','validate-container','healing-container','helm-container','rbac-viz-container','netpol-viz-container','timeline-container','gitops-container','templates-container','backups-container'];
+        const customViewIds = ['overview-container','metrics-dashboard-container','topology-tree-container','applications-container','validate-container','healing-container','helm-container','rbac-viz-container','netpol-viz-container','timeline-container','gitops-container','templates-container'];
 
         function hideAllCustomViews() {
             customViewIds.forEach(id => {
@@ -10398,63 +10398,6 @@ spec:
             }
         }
 
-        // ============================
-        // Backups (Velero) View
-        // ============================
-        let backupsCurrentTab = 'backups';
-
-        function showBackupsView() {
-            showCustomView('backups-container', 'backups');
-            loadBackupsData();
-        }
-
-        function switchBackupsTab(tab, btn) {
-            backupsCurrentTab = tab;
-            document.querySelectorAll('#backups-container .view-tab').forEach(b => b.classList.remove('active'));
-            if (btn) btn.classList.add('active');
-            loadBackupsData();
-        }
-
-        async function loadBackupsData() {
-            const body = document.getElementById('backups-body');
-            body.innerHTML = '<div class="loading-placeholder">Loading backups...</div>';
-            try {
-                const endpoint = backupsCurrentTab === 'schedules' ? '/api/velero/schedules' : '/api/velero/backups';
-                const resp = await fetchWithAuth(endpoint);
-                const data = await resp.json();
-                if (!data.installed) {
-                    body.innerHTML = `<div class="velero-not-installed">
-                        <div style="font-size:48px;margin-bottom:12px;">🗄️</div>
-                        <h3>Velero Not Installed</h3>
-                        <p style="margin-top:8px;">${escapeHtml(data.message || 'Install Velero to enable backup management')}</p>
-                        <p style="margin-top:12px;font-size:12px;color:var(--text-secondary);">
-                            <code style="background:var(--bg-tertiary);padding:4px 8px;border-radius:4px;">velero install --provider aws --bucket my-bucket</code>
-                        </p>
-                    </div>`;
-                    return;
-                }
-                const items = data.items || [];
-                if (items.length === 0) {
-                    body.innerHTML = `<div class="loading-placeholder">No ${backupsCurrentTab} found</div>`;
-                    return;
-                }
-                body.innerHTML = items.map(b => {
-                    const status = (b.status || 'unknown').toLowerCase();
-                    const icon = status === 'completed' ? '✅' : status === 'failed' ? '❌' : status === 'inprogress' ? '⏳' : '📋';
-                    const badgeClass = status === 'completed' ? 'completed' : status === 'failed' ? 'failed' : 'inprogress';
-                    return `<div class="backup-card">
-                        <div class="backup-status-icon">${icon}</div>
-                        <div class="backup-info">
-                            <div class="backup-name">${escapeHtml(b.name)}</div>
-                            <div class="backup-meta">${escapeHtml(b.namespace || '')} · ${escapeHtml(b.created || b.schedule || '')}</div>
-                        </div>
-                        <span class="backup-badge ${badgeClass}">${escapeHtml(b.status || 'Unknown')}</span>
-                    </div>`;
-                }).join('');
-            } catch (e) {
-                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed: ${escapeHtml(e.message)}</div>`;
-            }
-        }
 
         // ============================
         // Resource Diff Modal
@@ -10510,29 +10453,55 @@ spec:
                 if (data.webhook_url) document.getElementById('notif-webhook-url').value = data.webhook_url;
                 if (data.channel) document.getElementById('notif-channel').value = data.channel;
                 const evts = data.events || [];
-                const evtMap = {'pod_crash': 'notif-evt-crash', 'oom_killed': 'notif-evt-oom', 'node_not_ready': 'notif-evt-node', 'deploy_fail': 'notif-evt-deploy', 'security_alert': 'notif-evt-security'};
+                const evtMap = {'pod_crash': 'notif-evt-crash', 'oom_killed': 'notif-evt-oom', 'node_not_ready': 'notif-evt-node', 'deploy_fail': 'notif-evt-deploy', 'image_pull_fail': 'notif-evt-imagepull'};
                 Object.entries(evtMap).forEach(([key, id]) => { const el = document.getElementById(id); if (el) el.checked = evts.includes(key); });
+                // Load SMTP settings if email provider
+                if (data.smtp) {
+                    const s = data.smtp;
+                    if (s.host) document.getElementById('notif-smtp-host').value = s.host;
+                    if (s.port) document.getElementById('notif-smtp-port').value = s.port;
+                    if (s.username) document.getElementById('notif-smtp-username').value = s.username;
+                    if (s.from) document.getElementById('notif-smtp-from').value = s.from;
+                    if (s.to) document.getElementById('notif-smtp-to').value = s.to.join(', ');
+                    document.getElementById('notif-smtp-tls').checked = s.use_tls !== false;
+                }
+                updateNotifPlaceholder();
+                loadNotificationHistory();
             } catch (e) { console.warn('Failed to load notification settings:', e); }
         }
 
         async function saveNotificationSettings() {
+            const provider = document.getElementById('notif-platform').value;
+            const payload = {
+                enabled: document.getElementById('notif-enabled').checked,
+                provider: provider,
+                webhook_url: document.getElementById('notif-webhook-url').value,
+                channel: document.getElementById('notif-channel').value,
+                events: [
+                    document.getElementById('notif-evt-crash')?.checked ? 'pod_crash' : '',
+                    document.getElementById('notif-evt-oom')?.checked ? 'oom_killed' : '',
+                    document.getElementById('notif-evt-node')?.checked ? 'node_not_ready' : '',
+                    document.getElementById('notif-evt-deploy')?.checked ? 'deploy_fail' : '',
+                    document.getElementById('notif-evt-imagepull')?.checked ? 'image_pull_fail' : ''
+                ].filter(Boolean)
+            };
+            if (provider === 'email') {
+                const toStr = document.getElementById('notif-smtp-to').value;
+                payload.smtp = {
+                    host: document.getElementById('notif-smtp-host').value,
+                    port: parseInt(document.getElementById('notif-smtp-port').value) || 587,
+                    username: document.getElementById('notif-smtp-username').value,
+                    password: document.getElementById('notif-smtp-password').value,
+                    from: document.getElementById('notif-smtp-from').value,
+                    to: toStr ? toStr.split(',').map(s => s.trim()).filter(Boolean) : [],
+                    use_tls: document.getElementById('notif-smtp-tls').checked
+                };
+            }
             try {
                 await fetchWithAuth('/api/notifications/config', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        enabled: document.getElementById('notif-enabled').checked,
-                        provider: document.getElementById('notif-platform').value,
-                        webhook_url: document.getElementById('notif-webhook-url').value,
-                        channel: document.getElementById('notif-channel').value,
-                        events: [
-                            document.getElementById('notif-evt-crash')?.checked ? 'pod_crash' : '',
-                            document.getElementById('notif-evt-oom')?.checked ? 'oom_killed' : '',
-                            document.getElementById('notif-evt-node')?.checked ? 'node_not_ready' : '',
-                            document.getElementById('notif-evt-deploy')?.checked ? 'deploy_fail' : '',
-                            document.getElementById('notif-evt-security')?.checked ? 'security_alert' : ''
-                        ].filter(Boolean)
-                    })
+                    body: JSON.stringify(payload)
                 });
                 const result = document.getElementById('notif-test-result');
                 result.style.display = 'block';
@@ -10550,7 +10519,11 @@ spec:
             result.style.color = 'var(--accent-blue)';
             result.textContent = 'Sending test notification...';
             try {
-                await fetchWithAuth('/api/notifications/test', {method: 'POST'});
+                const resp = await fetchWithAuth('/api/notifications/test', {method: 'POST'});
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    throw new Error(text || resp.statusText);
+                }
                 result.style.background = 'rgba(46,160,67,0.15)';
                 result.style.color = 'var(--accent-green)';
                 result.textContent = 'Test notification sent!';
@@ -10563,14 +10536,47 @@ spec:
 
         function updateNotifPlaceholder() {
             const platform = document.getElementById('notif-platform').value;
-            const urlInput = document.getElementById('notif-webhook-url');
-            const placeholders = {
-                slack: 'https://hooks.slack.com/services/...',
-                discord: 'https://discord.com/api/webhooks/...',
-                teams: 'https://outlook.office.com/webhook/...',
-                custom: 'https://your-webhook-url.com/hook'
-            };
-            urlInput.placeholder = placeholders[platform] || placeholders.custom;
+            const webhookSection = document.getElementById('notif-webhook-section');
+            const smtpSection = document.getElementById('notif-smtp-section');
+            if (platform === 'email') {
+                webhookSection.style.display = 'none';
+                smtpSection.style.display = 'block';
+            } else {
+                webhookSection.style.display = 'block';
+                smtpSection.style.display = 'none';
+                const urlInput = document.getElementById('notif-webhook-url');
+                const placeholders = {
+                    slack: 'https://hooks.slack.com/services/...',
+                    discord: 'https://discord.com/api/webhooks/...',
+                    teams: 'https://outlook.office.com/webhook/...',
+                    custom: 'https://your-webhook-url.com/hook'
+                };
+                urlInput.placeholder = placeholders[platform] || placeholders.custom;
+            }
+        }
+
+        async function loadNotificationHistory() {
+            const body = document.getElementById('notif-history-body');
+            try {
+                const resp = await fetchWithAuth('/api/notifications/history');
+                const items = await resp.json();
+                if (!items || items.length === 0) {
+                    body.innerHTML = '<div class="loading-placeholder" style="font-size:12px;">No notifications sent yet.</div>';
+                    return;
+                }
+                body.innerHTML = items.map(h => {
+                    const time = h.timestamp ? new Date(h.timestamp).toLocaleString() : '';
+                    const icon = h.success ? '<span style="color:var(--accent-green);">&#10003;</span>' : '<span style="color:var(--accent-red);">&#10007;</span>';
+                    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-color);font-size:12px;">
+                        ${icon}
+                        <span style="color:var(--text-secondary);min-width:140px;">${escapeHtml(time)}</span>
+                        <span style="color:var(--accent-blue);min-width:80px;">${escapeHtml(h.event_type || '')}</span>
+                        <span style="flex:1;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(h.message || '')}</span>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                body.innerHTML = '<div class="loading-placeholder" style="font-size:12px;color:var(--accent-red);">Failed to load history</div>';
+            }
         }
 
         // Init

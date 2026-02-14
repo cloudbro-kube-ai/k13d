@@ -487,6 +487,9 @@ tbody tr:hover {
     padding: 12px 20px;
     background: linear-gradient(90deg, rgba(36, 40, 59, 0.6) 0%, rgba(26, 27, 38, 0.8) 100%);
     border-bottom: 1px solid rgba(122, 162, 247, 0.1);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
 }
 
 .tab {
@@ -498,6 +501,8 @@ tbody tr:hover {
     color: var(--text-secondary);
     transition: all 0.2s ease;
     border: 1px solid transparent;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .tab:hover {

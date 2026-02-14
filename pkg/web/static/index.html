@@ -185,7 +185,6 @@
             </div>
             <div class="user-info">
                 <span class="user-badge" id="user-badge">admin</span>
-                <button class="logout-btn" onclick="toggleTheme()" id="theme-toggle" title="Toggle dark/light theme">🌙</button>
                 <button class="logout-btn" onclick="showShortcuts()">?</button>
                 <button class="logout-btn" onclick="showSettings()">Settings</button>
                 <button class="logout-btn" id="logout-btn" onclick="logout()">Logout</button>
@@ -358,9 +357,6 @@
                     </div>
                     <div class="nav-item" data-resource="templates" onclick="showTemplatesView()">
                         <span>Templates</span>
-                    </div>
-                    <div class="nav-item" data-resource="backups" onclick="showBackupsView()">
-                        <span>Backups</span>
                     </div>
                 </div>
 
@@ -752,22 +748,6 @@
                     </div>
                 </div>
 
-                <!-- Backups (Velero) Container -->
-                <div class="custom-view-container" id="backups-container" style="display:none;">
-                    <div class="custom-view-toolbar">
-                        <h2>Backups (Velero)</h2>
-                        <div style="display:flex;gap:8px;align-items:center;">
-                            <div class="view-tabs" style="display:flex;gap:4px;">
-                                <button class="view-tab active" onclick="switchBackupsTab('backups',this)">Backups</button>
-                                <button class="view-tab" onclick="switchBackupsTab('schedules',this)">Schedules</button>
-                            </div>
-                            <button onclick="loadBackupsData()">↻ Refresh</button>
-                        </div>
-                    </div>
-                    <div class="custom-view-body" id="backups-body">
-                        <div class="loading-placeholder">Loading backups...</div>
-                    </div>
-                </div>
 
                 <!-- Resize Handle -->
                 <div class="resize-handle" id="resize-handle"></div>
@@ -796,7 +776,6 @@
                         <span>AI Assistant</span>
                         <span class="ai-status-dot" id="ai-status-dot" title="Checking connection...">●</span>
                         <span class="ai-badge" id="ai-model-badge">Loading...</span>
-                        <button class="troubleshoot-btn" onclick="runAutoTroubleshoot()" title="AI Auto-Troubleshoot">🔍 Diagnose</button>
                         <button class="debug-toggle" id="debug-toggle" onclick="toggleDebugMode()" style="margin-left: auto;" title="Toggle Debug Mode">🐛 Debug</button>
                     </div>
                     <!-- Guardrails Status -->
@@ -939,7 +918,6 @@
                                 <option value="production">Production (Red)</option>
                                 <option value="staging">Staging (Yellow)</option>
                                 <option value="dev">Development (Green)</option>
-                                <option value="light">Light</option>
                             </select>
                         </div>
                     </div>
@@ -1509,11 +1487,11 @@
                 <div id="settings-notifications" class="settings-content" style="display:none;">
                     <div class="settings-section">
                         <h4>Webhook Notifications</h4>
-                        <p class="settings-description" style="margin-bottom:16px;">Receive alerts for cluster events via Slack, Discord, or Microsoft Teams.</p>
+                        <p class="settings-description" style="margin-bottom:16px;">Receive alerts for cluster events via Slack, Discord, Teams, Email, or custom webhook.</p>
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Enable Notifications</div>
-                                <div class="settings-description">Send alerts to webhook URL</div>
+                                <div class="settings-description">Send alerts when cluster events occur</div>
                             </div>
                             <input type="checkbox" id="notif-enabled" onchange="saveNotificationSettings()">
                         </div>
@@ -1523,16 +1501,53 @@
                                 <option value="slack">Slack</option>
                                 <option value="discord">Discord</option>
                                 <option value="teams">Microsoft Teams</option>
+                                <option value="email">Email (SMTP)</option>
                                 <option value="custom">Custom Webhook</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label>Webhook URL</label>
-                            <input type="text" id="notif-webhook-url" placeholder="https://hooks.slack.com/services/...">
+                        <div id="notif-webhook-section">
+                            <div class="form-group">
+                                <label>Webhook URL</label>
+                                <input type="text" id="notif-webhook-url" placeholder="https://hooks.slack.com/services/...">
+                            </div>
+                            <div class="form-group">
+                                <label>Channel (optional)</label>
+                                <input type="text" id="notif-channel" placeholder="#k8s-alerts">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Channel (optional)</label>
-                            <input type="text" id="notif-channel" placeholder="#k8s-alerts">
+                        <div id="notif-smtp-section" style="display:none;">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                <div class="form-group">
+                                    <label>SMTP Host</label>
+                                    <input type="text" id="notif-smtp-host" placeholder="smtp.gmail.com">
+                                </div>
+                                <div class="form-group">
+                                    <label>Port</label>
+                                    <input type="number" id="notif-smtp-port" placeholder="587" value="587">
+                                </div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                <div class="form-group">
+                                    <label>Username</label>
+                                    <input type="text" id="notif-smtp-username" placeholder="user@gmail.com">
+                                </div>
+                                <div class="form-group">
+                                    <label>Password</label>
+                                    <input type="password" id="notif-smtp-password" placeholder="app password">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>From Address</label>
+                                <input type="text" id="notif-smtp-from" placeholder="alerts@example.com">
+                            </div>
+                            <div class="form-group">
+                                <label>To Addresses (comma-separated)</label>
+                                <input type="text" id="notif-smtp-to" placeholder="admin@example.com, team@example.com">
+                            </div>
+                            <div class="settings-row">
+                                <div><div class="settings-label">Use TLS</div></div>
+                                <input type="checkbox" id="notif-smtp-tls" checked>
+                            </div>
                         </div>
                     </div>
                     <div class="settings-section" style="margin-top:16px;">
@@ -1541,13 +1556,19 @@
                         <div class="settings-row"><div><div class="settings-label">Pod OOMKilled</div></div><input type="checkbox" id="notif-evt-oom" checked></div>
                         <div class="settings-row"><div><div class="settings-label">Node Not Ready</div></div><input type="checkbox" id="notif-evt-node" checked></div>
                         <div class="settings-row"><div><div class="settings-label">Deployment Failed</div></div><input type="checkbox" id="notif-evt-deploy" checked></div>
-                        <div class="settings-row"><div><div class="settings-label">Security Scan Critical</div></div><input type="checkbox" id="notif-evt-security"></div>
+                        <div class="settings-row"><div><div class="settings-label">Image Pull Failed</div></div><input type="checkbox" id="notif-evt-imagepull" checked></div>
                     </div>
                     <div style="display:flex;gap:8px;margin-top:16px;">
                         <button class="btn btn-primary" onclick="saveNotificationSettings()">Save</button>
                         <button class="btn btn-secondary" onclick="testNotification()">Send Test</button>
                     </div>
                     <div id="notif-test-result" style="margin-top:12px;padding:10px;border-radius:6px;display:none;"></div>
+                    <div class="settings-section" style="margin-top:16px;">
+                        <h4>Notification History</h4>
+                        <div id="notif-history-body" style="max-height:300px;overflow-y:auto;">
+                            <div class="loading-placeholder" style="font-size:12px;">No notifications sent yet.</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Admin Tab (visible only to admins) -->
