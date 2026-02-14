@@ -88,6 +88,54 @@
     --shadow-glow-green: 0 0 20px rgba(22, 163, 74, 0.15);
 }
 
+/* Production Theme (Red accent - warns you're in production) */
+[data-theme="production"] {
+    --bg-primary: #1c1517;
+    --bg-secondary: #2a1f22;
+    --bg-tertiary: #4a3035;
+    --text-primary: #e8d0d4;
+    --text-secondary: #b89a9f;
+    --accent-blue: #7aa2f7;
+    --accent-green: #9ece6a;
+    --accent-red: #ff6b81;
+    --accent-yellow: #e0af68;
+    --accent-purple: #bb9af7;
+    --accent-cyan: #7dcfff;
+    --border-color: #5a3a40;
+}
+
+/* Staging Theme (Yellow accent) */
+[data-theme="staging"] {
+    --bg-primary: #1c1b17;
+    --bg-secondary: #2a2820;
+    --bg-tertiary: #4a4530;
+    --text-primary: #e8e0d0;
+    --text-secondary: #b8b09a;
+    --accent-blue: #7aa2f7;
+    --accent-green: #9ece6a;
+    --accent-red: #f7768e;
+    --accent-yellow: #ffb86c;
+    --accent-purple: #bb9af7;
+    --accent-cyan: #7dcfff;
+    --border-color: #5a5230;
+}
+
+/* Development Theme (Green accent) */
+[data-theme="dev"] {
+    --bg-primary: #171c17;
+    --bg-secondary: #202a20;
+    --bg-tertiary: #304a30;
+    --text-primary: #d0e8d0;
+    --text-secondary: #9ab89a;
+    --accent-blue: #7aa2f7;
+    --accent-green: #73daca;
+    --accent-red: #f7768e;
+    --accent-yellow: #e0af68;
+    --accent-purple: #bb9af7;
+    --accent-cyan: #7dcfff;
+    --border-color: #3a5a3a;
+}
+
 /* Auto-detect system preference when no explicit theme is set */
 @media (prefers-color-scheme: light) {
     :root:not([data-theme]) {

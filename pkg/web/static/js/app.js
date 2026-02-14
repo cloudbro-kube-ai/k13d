@@ -1452,8 +1452,9 @@
             });
             document.getElementById('panel-title').textContent = resource.charAt(0).toUpperCase() + resource.slice(1);
 
-            // Hide topology view and overview panel, show main panel
+            // Hide topology view, custom views and overview panel, show main panel
             hideTopologyView();
+            hideAllCustomViews();
             hideOverviewPanel();
 
             // Update active column filters display
@@ -2737,8 +2738,34 @@ ${escapeHtml(execInfo.result)}</div>
                 loadTrivyInstructions();
             } else if (tab === 'metrics') {
                 loadPrometheusSettings();
+            } else if (tab === 'general') {
+                // Load saved theme
+                const saved = localStorage.getItem('k13d_theme') || 'tokyo-night';
+                const sel = document.getElementById('setting-theme');
+                if (sel) sel.value = saved;
             }
         }
+
+        // Theme / Skin support
+        function applyTheme(theme) {
+            const html = document.documentElement;
+            if (theme === 'light') {
+                html.setAttribute('data-theme', 'light');
+            } else if (theme === 'tokyo-night') {
+                html.removeAttribute('data-theme');
+            } else {
+                html.setAttribute('data-theme', theme);
+            }
+            localStorage.setItem('k13d_theme', theme);
+        }
+
+        // Apply saved theme on load
+        (function initTheme() {
+            const saved = localStorage.getItem('k13d_theme');
+            if (saved && saved !== 'tokyo-night') {
+                applyTheme(saved);
+            }
+        })();
 
         // ==========================================
         // Trivy/Security Functions
@@ -4316,8 +4343,9 @@ ${escapeHtml(execInfo.result)}</div>
             const topoNav = document.querySelector('.nav-item[data-resource="topology"]');
             if (topoNav) topoNav.classList.add('active');
 
-            // Hide main panel and overview, show topology
+            // Hide main panel, custom views and overview, show topology
             hideOverviewPanel();
+            hideAllCustomViews();
             const mainPanel = document.querySelector('.main-panel');
             const topoContainer = document.getElementById('topology-container');
             if (mainPanel) mainPanel.style.display = 'none';
@@ -9295,6 +9323,7 @@ spec:
             if (overviewPanel) overviewPanel.classList.add('active');
             if (mainPanel) mainPanel.style.display = 'none';
             hideTopologyView();
+            hideAllCustomViews();
             // Deselect all nav items
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             loadClusterOverview();
@@ -9307,6 +9336,669 @@ spec:
             if (overviewPanel) overviewPanel.classList.remove('active');
             if (mainPanel) mainPanel.style.display = '';
         }
+
+        // ============================
+        // Custom View Helpers
+        // ============================
+        const customViewIds = ['metrics-dashboard-container','topology-tree-container','applications-container','validate-container','healing-container','helm-container'];
+
+        function hideAllCustomViews() {
+            customViewIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+        }
+
+        function showCustomView(containerId, resource) {
+            currentResource = resource;
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            const nav = document.querySelector(`.nav-item[data-resource="${resource}"]`);
+            if (nav) nav.classList.add('active');
+            hideOverviewPanel();
+            hideTopologyView();
+            hideAllCustomViews();
+            const mainPanel = document.querySelector('.main-panel');
+            if (mainPanel) mainPanel.style.display = 'none';
+            const container = document.getElementById(containerId);
+            if (container) container.style.display = 'flex';
+            // Sync namespace selects
+            syncCustomViewNamespaces();
+        }
+
+        function syncCustomViewNamespaces() {
+            const src = document.getElementById('namespace-select');
+            if (!src) return;
+            ['metrics-dash-ns-select','topo-tree-ns-select','apps-ns-select','validate-ns-select','helm-ns-select'].forEach(id => {
+                const sel = document.getElementById(id);
+                if (!sel) return;
+                const prev = sel.value;
+                sel.innerHTML = '';
+                for (const opt of src.options) {
+                    const o = document.createElement('option');
+                    o.value = opt.value;
+                    o.textContent = opt.textContent;
+                    sel.appendChild(o);
+                }
+                sel.value = prev || '';
+            });
+        }
+
+        // ============================
+        // Metrics Dashboard View
+        // ============================
+        function showMetricsDashboard() {
+            showCustomView('metrics-dashboard-container', 'metrics');
+            loadMetricsDashData();
+        }
+
+        async function loadMetricsDashData() {
+            const body = document.getElementById('metrics-dash-body');
+            const ns = document.getElementById('metrics-dash-ns-select')?.value || '';
+            body.innerHTML = '<div class="loading-placeholder">Loading metrics...</div>';
+            try {
+                const params = ns ? `?namespace=${encodeURIComponent(ns)}` : '';
+                const resp = await fetchWithAuth(`/api/pulse${params}`);
+                const d = await resp.json();
+                const cpuPct = d.cpu_avail && d.cpu_capacity_milli > 0 ? Math.round(d.cpu_used_milli / d.cpu_capacity_milli * 100) : 0;
+                const memPct = d.mem_avail && d.mem_capacity_mib > 0 ? Math.round(d.mem_used_mib / d.mem_capacity_mib * 100) : 0;
+                const barColor = pct => pct > 80 ? 'var(--accent-red)' : pct > 60 ? 'var(--accent-yellow)' : 'var(--accent-green)';
+
+                body.innerHTML = `
+                    <div class="pulse-grid">
+                        <div class="pulse-card">
+                            <div class="pulse-card-title">Pods</div>
+                            <div class="pulse-card-value">${d.pods_running}<span style="font-size:14px;color:var(--text-secondary);">/${d.pods_total}</span></div>
+                            <div class="pulse-card-sub" style="color:var(--accent-green);">${d.pods_running} Running</div>
+                            ${d.pods_pending > 0 ? `<div class="pulse-card-sub" style="color:var(--accent-yellow);">${d.pods_pending} Pending</div>` : ''}
+                            ${d.pods_failed > 0 ? `<div class="pulse-card-sub" style="color:var(--accent-red);">${d.pods_failed} Failed</div>` : ''}
+                        </div>
+                        <div class="pulse-card">
+                            <div class="pulse-card-title">Deployments</div>
+                            <div class="pulse-card-value">${d.deploys_ready}<span style="font-size:14px;color:var(--text-secondary);">/${d.deploys_total}</span></div>
+                            <div class="pulse-card-sub">${d.deploys_ready} Ready${d.deploys_updating > 0 ? `, ${d.deploys_updating} Updating` : ''}</div>
+                        </div>
+                        <div class="pulse-card">
+                            <div class="pulse-card-title">StatefulSets</div>
+                            <div class="pulse-card-value">${d.sts_ready}<span style="font-size:14px;color:var(--text-secondary);">/${d.sts_total}</span></div>
+                        </div>
+                        <div class="pulse-card">
+                            <div class="pulse-card-title">DaemonSets</div>
+                            <div class="pulse-card-value">${d.ds_ready}<span style="font-size:14px;color:var(--text-secondary);">/${d.ds_total}</span></div>
+                        </div>
+                        <div class="pulse-card">
+                            <div class="pulse-card-title">Jobs</div>
+                            <div class="pulse-card-value">${d.jobs_complete}<span style="font-size:14px;color:var(--text-secondary);">/${d.jobs_total}</span></div>
+                            <div class="pulse-card-sub">${d.jobs_active || 0} Active, ${d.jobs_failed || 0} Failed</div>
+                        </div>
+                        <div class="pulse-card">
+                            <div class="pulse-card-title">Nodes</div>
+                            <div class="pulse-card-value">${d.nodes_ready}<span style="font-size:14px;color:var(--text-secondary);">/${d.nodes_total}</span></div>
+                            ${d.nodes_not_ready > 0 ? `<div class="pulse-card-sub" style="color:var(--accent-red);">${d.nodes_not_ready} Not Ready</div>` : '<div class="pulse-card-sub" style="color:var(--accent-green);">All Ready</div>'}
+                        </div>
+                        <div class="pulse-card">
+                            <div class="pulse-card-title">CPU Usage</div>
+                            <div class="pulse-card-value">${cpuPct}%</div>
+                            <div class="pulse-bar"><div class="pulse-bar-fill" style="width:${cpuPct}%;background:${barColor(cpuPct)};"></div></div>
+                            <div class="pulse-card-sub">${d.cpu_used_milli}m / ${d.cpu_capacity_milli}m</div>
+                        </div>
+                        <div class="pulse-card">
+                            <div class="pulse-card-title">Memory Usage</div>
+                            <div class="pulse-card-value">${memPct}%</div>
+                            <div class="pulse-bar"><div class="pulse-bar-fill" style="width:${memPct}%;background:${barColor(memPct)};"></div></div>
+                            <div class="pulse-card-sub">${d.mem_used_mib}Mi / ${d.mem_capacity_mib}Mi</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:10px;margin-bottom:16px;">
+                        <button onclick="showMetrics()" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--accent-blue);cursor:pointer;font-size:12px;">Historical Charts</button>
+                        <button onclick="showValidateView()" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--accent-yellow);cursor:pointer;font-size:12px;">Run Validation</button>
+                        <button onclick="showApplicationsView()" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--accent-purple);cursor:pointer;font-size:12px;">Applications</button>
+                    </div>
+                    ${d.events && d.events.length > 0 ? `
+                    <div class="pulse-events">
+                        <h3>Recent Events</h3>
+                        ${d.events.map(e => `
+                            <div class="pulse-event-item">
+                                <span class="pulse-event-badge ${e.type === 'Warning' ? 'warning' : 'normal'}">${escapeHtml(e.type || 'Normal')}</span>
+                                <span style="color:var(--accent-cyan);font-family:monospace;">${escapeHtml(e.reason || '')}</span>
+                                <span style="flex:1;">${escapeHtml(e.message || '')}</span>
+                                <span style="color:var(--text-muted);flex-shrink:0;">${escapeHtml(e.age || '')}</span>
+                            </div>
+                        `).join('')}
+                    </div>` : ''}
+                `;
+            } catch (e) {
+                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed to load metrics: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        // ============================
+        // Topology Tree View
+        // ============================
+        function showTopologyTreeView() {
+            showCustomView('topology-tree-container', 'topology-tree');
+            loadTopologyTreeData();
+        }
+
+        async function loadTopologyTreeData() {
+            const body = document.getElementById('topo-tree-body');
+            const type = document.getElementById('topo-tree-type-select')?.value || 'deploy';
+            const ns = document.getElementById('topo-tree-ns-select')?.value || '';
+            body.innerHTML = '<div class="loading-placeholder">Loading topology tree...</div>';
+            try {
+                let params = `?type=${encodeURIComponent(type)}`;
+                if (ns) params += `&namespace=${encodeURIComponent(ns)}`;
+                const resp = await fetchWithAuth(`/api/xray${params}`);
+                const data = await resp.json();
+                if (!data.nodes || data.nodes.length === 0) {
+                    body.innerHTML = '<div class="loading-placeholder">No resources found for this type/namespace.</div>';
+                    return;
+                }
+                body.innerHTML = `<div class="xray-tree">${data.nodes.map(n => renderXRayNode(n, 0)).join('')}</div>`;
+            } catch (e) {
+                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed to load topology tree: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        function renderXRayNode(node, depth) {
+            const hasChildren = node.children && node.children.length > 0;
+            const statusClass = (node.status || '').toLowerCase().replace(/\s+/g, '');
+            const kindIcons = {Deployment:'⊞',StatefulSet:'⊟',DaemonSet:'⊠',ReplicaSet:'◫',Pod:'◉',Job:'⧫',CronJob:'⏱',Service:'◎',ConfigMap:'⊡',Secret:'⊗'};
+            const icon = kindIcons[node.kind] || '◇';
+            const id = `xray-${depth}-${(node.name||'').replace(/[^a-z0-9]/gi,'-')}`;
+            return `
+                <div class="xray-node">
+                    <div class="xray-node-header" onclick="toggleXRayNode('${id}')">
+                        <span class="xray-toggle">${hasChildren ? '▼' : '·'}</span>
+                        <span class="xray-icon">${icon}</span>
+                        <span class="xray-kind">${escapeHtml(node.kind)}</span>
+                        <span class="xray-name">${escapeHtml(node.name)}</span>
+                        <span class="xray-status ${statusClass}">${escapeHtml(node.status || '')}</span>
+                    </div>
+                    ${hasChildren ? `<div class="xray-children" id="${id}">${node.children.map(c => renderXRayNode(c, depth + 1)).join('')}</div>` : ''}
+                </div>`;
+        }
+
+        function toggleXRayNode(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const isHidden = el.style.display === 'none';
+            el.style.display = isHidden ? '' : 'none';
+            const header = el.previousElementSibling;
+            if (header) {
+                const toggle = header.querySelector('.xray-toggle');
+                if (toggle) toggle.textContent = isHidden ? '▼' : '▶';
+            }
+        }
+
+        // ============================
+        // Applications View
+        // ============================
+        function showApplicationsView() {
+            showCustomView('applications-container', 'applications');
+            loadApplicationsData();
+        }
+
+        async function loadApplicationsData() {
+            const body = document.getElementById('applications-body');
+            const ns = document.getElementById('apps-ns-select')?.value || '';
+            body.innerHTML = '<div class="loading-placeholder">Loading applications...</div>';
+            try {
+                const params = ns ? `?namespace=${encodeURIComponent(ns)}` : '';
+                const resp = await fetchWithAuth(`/api/applications${params}`);
+                const apps = await resp.json();
+                if (!apps || apps.length === 0) {
+                    body.innerHTML = '<div class="loading-placeholder">No applications found.</div>';
+                    return;
+                }
+                body.innerHTML = `<div class="apps-grid">${apps.map(app => {
+                    const resourceChips = Object.entries(app.resources || {}).map(([kind, items]) =>
+                        `<span class="app-resource-chip">${escapeHtml(kind)} (${items.length})</span>`
+                    ).join('');
+                    return `
+                        <div class="app-card">
+                            <div class="app-card-header">
+                                <span class="app-card-name">${escapeHtml(app.name)}</span>
+                                <span class="app-card-badge ${app.status || 'healthy'}">${escapeHtml(app.status || 'healthy')}</span>
+                            </div>
+                            <div class="app-card-meta">
+                                ${app.version ? `<span>v${escapeHtml(app.version)}</span>` : ''}
+                                ${app.component ? `<span>${escapeHtml(app.component)}</span>` : ''}
+                                ${app.podCount !== undefined ? `<span>Pods: ${app.readyPods || 0}/${app.podCount}</span>` : ''}
+                            </div>
+                            <div class="app-card-resources">${resourceChips}</div>
+                        </div>`;
+                }).join('')}</div>`;
+            } catch (e) {
+                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed to load applications: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        // ============================
+        // Validate View
+        // ============================
+        function showValidateView() {
+            showCustomView('validate-container', 'validate');
+            // Auto-load if a namespace is selected
+            const ns = document.getElementById('validate-ns-select')?.value;
+            if (ns) loadValidateData();
+        }
+
+        async function loadValidateData() {
+            const body = document.getElementById('validate-body');
+            const ns = document.getElementById('validate-ns-select')?.value;
+            if (!ns) {
+                body.innerHTML = '<div class="loading-placeholder">Select a namespace to run cross-resource validation.</div>';
+                return;
+            }
+            body.innerHTML = '<div class="loading-placeholder">Running validation...</div>';
+            try {
+                const resp = await fetchWithAuth(`/api/validate?namespace=${encodeURIComponent(ns)}`);
+                const data = await resp.json();
+                const findings = data.findings || [];
+                const critCount = findings.filter(f => f.severity === 'critical').length;
+                const warnCount = findings.filter(f => f.severity === 'warning').length;
+                const infoCount = findings.filter(f => f.severity === 'info').length;
+
+                body.innerHTML = `
+                    <div class="validate-summary">
+                        <div class="validate-summary-card">
+                            <div class="count" style="color:var(--text-primary);">${data.total || 0}</div>
+                            <div class="label">Total</div>
+                        </div>
+                        <div class="validate-summary-card">
+                            <div class="count" style="color:var(--accent-red);">${critCount}</div>
+                            <div class="label">Critical</div>
+                        </div>
+                        <div class="validate-summary-card">
+                            <div class="count" style="color:var(--accent-yellow);">${warnCount}</div>
+                            <div class="label">Warning</div>
+                        </div>
+                        <div class="validate-summary-card">
+                            <div class="count" style="color:var(--accent-blue);">${infoCount}</div>
+                            <div class="label">Info</div>
+                        </div>
+                    </div>
+                    ${findings.length === 0 ? '<div class="loading-placeholder" style="color:var(--accent-green);">No issues found. All resources look healthy!</div>' :
+                    findings.map(f => `
+                        <div class="validate-finding">
+                            <div class="validate-finding-header">
+                                <span class="validate-severity ${f.severity || 'info'}">${escapeHtml(f.severity || 'info')}</span>
+                                <span class="validate-finding-title">${escapeHtml(f.title || '')}</span>
+                            </div>
+                            <div class="validate-finding-resource">${escapeHtml(f.resource || '')}</div>
+                            <div class="validate-finding-details">${escapeHtml(f.details || '')}</div>
+                            ${f.suggestions && f.suggestions.length > 0 ? `
+                                <div class="validate-finding-suggestions">
+                                    <ul style="margin:0;padding-left:16px;">
+                                        ${f.suggestions.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
+                                    </ul>
+                                </div>` : ''}
+                        </div>
+                    `).join('')}
+                    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-color);display:flex;gap:10px;">
+                        <button onclick="showReports()" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--accent-blue);cursor:pointer;font-size:12px;">Generate Full Report (incl. FinOps)</button>
+                        <button onclick="showMetricsDashboard()" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--accent-green);cursor:pointer;font-size:12px;">View Metrics</button>
+                    </div>`;
+            } catch (e) {
+                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Validation failed: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        // ============================
+        // Healing View
+        // ============================
+        let healingCurrentTab = 'rules';
+
+        function showHealingView() {
+            showCustomView('healing-container', 'healing');
+            healingCurrentTab = 'rules';
+            loadHealingData();
+        }
+
+        function switchHealingTab(tab) {
+            healingCurrentTab = tab;
+            document.querySelectorAll('.healing-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+            loadHealingData();
+        }
+
+        async function loadHealingData() {
+            const body = document.getElementById('healing-body');
+            body.innerHTML = '<div class="loading-placeholder">Loading...</div>';
+            try {
+                if (healingCurrentTab === 'rules') {
+                    const resp = await fetchWithAuth('/api/healing/rules');
+                    const data = await resp.json();
+                    const rules = data.rules || [];
+                    if (rules.length === 0) {
+                        body.innerHTML = '<div class="loading-placeholder">No healing rules configured. Click "+ Add Rule" to create one.</div>';
+                        return;
+                    }
+                    body.innerHTML = rules.map(r => `
+                        <div class="healing-rule-card">
+                            <div class="healing-rule-status ${r.enabled ? 'enabled' : 'disabled'}"></div>
+                            <div class="healing-rule-info">
+                                <div class="healing-rule-name">${escapeHtml(r.name)}</div>
+                                <div class="healing-rule-meta">
+                                    <span>Condition: <strong>${escapeHtml(r.condition?.type || '-')}</strong></span>
+                                    ${r.condition?.threshold ? `<span>Threshold: ${r.condition.threshold}</span>` : ''}
+                                    <span>Action: <strong>${escapeHtml(r.action?.type || '-')}</strong></span>
+                                    ${r.cooldown ? `<span>Cooldown: ${escapeHtml(r.cooldown)}</span>` : ''}
+                                    ${r.namespaces?.length ? `<span>NS: ${r.namespaces.map(n => escapeHtml(n)).join(', ')}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="healing-rule-actions">
+                                <button onclick="toggleHealingRule('${r.id}', ${!r.enabled})">${r.enabled ? 'Disable' : 'Enable'}</button>
+                                <button class="delete" onclick="deleteHealingRule('${r.id}')">Delete</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    const resp = await fetchWithAuth('/api/healing/events?limit=100');
+                    const data = await resp.json();
+                    const events = data.events || [];
+                    if (events.length === 0) {
+                        body.innerHTML = '<div class="loading-placeholder">No healing events recorded yet.</div>';
+                        return;
+                    }
+                    body.innerHTML = `
+                        <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;overflow:hidden;">
+                            ${events.map(e => `
+                                <div class="healing-event-row">
+                                    <span style="color:var(--text-muted);min-width:140px;">${e.timestamp ? new Date(e.timestamp).toLocaleString() : '-'}</span>
+                                    <span style="color:var(--accent-cyan);min-width:120px;font-family:monospace;">${escapeHtml(e.resource || '')}</span>
+                                    <span style="min-width:80px;">${escapeHtml(e.namespace || '')}</span>
+                                    <span style="min-width:100px;">Rule: <strong>${escapeHtml(e.ruleName || '')}</strong></span>
+                                    <span style="min-width:80px;">Action: ${escapeHtml(e.action || '')}</span>
+                                    <span class="healing-event-result ${e.result || ''}">${escapeHtml(e.result || '')}</span>
+                                    <span style="flex:1;color:var(--text-secondary);">${escapeHtml(e.details || '')}</span>
+                                </div>
+                            `).join('')}
+                        </div>`;
+                }
+            } catch (e) {
+                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed to load healing data: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        async function toggleHealingRule(id, enabled) {
+            try {
+                const resp = await fetchWithAuth(`/api/healing/rules?id=${encodeURIComponent(id)}`);
+                const rules = (await resp.json()).rules || [];
+                const rule = rules.find(r => r.id === id);
+                if (!rule) return;
+                rule.enabled = enabled;
+                await fetchWithAuth(`/api/healing/rules?id=${encodeURIComponent(id)}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(rule)
+                });
+                loadHealingData();
+            } catch (e) {
+                console.error('Toggle healing rule failed:', e);
+            }
+        }
+
+        async function deleteHealingRule(id) {
+            if (!confirm('Delete this healing rule?')) return;
+            try {
+                await fetchWithAuth(`/api/healing/rules?id=${encodeURIComponent(id)}`, {method: 'DELETE'});
+                loadHealingData();
+            } catch (e) {
+                console.error('Delete healing rule failed:', e);
+            }
+        }
+
+        function showAddHealingRuleForm() {
+            const overlay = document.createElement('div');
+            overlay.className = 'healing-form-overlay';
+            overlay.id = 'healing-form-overlay';
+            overlay.innerHTML = `
+                <div class="healing-form">
+                    <h3>Add Healing Rule</h3>
+                    <div class="form-group">
+                        <label>Rule Name</label>
+                        <input type="text" id="healing-rule-name" placeholder="e.g., restart-crashloop">
+                    </div>
+                    <div class="form-group">
+                        <label>Condition Type</label>
+                        <select id="healing-rule-condition">
+                            <option value="crashloop">CrashLoop</option>
+                            <option value="oom">OOM (Out of Memory)</option>
+                            <option value="pending">Pending</option>
+                            <option value="high_restart">High Restart Count</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Threshold</label>
+                        <input type="number" id="healing-rule-threshold" value="5" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Action</label>
+                        <select id="healing-rule-action">
+                            <option value="restart">Restart Pod</option>
+                            <option value="delete_pod">Delete Pod</option>
+                            <option value="scale_up">Scale Up</option>
+                            <option value="notify">Notify Only</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Cooldown</label>
+                        <input type="text" id="healing-rule-cooldown" value="10m" placeholder="e.g., 10m, 1h">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Retries</label>
+                        <input type="number" id="healing-rule-retries" value="3" min="1" max="10">
+                    </div>
+                    <div class="healing-form-buttons">
+                        <button class="btn-cancel" onclick="closeHealingForm()">Cancel</button>
+                        <button class="btn-primary" onclick="submitHealingRule()">Create Rule</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+        }
+
+        function closeHealingForm() {
+            const overlay = document.getElementById('healing-form-overlay');
+            if (overlay) overlay.remove();
+        }
+
+        async function submitHealingRule() {
+            const name = document.getElementById('healing-rule-name')?.value?.trim();
+            if (!name) { alert('Rule name is required'); return; }
+            const rule = {
+                name: name,
+                enabled: true,
+                condition: {
+                    type: document.getElementById('healing-rule-condition')?.value || 'crashloop',
+                    threshold: parseInt(document.getElementById('healing-rule-threshold')?.value) || 5,
+                },
+                action: {
+                    type: document.getElementById('healing-rule-action')?.value || 'restart',
+                },
+                cooldown: document.getElementById('healing-rule-cooldown')?.value || '10m',
+                maxRetries: parseInt(document.getElementById('healing-rule-retries')?.value) || 3,
+            };
+            try {
+                await fetchWithAuth('/api/healing/rules', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(rule)
+                });
+                closeHealingForm();
+                loadHealingData();
+            } catch (e) {
+                alert('Failed to create rule: ' + e.message);
+            }
+        }
+
+        // ============================
+        // Helm View
+        // ============================
+        function showHelmView() {
+            showCustomView('helm-container', 'helm');
+            loadHelmData();
+        }
+
+        async function loadHelmData() {
+            const body = document.getElementById('helm-body');
+            const ns = document.getElementById('helm-ns-select')?.value || '';
+            body.innerHTML = '<div class="loading-placeholder">Loading Helm releases...</div>';
+            try {
+                let params = ns ? `?namespace=${encodeURIComponent(ns)}` : '?all=true';
+                const resp = await fetchWithAuth(`/api/helm/releases${params}`);
+                const data = await resp.json();
+                const items = data.items || [];
+                if (items.length === 0) {
+                    body.innerHTML = '<div class="loading-placeholder">No Helm releases found.</div>';
+                    return;
+                }
+                body.innerHTML = `
+                    <table class="helm-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Namespace</th>
+                                <th>Revision</th>
+                                <th>Status</th>
+                                <th>Chart</th>
+                                <th>App Version</th>
+                                <th>Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${items.map(r => `
+                                <tr>
+                                    <td style="font-weight:600;color:var(--accent-cyan);cursor:pointer;" onclick="showHelmReleaseDetail('${escapeHtml(r.name)}','${escapeHtml(r.namespace || '')}')">${escapeHtml(r.name)}</td>
+                                    <td>${escapeHtml(r.namespace || '-')}</td>
+                                    <td>${r.revision || '-'}</td>
+                                    <td><span class="helm-status ${(r.status || '').toLowerCase()}">${escapeHtml(r.status || '-')}</span></td>
+                                    <td style="font-family:monospace;">${escapeHtml(r.chart || '-')}</td>
+                                    <td>${escapeHtml(r.appVersion || '-')}</td>
+                                    <td style="color:var(--text-secondary);">${r.updated ? new Date(r.updated).toLocaleString() : '-'}</td>
+                                    <td class="helm-actions">
+                                        <button onclick="showHelmReleaseDetail('${escapeHtml(r.name)}','${escapeHtml(r.namespace || '')}')">Details</button>
+                                        <button onclick="helmRollback('${escapeHtml(r.name)}','${escapeHtml(r.namespace || '')}')">Rollback</button>
+                                        <button style="color:var(--accent-red);" onclick="helmUninstall('${escapeHtml(r.name)}','${escapeHtml(r.namespace || '')}')">Uninstall</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <div id="helm-detail-area"></div>`;
+            } catch (e) {
+                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed to load Helm releases: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        async function showHelmReleaseDetail(name, namespace) {
+            const area = document.getElementById('helm-detail-area');
+            if (!area) return;
+            area.innerHTML = '<div class="loading-placeholder">Loading release details...</div>';
+            try {
+                const nsParam = namespace ? `?namespace=${encodeURIComponent(namespace)}` : '';
+                const [valuesResp, historyResp] = await Promise.all([
+                    fetchWithAuth(`/api/helm/release/${encodeURIComponent(name)}/values${nsParam}&all=true`),
+                    fetchWithAuth(`/api/helm/release/${encodeURIComponent(name)}/history${nsParam}`)
+                ]);
+                const values = await valuesResp.json();
+                const history = await historyResp.json();
+                const historyItems = history.items || [];
+
+                area.innerHTML = `
+                    <div class="helm-detail-panel">
+                        <h3>Release: ${escapeHtml(name)} (${escapeHtml(namespace || 'default')})</h3>
+                        <div style="display:flex;gap:16px;margin-bottom:16px;">
+                            <button onclick="showHelmDetailTab('values','${escapeHtml(name)}','${escapeHtml(namespace)}')" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border-color);background:var(--accent-blue);color:#fff;cursor:pointer;">Values</button>
+                            <button onclick="showHelmDetailTab('history','${escapeHtml(name)}','${escapeHtml(namespace)}')" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;">History</button>
+                            <button onclick="showHelmDetailTab('manifest','${escapeHtml(name)}','${escapeHtml(namespace)}')" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-tertiary);color:var(--text-primary);cursor:pointer;">Manifest</button>
+                        </div>
+                        <div id="helm-detail-content">
+                            <pre>${escapeHtml(JSON.stringify(values, null, 2))}</pre>
+                        </div>
+                        ${historyItems.length > 0 ? `
+                        <div style="margin-top:16px;">
+                            <h4 style="margin-bottom:8px;">Revision History</h4>
+                            <table class="helm-table" style="font-size:12px;">
+                                <thead><tr><th>Rev</th><th>Status</th><th>Chart</th><th>Description</th><th>Updated</th></tr></thead>
+                                <tbody>
+                                    ${historyItems.map(h => `
+                                        <tr>
+                                            <td>${h.revision || '-'}</td>
+                                            <td><span class="helm-status ${(h.status || '').toLowerCase()}">${escapeHtml(h.status || '')}</span></td>
+                                            <td style="font-family:monospace;">${escapeHtml(h.chart || '-')}</td>
+                                            <td>${escapeHtml(h.description || '-')}</td>
+                                            <td style="color:var(--text-secondary);">${h.updated ? new Date(h.updated).toLocaleString() : '-'}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>` : ''}
+                    </div>`;
+            } catch (e) {
+                area.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed to load details: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        async function showHelmDetailTab(tab, name, namespace) {
+            const content = document.getElementById('helm-detail-content');
+            if (!content) return;
+            content.innerHTML = '<div class="loading-placeholder">Loading...</div>';
+            const nsParam = namespace ? `?namespace=${encodeURIComponent(namespace)}` : '';
+            try {
+                if (tab === 'values') {
+                    const resp = await fetchWithAuth(`/api/helm/release/${encodeURIComponent(name)}/values${nsParam}&all=true`);
+                    const data = await resp.json();
+                    content.innerHTML = `<pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+                } else if (tab === 'manifest') {
+                    const resp = await fetchWithAuth(`/api/helm/release/${encodeURIComponent(name)}/manifest${nsParam}`);
+                    const text = await resp.text();
+                    content.innerHTML = `<pre>${escapeHtml(text)}</pre>`;
+                } else if (tab === 'history') {
+                    const resp = await fetchWithAuth(`/api/helm/release/${encodeURIComponent(name)}/history${nsParam}`);
+                    const data = await resp.json();
+                    content.innerHTML = `<pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
+                }
+            } catch (e) {
+                content.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        async function helmRollback(name, namespace) {
+            const revision = prompt(`Rollback "${name}" to which revision? (Enter revision number)`);
+            if (!revision) return;
+            try {
+                await fetchWithAuth('/api/helm/rollback', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, namespace, revision: parseInt(revision)})
+                });
+                alert(`Release "${name}" rolled back to revision ${revision}`);
+                loadHelmData();
+            } catch (e) {
+                alert('Rollback failed: ' + e.message);
+            }
+        }
+
+        async function helmUninstall(name, namespace) {
+            if (!confirm(`Uninstall Helm release "${name}" from "${namespace || 'default'}"?`)) return;
+            try {
+                await fetchWithAuth('/api/helm/uninstall', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, namespace})
+                });
+                alert(`Release "${name}" uninstalled`);
+                loadHelmData();
+            } catch (e) {
+                alert('Uninstall failed: ' + e.message);
+            }
+        }
+
+        // ============================
+        // Overview Quick Actions (add new features)
+        // ============================
+        // Extend existing overview with new quick action buttons handled by overview panel
 
         // Init
         init();
