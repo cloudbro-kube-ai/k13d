@@ -1,11 +1,13 @@
 package web
 
 import (
+	"bufio"
 	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -430,6 +432,14 @@ func (rw *responseWriter) Flush() {
 	}
 }
 
+// Hijack implements http.Hijacker so WebSocket upgrades work through the logging middleware.
+func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if h, ok := rw.ResponseWriter.(http.Hijacker); ok {
+		return h.Hijack()
+	}
+	return nil, nil, fmt.Errorf("underlying ResponseWriter does not implement http.Hijacker")
+}
+
 // timeoutMiddleware adds request timeouts to prevent hanging requests
 func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -681,11 +691,13 @@ func (s *Server) Start() error {
 	)
 
 	s.server = &http.Server{
-		Addr:         fmt.Sprintf(":%d", s.port),
-		Handler:      handler,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 60 * time.Second, // Allow longer writes for streaming responses
-		IdleTimeout:  120 * time.Second,
+		Addr:              fmt.Sprintf(":%d", s.port),
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		// ReadTimeout and WriteTimeout are intentionally 0 (no limit) to support
+		// WebSocket terminals and SSE streaming. Per-request timeouts are enforced
+		// by timeoutMiddleware instead.
+		IdleTimeout: 120 * time.Second,
 	}
 
 	fmt.Printf("\n  Web server started at http://localhost:%d\n", s.port)
