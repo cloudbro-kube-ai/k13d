@@ -315,10 +315,29 @@
                     <div class="nav-item" data-resource="topology" onclick="showTopology()">
                         <span>Topology</span>
                     </div>
+                    <div class="nav-item" data-resource="applications" onclick="showApplicationsView()">
+                        <span>Applications</span>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-title">Operations</div>
+                    <div class="nav-item" data-resource="validate" onclick="showValidateView()">
+                        <span>Validate</span>
+                    </div>
+                    <div class="nav-item" data-resource="healing" onclick="showHealingView()">
+                        <span>Healing</span>
+                    </div>
+                    <div class="nav-item" data-resource="helm" onclick="showHelmView()">
+                        <span>Helm</span>
+                    </div>
                 </div>
 
                 <div class="nav-section">
                     <div class="nav-title">Monitoring</div>
+                    <div class="nav-item" data-resource="metrics" onclick="showMetricsDashboard()">
+                        <span>Metrics</span>
+                    </div>
                     <div class="nav-item" onclick="showAuditLogs()">
                         <span>Audit Logs</span>
                     </div>
@@ -376,6 +395,11 @@
                                 <button class="overview-action-btn" onclick="switchResource('nodes')">View Nodes</button>
                                 <button class="overview-action-btn" onclick="showTopology()">Topology Map</button>
                                 <button class="overview-action-btn" onclick="showMetrics()">Metrics</button>
+                                <button class="overview-action-btn" onclick="showMetricsDashboard()">Metrics</button>
+                                <button class="overview-action-btn" onclick="showTopologyTreeView()">Topology Tree</button>
+                                <button class="overview-action-btn" onclick="showApplicationsView()">Applications</button>
+                                <button class="overview-action-btn" onclick="showValidateView()">Validate</button>
+                                <button class="overview-action-btn" onclick="showHelmView()">Helm</button>
                             </div>
                         </div>
                         <div class="overview-section">
@@ -462,6 +486,8 @@
                         <button onclick="clearTopologyFocus()">Show All</button>
                         <button onclick="loadTopology()">↻ Refresh</button>
                         <div class="toolbar-separator"></div>
+                        <button onclick="showTopologyTreeView()" title="View resource ownership as a tree">Tree View</button>
+                        <div class="toolbar-separator"></div>
                         <label><input type="checkbox" id="topology-show-configmaps" onchange="loadTopology()"> ConfigMaps</label>
                         <label><input type="checkbox" id="topology-show-secrets" onchange="loadTopology()"> Secrets</label>
                         <div class="topology-legend">
@@ -481,6 +507,115 @@
                         <div class="topology-detail-actions">
                             <button id="topology-view-dashboard-btn" onclick="topologyNavigateToDashboard()">View in Dashboard</button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Metrics Dashboard Container -->
+                <div class="custom-view-container" id="metrics-dashboard-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2>Cluster Metrics</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <select id="metrics-dash-ns-select" onchange="loadMetricsDashData()">
+                                <option value="">All Namespaces</option>
+                            </select>
+                            <button onclick="loadMetricsDashData()">↻ Refresh</button>
+                            <div class="toolbar-separator"></div>
+                            <button onclick="showMetrics()" title="View historical metrics charts">Charts</button>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="metrics-dash-body">
+                        <div class="loading-placeholder">Loading metrics...</div>
+                    </div>
+                </div>
+
+                <!-- Topology Tree View Container -->
+                <div class="custom-view-container" id="topology-tree-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2>Topology Tree</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <select id="topo-tree-type-select" onchange="loadTopologyTreeData()">
+                                <option value="deploy">Deployments</option>
+                                <option value="sts">StatefulSets</option>
+                                <option value="ds">DaemonSets</option>
+                                <option value="job">Jobs</option>
+                                <option value="cj">CronJobs</option>
+                            </select>
+                            <select id="topo-tree-ns-select" onchange="loadTopologyTreeData()">
+                                <option value="">All Namespaces</option>
+                            </select>
+                            <button onclick="loadTopologyTreeData()">↻ Refresh</button>
+                            <div class="toolbar-separator"></div>
+                            <button onclick="showTopology()" title="View resource relationships as a graph">Graph View</button>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="topo-tree-body">
+                        <div class="loading-placeholder">Loading topology tree...</div>
+                    </div>
+                </div>
+
+                <!-- Applications View Container -->
+                <div class="custom-view-container" id="applications-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2>Applications</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <select id="apps-ns-select" onchange="loadApplicationsData()">
+                                <option value="">All Namespaces</option>
+                            </select>
+                            <button onclick="loadApplicationsData()">↻ Refresh</button>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="applications-body">
+                        <div class="loading-placeholder">Loading applications...</div>
+                    </div>
+                </div>
+
+                <!-- Validate View Container -->
+                <div class="custom-view-container" id="validate-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2>Cluster Validation</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <select id="validate-ns-select" onchange="loadValidateData()">
+                                <option value="">Select Namespace</option>
+                            </select>
+                            <button onclick="loadValidateData()">↻ Run Validation</button>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="validate-body">
+                        <div class="loading-placeholder">Select a namespace and run validation...</div>
+                    </div>
+                </div>
+
+                <!-- Healing View Container -->
+                <div class="custom-view-container" id="healing-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2>Auto-Healing</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <div class="healing-tab-bar">
+                                <button class="healing-tab active" data-tab="rules" onclick="switchHealingTab('rules')">Rules</button>
+                                <button class="healing-tab" data-tab="events" onclick="switchHealingTab('events')">Events</button>
+                            </div>
+                            <button onclick="showAddHealingRuleForm()">+ Add Rule</button>
+                            <button onclick="loadHealingData()">↻ Refresh</button>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="healing-body">
+                        <div class="loading-placeholder">Loading healing rules...</div>
+                    </div>
+                </div>
+
+                <!-- Helm View Container -->
+                <div class="custom-view-container" id="helm-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2>Helm Releases</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <select id="helm-ns-select" onchange="loadHelmData()">
+                                <option value="">All Namespaces</option>
+                            </select>
+                            <button onclick="loadHelmData()">↻ Refresh</button>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="helm-body">
+                        <div class="loading-placeholder">Loading Helm releases...</div>
                     </div>
                 </div>
 
@@ -637,6 +772,22 @@
                                 <option value="60">1 minute</option>
                                 <option value="120">2 minutes</option>
                                 <option value="300">5 minutes</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h4>Theme / Skin</h4>
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-label">Color Theme</div>
+                                <div class="settings-description">Change the dashboard color scheme</div>
+                            </div>
+                            <select id="setting-theme" onchange="applyTheme(this.value)">
+                                <option value="tokyo-night">Tokyo Night (Default)</option>
+                                <option value="production">Production (Red)</option>
+                                <option value="staging">Staging (Yellow)</option>
+                                <option value="dev">Development (Green)</option>
+                                <option value="light">Light</option>
                             </select>
                         </div>
                     </div>
