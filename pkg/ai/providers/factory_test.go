@@ -643,10 +643,10 @@ func TestGeminiModelValidation(t *testing.T) {
 		{"gemini-1.5-flash", false},
 		{"gemini-pro", false},
 		{"gemini-3-pro-preview", false},
-		{"gemini-flash", true},        // missing version
-		{"gpt-4", true},               // wrong prefix
-		{"gemini", true},              // incomplete
-		{"flash", true},               // no gemini prefix
+		{"gemini-flash", true}, // missing version
+		{"gpt-4", true},        // wrong prefix
+		{"gemini", true},       // incomplete
+		{"flash", true},        // no gemini prefix
 	}
 
 	for _, tt := range tests {

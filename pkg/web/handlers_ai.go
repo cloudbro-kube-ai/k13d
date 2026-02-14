@@ -171,12 +171,12 @@ func (s *Server) handleLLMTest(w http.ResponseWriter, r *http.Request) {
 	capabilities := getLLMCapabilities(testClient, testProvider)
 
 	response := map[string]interface{}{
-		"connected":     status.Connected,
-		"provider":      status.Provider,
-		"model":         status.Model,
-		"endpoint":      status.Endpoint,
+		"connected":        status.Connected,
+		"provider":         status.Provider,
+		"model":            status.Model,
+		"endpoint":         status.Endpoint,
 		"response_time_ms": status.ResponseTime,
-		"capabilities":  capabilities,
+		"capabilities":     capabilities,
 	}
 
 	if status.Error != "" {
