@@ -4163,13 +4163,22 @@ ${escapeHtml(execInfo.result)}</div>
         let auditFilter = { onlyLLM: false, onlyErrors: false };
 
         async function showAuditLogs() {
-            currentResource = 'audit';
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            document.getElementById('panel-title').textContent = 'Audit Logs';
-            document.getElementById('resource-summary').innerHTML = '';
+            document.getElementById('audit-modal').classList.add('active');
+            // Sync filter checkboxes
+            document.getElementById('audit-filter-llm').checked = auditFilter.onlyLLM;
+            document.getElementById('audit-filter-errors').checked = auditFilter.onlyErrors;
+            loadAuditModalData();
+        }
+
+        function closeAuditModal() {
+            document.getElementById('audit-modal').classList.remove('active');
+        }
+
+        async function loadAuditModalData() {
+            const body = document.getElementById('audit-modal-body');
+            body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-secondary);">Loading audit logs...</td></tr>';
 
             try {
-                // Build query params
                 let params = new URLSearchParams();
                 if (auditFilter.onlyLLM) params.append('only_llm', 'true');
                 if (auditFilter.onlyErrors) params.append('only_errors', 'true');
@@ -4177,65 +4186,38 @@ ${escapeHtml(execInfo.result)}</div>
                 const resp = await fetchWithAuth('/api/audit?' + params.toString());
                 const data = await resp.json();
 
-                // Create filter controls and header
-                document.getElementById('table-header').innerHTML = `
-                    <tr>
-                        <td colspan="8" style="padding: 10px; background: var(--bg-tertiary); border-bottom: 1px solid var(--border-color);">
-                            <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                                    <input type="checkbox" id="filter-llm-only" ${auditFilter.onlyLLM ? 'checked' : ''} onchange="toggleAuditFilter('onlyLLM')">
-                                    <span>🤖 LLM Actions Only</span>
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                                    <input type="checkbox" id="filter-errors-only" ${auditFilter.onlyErrors ? 'checked' : ''} onchange="toggleAuditFilter('onlyErrors')">
-                                    <span>❌ Errors Only</span>
-                                </label>
-                                <span style="color: var(--text-secondary); margin-left: auto;">
-                                    Showing ${data.logs ? data.logs.length : 0} entries (View actions excluded)
-                                </span>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>TIME</th>
-                        <th>USER</th>
-                        <th>K8S USER</th>
-                        <th>ACTION</th>
-                        <th>RESOURCE</th>
-                        <th>SOURCE</th>
-                        <th>STATUS</th>
-                        <th>DETAILS</th>
-                    </tr>`;
+                document.getElementById('audit-entry-count').textContent =
+                    `Showing ${data.logs ? data.logs.length : 0} entries`;
 
                 if (data.logs && data.logs.length > 0) {
-                    document.getElementById('table-body').innerHTML = data.logs.map(log => {
+                    body.innerHTML = data.logs.map(log => {
                         const isLLM = log.action_type === 'llm' || log.llm_tool;
                         const statusBadge = log.success
-                            ? '<span style="color: var(--status-running);">✓</span>'
-                            : '<span style="color: var(--status-failed);">✗</span>';
+                            ? '<span style="color: var(--accent-green);">✓</span>'
+                            : '<span style="color: var(--accent-red);">✗</span>';
                         const actionBadge = getActionBadge(log.action, log.action_type);
                         const llmDetails = isLLM && log.llm_tool
                             ? `<div style="margin-top:5px;padding:5px;background:var(--bg-tertiary);border-radius:4px;font-size:11px;">
-                                <strong>🤖 LLM Tool:</strong> ${escapeHtml(log.llm_tool)}<br>
+                                <strong>LLM Tool:</strong> ${escapeHtml(log.llm_tool)}<br>
                                 <strong>Command:</strong> <code style="color:var(--accent-yellow);">${escapeHtml(log.llm_command || 'N/A')}</code><br>
-                                <strong>Approved:</strong> ${log.llm_approved ? '✅ Yes' : '❌ No'}
+                                <strong>Approved:</strong> ${log.llm_approved ? 'Yes' : 'No'}
                                 ${log.llm_request ? `<br><strong>Question:</strong> ${escapeHtml(truncateText(log.llm_request, 100))}` : ''}
                               </div>`
                             : '';
                         const errorInfo = log.error_msg
-                            ? `<div style="color:var(--status-failed);margin-top:3px;font-size:11px;">Error: ${escapeHtml(log.error_msg)}</div>`
+                            ? `<div style="color:var(--accent-red);margin-top:3px;font-size:11px;">Error: ${escapeHtml(log.error_msg)}</div>`
                             : '';
 
                         return `
                             <tr style="${!log.success ? 'background: rgba(239,68,68,0.1);' : (isLLM ? 'background: rgba(59,130,246,0.05);' : '')}">
-                                <td style="white-space:nowrap;">${new Date(log.timestamp).toLocaleString()}</td>
-                                <td>${escapeHtml(log.user || 'anonymous')}</td>
-                                <td style="color:var(--accent-cyan);">${escapeHtml(log.k8s_user || '-')}</td>
-                                <td>${actionBadge}</td>
-                                <td>${escapeHtml(log.resource)}</td>
-                                <td><span style="padding:2px 6px;border-radius:3px;background:var(--bg-tertiary);font-size:11px;">${escapeHtml(log.source || 'unknown')}</span></td>
-                                <td style="text-align:center;">${statusBadge}</td>
-                                <td>
+                                <td style="white-space:nowrap;padding:8px 12px;">${new Date(log.timestamp).toLocaleString()}</td>
+                                <td style="padding:8px 12px;">${escapeHtml(log.user || 'anonymous')}</td>
+                                <td style="padding:8px 12px;color:var(--accent-cyan);">${escapeHtml(log.k8s_user || '-')}</td>
+                                <td style="padding:8px 12px;">${actionBadge}</td>
+                                <td style="padding:8px 12px;">${escapeHtml(log.resource)}</td>
+                                <td style="padding:8px 12px;"><span style="padding:2px 6px;border-radius:3px;background:var(--bg-tertiary);font-size:11px;">${escapeHtml(log.source || 'unknown')}</span></td>
+                                <td style="text-align:center;padding:8px 12px;">${statusBadge}</td>
+                                <td style="padding:8px 12px;">
                                     ${escapeHtml(log.details)}
                                     ${llmDetails}
                                     ${errorInfo}
@@ -4244,17 +4226,19 @@ ${escapeHtml(execInfo.result)}</div>
                         `;
                     }).join('');
                 } else {
-                    document.getElementById('table-body').innerHTML =
-                        '<tr><td colspan="8" style="text-align:center;padding:40px;">No audit logs found (View actions are excluded by default)</td></tr>';
+                    body.innerHTML =
+                        '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-secondary);">No audit logs found</td></tr>';
                 }
             } catch (e) {
                 console.error('Failed to load audit logs:', e);
+                body.innerHTML =
+                    '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--accent-red);">Failed to load audit logs</td></tr>';
             }
         }
 
         function toggleAuditFilter(filterName) {
             auditFilter[filterName] = !auditFilter[filterName];
-            showAuditLogs();
+            loadAuditModalData();
         }
 
         function getActionBadge(action, actionType) {
@@ -4815,53 +4799,19 @@ ${escapeHtml(execInfo.result)}</div>
         }
 
         async function showReports() {
-            currentResource = 'reports';
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            document.getElementById('panel-title').textContent = 'Cluster Report & FinOps Analysis';
-            document.getElementById('resource-summary').innerHTML = '';
+            document.getElementById('reports-modal').classList.add('active');
+            // Reset status/preview on open
+            document.getElementById('report-status').innerHTML = '';
+            document.getElementById('report-preview').innerHTML = '';
+        }
 
-            document.getElementById('table-header').innerHTML = '';
-            document.getElementById('table-body').innerHTML = `
-                <tr><td colspan="5" style="padding: 40px; text-align: center;">
-                    <div style="max-width: 800px; margin: 0 auto;">
-                        <h2 style="margin-bottom: 20px; color: var(--accent-blue);">📊 Generate Cluster Report</h2>
-                        <p style="margin-bottom: 30px; color: var(--text-secondary);">
-                            Generate a comprehensive report including nodes, pods, deployments, services,
-                            container images, security analysis, <strong style="color: var(--accent-green);">FinOps cost optimization</strong>, and AI-powered insights.
-                        </p>
-
-                        <div style="display: flex; flex-direction: column; gap: 15px; align-items: center;">
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                <input type="checkbox" id="include-ai-analysis" checked>
-                                <span>Include AI Analysis with FinOps recommendations</span>
-                            </label>
-
-                            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 10px;">
-                                <button class="refresh-btn" onclick="previewReport()" style="padding: 12px 24px; font-size: 14px; background: var(--accent-green);">
-                                    👁️ Preview Report
-                                </button>
-                                <button class="refresh-btn" onclick="downloadReport('html')" style="padding: 12px 24px; font-size: 14px;">
-                                    📄 Download HTML
-                                </button>
-                                <button class="refresh-btn" onclick="downloadReport('csv')" style="padding: 12px 24px; font-size: 14px;">
-                                    📊 Download CSV
-                                </button>
-                                <button class="refresh-btn" onclick="generateReport('json')" style="padding: 12px 24px; font-size: 14px;">
-                                    📋 View Summary
-                                </button>
-                            </div>
-                        </div>
-
-                        <div id="report-status" style="margin-top: 30px;"></div>
-                        <div id="report-preview" style="margin-top: 20px; text-align: left;"></div>
-                    </div>
-                </td></tr>
-            `;
+        function closeReportsModal() {
+            document.getElementById('reports-modal').classList.remove('active');
         }
 
         // Preview report in new window
         async function previewReport() {
-            const includeAI = document.getElementById('include-ai-analysis')?.checked ?? true;
+            const includeAI = document.getElementById('report-include-ai')?.checked ?? true;
             const statusEl = document.getElementById('report-status');
 
             statusEl.innerHTML = `<div style="color: var(--accent-blue);">
@@ -4894,7 +4844,7 @@ ${escapeHtml(execInfo.result)}</div>
 
         // Download report
         async function downloadReport(format) {
-            const includeAI = document.getElementById('include-ai-analysis')?.checked ?? true;
+            const includeAI = document.getElementById('report-include-ai')?.checked ?? true;
             const statusEl = document.getElementById('report-status');
 
             statusEl.innerHTML = `<div style="color: var(--accent-blue);">
@@ -4943,7 +4893,7 @@ ${escapeHtml(execInfo.result)}</div>
         }
 
         async function generateReport(format) {
-            const includeAI = document.getElementById('include-ai-analysis')?.checked ?? true;
+            const includeAI = document.getElementById('report-include-ai')?.checked ?? true;
             const statusEl = document.getElementById('report-status');
             const previewEl = document.getElementById('report-preview');
 
@@ -9274,6 +9224,11 @@ spec:
         // Cluster Overview
         // ==========================================
 
+        function loadOverviewData() {
+            loadClusterOverview();
+            loadRecentEvents();
+        }
+
         async function loadClusterOverview() {
             try {
                 const resp = await apiFetch('/api/overview');
@@ -9333,18 +9288,46 @@ spec:
         }
 
         function showOverviewPanel() {
-            // Overview removed - default to pods table
-            switchResource('pods');
+            currentResource = 'overview';
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            const nav = document.querySelector('.nav-item[data-resource="overview"]');
+            if (nav) nav.classList.add('active');
+            hideTopologyView();
+            hideAllCustomViews();
+            const mainPanel = document.querySelector('.main-panel');
+            if (mainPanel) mainPanel.style.display = 'none';
+            // Hide AI panel on Overview
+            const aiPanel = document.getElementById('ai-panel');
+            const resizeHandle = document.getElementById('resize-handle');
+            if (aiPanel) aiPanel.style.display = 'none';
+            if (resizeHandle) resizeHandle.style.display = 'none';
+            const btn = document.getElementById('ai-toggle-btn');
+            if (btn) btn.classList.remove('active');
+            // Show overview container
+            const container = document.getElementById('overview-container');
+            if (container) container.style.display = 'flex';
+            loadOverviewData();
         }
 
         function hideOverviewPanel() {
-            // No-op: overview panel removed
+            const container = document.getElementById('overview-container');
+            if (container) container.style.display = 'none';
+            // Restore AI panel state
+            const saved = localStorage.getItem('k13d_ai_panel');
+            if (saved !== 'closed') {
+                const aiPanel = document.getElementById('ai-panel');
+                const resizeHandle = document.getElementById('resize-handle');
+                if (aiPanel) aiPanel.style.display = 'flex';
+                if (resizeHandle) resizeHandle.style.display = 'block';
+                const btn = document.getElementById('ai-toggle-btn');
+                if (btn) btn.classList.add('active');
+            }
         }
 
         // ============================
         // Custom View Helpers
         // ============================
-        const customViewIds = ['metrics-dashboard-container','topology-tree-container','applications-container','validate-container','healing-container','helm-container'];
+        const customViewIds = ['overview-container','metrics-dashboard-container','topology-tree-container','applications-container','validate-container','healing-container','helm-container'];
 
         function hideAllCustomViews() {
             customViewIds.forEach(id => {

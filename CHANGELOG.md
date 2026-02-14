@@ -5,6 +5,18 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.7] - 2026-02-14
+
+### Added
+- **Audit Logs Modal**: Audit logs now open as a modal overlay, preserving the center resource table
+- **Reports Modal**: Cluster reports open as a modal overlay instead of replacing the resource table
+- **Overview Page**: Dedicated Overview page with cluster health cards, quick actions, and recent events (AI panel hidden on Overview for clean look)
+- **Trivy-Bundled Release**: goreleaser now produces `k13d-with-trivy` archives for linux/darwin with pre-bundled Trivy binary
+
+### Changed
+- AI Assistant panel auto-hides on Overview and restores on other views
+- Audit Logs filter controls integrated into modal header
+
 ## [0.7.6] - 2026-02-14
 
 ### Added

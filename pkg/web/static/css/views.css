@@ -4776,14 +4776,14 @@
     font-weight: 500;
 }
 
-.overview-panel .overview-cards {
+#overview-container .overview-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
     margin-bottom: 24px;
 }
 
-.overview-panel .overview-card {
+#overview-container .overview-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 12px;
@@ -4794,12 +4794,12 @@
     transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.overview-panel .overview-card:hover {
+#overview-container .overview-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
 
-.overview-panel .overview-card-icon {
+#overview-container .overview-card-icon {
     width: 48px;
     height: 48px;
     border-radius: 12px;
@@ -4811,20 +4811,20 @@
     flex-shrink: 0;
 }
 
-.overview-panel .overview-card-content {
+#overview-container .overview-card-content {
     display: flex;
     flex-direction: column;
     gap: 2px;
 }
 
-.overview-panel .overview-card-value {
+#overview-container .overview-card-value {
     font-size: 24px;
     font-weight: 700;
     color: var(--text-primary);
     line-height: 1.2;
 }
 
-.overview-panel .overview-card-label {
+#overview-container .overview-card-label {
     font-size: 12px;
     color: var(--text-secondary);
     font-weight: 500;
@@ -4858,7 +4858,7 @@
     margin: 0 0 16px 0;
 }
 
-.overview-panel .overview-actions {
+#overview-container .overview-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
@@ -5538,6 +5538,18 @@
 .ai-toggle-btn.active {
     background: var(--accent-purple);
     color: #fff;
+}
+
+/* Audit Logs Modal */
+.audit-modal {
+    max-width: 1100px;
+    max-height: 85vh;
+}
+
+/* Reports Modal */
+.reports-modal {
+    max-width: 900px;
+    max-height: 85vh;
 }
 
 @media (prefers-color-scheme: light) {

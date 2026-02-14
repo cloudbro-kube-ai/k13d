@@ -8,6 +8,7 @@ before:
   hooks:
     - go mod tidy
     - go generate ./...
+    - bash scripts/download-trivy.sh
 
 builds:
   - id: k13d
@@ -34,6 +35,25 @@ builds:
       - -X main.date={{.Date}}
       - -X main.builtBy=goreleaser
 
+  # Separate build for Trivy-bundled archive (linux/darwin only)
+  - id: k13d-trivy
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/kube-ai-dashboard-cli/main.go
+    binary: k13d
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+
 archives:
   - id: k13d-archive
     builds:
@@ -50,6 +70,22 @@ archives:
       - LICENSE
       - docs/*
     # Wrap in directory for easier extraction
+    wrap_in_directory: true
+
+  # Trivy-bundled archive (linux/darwin only)
+  - id: k13d-with-trivy
+    builds:
+      - k13d-trivy
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}-with-trivy_v{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+      - README.md
+      - LICENSE
+      - docs/*
+      - src: dist/trivy/{{ .Os }}_{{ .Arch }}/trivy
+        dst: bin
+        strip_parent: true
     wrap_in_directory: true
 
 checksum:
