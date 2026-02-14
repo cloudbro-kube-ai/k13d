@@ -10118,14 +10118,25 @@ spec:
 
         async function switchClusterContext(name) {
             try {
-                await fetchWithAuth('/api/contexts/switch', {
+                const resp = await fetchWithAuth('/api/contexts/switch', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({context: name})
                 });
+                if (!resp.ok) {
+                    const errText = await resp.text();
+                    throw new Error(errText || `HTTP ${resp.status}`);
+                }
                 document.getElementById('cluster-name').textContent = name;
                 document.getElementById('cluster-dropdown').classList.remove('active');
-                refreshData();
+                showNotification(`Switched to context: ${name}`);
+                // Reload namespaces (different cluster = different namespaces)
+                currentNamespace = '';
+                document.getElementById('namespace-select').value = '';
+                await loadNamespaces();
+                syncCustomViewNamespaces();
+                // Reload all data for new cluster
+                loadData();
             } catch (e) { alert('Failed to switch context: ' + e.message); }
         }
 
