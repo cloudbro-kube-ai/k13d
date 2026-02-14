@@ -33,7 +33,7 @@ type AnonymizationConfig struct {
 // NotificationsConfig holds event notification dispatch settings
 type NotificationsConfig struct {
 	Enabled      bool       `yaml:"enabled" json:"enabled"`
-	Provider     string     `yaml:"provider" json:"provider"`           // slack, discord, teams, email, custom
+	Provider     string     `yaml:"provider" json:"provider"` // slack, discord, teams, email, custom
 	WebhookURL   string     `yaml:"webhook_url" json:"webhook_url"`
 	Channel      string     `yaml:"channel" json:"channel,omitempty"`
 	Events       []string   `yaml:"events" json:"events"`
@@ -345,11 +345,11 @@ func NewDefaultConfig() *Config {
 			PollInterval: 30,
 			SMTP:         SMTPConfig{Port: 587, UseTLS: true},
 		},
-		Language:      "ko",
-		BeginnerMode:  true,
-		LogLevel:      "debug",
-		ReportPath:    "report.md",
-		EnableAudit:   true,
+		Language:     "ko",
+		BeginnerMode: true,
+		LogLevel:     "debug",
+		ReportPath:   "report.md",
+		EnableAudit:  true,
 	}
 }
 
