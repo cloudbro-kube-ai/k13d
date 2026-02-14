@@ -1,12 +1,13 @@
 #!/bin/bash
 # Download Trivy binaries for goreleaser bundled release
 # Usage: scripts/download-trivy.sh [version]
-# Downloads Trivy for linux/darwin amd64/arm64 into dist/trivy/
+# Downloads Trivy for linux/darwin amd64/arm64 into .trivy-cache/
+# Uses .trivy-cache/ (not dist/) to avoid conflict with goreleaser's dist directory
 
 set -euo pipefail
 
 TRIVY_VERSION="${1:-0.58.2}"
-DEST_DIR="dist/trivy"
+DEST_DIR=".trivy-cache"
 
 mkdir -p "$DEST_DIR"
 

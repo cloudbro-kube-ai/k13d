@@ -56,15 +56,17 @@ builds:
 
 archives:
   - id: k13d-archive
-    builds:
+    ids:
       - k13d
-    format: tar.gz
+    formats:
+      - tar.gz
     # k9s-style naming: k13d_v0.1.0_darwin_amd64.tar.gz, k13d_v0.1.0_darwin_arm64.tar.gz
     name_template: >-
       {{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
     files:
       - README.md
       - LICENSE
@@ -74,16 +76,17 @@ archives:
 
   # Trivy-bundled archive (linux/darwin only)
   - id: k13d-with-trivy
-    builds:
+    ids:
       - k13d-trivy
-    format: tar.gz
+    formats:
+      - tar.gz
     name_template: >-
       {{ .ProjectName }}-with-trivy_v{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
     files:
       - README.md
       - LICENSE
       - docs/*
-      - src: dist/trivy/{{ .Os }}_{{ .Arch }}/trivy
+      - src: .trivy-cache/{{ .Os }}_{{ .Arch }}/trivy
         dst: bin
         strip_parent: true
     wrap_in_directory: true
@@ -137,4 +140,5 @@ release:
 source:
   enabled: true
   name_template: "{{ .ProjectName }}_v{{ .Version }}_source"
-  format: tar.gz
+  formats:
+    - tar.gz
