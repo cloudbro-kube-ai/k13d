@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
+	goyaml "gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	goyaml "gopkg.in/yaml.v2"
 )
 
 // DiffResponse is the response for the resource diff endpoint

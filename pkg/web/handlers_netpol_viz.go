@@ -22,11 +22,11 @@ type NetPolNode struct {
 
 // NetPolEdge represents an edge in the network policy graph
 type NetPolEdge struct {
-	Source    string `json:"source"`
-	Target   string `json:"target"`
-	Type     string `json:"type"`   // "allow-ingress", "allow-egress"
-	Policy   string `json:"policy"` // NetworkPolicy name
-	Ports    string `json:"ports,omitempty"`
+	Source string `json:"source"`
+	Target string `json:"target"`
+	Type   string `json:"type"`   // "allow-ingress", "allow-egress"
+	Policy string `json:"policy"` // NetworkPolicy name
+	Ports  string `json:"ports,omitempty"`
 }
 
 // NetPolVisualizationResponse is the response for the network policy visualization endpoint
@@ -46,10 +46,10 @@ func (s *Server) handleNetworkPolicyVisualization(w http.ResponseWriter, r *http
 	ctx := r.Context()
 
 	var (
-		mu       sync.Mutex
-		wg       sync.WaitGroup
-		pods     []corev1.Pod
-		netpols  []networkingv1.NetworkPolicy
+		mu      sync.Mutex
+		wg      sync.WaitGroup
+		pods    []corev1.Pod
+		netpols []networkingv1.NetworkPolicy
 	)
 
 	wg.Add(2)

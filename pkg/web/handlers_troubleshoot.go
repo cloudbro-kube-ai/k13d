@@ -12,12 +12,12 @@ import (
 
 // TroubleshootFinding represents a single issue found during troubleshooting
 type TroubleshootFinding struct {
-	Resource    string `json:"resource"`
-	Namespace   string `json:"namespace"`
-	Name        string `json:"name"`
-	Issue       string `json:"issue"`
-	Severity    string `json:"severity"` // "critical", "warning", "info"
-	Details     string `json:"details,omitempty"`
+	Resource  string `json:"resource"`
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+	Issue     string `json:"issue"`
+	Severity  string `json:"severity"` // "critical", "warning", "info"
+	Details   string `json:"details,omitempty"`
 }
 
 // TroubleshootReport is the response for the troubleshoot endpoint
@@ -51,11 +51,11 @@ func (s *Server) handleTroubleshoot(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var (
-		mu       sync.Mutex
-		wg       sync.WaitGroup
-		pods     []corev1.Pod
-		events   []corev1.Event
-		quotas   []corev1.ResourceQuota
+		mu     sync.Mutex
+		wg     sync.WaitGroup
+		pods   []corev1.Pod
+		events []corev1.Event
+		quotas []corev1.ResourceQuota
 	)
 
 	wg.Add(3)

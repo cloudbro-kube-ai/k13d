@@ -14,7 +14,7 @@ type NotificationConfig struct {
 	Enabled    bool     `json:"enabled"`
 	WebhookURL string   `json:"webhook_url"`
 	Channel    string   `json:"channel,omitempty"`
-	Events     []string `json:"events"` // e.g., ["pod_crash", "deploy_fail", "security_alert"]
+	Events     []string `json:"events"`   // e.g., ["pod_crash", "deploy_fail", "security_alert"]
 	Provider   string   `json:"provider"` // "slack", "discord", "teams"
 }
 
@@ -138,7 +138,7 @@ func buildTestPayload(provider, channel string) ([]byte, error) {
 		return json.Marshal(map[string]interface{}{
 			"@type":      "MessageCard",
 			"@context":   "http://schema.org/extensions",
-			"themeColor":  "0076D7",
+			"themeColor": "0076D7",
 			"summary":    "k13d Test Notification",
 			"title":      "k13d Test Notification",
 			"text":       fmt.Sprintf("This is a test notification from k13d at %s", timestamp),

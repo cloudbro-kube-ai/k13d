@@ -10,22 +10,22 @@ import (
 
 // VeleroBackup represents a Velero backup resource
 type VeleroBackup struct {
-	Name           string `json:"name"`
-	Namespace      string `json:"namespace"`
-	Status         string `json:"status"`
-	Created        string `json:"created,omitempty"`
-	Expiration     string `json:"expiration,omitempty"`
-	IncludedNS     string `json:"includedNamespaces,omitempty"`
+	Name            string `json:"name"`
+	Namespace       string `json:"namespace"`
+	Status          string `json:"status"`
+	Created         string `json:"created,omitempty"`
+	Expiration      string `json:"expiration,omitempty"`
+	IncludedNS      string `json:"includedNamespaces,omitempty"`
 	StorageLocation string `json:"storageLocation,omitempty"`
 }
 
 // VeleroSchedule represents a Velero schedule resource
 type VeleroSchedule struct {
-	Name           string `json:"name"`
-	Namespace      string `json:"namespace"`
-	Schedule       string `json:"schedule"`
-	LastBackup     string `json:"lastBackup,omitempty"`
-	Status         string `json:"status"`
+	Name       string `json:"name"`
+	Namespace  string `json:"namespace"`
+	Schedule   string `json:"schedule"`
+	LastBackup string `json:"lastBackup,omitempty"`
+	Status     string `json:"status"`
 }
 
 // VeleroResponse is the response for Velero endpoints

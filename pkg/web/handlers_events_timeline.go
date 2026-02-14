@@ -10,9 +10,9 @@ import (
 
 // EventTimeWindow represents events grouped by a time window
 type EventTimeWindow struct {
-	Timestamp    time.Time `json:"timestamp"`
-	NormalCount  int       `json:"normalCount"`
-	WarningCount int       `json:"warningCount"`
+	Timestamp    time.Time      `json:"timestamp"`
+	NormalCount  int            `json:"normalCount"`
+	WarningCount int            `json:"warningCount"`
 	Events       []EventSummary `json:"events,omitempty"`
 }
 
