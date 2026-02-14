@@ -536,6 +536,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/search", s.authManager.AuthMiddleware(s.handleGlobalSearch))
 	mux.HandleFunc("/api/safety/analyze", s.authManager.AuthMiddleware(s.handleSafetyAnalysis))
 	mux.HandleFunc("/api/validate", s.authManager.AuthMiddleware(s.handleValidate))
+	mux.HandleFunc("/api/pulse", s.authManager.AuthMiddleware(s.handlePulse))
+	mux.HandleFunc("/api/xray", s.authManager.AuthMiddleware(s.handleXRay))
 
 	// Pod operations
 	mux.HandleFunc("/api/pods/", s.authManager.AuthMiddleware(s.handlePodLogs))
