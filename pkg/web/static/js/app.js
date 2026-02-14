@@ -9329,7 +9329,7 @@ spec:
 
         async function loadRecentEvents() {
             try {
-                const resp = await fetchWithAuth('/api/resources/events?namespace=');
+                const resp = await fetchWithAuth('/api/k8s/events?namespace=');
                 if (!resp.ok) return;
                 const data = await resp.json();
                 const eventsEl = document.getElementById('overview-events');
