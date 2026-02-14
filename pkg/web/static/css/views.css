@@ -4,54 +4,10 @@
  * Includes: login, dashboard, settings, detail, topology,
  *           metrics, terminal, log viewer, YAML editor,
  *           port forwarding, search, command bar
+ *
+ * Note: Global reset, :root variables, and body styles are in
+ *       variables.css and base.css respectively.
  */
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            /* Typography */
-            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            --font-mono: 'SF Mono', 'Monaco', 'Consolas', 'Liberation Mono', monospace;
-            --font-weight-normal: 400;
-            --font-weight-medium: 500;
-            --font-weight-semibold: 600;
-            --font-weight-bold: 700;
-
-            /* Colors */
-            --bg-primary: #1a1b26;
-            --bg-secondary: #24283b;
-            --bg-tertiary: #414868;
-            --text-primary: #c0caf5;
-            --text-secondary: #a9b1d6;
-            --accent-blue: #7aa2f7;
-            --accent-green: #9ece6a;
-            --accent-red: #f7768e;
-            --accent-yellow: #e0af68;
-            --accent-purple: #bb9af7;
-            --accent-cyan: #7dcfff;
-            --border-color: #414868;
-        }
-
-        body {
-            font-family: var(--font-sans);
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow: hidden;
-            font-weight: 400;
-            letter-spacing: 0.01em;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-
-        /* Monospace font for code/terminal elements */
-        code, pre, .terminal, .log-content, .yaml-content, .json-content {
-            font-family: var(--font-mono);
-        }
 
         /* Login Page - Beautiful animated design */
         .login-container {

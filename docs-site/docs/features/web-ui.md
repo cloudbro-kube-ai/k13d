@@ -44,11 +44,24 @@ Click on any resource to view detailed information including:
 
 ---
 
+## Cluster Overview
+
+Dedicated overview page showing cluster health at a glance.
+
+| Feature | Description |
+|---------|-------------|
+| **Health Cards** | Nodes Ready, Pods Running, Deployments Healthy, Namespaces |
+| **Quick Actions** | One-click navigation to Pods, Deployments, Services, Topology, Metrics, Helm |
+| **Recent Events** | Latest cluster events with warning/normal indicators |
+| **Clean Layout** | AI panel auto-hides on Overview for a focused view |
+
+---
+
 ## Topology View
 
 Visualize cluster resources and their relationships.
 
-### Cluster Topology
+### Cluster Topology (Graph)
 
 ![Topology View](../images/webui-topology-view-all.png)
 
@@ -58,11 +71,72 @@ Interactive graph showing:
 - Network connections
 - Resource dependencies
 
+### Topology Tree View
+
+Hierarchical resource ownership visualization:
+
+| Feature | Description |
+|---------|-------------|
+| **Tree Nodes** | Collapsible parent-child hierarchy |
+| **Namespace Scoping** | Filter by namespace |
+| **Cross-navigation** | Switch between Graph and Tree views via toolbar |
+
 ### Topology Detail Modal
 
 ![Topology Modal](../images/webui-topology-modal-view.png)
 
 Click any node to view resource details and navigate to related resources.
+
+---
+
+## Applications View
+
+App-centric view grouping resources by `app.kubernetes.io/name` labels.
+
+| Feature | Description |
+|---------|-------------|
+| **Auto-grouping** | Groups Deployments, Services, Pods by app label |
+| **Health Badges** | Color-coded health status per application |
+| **Namespace Filter** | Scope applications to a namespace |
+
+---
+
+## Validate View
+
+Cross-resource validation with severity-based findings.
+
+| Feature | Description |
+|---------|-------------|
+| **Severity Levels** | Critical, Warning, Info classifications |
+| **Actionable Suggestions** | Specific fix recommendations per finding |
+| **Cross-view Links** | Navigate to Reports for full analysis |
+| **Namespace Scoping** | Validate per namespace or cluster-wide |
+
+---
+
+## Healing View
+
+Auto-remediation rules management with event history.
+
+| Feature | Description |
+|---------|-------------|
+| **Rules CRUD** | Create, toggle, delete auto-healing rules |
+| **Event History** | Track remediation actions taken |
+| **Tab Interface** | Switch between Rules and Events tabs |
+
+---
+
+## Helm Manager
+
+Full Helm release lifecycle management.
+
+| Feature | Description |
+|---------|-------------|
+| **Release List** | View all Helm releases with status |
+| **Release Details** | Values, manifest, notes per release |
+| **History** | View revision history with rollback support |
+| **Rollback** | One-click rollback to previous revision |
+| **Uninstall** | Remove releases with confirmation |
 
 ---
 
@@ -265,6 +339,20 @@ Create and manage user accounts:
 | **Edit User** | Modify user settings |
 | **Delete User** | Remove user account |
 | **Role Assignment** | Assign roles (admin, user, viewer) |
+
+### Theme / Skin Selector
+
+Choose from 5 color themes in Settings > General:
+
+| Theme | Description |
+|-------|-------------|
+| **Tokyo Night** | Default dark theme with blue accents |
+| **Production** | Red-accented dark theme (warns you're in production) |
+| **Staging** | Yellow-accented dark theme |
+| **Development** | Green-accented dark theme |
+| **Light** | Clean light theme with professional colors |
+
+Theme selection persists in localStorage and auto-detects system preference.
 
 ### Authentication Control
 

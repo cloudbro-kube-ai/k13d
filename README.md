@@ -159,15 +159,23 @@ kubectl port-forward -n k13d svc/k13d 8080:80
 | AI Assistant | ✅ | ✅ | Agentic AI with tool execution |
 | Resource Browsing | ✅ | ✅ | Pods, Deployments, Services, etc. |
 | Topology View | ❌ | ✅ | Interactive resource relationship graph |
+| Topology Tree | ❌ | ✅ | Hierarchical resource ownership tree |
+| Applications | ❌ | ✅ | App-centric view by Kubernetes labels |
+| Validate | ❌ | ✅ | Cross-resource validation with severity levels |
+| Healing | ❌ | ✅ | Auto-remediation rules and event history |
+| Helm Manager | ❌ | ✅ | Release management, rollback, uninstall |
+| Metrics Dashboard | ❌ | ✅ | Cluster health cards with CPU/Memory bars |
 | YAML Viewer | ✅ | ✅ | View/Edit manifests |
 | Log Viewer | ✅ | ✅ | Real-time streaming with ANSI colors |
 | Terminal/Shell | ✅ | ✅ | Pod shell access (xterm.js) |
 | Port Forward | ✅ | ✅ | Forward container ports |
 | Metrics Charts | ❌ | ✅ | CPU/Memory visualization |
-| Reports | ❌ | ✅ | PDF/CSV cluster reports |
+| Reports | ❌ | ✅ | HTML/CSV cluster reports with FinOps analysis |
+| Audit Logging | ✅ | ✅ | Track all operations (modal view) |
 | Settings UI | ❌ | ✅ | Graphical configuration |
+| Theme/Skins | ❌ | ✅ | 5 themes: Tokyo Night, Production, Staging, Dev, Light |
 | Multi-user Auth | ❌ | ✅ | RBAC, JWT, LDAP/SSO |
-| Audit Logging | ✅ | ✅ | Track all operations |
+| Trivy Scanner | ✅ | ✅ | CVE vulnerability scanning (auto-download) |
 | i18n | ✅ | ✅ | English, 한국어, 中文, 日本語 |
 
 ---
@@ -284,6 +292,12 @@ go build -o k13d-bench ./cmd/bench/
 | `/api/chat/stream` | POST | AI chat (SSE) |
 | `/api/audit` | GET | Audit logs |
 | `/api/reports` | GET | Generate reports |
+| `/api/pulse` | GET | Cluster metrics dashboard |
+| `/api/xray` | GET | Resource ownership tree |
+| `/api/applications` | GET | App-centric grouped view |
+| `/api/validate` | GET | Cross-resource validation |
+| `/api/healing/rules` | GET/POST | Auto-healing rules |
+| `/api/helm/releases` | GET | Helm release management |
 
 ---
 

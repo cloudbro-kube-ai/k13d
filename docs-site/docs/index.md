@@ -97,6 +97,14 @@ It bridges the gap between traditional cluster management and natural language A
 | **SSE Streaming Chat** | Real-time AI responses with live cursor |
 | **Pod Terminal** | Interactive xterm.js shell in browser |
 | **Log Viewer** | Real-time logs with ANSI color support |
+| **Topology Tree** | Hierarchical resource ownership visualization |
+| **Applications** | App-centric view by `app.kubernetes.io/name` labels |
+| **Validate** | Cross-resource validation with severity levels |
+| **Healing** | Auto-remediation rules with event history |
+| **Helm Manager** | Release management, rollback, uninstall |
+| **Metrics Dashboard** | Cluster health cards with CPU/Memory bars |
+| **5 Color Themes** | Tokyo Night, Production, Staging, Dev, Light |
+| **Trivy Scanner** | CVE vulnerability scanning with auto-download |
 
 ### :robot: Agentic AI Assistant
 

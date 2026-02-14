@@ -2,6 +2,39 @@
 
 All notable changes to k13d are documented here.
 
+## [0.7.7] - 2026-02-14
+
+### Added
+- **Audit Logs Modal**: Audit logs open as modal overlay, preserving center resource table
+- **Reports Modal**: Cluster reports open as modal overlay instead of replacing resource table
+- **Overview Page**: Dedicated Overview with cluster health cards, quick actions, and recent events
+- **Trivy-Bundled Release**: goreleaser produces `k13d-with-trivy` archives for linux/darwin
+
+### Changed
+- AI Assistant panel auto-hides on Overview and restores on other views
+- Audit Logs filter controls integrated into modal header
+
+---
+
+## [0.7.6] - 2026-02-14
+
+### Added
+- **Web UI: Metrics Dashboard**: Real-time cluster health cards with CPU/Memory bars, pod/deployment/node status
+- **Web UI: Topology Tree View**: Hierarchical resource ownership visualization with collapsible tree nodes
+- **Web UI: Applications View**: App-centric grouped view by `app.kubernetes.io/name` labels
+- **Web UI: Validate View**: Cross-resource validation with severity levels (critical/warning/info)
+- **Web UI: Healing View**: Auto-remediation rules CRUD interface with event history tracking
+- **Web UI: Helm Manager**: Full Helm release management with details, values, history, rollback, uninstall
+- **Web UI: Theme/Skin Selector**: 5 color themes - Tokyo Night, Production, Staging, Development, Light
+- **Cross-view Navigation**: Related views linked together (Metrics↔Charts, Topology Graph↔Tree, Validate↔Reports)
+- **Dashboard Phase 1-5**: Backend APIs for pulse, xray, applications, validate, healing, helm, cost analysis
+
+### Changed
+- Sidebar reorganized: Visualization, Operations, Monitoring sections
+- XRay renamed to "Topology Tree", Pulse renamed to "Metrics"
+
+---
+
 ## [Unreleased]
 
 ### Added
