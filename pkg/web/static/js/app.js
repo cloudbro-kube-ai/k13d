@@ -1011,7 +1011,7 @@
                 document.getElementById('debug-toggle').style.background = 'var(--accent-purple)';
             }
             loadNamespaces();
-            showOverviewPanel();
+            switchResource('pods');
             setupResizeHandle();
             setupHealthCheck();
             // Initialize auto-refresh
@@ -5365,14 +5365,29 @@ ${escapeHtml(execInfo.result)}</div>
         function toggleAIPanel() {
             const panel = document.getElementById('ai-panel');
             const handle = document.getElementById('resize-handle');
-            if (panel.style.display === 'none') {
-                panel.style.display = 'flex';
-                handle.style.display = 'block';
-            } else {
-                panel.style.display = 'none';
-                handle.style.display = 'none';
-            }
+            const btn = document.getElementById('ai-toggle-btn');
+            const isHidden = panel.style.display === 'none';
+            panel.style.display = isHidden ? 'flex' : 'none';
+            handle.style.display = isHidden ? 'block' : 'none';
+            if (btn) btn.classList.toggle('active', isHidden);
+            localStorage.setItem('k13d_ai_panel', isHidden ? 'open' : 'closed');
         }
+
+        // Restore AI panel state on load
+        (function initAIPanelState() {
+            const saved = localStorage.getItem('k13d_ai_panel');
+            if (saved === 'closed') {
+                const panel = document.getElementById('ai-panel');
+                const handle = document.getElementById('resize-handle');
+                const btn = document.getElementById('ai-toggle-btn');
+                if (panel) panel.style.display = 'none';
+                if (handle) handle.style.display = 'none';
+                if (btn) btn.classList.remove('active');
+            } else {
+                const btn = document.getElementById('ai-toggle-btn');
+                if (btn) btn.classList.add('active');
+            }
+        })();
 
         function closeAllModals() {
             document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
@@ -9318,23 +9333,12 @@ spec:
         }
 
         function showOverviewPanel() {
-            const overviewPanel = document.getElementById('overview-panel');
-            const mainPanel = document.getElementById('main-panel');
-            if (overviewPanel) overviewPanel.classList.add('active');
-            if (mainPanel) mainPanel.style.display = 'none';
-            hideTopologyView();
-            hideAllCustomViews();
-            // Deselect all nav items
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            loadClusterOverview();
-            loadRecentEvents();
+            // Overview removed - default to pods table
+            switchResource('pods');
         }
 
         function hideOverviewPanel() {
-            const overviewPanel = document.getElementById('overview-panel');
-            const mainPanel = document.getElementById('main-panel');
-            if (overviewPanel) overviewPanel.classList.remove('active');
-            if (mainPanel) mainPanel.style.display = '';
+            // No-op: overview panel removed
         }
 
         // ============================

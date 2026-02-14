@@ -184,11 +184,6 @@
             <!-- Sidebar -->
             <div class="sidebar sidebar-transition" id="sidebar">
                 <div class="nav-section">
-                    <div class="nav-item" data-resource="overview" onclick="showOverviewPanel()" style="font-weight: 600; margin-bottom: 8px;">
-                        <span>Overview</span>
-                    </div>
-                </div>
-                <div class="nav-section">
                     <div class="nav-title">Workloads</div>
                     <div class="nav-item active" data-resource="pods" onclick="switchResource('pods')">
                         <span>Pods</span>
@@ -349,68 +344,6 @@
 
             <!-- Content Wrapper -->
             <div class="content-wrapper">
-                <!-- Cluster Overview Panel -->
-                <div class="overview-panel" id="overview-panel">
-                    <div class="overview-header">
-                        <h2>Cluster Overview</h2>
-                        <span class="overview-context" id="overview-context"></span>
-                    </div>
-                    <div class="overview-cards" id="overview-cards">
-                        <div class="overview-card">
-                            <div class="overview-card-icon" style="background: var(--accent-green);">⬢</div>
-                            <div class="overview-card-content">
-                                <div class="overview-card-value" id="ov-nodes-ready">-/-</div>
-                                <div class="overview-card-label">Nodes Ready</div>
-                            </div>
-                        </div>
-                        <div class="overview-card">
-                            <div class="overview-card-icon" style="background: var(--accent-blue);">◉</div>
-                            <div class="overview-card-content">
-                                <div class="overview-card-value" id="ov-pods-running">-/-</div>
-                                <div class="overview-card-label">Pods Running</div>
-                            </div>
-                        </div>
-                        <div class="overview-card">
-                            <div class="overview-card-icon" style="background: var(--accent-purple);">⊞</div>
-                            <div class="overview-card-content">
-                                <div class="overview-card-value" id="ov-deploy-healthy">-/-</div>
-                                <div class="overview-card-label">Deployments Healthy</div>
-                            </div>
-                        </div>
-                        <div class="overview-card">
-                            <div class="overview-card-icon" style="background: var(--accent-cyan);">◎</div>
-                            <div class="overview-card-content">
-                                <div class="overview-card-value" id="ov-namespaces">-</div>
-                                <div class="overview-card-label">Namespaces</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="overview-sections">
-                        <div class="overview-section">
-                            <h3>Quick Actions</h3>
-                            <div class="overview-actions">
-                                <button class="overview-action-btn" onclick="switchResource('pods')">View Pods</button>
-                                <button class="overview-action-btn" onclick="switchResource('deployments')">View Deployments</button>
-                                <button class="overview-action-btn" onclick="switchResource('services')">View Services</button>
-                                <button class="overview-action-btn" onclick="switchResource('nodes')">View Nodes</button>
-                                <button class="overview-action-btn" onclick="showTopology()">Topology Map</button>
-                                <button class="overview-action-btn" onclick="showMetrics()">Metrics</button>
-                                <button class="overview-action-btn" onclick="showMetricsDashboard()">Metrics</button>
-                                <button class="overview-action-btn" onclick="showTopologyTreeView()">Topology Tree</button>
-                                <button class="overview-action-btn" onclick="showApplicationsView()">Applications</button>
-                                <button class="overview-action-btn" onclick="showValidateView()">Validate</button>
-                                <button class="overview-action-btn" onclick="showHelmView()">Helm</button>
-                            </div>
-                        </div>
-                        <div class="overview-section">
-                            <h3>Recent Events</h3>
-                            <div class="overview-events" id="overview-events">
-                                <p class="text-muted">Loading events...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Main Panel -->
                 <div class="main-panel" id="main-panel">
                     <div class="panel-header">
@@ -421,6 +354,7 @@
                                 <option value="">All Namespaces</option>
                             </select>
                             <button class="refresh-btn" onclick="refreshData()">↻ Refresh</button>
+                            <button class="ai-toggle-btn" id="ai-toggle-btn" onclick="toggleAIPanel()" title="Toggle AI Assistant (Ctrl+A)">AI</button>
                         </div>
                     </div>
                     <div class="filter-bar">

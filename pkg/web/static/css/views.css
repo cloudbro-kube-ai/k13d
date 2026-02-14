@@ -5519,6 +5519,27 @@
     color: var(--text-primary);
 }
 
+/* AI Panel Toggle Button */
+.ai-toggle-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--accent-purple);
+    background: transparent;
+    color: var(--accent-purple);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: 4px;
+}
+.ai-toggle-btn:hover {
+    background: rgba(187, 154, 247, 0.15);
+}
+.ai-toggle-btn.active {
+    background: var(--accent-purple);
+    color: #fff;
+}
+
 @media (prefers-color-scheme: light) {
     :root:not([data-theme]) .login-container {
         background: linear-gradient(135deg, #e8edf5 0%, #f0f4f8 50%, #e8edf5 100%);
