@@ -5,6 +5,28 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.3] - 2026-02-14
+
+### Added
+- **Notification System**: Dispatch K8s cluster events (pod crash, OOM, node not ready, deploy fail, image pull fail) to Slack, Discord, Teams, Email (SMTP), and custom webhooks
+- **NotificationManager**: Background event watcher with SHA256 dedup (5-min cooldown), provider-specific payloads, in-memory history (100 entries)
+- **Email (SMTP) Provider**: Full SMTP/TLS support with config fields in UI (host, port, username, password, from, to)
+- **Notification History**: View recent dispatch results in Settings → Notifications
+- **Metrics Collector**: Auto-start on server boot — collects cluster/node/pod metrics every 1 min, stores in SQLite (7-day retention) with ring buffer cache
+- **Historical Charts**: Now populated with real data from the metrics collector (previously empty due to uninitialized collector)
+
+### Fixed
+- **API Rate Limit**: Increased from 100 to 600 req/min — fixes 429 Too Many Requests on Validate and other dashboard views
+- **Reports**: Metrics history now included in generated reports (was empty when collector was nil)
+
+### Removed
+- **Backups (Velero)**: Removed from sidebar, HTML, JS, and CSS
+- **Light Mode**: Removed theme toggle — dark mode only
+- **Diagnose Button**: Removed from assistant panel header
+
+### Improved
+- **Settings Tabs**: Horizontal scroll for overflow on smaller screens
+
 ## [0.8.2] - 2026-02-14
 
 ### Fixed
