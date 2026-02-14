@@ -1465,6 +1465,7 @@
 
         function onNamespaceChange() {
             currentNamespace = document.getElementById('namespace-select').value;
+            trackNamespaceUsage(currentNamespace);
             loadData();
         }
 
@@ -5620,6 +5621,19 @@ ${escapeHtml(execInfo.result)}</div>
         function showNamespaceIndicator() {
             const indicator = document.getElementById('namespace-indicator');
 
+            // Use recent namespaces, or fall back to available namespaces from selector
+            let nsList = recentNamespaces.slice(0, 9);
+            if (nsList.length === 0) {
+                const nsSelect = document.getElementById('namespace-select');
+                if (nsSelect) {
+                    for (const opt of nsSelect.options) {
+                        if (opt.value && nsList.length < 9) {
+                            nsList.push(opt.value);
+                        }
+                    }
+                }
+            }
+
             // Build namespace keys
             let html = `
                 <div class="namespace-key ${!currentNamespace ? 'current' : ''}" onclick="switchToRecentNamespace(0)">
@@ -5629,11 +5643,11 @@ ${escapeHtml(execInfo.result)}</div>
             `;
 
             for (let i = 0; i < 9; i++) {
-                const ns = recentNamespaces[i];
+                const ns = nsList[i];
                 const isCurrent = ns && ns === currentNamespace;
                 html += `
                     <div class="namespace-key ${isCurrent ? 'current' : ''} ${!ns ? 'disabled' : ''}"
-                         onclick="${ns ? `switchToRecentNamespace(${i + 1})` : ''}"
+                         onclick="${ns ? `switchToNamespaceByName('${ns}')` : ''}"
                          style="${!ns ? 'opacity: 0.3; cursor: default;' : ''}">
                         <span class="namespace-key-num">${i + 1}</span>
                         <span class="namespace-key-name">${ns || '-'}</span>
@@ -5649,6 +5663,15 @@ ${escapeHtml(execInfo.result)}</div>
                 clearTimeout(namespaceIndicatorTimeout);
             }
             namespaceIndicatorTimeout = setTimeout(hideNamespaceIndicator, 3000);
+        }
+
+        function switchToNamespaceByName(ns) {
+            document.getElementById('namespace-select').value = ns;
+            currentNamespace = ns;
+            trackNamespaceUsage(ns);
+            onNamespaceChange();
+            showNotification(`Switched to namespace: ${ns}`);
+            hideNamespaceIndicator();
         }
 
         function hideNamespaceIndicator() {
