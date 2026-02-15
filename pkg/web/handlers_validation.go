@@ -26,10 +26,12 @@ func (s *Server) handleValidate(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch resources from the namespace
 	var resources []*analyzers.ResourceInfo
+	resourceCounts := map[string]int{}
 
 	// Pods
 	pods, err := s.k8sClient.ListPods(ctx, namespace)
 	if err == nil {
+		resourceCounts["pods"] = len(pods)
 		for i := range pods {
 			resources = append(resources, &analyzers.ResourceInfo{
 				Kind:      "Pod",
@@ -44,6 +46,7 @@ func (s *Server) handleValidate(w http.ResponseWriter, r *http.Request) {
 	// Services
 	services, err := s.k8sClient.ListServices(ctx, namespace)
 	if err == nil {
+		resourceCounts["services"] = len(services)
 		for i := range services {
 			raw := make(map[string]interface{})
 			if len(services[i].Spec.Selector) > 0 {
@@ -62,6 +65,7 @@ func (s *Server) handleValidate(w http.ResponseWriter, r *http.Request) {
 	// ConfigMaps
 	configMaps, err := s.k8sClient.ListConfigMaps(ctx, namespace)
 	if err == nil {
+		resourceCounts["configmaps"] = len(configMaps)
 		for i := range configMaps {
 			resources = append(resources, &analyzers.ResourceInfo{
 				Kind:      "ConfigMap",
@@ -75,6 +79,7 @@ func (s *Server) handleValidate(w http.ResponseWriter, r *http.Request) {
 	// Secrets
 	secrets, err := s.k8sClient.ListSecrets(ctx, namespace)
 	if err == nil {
+		resourceCounts["secrets"] = len(secrets)
 		for i := range secrets {
 			resources = append(resources, &analyzers.ResourceInfo{
 				Kind:      "Secret",
@@ -88,6 +93,7 @@ func (s *Server) handleValidate(w http.ResponseWriter, r *http.Request) {
 	// Deployments
 	deployments, err := s.k8sClient.ListDeployments(ctx, namespace)
 	if err == nil {
+		resourceCounts["deployments"] = len(deployments)
 		for i := range deployments {
 			resources = append(resources, &analyzers.ResourceInfo{
 				Kind:      "Deployment",
@@ -102,6 +108,7 @@ func (s *Server) handleValidate(w http.ResponseWriter, r *http.Request) {
 	// StatefulSets
 	statefulSets, err := s.k8sClient.ListStatefulSets(ctx, namespace)
 	if err == nil {
+		resourceCounts["statefulsets"] = len(statefulSets)
 		for i := range statefulSets {
 			resources = append(resources, &analyzers.ResourceInfo{
 				Kind:      "StatefulSet",
@@ -115,6 +122,7 @@ func (s *Server) handleValidate(w http.ResponseWriter, r *http.Request) {
 	// Ingresses
 	ingresses, err := s.k8sClient.ListIngresses(ctx, namespace)
 	if err == nil {
+		resourceCounts["ingresses"] = len(ingresses)
 		for i := range ingresses {
 			raw := make(map[string]interface{})
 			var svcRefs []string
@@ -147,6 +155,7 @@ func (s *Server) handleValidate(w http.ResponseWriter, r *http.Request) {
 	// HPAs
 	hpas, err := s.k8sClient.ListHorizontalPodAutoscalers(ctx, namespace)
 	if err == nil {
+		resourceCounts["hpas"] = len(hpas)
 		for i := range hpas {
 			raw := make(map[string]interface{})
 			targetRef := hpas[i].Spec.ScaleTargetRef.Kind + "/" + hpas[i].Spec.ScaleTargetRef.Name
@@ -167,9 +176,11 @@ func (s *Server) handleValidate(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"namespace": namespace,
-		"findings":  findings,
-		"total":     len(findings),
+		"namespace":       namespace,
+		"findings":        findings,
+		"total":           len(findings),
+		"resources_scanned": len(resources),
+		"resource_counts": resourceCounts,
 	})
 }
 

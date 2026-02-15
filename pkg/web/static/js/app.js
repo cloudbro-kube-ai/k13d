@@ -2171,7 +2171,7 @@
             const guardrailCheck = checkGuardrails(message);
 
             if (!guardrailCheck.allowed) {
-                showNotification(guardrailCheck.reason, 'error');
+                showToast(guardrailCheck.reason, 'error');
                 return;
             }
 
@@ -2195,7 +2195,7 @@
                         },
                         () => {
                             // User cancelled
-                            showNotification('Operation cancelled', 'info');
+                            showToast('Operation cancelled', 'info');
                             resolve();
                         }
                     );
@@ -4905,6 +4905,13 @@ ${escapeHtml(execInfo.result)}</div>
             const includeAI = document.getElementById('report-include-ai')?.checked ?? true;
             const statusEl = document.getElementById('report-status');
 
+            if (includeAI && !llmConnected) {
+                statusEl.innerHTML = `<div style="color: var(--accent-red);">
+                    AI is not connected. Please configure LLM settings first, or uncheck "Include AI Analysis".
+                </div>`;
+                return;
+            }
+
             statusEl.innerHTML = `<div style="color: var(--accent-blue);">
                 <span class="loading-dots"><span></span><span></span><span></span></span>
                 Generating report preview${includeAI ? ' with AI analysis' : ''}... This may take a moment.
@@ -4937,6 +4944,13 @@ ${escapeHtml(execInfo.result)}</div>
         async function downloadReport(format) {
             const includeAI = document.getElementById('report-include-ai')?.checked ?? true;
             const statusEl = document.getElementById('report-status');
+
+            if (includeAI && !llmConnected) {
+                statusEl.innerHTML = `<div style="color: var(--accent-red);">
+                    AI is not connected. Please configure LLM settings first, or uncheck "Include AI Analysis".
+                </div>`;
+                return;
+            }
 
             statusEl.innerHTML = `<div style="color: var(--accent-blue);">
                 <span class="loading-dots"><span></span><span></span><span></span></span>
@@ -4987,6 +5001,13 @@ ${escapeHtml(execInfo.result)}</div>
             const includeAI = document.getElementById('report-include-ai')?.checked ?? true;
             const statusEl = document.getElementById('report-status');
             const previewEl = document.getElementById('report-preview');
+
+            if (includeAI && !llmConnected) {
+                statusEl.innerHTML = `<div style="color: var(--accent-red);">
+                    AI is not connected. Please configure LLM settings first, or uncheck "Include AI Analysis".
+                </div>`;
+                return;
+            }
 
             statusEl.innerHTML = `<div style="color: var(--accent-blue);">
                 <span class="loading-dots"><span></span><span></span><span></span></span>
@@ -5630,7 +5651,7 @@ ${escapeHtml(execInfo.result)}</div>
                 document.getElementById('namespace-select').value = '';
                 currentNamespace = '';
                 onNamespaceChange();
-                showNotification('Switched to All Namespaces');
+                showToast('Switched to All Namespaces');
                 return;
             }
 
@@ -5639,7 +5660,7 @@ ${escapeHtml(execInfo.result)}</div>
                 document.getElementById('namespace-select').value = ns;
                 currentNamespace = ns;
                 onNamespaceChange();
-                showNotification(`Switched to namespace: ${ns}`);
+                showToast(`Switched to namespace: ${ns}`);
             }
         }
 
@@ -5695,7 +5716,7 @@ ${escapeHtml(execInfo.result)}</div>
             currentNamespace = ns;
             trackNamespaceUsage(ns);
             onNamespaceChange();
-            showNotification(`Switched to namespace: ${ns}`);
+            showToast(`Switched to namespace: ${ns}`);
             hideNamespaceIndicator();
         }
 
@@ -5999,10 +6020,10 @@ spec:
 
                 if (dryRun) {
                     updateYamlEditorStatus('valid', 'Dry-run successful! Uncheck "Dry Run" to apply.');
-                    showNotification('Dry-run validation passed', 'success');
+                    showToast('Dry-run validation passed', 'success');
                 } else {
                     updateYamlEditorStatus('valid', 'Applied successfully!');
-                    showNotification('Resource applied successfully', 'success');
+                    showToast('Resource applied successfully', 'success');
                     // Refresh data
                     refreshData();
                     // Close editor after short delay
@@ -6053,7 +6074,7 @@ spec:
                     openYamlEditor(yaml, { resource, name, namespace: ns });
                 })
                 .catch(e => {
-                    showNotification('Failed to load YAML: ' + e.message, 'error');
+                    showToast('Failed to load YAML: ' + e.message, 'error');
                 });
         }
 
@@ -6726,7 +6747,7 @@ spec:
             document.getElementById('setting-llm-apikey').value = '';
 
             updateEndpointPlaceholder();
-            showNotification(`Configured to use Ollama model: ${selectedOllamaModel}`, 'success');
+            showToast(`Configured to use Ollama model: ${selectedOllamaModel}`, 'success');
         }
 
         function showOllamaInstallInstructions(os) {
@@ -6778,7 +6799,7 @@ spec:
                 modelName = document.getElementById('ollama-custom-model').value.trim();
             }
             if (!modelName) {
-                showNotification('Please enter a model name', 'error');
+                showToast('Please enter a model name', 'error');
                 return;
             }
 
@@ -6835,7 +6856,7 @@ spec:
             guardrailsConfig.strictMode = !guardrailsConfig.strictMode;
             toggle.classList.toggle('active', guardrailsConfig.strictMode);
             saveGuardrailsConfig();
-            showNotification(guardrailsConfig.strictMode ?
+            showToast(guardrailsConfig.strictMode ?
                 'Strict mode enabled - dangerous operations will be blocked' :
                 'Strict mode disabled - dangerous operations will require confirmation',
                 guardrailsConfig.strictMode ? 'warning' : 'info');
@@ -6854,7 +6875,7 @@ spec:
             saveGuardrailsConfig();
             updateGuardrailsHistoryUI();
             updateGuardrailsUI();
-            showNotification('Safety check history cleared', 'success');
+            showToast('Safety check history cleared', 'success');
         }
 
         function updateGuardrailsHistoryUI() {
@@ -9704,12 +9725,14 @@ spec:
                 const critCount = findings.filter(f => f.severity === 'critical').length;
                 const warnCount = findings.filter(f => f.severity === 'warning').length;
                 const infoCount = findings.filter(f => f.severity === 'info').length;
+                const rc = data.resource_counts || {};
+                const scanned = data.resources_scanned || 0;
 
                 body.innerHTML = `
                     <div class="validate-summary">
                         <div class="validate-summary-card">
-                            <div class="count" style="color:var(--text-primary);">${data.total || 0}</div>
-                            <div class="label">Total</div>
+                            <div class="count" style="color:var(--text-primary);">${scanned}</div>
+                            <div class="label">Scanned</div>
                         </div>
                         <div class="validate-summary-card">
                             <div class="count" style="color:var(--accent-red);">${critCount}</div>
@@ -9723,6 +9746,16 @@ spec:
                             <div class="count" style="color:var(--accent-blue);">${infoCount}</div>
                             <div class="label">Info</div>
                         </div>
+                    </div>
+                    <div style="margin-bottom:12px;padding:10px;background:var(--bg-tertiary);border-radius:6px;font-size:12px;color:var(--text-secondary);display:flex;gap:12px;flex-wrap:wrap;">
+                        ${rc.pods != null ? `<span>Pods: ${rc.pods}</span>` : ''}
+                        ${rc.services != null ? `<span>Services: ${rc.services}</span>` : ''}
+                        ${rc.deployments != null ? `<span>Deployments: ${rc.deployments}</span>` : ''}
+                        ${rc.statefulsets != null ? `<span>StatefulSets: ${rc.statefulsets}</span>` : ''}
+                        ${rc.configmaps != null ? `<span>ConfigMaps: ${rc.configmaps}</span>` : ''}
+                        ${rc.secrets != null ? `<span>Secrets: ${rc.secrets}</span>` : ''}
+                        ${rc.ingresses != null ? `<span>Ingresses: ${rc.ingresses}</span>` : ''}
+                        ${rc.hpas != null ? `<span>HPAs: ${rc.hpas}</span>` : ''}
                     </div>
                     ${findings.length === 0 ? '<div class="loading-placeholder" style="color:var(--accent-green);">No issues found. All resources look healthy!</div>' :
                     findings.map(f => `
@@ -10152,7 +10185,7 @@ spec:
                 }
                 document.getElementById('cluster-name').textContent = name;
                 document.getElementById('cluster-dropdown').classList.remove('active');
-                showNotification(`Switched to context: ${name}`);
+                showToast(`Switched to context: ${name}`);
                 // Reload namespaces (different cluster = different namespaces)
                 currentNamespace = '';
                 document.getElementById('namespace-select').value = '';
@@ -10454,14 +10487,14 @@ spec:
                 });
                 if (!resp.ok) {
                     const errText = await resp.text();
-                    showNotification('Deploy failed: ' + errText, 'error');
+                    showToast('Deploy failed: ' + errText, 'error');
                     return;
                 }
                 const data = await resp.json();
-                showNotification('Template deployed: ' + (data.result || 'success'), 'success');
+                showToast('Template deployed: ' + (data.result || 'success'), 'success');
                 closeTemplateDeployModal();
             } catch (e) {
-                showNotification('Deploy failed: ' + e.message, 'error');
+                showToast('Deploy failed: ' + e.message, 'error');
             }
         }
 
