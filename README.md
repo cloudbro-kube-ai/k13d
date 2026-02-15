@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <code><b>k</b>ube<b>a</b>i<b>d</b>ashboard<b>k</b></code> + <code>13 letters</code> + <code><b>d</b></code> = <code><b>k13d</b></code>
+  <code><b>k</b>ubeaidashboar<b>d</b></code>  = <code><b>k</b></code>+ <code>13 letters</code> + <code><b>d</b></code> = <code><b>k13d</b></code>
 </p>
 
 <p align="center">
