@@ -2,6 +2,25 @@
 
 All notable changes to k13d are documented here.
 
+## [0.8.4] - 2026-02-16
+
+### Added
+- **Web UI: Report Section Selection**: Choose which sections (Nodes, Namespaces, Workloads, Events, Security, FinOps, Metrics) to include when generating reports
+- **Web UI: Rich Custom Resource Detail**: CRDs now display Overview/YAML/Events tabs with auto-generated status badge, metadata, printer columns, conditions table, and spec/status summary
+- **Web UI: Historical Metrics Charts**: CPU, Memory, Pod Count, and Node Count charts with configurable time ranges (5m–24h) backed by SQLite storage
+- **Web UI: Collect Now Button**: Trigger immediate metrics collection from the Metrics modal
+- **AI Provider: Upstage/Solar**: Added Upstage (Solar) as a supported LLM provider with default endpoint
+
+### Fixed
+- **Web UI: Metrics Array Sync**: Fixed metricsHistory arrays (timestamps, cpu, memory, pods, nodes) going out of sync during live updates
+- **Web UI: Chart Cleanup**: Charts are now properly destroyed and history reset when closing and reopening the Metrics modal
+- **Web UI: Context Switch Stale Data**: Switching cluster context now reloads namespaces and resource data
+
+### Removed
+- **Web UI: Healing View**: Removed auto-remediation rules UI (Healing nav item, rules CRUD, event history)
+
+---
+
 ## [0.8.0] - 2026-02-14
 
 ### Added

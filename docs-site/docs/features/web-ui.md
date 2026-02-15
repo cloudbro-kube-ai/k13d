@@ -114,18 +114,6 @@ Cross-resource validation with severity-based findings.
 
 ---
 
-## Healing View
-
-Auto-remediation rules management with event history.
-
-| Feature | Description |
-|---------|-------------|
-| **Rules CRUD** | Create, toggle, delete auto-healing rules |
-| **Event History** | Track remediation actions taken |
-| **Tab Interface** | Switch between Rules and Events tabs |
-
----
-
 ## Helm Manager
 
 Full Helm release lifecycle management.
@@ -183,7 +171,7 @@ When AI requests a write/dangerous operation:
 
 ## Reports
 
-Generate comprehensive cluster analysis reports.
+Generate comprehensive cluster analysis reports with selectable sections.
 
 ### Report Index
 
@@ -201,6 +189,23 @@ Available report types with generated report history.
 | **Security Audit** | RBAC analysis, network policies, vulnerabilities |
 | **Resource Optimization** | Over-provisioned resources, cost analysis |
 | **AI Analysis** | AI-powered insights and recommendations |
+
+### Section Selection
+
+When generating a report, you can select which sections to include:
+
+| Section | Description |
+|---------|-------------|
+| **Nodes** | Node health, capacity, and conditions |
+| **Namespaces** | Namespace resource usage summary |
+| **Workloads** | Deployments, StatefulSets, DaemonSets status |
+| **Events** | Recent cluster events and warnings |
+| **Security** | Basic security audit (RBAC, pod security) |
+| **Security Full** | Extended security scan with Trivy vulnerability analysis |
+| **FinOps** | Cost analysis, resource efficiency, optimization suggestions |
+| **Metrics** | CPU/Memory utilization metrics |
+
+By default, all standard sections are enabled except **Security Full** (which requires Trivy and can be slow).
 
 ### Security Assessment Report
 
@@ -234,9 +239,23 @@ Cost optimization insights:
 
 ---
 
+## Custom Resource Detail View
+
+Custom Resources (CRDs) display a rich detail modal with the same quality as built-in resources.
+
+| Feature | Description |
+|---------|-------------|
+| **Overview Tab** | Auto-generated overview with status badge, metadata, key fields from printer columns, spec/status summary, conditions table, labels, and annotations |
+| **YAML Tab** | Full YAML manifest of the Custom Resource |
+| **Events Tab** | Related Kubernetes events for the resource |
+| **Status Detection** | Automatic status extraction from conditions, phase, or state fields |
+| **Printer Columns** | CRD-defined `additionalPrinterColumns` resolved via JSONPath |
+
+---
+
 ## Metrics & Monitoring
 
-Real-time metrics visualization with Chart.js.
+Real-time and historical metrics visualization with Chart.js.
 
 ### Metrics Dashboard
 
@@ -244,10 +263,19 @@ Real-time metrics visualization with Chart.js.
 
 | Metric | Description |
 |--------|-------------|
-| **CPU Usage** | Real-time CPU consumption per pod/node |
-| **Memory Usage** | Memory utilization with limits |
-| **Network I/O** | Ingress/egress traffic |
-| **Storage** | PV usage and capacity |
+| **CPU Usage** | Real-time and historical CPU consumption |
+| **Memory Usage** | Real-time and historical memory utilization |
+| **Pod Count** | Running pod count over time |
+| **Node Health** | Ready node count over time |
+
+### Historical Data
+
+Metrics are collected every minute and stored in SQLite for historical analysis:
+
+- **Time Ranges**: 5m, 15m, 30m, 1h, 6h, 24h
+- **Default Range**: 30 minutes
+- **Collect Now**: Trigger immediate metrics collection via the Collect button
+- **Fallback Charts**: When metrics-server is unavailable, Pod Count and Node Count charts are shown instead of CPU/Memory
 
 ---
 
