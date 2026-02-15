@@ -5,6 +5,10 @@
 </p>
 
 <p align="center">
+  <code><b>k</b>ube<b>a</b>i<b>d</b>ashboard</code> — 14 letters — <code><b>k</b></code> + <code>13</code> + <code><b>d</b></code> = <code><b>k13d</b></code>
+</p>
+
+<p align="center">
   Download a single binary, run one command, and get a full-featured Kubernetes dashboard<br>
   with an AI assistant that actually executes commands for you.
 </p>
@@ -21,7 +25,8 @@
   <a href="https://cloudbro-kube-ai.github.io/k13d"><strong>Documentation</strong></a> ·
   <a href="https://github.com/cloudbro-kube-ai/k13d/releases"><strong>Download</strong></a> ·
   <a href="https://cloudbro-kube-ai.github.io/k13d/features/web-ui/"><strong>Web UI Guide</strong></a> ·
-  <a href="https://cloudbro-kube-ai.github.io/k13d/features/tui/"><strong>TUI Guide</strong></a>
+  <a href="https://cloudbro-kube-ai.github.io/k13d/features/tui/"><strong>TUI Guide</strong></a> ·
+  <a href="https://cloudbro-kube-ai.github.io/k13d/ko/"><strong>한국어</strong></a>
 </p>
 
 ---
@@ -32,36 +37,80 @@
   <img src="docs-site/docs/images/webui-full-screen.png" alt="Web UI Dashboard" width="100%">
 </p>
 
-<p align="center">
-  <img src="docs-site/docs/images/webui-topology-view-all.png" alt="Topology View" width="49%">
-  <img src="docs-site/docs/images/web_ui_applications.png" alt="Applications View" width="49%">
-</p>
-
-<p align="center">
-  <img src="docs-site/docs/images/web_ui_cluster_report_preview.png" alt="Cluster Report" width="49%">
-  <img src="docs-site/docs/images/webui-metrics.png" alt="Metrics Dashboard" width="49%">
-</p>
-
-<p align="center">
-  <img src="docs-site/docs/images/web_ui_event_timeline.png" alt="Event Timeline" width="49%">
-  <img src="docs-site/docs/images/web_ui_network_policy_map.png" alt="Network Policy Map" width="49%">
-</p>
-
-<p align="center">
-  <img src="docs-site/docs/images/webui-assistant-pannel.png" alt="AI Assistant" width="49%">
-  <img src="docs-site/docs/images/webui-pod-terminal-access.png" alt="Pod Terminal" width="49%">
-</p>
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs-site/docs/images/webui-topology-view-all.png" alt="Topology View" width="100%">
+      <br><sub><b>Topology View</b> — Resource relationship graph</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs-site/docs/images/web_ui_applications.png" alt="Applications View" width="100%">
+      <br><sub><b>Applications</b> — App-centric grouped view</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs-site/docs/images/web_ui_cluster_report_preview.png" alt="Cluster Report" width="100%">
+      <br><sub><b>Reports</b> — Cluster health & FinOps analysis</sub>
+    </td>
+    <td align="center">
+      <img src="docs-site/docs/images/webui-metrics.png" alt="Metrics Dashboard" width="100%">
+      <br><sub><b>Metrics</b> — Historical CPU/Memory charts</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs-site/docs/images/web_ui_event_timeline.png" alt="Event Timeline" width="100%">
+      <br><sub><b>Event Timeline</b> — Cluster events by time window</sub>
+    </td>
+    <td align="center">
+      <img src="docs-site/docs/images/web_ui_network_policy_map.png" alt="Network Policy Map" width="100%">
+      <br><sub><b>Network Policy</b> — Ingress/egress visualization</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs-site/docs/images/webui-assistant-pannel.png" alt="AI Assistant" width="100%">
+      <br><sub><b>AI Assistant</b> — Natural language + tool execution</sub>
+    </td>
+    <td align="center">
+      <img src="docs-site/docs/images/webui-pod-terminal-access.png" alt="Pod Terminal" width="100%">
+      <br><sub><b>Pod Terminal</b> — xterm.js shell in browser</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs-site/docs/images/web_ui_resource_template.png" alt="Resource Templates" width="100%">
+      <br><sub><b>Templates</b> — One-click deploy common patterns</sub>
+    </td>
+    <td align="center">
+      <img src="docs-site/docs/images/webui-settings-llm.png" alt="Settings" width="100%">
+      <br><sub><b>Settings</b> — LLM, MCP, themes, user management</sub>
+    </td>
+  </tr>
+</table>
 
 ## TUI
 
-<p align="center">
-  <img src="docs-site/docs/images/tui_help.png" alt="TUI Help" width="49%">
-  <img src="docs-site/docs/images/tui_auto_complete.png" alt="TUI Autocomplete" width="49%">
-</p>
-
-<p align="center">
-  <img src="docs-site/docs/images/tui_llm_setting.png" alt="TUI LLM Settings" width="49%">
-</p>
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs-site/docs/images/tui_help.png" alt="TUI Help" width="100%">
+      <br><sub><b>Help & Keybindings</b> — k9s-style shortcuts</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs-site/docs/images/tui_auto_complete.png" alt="TUI Autocomplete" width="100%">
+      <br><sub><b>Autocomplete</b> — Dropdown command suggestions</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs-site/docs/images/tui_llm_setting.png" alt="TUI LLM Settings" width="100%">
+      <br><sub><b>LLM Model Switching</b> — Multiple AI profiles</sub>
+    </td>
+    <td></td>
+  </tr>
+</table>
 
 ---
 
@@ -198,6 +247,7 @@ make build
 - [Configuration](https://cloudbro-kube-ai.github.io/k13d/getting-started/configuration/)
 - [Docker Deployment](https://cloudbro-kube-ai.github.io/k13d/deployment/docker/)
 - [Kubernetes Deployment](https://cloudbro-kube-ai.github.io/k13d/deployment/kubernetes/)
+- [한국어 가이드](https://cloudbro-kube-ai.github.io/k13d/ko/)
 
 ---
 
