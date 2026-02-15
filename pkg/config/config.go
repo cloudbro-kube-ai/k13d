@@ -259,7 +259,7 @@ func DefaultSessionsPath() string {
 func NewDefaultConfig() *Config {
 	return &Config{
 		LLM: LLMConfig{
-			Provider:     "solar",
+			Provider:     "upstage",
 			Model:        DefaultSolarModel,
 			Endpoint:     DefaultSolarEndpoint,
 			RetryEnabled: true,
@@ -283,7 +283,7 @@ func NewDefaultConfig() *Config {
 		Models: []ModelProfile{
 			{
 				Name:        "solar-pro2",
-				Provider:    "solar",
+				Provider:    "upstage",
 				Model:       DefaultSolarModel,
 				Endpoint:    DefaultSolarEndpoint,
 				Description: "Upstage Solar Pro2 (Recommended - Best quality/cost balance)",

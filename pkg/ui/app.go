@@ -2624,8 +2624,8 @@ func (a *App) Run() error {
 		if atomic.CompareAndSwapInt32(&a.needsSync, 1, 0) {
 			screen.Sync()
 			atomic.StoreInt64(&a.lastSync, now)
-		} else if now-atomic.LoadInt64(&a.lastSync) > 500_000_000 {
-			// Safety net: periodic sync every 500ms during rapid updates
+		} else if now-atomic.LoadInt64(&a.lastSync) > 2_000_000_000 {
+			// Safety net: periodic sync every 2s to catch stale artifacts
 			screen.Sync()
 			atomic.StoreInt64(&a.lastSync, now)
 		}

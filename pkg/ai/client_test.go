@@ -386,6 +386,14 @@ func TestClient_GetEndpoint(t *testing.T) {
 			},
 			expected: "https://api.anthropic.com",
 		},
+		{
+			name: "upstage default (alias for solar)",
+			cfg: &config.LLMConfig{
+				Provider: "upstage",
+				APIKey:   "key",
+			},
+			expected: "https://api.upstage.ai/v1",
+		},
 	}
 
 	for _, tt := range tests {

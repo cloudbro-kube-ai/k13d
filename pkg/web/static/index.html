@@ -836,6 +836,26 @@
                                 <option value="error">Error</option>
                             </select>
                         </div>
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-label">Timezone</div>
+                                <div class="settings-description">Set the timezone for displaying dates and times</div>
+                            </div>
+                            <select id="setting-timezone">
+                                <option value="auto">Auto (Browser)</option>
+                                <option value="UTC">UTC</option>
+                                <option value="Asia/Seoul">Asia/Seoul (KST)</option>
+                                <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                                <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+                                <option value="America/New_York">America/New_York (EST)</option>
+                                <option value="America/Chicago">America/Chicago (CST)</option>
+                                <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+                                <option value="Europe/London">Europe/London (GMT)</option>
+                                <option value="Europe/Berlin">Europe/Berlin (CET)</option>
+                                <option value="Europe/Paris">Europe/Paris (CET)</option>
+                                <option value="Australia/Sydney">Australia/Sydney (AEST)</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="settings-section">
                         <h4>AI Chat</h4>
@@ -911,7 +931,7 @@
                         <div class="form-group">
                             <label>Provider</label>
                             <select id="setting-llm-provider" onchange="updateEndpointPlaceholder()">
-                                <option value="solar">Upstage Solar</option>
+                                <option value="upstage">Upstage Solar</option>
                                 <option value="openai">OpenAI</option>
                                 <option value="ollama">Ollama</option>
                                 <option value="gemini">Google Gemini</option>
@@ -977,7 +997,7 @@
                         <div class="form-group">
                             <label>Provider</label>
                             <select id="new-model-provider">
-                                <option value="solar">Upstage Solar</option>
+                                <option value="upstage">Upstage Solar</option>
                                 <option value="openai">OpenAI</option>
                                 <option value="ollama">Ollama</option>
                                 <option value="gemini">Google Gemini</option>
@@ -1249,14 +1269,6 @@
                         </div>
                     </div>
 
-                    <div class="settings-section" style="margin-top:20px;">
-                        <h4>Quick Actions</h4>
-                        <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                            <button class="btn btn-secondary" onclick="runSecurityScan()">Run Full Security Scan</button>
-                            <button class="btn btn-secondary" onclick="runQuickSecurityScan()">Quick Scan</button>
-                        </div>
-                        <div id="security-scan-result" style="margin-top:12px;display:none;"></div>
-                    </div>
                 </div>
 
                 <!-- Metrics/Prometheus Settings Tab -->
@@ -2002,7 +2014,7 @@ spec:
                 <span>Cluster Metrics Dashboard</span>
                 <div class="prometheus-status" id="prometheus-status">
                     <div class="status-dot"></div>
-                    <span>Prometheus</span>
+                    <span>Metrics Source</span>
                 </div>
             </div>
             <div class="log-controls">
@@ -2194,27 +2206,89 @@ spec:
     <div class="modal-overlay" id="reports-modal">
         <div class="modal reports-modal">
             <div class="modal-header">
-                <h2>Cluster Report & FinOps Analysis</h2>
+                <h2>Generate Report</h2>
                 <button class="modal-close" onclick="closeReportsModal()">&times;</button>
             </div>
             <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
-                <div style="text-align: center; padding: 20px 0;">
-                    <p style="margin-bottom: 20px; color: var(--text-secondary);">
-                        Generate a comprehensive report including nodes, pods, deployments, services,
-                        container images, security analysis, <strong style="color: var(--accent-green);">FinOps cost optimization</strong>, and AI-powered insights.
-                    </p>
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; justify-content: center; margin-bottom: 20px;">
-                        <input type="checkbox" id="report-include-ai" checked>
-                        <span>Include AI Analysis with FinOps recommendations</span>
+                <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 13px;">
+                    Select the sections to include in your report, then choose an output format.
+                </p>
+
+                <!-- Section Checkboxes -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                        <input type="checkbox" id="report-sec-workloads" checked style="margin-top:2px;">
+                        <div>
+                            <div style="font-weight:600;font-size:13px;">Workloads</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">Pods, Deployments, Services, Images</div>
+                        </div>
                     </label>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-                        <button class="btn btn-primary" onclick="previewReport()" style="padding: 10px 20px;">Preview Report</button>
-                        <button class="btn btn-secondary" onclick="downloadReport('html')" style="padding: 10px 20px;">Download HTML</button>
-                        <button class="btn btn-secondary" onclick="downloadReport('csv')" style="padding: 10px 20px;">Download CSV</button>
-                        <button class="btn btn-secondary" onclick="generateReport('json')" style="padding: 10px 20px;">View Summary</button>
-                    </div>
+                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                        <input type="checkbox" id="report-sec-nodes" checked style="margin-top:2px;">
+                        <div>
+                            <div style="font-weight:600;font-size:13px;">Nodes & Namespaces</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">Node status, capacity, namespace overview</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                        <input type="checkbox" id="report-sec-security" style="margin-top:2px;">
+                        <div>
+                            <div style="font-weight:600;font-size:13px;">Security Scan</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">Pod security, RBAC, network policies</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                        <input type="checkbox" id="report-sec-trivy" style="margin-top:2px;">
+                        <div>
+                            <div style="font-weight:600;font-size:13px;">Trivy CVE Scan</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">Container image vulnerability scanning (slower)</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                        <input type="checkbox" id="report-sec-finops" checked style="margin-top:2px;">
+                        <div>
+                            <div style="font-weight:600;font-size:13px;">FinOps Analysis</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">Cost optimization, resource efficiency</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                        <input type="checkbox" id="report-sec-events" checked style="margin-top:2px;">
+                        <div>
+                            <div style="font-weight:600;font-size:13px;">Events</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">Warning events from the cluster</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                        <input type="checkbox" id="report-sec-metrics" style="margin-top:2px;">
+                        <div>
+                            <div style="font-weight:600;font-size:13px;">Metrics History</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">CPU/Memory usage over last 24h</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                        <input type="checkbox" id="report-sec-ai" style="margin-top:2px;">
+                        <div>
+                            <div style="font-weight:600;font-size:13px;">AI Analysis</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">AI-powered insights and recommendations</div>
+                        </div>
+                    </label>
                 </div>
-                <div id="report-status" style="margin-top: 20px; text-align: center;"></div>
+
+                <!-- Quick toggles -->
+                <div style="display:flex;gap:8px;margin-bottom:20px;">
+                    <button class="btn btn-secondary" onclick="reportSelectAll()" style="padding:6px 12px;font-size:12px;">Select All</button>
+                    <button class="btn btn-secondary" onclick="reportSelectNone()" style="padding:6px 12px;font-size:12px;">Deselect All</button>
+                </div>
+
+                <!-- Action buttons -->
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="previewReport()" style="padding: 10px 20px;">Preview Report</button>
+                    <button class="btn btn-secondary" onclick="downloadReport('html')" style="padding: 10px 20px;">Download HTML</button>
+                    <button class="btn btn-secondary" onclick="downloadReport('csv')" style="padding: 10px 20px;">Download CSV</button>
+                    <button class="btn btn-secondary" onclick="generateReport('json')" style="padding: 10px 20px;">View Summary</button>
+                </div>
+
+                <div id="report-status" style="margin-top: 20px;"></div>
                 <div id="report-preview" style="margin-top: 16px;"></div>
             </div>
             <div class="modal-footer" style="padding: 12px 24px; border-top: 1px solid var(--border-color); text-align: right;">

@@ -66,10 +66,25 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		s.aiClient = newClient
 
-		// Save to disk
+		// Save to YAML
 		if err := s.cfg.Save(); err != nil {
 			WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to save settings"))
 			return
+		}
+
+		// Also persist LLM settings to SQLite for web UI persistence
+		llmDBSettings := map[string]string{
+			"llm.provider":         llmSettings.Provider,
+			"llm.model":            llmSettings.Model,
+			"llm.endpoint":         llmSettings.Endpoint,
+			"llm.use_json_mode":    fmt.Sprintf("%v", llmSettings.UseJSONMode),
+			"llm.reasoning_effort": llmSettings.ReasoningEffort,
+		}
+		if llmSettings.APIKey != "" {
+			llmDBSettings["llm.api_key"] = llmSettings.APIKey
+		}
+		if err := db.SaveWebSettings(llmDBSettings); err != nil {
+			fmt.Printf("Warning: failed to save LLM settings to SQLite: %v\n", err)
 		}
 
 		// Record audit

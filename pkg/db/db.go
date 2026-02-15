@@ -367,6 +367,11 @@ func createTables() error {
 		fmt.Printf("Warning: failed to create model_profiles table: %v\n", err)
 	}
 
+	// Create web_settings table for persistent web UI settings
+	if err := InitWebSettingsTable(); err != nil {
+		fmt.Printf("Warning: failed to create web_settings table: %v\n", err)
+	}
+
 	return nil
 }
 

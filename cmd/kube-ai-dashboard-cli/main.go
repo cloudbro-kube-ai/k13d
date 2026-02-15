@@ -329,6 +329,7 @@ func runTUI(cfg *config.Config, initialNamespace string, embeddedServer *embedde
 		}
 	}()
 
+	ui.Version = Version
 	app := ui.NewAppWithNamespace(initialNamespace)
 	if err := app.Run(); err != nil {
 		log.Errorf("Application exited with error: %v", err)

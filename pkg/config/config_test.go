@@ -13,9 +13,9 @@ func TestNewDefaultConfig(t *testing.T) {
 		t.Fatal("NewDefaultConfig returned nil")
 	}
 
-	// Check LLM defaults (Solar is recommended default)
-	if cfg.LLM.Provider != "solar" {
-		t.Errorf("LLM.Provider = %s, want solar", cfg.LLM.Provider)
+	// Check LLM defaults (Upstage Solar is recommended default)
+	if cfg.LLM.Provider != "upstage" {
+		t.Errorf("LLM.Provider = %s, want upstage", cfg.LLM.Provider)
 	}
 	if cfg.LLM.Model != "solar-pro2" {
 		t.Errorf("LLM.Model = %s, want solar-pro2", cfg.LLM.Model)
@@ -44,7 +44,7 @@ func TestNewDefaultConfig(t *testing.T) {
 	// Verify all expected models are included
 	var hasSolar, hasQwen, hasGemma bool
 	for _, m := range cfg.Models {
-		if m.Name == "solar-pro2" && m.Provider == "solar" {
+		if m.Name == "solar-pro2" && m.Provider == "upstage" {
 			hasSolar = true
 		}
 		if m.Name == "qwen2.5-local" && m.Provider == "ollama" {

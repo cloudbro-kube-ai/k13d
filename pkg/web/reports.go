@@ -326,14 +326,77 @@ func NewReportGenerator(server *Server) *ReportGenerator {
 	return &ReportGenerator{server: server}
 }
 
+// ReportSections defines which sections to include in the report.
+// If nil or empty, all sections are included (backward compatible).
+type ReportSections struct {
+	Nodes         bool
+	Namespaces    bool
+	Workloads     bool // pods, deployments, services, images
+	Events        bool
+	SecurityBasic bool // pod security, RBAC, network (no Trivy)
+	SecurityFull  bool // full scan with Trivy image vulnerability scanning
+	FinOps        bool
+	Metrics       bool
+}
+
+// AllSections returns ReportSections with everything enabled.
+func AllSections() *ReportSections {
+	return &ReportSections{
+		Nodes: true, Namespaces: true, Workloads: true, Events: true,
+		SecurityBasic: true, FinOps: true, Metrics: true,
+	}
+}
+
+// ParseSections parses a comma-separated sections string into ReportSections.
+// Returns nil (meaning all sections) if the input is empty.
+func ParseSections(s string) *ReportSections {
+	if s == "" {
+		return nil
+	}
+	sec := &ReportSections{}
+	for _, part := range strings.Split(s, ",") {
+		switch strings.TrimSpace(part) {
+		case "nodes":
+			sec.Nodes = true
+		case "namespaces":
+			sec.Namespaces = true
+		case "workloads":
+			sec.Workloads = true
+		case "events":
+			sec.Events = true
+		case "security":
+			sec.SecurityBasic = true
+		case "security_full":
+			sec.SecurityBasic = true
+			sec.SecurityFull = true
+		case "finops":
+			sec.FinOps = true
+		case "metrics":
+			sec.Metrics = true
+		}
+	}
+	return sec
+}
+
 // GenerateComprehensiveReport gathers all cluster data
 func (rg *ReportGenerator) GenerateComprehensiveReport(ctx context.Context, username string) (*ComprehensiveReport, error) {
+	return rg.GenerateReport(ctx, username, nil)
+}
+
+// GenerateReport gathers cluster data for the specified sections.
+// If sections is nil, all sections are included.
+func (rg *ReportGenerator) GenerateReport(ctx context.Context, username string, sections *ReportSections) (*ComprehensiveReport, error) {
+	// nil means all sections
+	all := sections == nil
+	if all {
+		sections = AllSections()
+	}
 	report := &ComprehensiveReport{
 		GeneratedAt: time.Now(),
 		GeneratedBy: username,
 	}
 
-	// Get nodes
+	// Always get nodes (needed for health score and cluster info)
 	nodes, err := rg.server.k8sClient.ListNodes(ctx)
 	if err == nil {
 		report.NodeSummary.Total = len(nodes)
@@ -617,16 +680,22 @@ func (rg *ReportGenerator) GenerateComprehensiveReport(ctx context.Context, user
 	}
 
 	// Generate FinOps analysis
-	report.FinOpsAnalysis = rg.generateFinOpsAnalysis(ctx, namespaces, report)
+	if sections.FinOps {
+		report.FinOpsAnalysis = rg.generateFinOpsAnalysis(ctx, namespaces, report)
+	}
 
 	// Add metrics history if collector is available
-	if rg.server.metricsCollector != nil {
+	if sections.Metrics && rg.server.metricsCollector != nil {
 		report.MetricsHistory = rg.generateMetricsHistory(ctx)
 	}
 
 	// Run security scan if scanner is available
-	if rg.server.securityScanner != nil {
-		report.SecurityScan = rg.generateSecurityScan(ctx)
+	if sections.SecurityBasic && rg.server.securityScanner != nil {
+		if sections.SecurityFull {
+			report.SecurityScan = rg.generateFullSecurityScan(ctx)
+		} else {
+			report.SecurityScan = rg.generateSecurityScan(ctx)
+		}
 	}
 
 	return report, nil
@@ -808,6 +877,94 @@ func (rg *ReportGenerator) generateSecurityScan(ctx context.Context) *SecuritySc
 			Description: rec.Description,
 			Impact:      rec.Impact,
 			Remediation: rec.Remediation,
+		})
+	}
+
+	return report
+}
+
+// generateFullSecurityScan runs a full security scan including Trivy image scanning
+func (rg *ReportGenerator) generateFullSecurityScan(ctx context.Context) *SecurityScanReport {
+	if rg.server.securityScanner == nil {
+		return nil
+	}
+
+	// Run full scan (includes Trivy image vulnerability scanning)
+	scanResult, err := rg.server.securityScanner.Scan(ctx, "")
+	if err != nil {
+		// Fall back to quick scan
+		return rg.generateSecurityScan(ctx)
+	}
+
+	report := &SecurityScanReport{
+		ScanTime:     scanResult.ScanTime,
+		Duration:     scanResult.Duration,
+		OverallScore: scanResult.OverallScore,
+		RiskLevel:    scanResult.RiskLevel,
+		ToolsUsed:    []string{"k13d-security-scanner"},
+	}
+
+	if rg.server.securityScanner.TrivyAvailable() {
+		report.ToolsUsed = append(report.ToolsUsed, "trivy")
+	}
+	if rg.server.securityScanner.KubeBenchAvailable() {
+		report.ToolsUsed = append(report.ToolsUsed, "kube-bench")
+	}
+
+	if scanResult.ImageVulns != nil {
+		report.ImageVulnSummary = &ImageVulnerabilitySummary{
+			TotalImages:      scanResult.ImageVulns.TotalImages,
+			ScannedImages:    scanResult.ImageVulns.ScannedImages,
+			VulnerableImages: scanResult.ImageVulns.VulnerableImages,
+			CriticalCount:    scanResult.ImageVulns.CriticalCount,
+			HighCount:        scanResult.ImageVulns.HighCount,
+			MediumCount:      scanResult.ImageVulns.MediumCount,
+			LowCount:         scanResult.ImageVulns.LowCount,
+		}
+	}
+
+	for i, issue := range scanResult.PodSecurityIssues {
+		if i >= 20 {
+			break
+		}
+		report.PodSecurityIssues = append(report.PodSecurityIssues, PodSecurityIssueReport{
+			Namespace: issue.Namespace, Pod: issue.Pod, Container: issue.Container,
+			Issue: issue.Issue, Severity: issue.Severity, Remediation: issue.Remediation,
+		})
+	}
+
+	for i, issue := range scanResult.RBACIssues {
+		if i >= 20 {
+			break
+		}
+		report.RBACIssues = append(report.RBACIssues, RBACIssueReport{
+			Kind: issue.Kind, Name: issue.Name, Namespace: issue.Namespace,
+			Issue: issue.Issue, Severity: issue.Severity, Remediation: issue.Remediation,
+		})
+	}
+
+	for i, issue := range scanResult.NetworkIssues {
+		if i >= 20 {
+			break
+		}
+		report.NetworkIssues = append(report.NetworkIssues, NetworkIssueReport{
+			Namespace: issue.Namespace, Resource: issue.Resource,
+			Issue: issue.Issue, Severity: issue.Severity, Remediation: issue.Remediation,
+		})
+	}
+
+	if scanResult.CISBenchmark != nil {
+		report.CISBenchmark = &CISBenchmarkReport{
+			Version: scanResult.CISBenchmark.Version, TotalChecks: scanResult.CISBenchmark.TotalChecks,
+			PassCount: scanResult.CISBenchmark.PassCount, FailCount: scanResult.CISBenchmark.FailCount,
+			WarnCount: scanResult.CISBenchmark.WarnCount, Score: scanResult.CISBenchmark.Score,
+		}
+	}
+
+	for _, rec := range scanResult.Recommendations {
+		report.Recommendations = append(report.Recommendations, SecurityRecommendationReport{
+			Priority: rec.Priority, Category: rec.Category, Title: rec.Title,
+			Description: rec.Description, Impact: rec.Impact, Remediation: rec.Remediation,
 		})
 	}
 
@@ -2031,11 +2188,12 @@ func (rg *ReportGenerator) HandleReports(w http.ResponseWriter, r *http.Request)
 	format := r.URL.Query().Get("format") // json, csv, html
 	includeAI := r.URL.Query().Get("ai") == "true"
 	download := r.URL.Query().Get("download") == "true" // Force download (vs preview)
+	sections := ParseSections(r.URL.Query().Get("sections"))
 
 	switch r.Method {
 	case http.MethodGet:
-		// Generate comprehensive report
-		report, err := rg.GenerateComprehensiveReport(r.Context(), username)
+		// Generate report with selected sections
+		report, err := rg.GenerateReport(r.Context(), username, sections)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -2097,9 +2255,10 @@ func (rg *ReportGenerator) HandleReportPreview(w http.ResponseWriter, r *http.Re
 	}
 
 	includeAI := r.URL.Query().Get("ai") == "true"
+	sections := ParseSections(r.URL.Query().Get("sections"))
 
-	// Generate report
-	report, err := rg.GenerateComprehensiveReport(r.Context(), username)
+	// Generate report with selected sections
+	report, err := rg.GenerateReport(r.Context(), username, sections)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -2118,7 +2277,7 @@ func (rg *ReportGenerator) HandleReportPreview(w http.ResponseWriter, r *http.Re
 		User:     username,
 		Action:   "preview_report",
 		Resource: "cluster",
-		Details:  fmt.Sprintf("AI: %v", includeAI),
+		Details:  fmt.Sprintf("AI: %v, Sections: %s", includeAI, r.URL.Query().Get("sections")),
 	})
 
 	// Return HTML for preview (no Content-Disposition header)

@@ -103,10 +103,6 @@ func TestVersion(t *testing.T) {
 	if Version == "" {
 		t.Error("Version should not be empty")
 	}
-
-	if !strings.HasPrefix(Version, "v") {
-		t.Error("Version should start with 'v'")
-	}
 }
 
 func TestResourceIcon(t *testing.T) {

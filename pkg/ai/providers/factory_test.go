@@ -988,7 +988,7 @@ func TestTLSSkipVerifyDisabled(t *testing.T) {
 func TestFactoryAllProvidersRegistered(t *testing.T) {
 	factory := GetFactory()
 
-	expectedProviders := []string{"solar", "openai", "ollama", "gemini", "bedrock", "azopenai", "azure"}
+	expectedProviders := []string{"solar", "upstage", "openai", "ollama", "gemini", "bedrock", "azopenai", "azure"}
 
 	for _, name := range expectedProviders {
 		t.Run(name, func(t *testing.T) {

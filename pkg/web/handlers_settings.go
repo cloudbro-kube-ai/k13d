@@ -77,12 +77,16 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
+		// Load timezone from SQLite (web-only setting)
+		timezone := db.GetWebSettingWithDefault("general.timezone", "auto")
+
 		// Return current settings (without sensitive data)
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"language":      s.cfg.Language,
 			"beginner_mode": s.cfg.BeginnerMode,
 			"enable_audit":  s.cfg.EnableAudit,
 			"log_level":     s.cfg.LogLevel,
+			"timezone":      timezone,
 			"llm": map[string]interface{}{
 				"provider":         s.cfg.LLM.Provider,
 				"model":            s.cfg.LLM.Model,
@@ -97,6 +101,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			BeginnerMode bool   `json:"beginner_mode"`
 			EnableAudit  bool   `json:"enable_audit"`
 			LogLevel     string `json:"log_level"`
+			Timezone     string `json:"timezone"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&newSettings); err != nil {
@@ -110,10 +115,22 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		s.cfg.EnableAudit = newSettings.EnableAudit
 		s.cfg.LogLevel = newSettings.LogLevel
 
-		// Save to disk
+		// Save to YAML
 		if err := s.cfg.Save(); err != nil {
 			http.Error(w, "Failed to save settings", http.StatusInternalServerError)
 			return
+		}
+
+		// Also persist to SQLite for web UI settings
+		dbSettings := map[string]string{
+			"general.language":  newSettings.Language,
+			"general.log_level": newSettings.LogLevel,
+		}
+		if newSettings.Timezone != "" {
+			dbSettings["general.timezone"] = newSettings.Timezone
+		}
+		if err := db.SaveWebSettings(dbSettings); err != nil {
+			fmt.Printf("Warning: failed to save settings to SQLite: %v\n", err)
 		}
 
 		// Record audit
@@ -122,7 +139,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			User:     username,
 			Action:   "update_settings",
 			Resource: "settings",
-			Details:  "Settings updated",
+			Details:  fmt.Sprintf("Settings updated (timezone: %s)", newSettings.Timezone),
 		})
 
 		json.NewEncoder(w).Encode(map[string]string{"status": "saved"})

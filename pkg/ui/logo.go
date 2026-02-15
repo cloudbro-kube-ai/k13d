@@ -25,10 +25,10 @@ const (
 
 	// Tagline
 	Tagline = "Kubernetes AI Dashboard"
-
-	// Version (should be set at build time)
-	Version = "v0.1.0"
 )
+
+// Version is set at build time via main.go; defaults to dev.
+var Version = "dev"
 
 // LogoColors returns the logo with gradient colors
 func LogoColors() string {

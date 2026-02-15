@@ -100,8 +100,15 @@ func (c *Client) SwitchContext(contextName string) error {
 		return err
 	}
 
+	metricsClient, err := metricsv1beta1.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+
 	c.Clientset = clientset
 	c.Dynamic = dynamicClient
+	c.Config = config
+	c.Metrics = metricsClient
 	return nil
 }
 

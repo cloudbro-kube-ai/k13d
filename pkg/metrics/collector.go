@@ -240,7 +240,9 @@ func (c *Collector) collectClusterMetrics(ctx context.Context, contextName strin
 
 	// Get resource usage from metrics-server
 	nodeMetrics, err := c.k8sClient.GetNodeMetrics(ctx)
-	if err == nil {
+	if err != nil {
+		log.Warnf("Metrics-server unavailable (cluster CPU/Memory will be 0): %v", err)
+	} else {
 		for _, usage := range nodeMetrics {
 			metrics.UsedCPUMillis += usage[0]
 			metrics.UsedMemoryMB += usage[1]
@@ -268,7 +270,10 @@ func (c *Collector) collectNodeMetrics(ctx context.Context, contextName string, 
 	}
 
 	// Get metrics from metrics-server
-	nodeMetricsMap, _ := c.k8sClient.GetNodeMetrics(ctx)
+	nodeMetricsMap, err := c.k8sClient.GetNodeMetrics(ctx)
+	if err != nil {
+		log.Warnf("Metrics-server unavailable (node CPU/Memory will be 0): %v", err)
+	}
 
 	// Count pods per node
 	pods, _ := c.k8sClient.ListPods(ctx, "")
@@ -330,7 +335,10 @@ func (c *Collector) collectPodMetrics(ctx context.Context, contextName string, t
 	}
 
 	// Get metrics from metrics-server
-	podMetricsMap, _ := c.k8sClient.GetPodMetrics(ctx, c.config.Namespace)
+	podMetricsMap, err := c.k8sClient.GetPodMetrics(ctx, c.config.Namespace)
+	if err != nil {
+		log.Warnf("Metrics-server unavailable (pod CPU/Memory will be 0): %v", err)
+	}
 
 	// Collect all pod metrics into a batch
 	batch := make([]db.PodMetrics, 0, len(pods))

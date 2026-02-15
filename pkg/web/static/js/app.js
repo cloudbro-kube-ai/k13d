@@ -33,6 +33,28 @@
         let currentLLMModel = ''; // Current LLM model name
         let llmConnected = false; // LLM connection status
         let currentSessionId = sessionStorage.getItem('k13d_session_id') || ''; // AI conversation session ID
+        let appTimezone = localStorage.getItem('k13d_timezone') || 'auto'; // Timezone setting
+
+        // Timezone formatting helpers
+        function getTimezoneOptions() {
+            if (appTimezone === 'auto' || !appTimezone) return {};
+            return { timeZone: appTimezone };
+        }
+
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', ...getTimezoneOptions() });
+        }
+
+        function formatDateTime(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleString([], getTimezoneOptions());
+        }
+
+        function formatTimeShort(date) {
+            if (typeof date === 'string') date = new Date(date);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', ...getTimezoneOptions() });
+        }
 
         // i18n Translations
         const translations = {
@@ -3151,7 +3173,7 @@ ${escapeHtml(execInfo.result)}</div>
             const hint = document.getElementById('endpoint-hint');
 
             const defaults = {
-                'solar': { placeholder: 'https://api.upstage.ai/v1', hint: '(Default: Upstage Solar API)', model: 'solar-pro2', apiKeyHint: 'up_...' },
+                'upstage': { placeholder: 'https://api.upstage.ai/v1', hint: '(Default: Upstage Solar API)', model: 'solar-pro2', apiKeyHint: 'up_...' },
                 'openai': { placeholder: 'https://api.openai.com/v1', hint: '(Default: OpenAI API)', model: 'gpt-4', apiKeyHint: 'sk-...' },
                 'ollama': { placeholder: 'http://localhost:11434', hint: '(Required for Ollama)', model: 'llama3', apiKeyHint: '' },
                 'gemini': { placeholder: 'https://generativelanguage.googleapis.com/v1beta', hint: '(Default: Gemini API)', model: 'gemini-2.5-flash', apiKeyHint: 'AIza...' },
@@ -3192,7 +3214,7 @@ ${escapeHtml(execInfo.result)}</div>
                 if (existingLink) existingLink.remove();
 
                 const links = {
-                    'solar': { url: 'https://console.upstage.ai/api-keys', text: 'Get API Key →' },
+                    'upstage': { url: 'https://console.upstage.ai/api-keys', text: 'Get API Key →' },
                     'openai': { url: 'https://platform.openai.com/api-keys', text: 'Get API Key →' },
                     'anthropic': { url: 'https://console.anthropic.com/settings/keys', text: 'Get API Key →' },
                     'gemini': { url: 'https://aistudio.google.com/app/apikey', text: 'Get API Key →' }
@@ -3731,13 +3753,20 @@ ${escapeHtml(execInfo.result)}</div>
                 currentLanguage = data.language || 'ko';
                 document.getElementById('setting-language').value = currentLanguage;
                 document.getElementById('setting-log-level').value = data.log_level || 'info';
+                // Load timezone setting
+                if (data.timezone) {
+                    appTimezone = data.timezone;
+                    localStorage.setItem('k13d_timezone', appTimezone);
+                }
+                const tzSelect = document.getElementById('setting-timezone');
+                if (tzSelect) tzSelect.value = appTimezone || 'auto';
                 if (data.llm) {
-                    const provider = data.llm.provider || 'solar';
+                    const provider = data.llm.provider || 'upstage';
                     document.getElementById('setting-llm-provider').value = provider;
 
                     // Set model and endpoint with defaults based on provider
                     const defaults = {
-                        'solar': { model: 'solar-pro2', endpoint: 'https://api.upstage.ai/v1' },
+                        'upstage': { model: 'solar-pro2', endpoint: 'https://api.upstage.ai/v1' },
                         'openai': { model: 'gpt-4', endpoint: 'https://api.openai.com/v1' },
                         'ollama': { model: 'qwen2.5:3b', endpoint: 'http://localhost:11434' },
                         'gemini': { model: 'gemini-pro', endpoint: 'https://generativelanguage.googleapis.com/v1beta' },
@@ -3755,8 +3784,8 @@ ${escapeHtml(execInfo.result)}</div>
                         localStorage.setItem('k13d_reasoning_effort', reasoningEffort);
                     }
                 } else {
-                    // No LLM config from server, set Solar defaults
-                    document.getElementById('setting-llm-provider').value = 'solar';
+                    // No LLM config from server, set Upstage defaults
+                    document.getElementById('setting-llm-provider').value = 'upstage';
                     document.getElementById('setting-llm-model').value = 'solar-pro2';
                     document.getElementById('setting-llm-endpoint').value = 'https://api.upstage.ai/v1';
                     currentLLMModel = 'solar-pro2';
@@ -3813,8 +3842,28 @@ ${escapeHtml(execInfo.result)}</div>
             } else {
                 statusEl.classList.remove('connected');
                 statusEl.classList.add('disconnected');
-                statusEl.querySelector('span').textContent = 'Prometheus';
+                statusEl.querySelector('span').textContent = 'Metrics Source';
             }
+
+            // Check metrics-server availability
+            fetchWithAuth('/api/metrics/nodes').then(resp => resp.json()).then(data => {
+                if (!data.error && data.items && data.items.length > 0) {
+                    // Check if real CPU/Memory data exists
+                    const hasMetrics = data.items.some(n => (n.cpu || 0) > 0 || (n.memory || 0) > 0);
+                    if (hasMetrics) {
+                        statusEl.classList.add('connected');
+                        statusEl.classList.remove('disconnected');
+                        const currentText = statusEl.querySelector('span').textContent;
+                        if (!currentText.includes('Prometheus')) {
+                            statusEl.querySelector('span').textContent = 'metrics-server: Connected';
+                        }
+                    } else {
+                        if (!statusEl.classList.contains('connected')) {
+                            statusEl.querySelector('span').textContent = 'metrics-server: N/A';
+                        }
+                    }
+                }
+            }).catch(() => {});
         }
 
         async function testPrometheusConnection() {
@@ -4046,9 +4095,9 @@ ${escapeHtml(execInfo.result)}</div>
             const section = document.getElementById('reasoning-effort-section');
             const provider = document.getElementById('setting-llm-provider')?.value;
 
-            // Show/hide section based on provider (only for solar)
+            // Show/hide section based on provider (only for upstage)
             if (section) {
-                section.style.display = (provider === 'solar') ? 'block' : 'none';
+                section.style.display = (provider === 'upstage') ? 'block' : 'none';
             }
 
             if (toggle) {
@@ -4201,15 +4250,20 @@ ${escapeHtml(execInfo.result)}</div>
 
         async function saveSettings() {
             try {
-                // Save general settings
+                // Save general settings (including timezone)
+                const newTimezone = document.getElementById('setting-timezone')?.value || 'auto';
                 await fetchWithAuth('/api/settings', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         language: document.getElementById('setting-language').value,
-                        log_level: document.getElementById('setting-log-level').value
+                        log_level: document.getElementById('setting-log-level').value,
+                        timezone: newTimezone
                     })
                 });
+                // Apply timezone immediately
+                appTimezone = newTimezone;
+                localStorage.setItem('k13d_timezone', appTimezone);
 
                 // Save LLM settings
                 const apiKey = document.getElementById('setting-llm-apikey').value;
@@ -4301,7 +4355,7 @@ ${escapeHtml(execInfo.result)}</div>
 
                         return `
                             <tr style="${!log.success ? 'background: rgba(239,68,68,0.1);' : (isLLM ? 'background: rgba(59,130,246,0.05);' : '')}">
-                                <td style="white-space:nowrap;padding:8px 12px;">${new Date(log.timestamp).toLocaleString()}</td>
+                                <td style="white-space:nowrap;padding:8px 12px;">${formatDateTime(log.timestamp)}</td>
                                 <td style="padding:8px 12px;">${escapeHtml(log.user || 'anonymous')}</td>
                                 <td style="padding:8px 12px;color:var(--accent-cyan);">${escapeHtml(log.k8s_user || '-')}</td>
                                 <td style="padding:8px 12px;">${actionBadge}</td>
@@ -4900,25 +4954,61 @@ ${escapeHtml(execInfo.result)}</div>
             document.getElementById('reports-modal').classList.remove('active');
         }
 
+        // Build sections query string from report checkboxes
+        function getReportSections() {
+            const mapping = {
+                'report-sec-workloads': 'workloads',
+                'report-sec-nodes': 'nodes,namespaces',
+                'report-sec-security': 'security',
+                'report-sec-trivy': 'security_full',
+                'report-sec-finops': 'finops',
+                'report-sec-events': 'events',
+                'report-sec-metrics': 'metrics',
+            };
+            const parts = [];
+            for (const [id, value] of Object.entries(mapping)) {
+                if (document.getElementById(id)?.checked) parts.push(value);
+            }
+            return parts.join(',');
+        }
+
+        function getReportIncludeAI() {
+            return document.getElementById('report-sec-ai')?.checked ?? false;
+        }
+
+        function reportSelectAll() {
+            document.querySelectorAll('[id^="report-sec-"]').forEach(cb => cb.checked = true);
+        }
+
+        function reportSelectNone() {
+            document.querySelectorAll('[id^="report-sec-"]').forEach(cb => cb.checked = false);
+        }
+
         // Preview report in new window
         async function previewReport() {
-            const includeAI = document.getElementById('report-include-ai')?.checked ?? true;
+            const includeAI = getReportIncludeAI();
+            const sections = getReportSections();
             const statusEl = document.getElementById('report-status');
+
+            if (!sections && !includeAI) {
+                statusEl.innerHTML = `<div style="color: var(--accent-yellow);">Please select at least one section.</div>`;
+                return;
+            }
 
             if (includeAI && !llmConnected) {
                 statusEl.innerHTML = `<div style="color: var(--accent-red);">
-                    AI is not connected. Please configure LLM settings first, or uncheck "Include AI Analysis".
+                    AI is not connected. Please configure LLM settings first, or uncheck "AI Analysis".
                 </div>`;
                 return;
             }
 
             statusEl.innerHTML = `<div style="color: var(--accent-blue);">
                 <span class="loading-dots"><span></span><span></span><span></span></span>
-                Generating report preview${includeAI ? ' with AI analysis' : ''}... This may take a moment.
+                Generating report preview... This may take a moment.
             </div>`;
 
             try {
-                const url = `/api/reports/preview?ai=${includeAI}`;
+                const url = `/api/reports/preview?ai=${includeAI}&sections=${encodeURIComponent(sections)}`;
                 const resp = await fetchWithAuth(url);
 
                 if (!resp.ok) throw new Error('Failed to generate report');
@@ -4931,34 +5021,40 @@ ${escapeHtml(execInfo.result)}</div>
                 previewWindow.document.close();
 
                 statusEl.innerHTML = `<div style="color: var(--accent-green);">
-                    ✓ Report preview opened in new window
+                    Report preview opened in new window
                 </div>`;
             } catch (e) {
                 statusEl.innerHTML = `<div style="color: var(--accent-red);">
-                    ✕ Failed to generate preview: ${e.message}
+                    Failed to generate preview: ${e.message}
                 </div>`;
             }
         }
 
         // Download report
         async function downloadReport(format) {
-            const includeAI = document.getElementById('report-include-ai')?.checked ?? true;
+            const includeAI = getReportIncludeAI();
+            const sections = getReportSections();
             const statusEl = document.getElementById('report-status');
+
+            if (!sections && !includeAI) {
+                statusEl.innerHTML = `<div style="color: var(--accent-yellow);">Please select at least one section.</div>`;
+                return;
+            }
 
             if (includeAI && !llmConnected) {
                 statusEl.innerHTML = `<div style="color: var(--accent-red);">
-                    AI is not connected. Please configure LLM settings first, or uncheck "Include AI Analysis".
+                    AI is not connected. Please configure LLM settings first, or uncheck "AI Analysis".
                 </div>`;
                 return;
             }
 
             statusEl.innerHTML = `<div style="color: var(--accent-blue);">
                 <span class="loading-dots"><span></span><span></span><span></span></span>
-                Generating ${format.toUpperCase()} report${includeAI ? ' with AI analysis' : ''}...
+                Generating ${format.toUpperCase()} report...
             </div>`;
 
             try {
-                const url = `/api/reports?format=${format}&ai=${includeAI}&download=true`;
+                const url = `/api/reports?format=${format}&ai=${includeAI}&download=true&sections=${encodeURIComponent(sections)}`;
                 const resp = await fetch(url, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
@@ -4998,25 +5094,31 @@ ${escapeHtml(execInfo.result)}</div>
         }
 
         async function generateReport(format) {
-            const includeAI = document.getElementById('report-include-ai')?.checked ?? true;
+            const includeAI = getReportIncludeAI();
+            const sections = getReportSections();
             const statusEl = document.getElementById('report-status');
             const previewEl = document.getElementById('report-preview');
 
+            if (!sections && !includeAI) {
+                statusEl.innerHTML = `<div style="color: var(--accent-yellow);">Please select at least one section.</div>`;
+                return;
+            }
+
             if (includeAI && !llmConnected) {
                 statusEl.innerHTML = `<div style="color: var(--accent-red);">
-                    AI is not connected. Please configure LLM settings first, or uncheck "Include AI Analysis".
+                    AI is not connected. Please configure LLM settings first, or uncheck "AI Analysis".
                 </div>`;
                 return;
             }
 
             statusEl.innerHTML = `<div style="color: var(--accent-blue);">
                 <span class="loading-dots"><span></span><span></span><span></span></span>
-                Generating report${includeAI ? ' with AI analysis' : ''}... This may take a moment.
+                Generating report... This may take a moment.
             </div>`;
             previewEl.innerHTML = '';
 
             try {
-                const url = `/api/reports?format=${format}&ai=${includeAI}`;
+                const url = `/api/reports?format=${format}&ai=${includeAI}&sections=${encodeURIComponent(sections)}`;
 
                 if (format === 'json') {
                     // View JSON in preview
@@ -6889,7 +6991,7 @@ spec:
 
             const html = guardrailsConfig.analysisHistory.slice(0, 10).map(item => {
                 const style = RISK_STYLES[item.analysis.risk_level] || RISK_STYLES.safe;
-                const time = new Date(item.timestamp).toLocaleTimeString();
+                const time = formatTime(item.timestamp);
                 const cmd = item.command.length > 50 ? item.command.substring(0, 47) + '...' : item.command;
                 return `
                     <div style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border-color);">
@@ -8656,7 +8758,7 @@ spec:
         // Metrics Functions
         // ==========================================
         let cpuChart = null, memoryChart = null, llmUsageChart = null;
-        let metricsHistory = { cpu: [], memory: [], timestamps: [] };
+        let metricsHistory = { cpu: [], memory: [], timestamps: [], pods: [], nodes: [] };
         let llmUsageHistory = { requests: [], tokens: [], timestamps: [] };
         let metricsInterval = null;
         let metricsHistoryLoaded = false;
@@ -8727,23 +8829,44 @@ spec:
                     // Sort by timestamp ascending
                     const sorted = data.items.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-                    metricsHistory.timestamps = sorted.map(m => {
-                        const d = new Date(m.timestamp);
-                        return d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    });
+                    metricsHistory.timestamps = sorted.map(m => formatTimeShort(m.timestamp));
                     metricsHistory.cpu = sorted.map(m => m.used_cpu_millis || 0);
                     metricsHistory.memory = sorted.map(m => m.used_memory_mb || 0);
+                    metricsHistory.pods = sorted.map(m => m.running_pods || 0);
+                    metricsHistory.nodes = sorted.map(m => m.ready_nodes || m.total_nodes || 0);
+
+                    // Check if metrics-server data is available (all zeros means unavailable)
+                    const hasCPUData = metricsHistory.cpu.some(v => v > 0);
+                    const hasMemData = metricsHistory.memory.some(v => v > 0);
 
                     metricsHistoryLoaded = true;
-                    updateMetricsCharts();
+                    updateMetricsCharts(hasCPUData, hasMemData);
 
                     // Update summary from latest metrics
                     const latest = sorted[sorted.length - 1];
                     if (latest) {
-                        document.getElementById('metrics-total-cpu').textContent = `${latest.used_cpu_millis || 0}m`;
-                        document.getElementById('metrics-total-memory').textContent = formatBytes((latest.used_memory_mb || 0) * 1024 * 1024);
+                        if (hasCPUData) {
+                            document.getElementById('metrics-total-cpu').textContent = `${latest.used_cpu_millis || 0}m`;
+                        } else {
+                            document.getElementById('metrics-total-cpu').textContent = 'N/A';
+                            document.getElementById('metrics-total-cpu').title = 'Install metrics-server for CPU data';
+                        }
+                        if (hasMemData) {
+                            document.getElementById('metrics-total-memory').textContent = formatBytes((latest.used_memory_mb || 0) * 1024 * 1024);
+                        } else {
+                            document.getElementById('metrics-total-memory').textContent = 'N/A';
+                            document.getElementById('metrics-total-memory').title = 'Install metrics-server for memory data';
+                        }
                         document.getElementById('metrics-total-pods').textContent = latest.running_pods || 0;
                     }
+                } else {
+                    // No data collected yet
+                    const cpuEl = document.getElementById('metrics-total-cpu');
+                    const memEl = document.getElementById('metrics-total-memory');
+                    const podEl = document.getElementById('metrics-total-pods');
+                    if (cpuEl) cpuEl.textContent = 'Collecting...';
+                    if (memEl) memEl.textContent = 'Collecting...';
+                    if (podEl) podEl.textContent = '0';
                 }
             } catch (e) {
                 console.error('Failed to load historical metrics:', e);
@@ -8790,7 +8913,7 @@ spec:
                 if (legacyPods) legacyPods.textContent = podCount;
 
                 // Only append to history if we haven't loaded historical data, or for real-time updates
-                metricsHistory.timestamps.push(new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+                metricsHistory.timestamps.push(formatTimeShort(new Date()));
                 metricsHistory.cpu.push(totalCpu);
                 metricsHistory.memory.push(totalMem);
                 if (metricsHistory.timestamps.length > 100) {
@@ -8905,7 +9028,11 @@ spec:
             return (parseInt(memStr) || 0) / (1024 * 1024);
         }
 
-        function updateMetricsCharts() {
+        function updateMetricsCharts(hasCPUData, hasMemData) {
+            // Default to checking history data if not passed
+            if (hasCPUData === undefined) hasCPUData = metricsHistory.cpu.some(v => v > 0);
+            if (hasMemData === undefined) hasMemData = metricsHistory.memory.some(v => v > 0);
+
             const opts = {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -8934,23 +9061,40 @@ spec:
                 }
             };
 
+            // Update chart titles based on data availability
+            const cpuTitle = document.querySelector('#cpu-chart')?.closest('.metric-card')?.querySelector('h4');
+            const memTitle = document.querySelector('#memory-chart')?.closest('.metric-card')?.querySelector('h4');
+
             const cpuCtx = document.getElementById('cpu-chart')?.getContext('2d');
             if (cpuCtx) {
+                // Choose data: CPU if available, otherwise Pod Count
+                const chartData = hasCPUData ? metricsHistory.cpu : metricsHistory.pods;
+                const chartLabel = hasCPUData ? 'CPU (millicores)' : 'Running Pods';
+                const chartColor = hasCPUData ? '#7dcfff' : '#9ece6a';
+                const chartBg = hasCPUData ? 'rgba(125,207,255,0.1)' : 'rgba(158,206,106,0.1)';
+
+                if (cpuTitle) {
+                    cpuTitle.textContent = hasCPUData ? 'CPU Usage Over Time' : 'Running Pods Over Time';
+                    if (!hasCPUData) cpuTitle.title = 'Install metrics-server for CPU data';
+                }
+
                 if (cpuChart) {
                     cpuChart.data.labels = metricsHistory.timestamps;
-                    cpuChart.data.datasets[0].data = metricsHistory.cpu;
+                    cpuChart.data.datasets[0].data = chartData;
+                    cpuChart.data.datasets[0].label = chartLabel;
+                    cpuChart.data.datasets[0].borderColor = chartColor;
+                    cpuChart.data.datasets[0].backgroundColor = chartBg;
                     cpuChart.update();
-                }
-                else {
+                } else {
                     cpuChart = new Chart(cpuCtx, {
                         type: 'line',
                         data: {
                             labels: metricsHistory.timestamps,
                             datasets: [{
-                                label: 'CPU (millicores)',
-                                data: metricsHistory.cpu,
-                                borderColor: '#7dcfff',
-                                backgroundColor: 'rgba(125,207,255,0.1)',
+                                label: chartLabel,
+                                data: chartData,
+                                borderColor: chartColor,
+                                backgroundColor: chartBg,
                                 fill: true,
                                 tension: 0.4,
                                 pointRadius: 0,
@@ -8961,23 +9105,37 @@ spec:
                     });
                 }
             }
+
             const memCtx = document.getElementById('memory-chart')?.getContext('2d');
             if (memCtx) {
+                // Choose data: Memory if available, otherwise Node Count
+                const chartData = hasMemData ? metricsHistory.memory : metricsHistory.nodes;
+                const chartLabel = hasMemData ? 'Memory (MB)' : 'Ready Nodes';
+                const chartColor = hasMemData ? '#bb9af7' : '#e0af68';
+                const chartBg = hasMemData ? 'rgba(187,154,247,0.1)' : 'rgba(224,175,104,0.1)';
+
+                if (memTitle) {
+                    memTitle.textContent = hasMemData ? 'Memory Usage Over Time' : 'Ready Nodes Over Time';
+                    if (!hasMemData) memTitle.title = 'Install metrics-server for Memory data';
+                }
+
                 if (memoryChart) {
                     memoryChart.data.labels = metricsHistory.timestamps;
-                    memoryChart.data.datasets[0].data = metricsHistory.memory;
+                    memoryChart.data.datasets[0].data = chartData;
+                    memoryChart.data.datasets[0].label = chartLabel;
+                    memoryChart.data.datasets[0].borderColor = chartColor;
+                    memoryChart.data.datasets[0].backgroundColor = chartBg;
                     memoryChart.update();
-                }
-                else {
+                } else {
                     memoryChart = new Chart(memCtx, {
                         type: 'line',
                         data: {
                             labels: metricsHistory.timestamps,
                             datasets: [{
-                                label: 'Memory (MB)',
-                                data: metricsHistory.memory,
-                                borderColor: '#bb9af7',
-                                backgroundColor: 'rgba(187,154,247,0.1)',
+                                label: chartLabel,
+                                data: chartData,
+                                borderColor: chartColor,
+                                backgroundColor: chartBg,
                                 fill: true,
                                 tension: 0.4,
                                 pointRadius: 0,
@@ -9560,15 +9718,25 @@ spec:
                         </div>
                         <div class="pulse-card">
                             <div class="pulse-card-title">CPU Usage</div>
-                            <div class="pulse-card-value">${cpuPct}%</div>
-                            <div class="pulse-bar"><div class="pulse-bar-fill" style="width:${cpuPct}%;background:${barColor(cpuPct)};"></div></div>
-                            <div class="pulse-card-sub">${d.cpu_used_milli}m / ${d.cpu_capacity_milli}m</div>
+                            ${d.cpu_avail ? `
+                                <div class="pulse-card-value">${cpuPct}%</div>
+                                <div class="pulse-bar"><div class="pulse-bar-fill" style="width:${cpuPct}%;background:${barColor(cpuPct)};"></div></div>
+                                <div class="pulse-card-sub">${d.cpu_used_milli}m / ${d.cpu_capacity_milli}m</div>
+                            ` : `
+                                <div class="pulse-card-value" style="font-size:14px;color:var(--text-secondary);">N/A</div>
+                                <div class="pulse-card-sub" style="color:var(--accent-yellow);">metrics-server not available</div>
+                            `}
                         </div>
                         <div class="pulse-card">
                             <div class="pulse-card-title">Memory Usage</div>
-                            <div class="pulse-card-value">${memPct}%</div>
-                            <div class="pulse-bar"><div class="pulse-bar-fill" style="width:${memPct}%;background:${barColor(memPct)};"></div></div>
-                            <div class="pulse-card-sub">${d.mem_used_mib}Mi / ${d.mem_capacity_mib}Mi</div>
+                            ${d.mem_avail ? `
+                                <div class="pulse-card-value">${memPct}%</div>
+                                <div class="pulse-bar"><div class="pulse-bar-fill" style="width:${memPct}%;background:${barColor(memPct)};"></div></div>
+                                <div class="pulse-card-sub">${d.mem_used_mib}Mi / ${d.mem_capacity_mib}Mi</div>
+                            ` : `
+                                <div class="pulse-card-value" style="font-size:14px;color:var(--text-secondary);">N/A</div>
+                                <div class="pulse-card-sub" style="color:var(--accent-yellow);">metrics-server not available</div>
+                            `}
                         </div>
                     </div>
                     <div style="display:flex;gap:10px;margin-bottom:16px;">
@@ -10327,7 +10495,7 @@ spec:
                     html += '<div class="timeline-container"><div class="timeline-line"></div>';
                     data.windows.forEach(w => {
                         const dotClass = w.warningCount > 0 ? 'warning' : '';
-                        const windowTime = new Date(w.timestamp).toLocaleTimeString();
+                        const windowTime = formatTime(w.timestamp);
                         const windowCount = (w.normalCount || 0) + (w.warningCount || 0);
                         html += `<div class="timeline-group">
                             <div class="timeline-dot ${dotClass}"></div>

@@ -142,7 +142,7 @@ func (c *Client) GetEndpoint() string {
 	}
 	// Return default endpoints based on provider
 	switch c.cfg.Provider {
-	case "solar":
+	case "solar", "upstage":
 		return "https://api.upstage.ai/v1"
 	case "openai":
 		return "https://api.openai.com/v1"

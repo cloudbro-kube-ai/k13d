@@ -14,6 +14,7 @@ import (
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
 	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
 	"github.com/rivo/tview"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // portForwardInfo tracks a running port-forward process
@@ -385,11 +386,6 @@ func (a *App) execShell() {
 	resource := a.currentResource
 	a.mx.RUnlock()
 
-	if resource != "pods" && resource != "po" {
-		a.flashMsg("Shell access is only available for pods. Navigate to pods view first using :pods", true)
-		return
-	}
-
 	// RBAC check
 	if !a.checkTUIPermission("pods", "exec") {
 		return
@@ -403,7 +399,29 @@ func (a *App) execShell() {
 	ns := a.getTableCellText(row, 0)
 	name := a.getTableCellText(row, 1)
 
-	// Suspend the TUI and run kubectl exec
+	// Direct shell for pods
+	if resource == "pods" || resource == "po" {
+		a.runShellForPod(ns, name)
+		return
+	}
+
+	// For workloads, show pod selector
+	workloadResources := map[string]bool{
+		"deployments": true, "deploy": true,
+		"statefulsets": true, "sts": true,
+		"daemonsets": true, "ds": true,
+		"replicasets": true, "rs": true,
+	}
+	if !workloadResources[resource] {
+		a.flashMsg("Shell is available for pods and workloads (deploy/sts/ds/rs)", true)
+		return
+	}
+
+	go a.selectPodAndShell(ns, name, resource)
+}
+
+// runShellForPod suspends the TUI and opens a shell into the given pod
+func (a *App) runShellForPod(ns, name string) {
 	a.Suspend(func() {
 		// Try bash first, fall back to sh
 		cmd := exec.Command("kubectl", "exec", "-it", "-n", ns, name, "--", "/bin/bash")
@@ -422,6 +440,130 @@ func (a *App) execShell() {
 				bufio.NewReader(os.Stdin).ReadString('\n')
 			}
 		}
+	})
+}
+
+// selectPodAndShell lists pods for a workload and lets the user pick one for shell access
+func (a *App) selectPodAndShell(ns, name, resource string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Get the workload's label selector
+	var labelSelector string
+	switch resource {
+	case "deployments", "deploy":
+		dep, err := a.k8s.Clientset.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			a.QueueUpdateDraw(func() {
+				a.flashMsg(fmt.Sprintf("Failed to get deployment: %v", err), true)
+			})
+			return
+		}
+		labelSelector = metav1.FormatLabelSelector(dep.Spec.Selector)
+	case "statefulsets", "sts":
+		sts, err := a.k8s.Clientset.AppsV1().StatefulSets(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			a.QueueUpdateDraw(func() {
+				a.flashMsg(fmt.Sprintf("Failed to get statefulset: %v", err), true)
+			})
+			return
+		}
+		labelSelector = metav1.FormatLabelSelector(sts.Spec.Selector)
+	case "daemonsets", "ds":
+		ds, err := a.k8s.Clientset.AppsV1().DaemonSets(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			a.QueueUpdateDraw(func() {
+				a.flashMsg(fmt.Sprintf("Failed to get daemonset: %v", err), true)
+			})
+			return
+		}
+		labelSelector = metav1.FormatLabelSelector(ds.Spec.Selector)
+	case "replicasets", "rs":
+		rs, err := a.k8s.Clientset.AppsV1().ReplicaSets(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			a.QueueUpdateDraw(func() {
+				a.flashMsg(fmt.Sprintf("Failed to get replicaset: %v", err), true)
+			})
+			return
+		}
+		labelSelector = metav1.FormatLabelSelector(rs.Spec.Selector)
+	default:
+		return
+	}
+
+	// List pods matching the selector
+	podList, err := a.k8s.Clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		a.QueueUpdateDraw(func() {
+			a.flashMsg(fmt.Sprintf("Failed to list pods: %v", err), true)
+		})
+		return
+	}
+
+	// Filter to running pods
+	var runningPods []struct {
+		Name   string
+		Status string
+	}
+	for _, pod := range podList.Items {
+		status := string(pod.Status.Phase)
+		if status == "Running" {
+			runningPods = append(runningPods, struct {
+				Name   string
+				Status string
+			}{Name: pod.Name, Status: status})
+		}
+	}
+
+	if len(runningPods) == 0 {
+		a.QueueUpdateDraw(func() {
+			a.flashMsg(fmt.Sprintf("No running pods found for %s/%s", resource, name), true)
+		})
+		return
+	}
+
+	// If only one pod, shell directly
+	if len(runningPods) == 1 {
+		a.QueueUpdateDraw(func() {
+			a.runShellForPod(ns, runningPods[0].Name)
+		})
+		return
+	}
+
+	// Show pod selector modal
+	a.QueueUpdateDraw(func() {
+		list := tview.NewList()
+		list.SetBorder(true).SetTitle(fmt.Sprintf(" Select Pod for Shell (%s/%s) ", resource, name))
+
+		for _, pod := range runningPods {
+			podName := pod.Name
+			list.AddItem(podName, fmt.Sprintf("  Status: %s", pod.Status), 0, nil)
+		}
+
+		list.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+			selectedPod := runningPods[index].Name
+			a.closeModal("pod-shell-selector")
+			a.SetFocus(a.table)
+			a.runShellForPod(ns, selectedPod)
+		})
+
+		list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEsc {
+				a.closeModal("pod-shell-selector")
+				a.SetFocus(a.table)
+				return nil
+			}
+			return event
+		})
+
+		height := len(runningPods)*2 + 4
+		if height > 20 {
+			height = 20
+		}
+		a.showModal("pod-shell-selector", centered(list, 65, height), true)
+		a.SetFocus(list)
 	})
 }
 
@@ -626,15 +768,29 @@ func (a *App) showContextSwitcher() {
 
 		a.safeGo("switchContext", func() {
 			a.flashMsg(fmt.Sprintf("Switching to context: %s...", selectedCtx), false)
+
+			// Stop watcher before switching (it holds old cluster connection)
+			a.stopWatch()
+
 			err := a.k8s.SwitchContext(selectedCtx)
 			if err != nil {
 				a.flashMsg(fmt.Sprintf("Failed to switch context: %v", err), true)
 				return
 			}
 
+			// Reset namespace to new context's default and clear cached namespace list
+			newNs := a.k8s.GetCurrentNamespace()
+			a.mx.Lock()
+			a.currentNamespace = newNs
+			a.namespaces = nil
+			a.mx.Unlock()
+
 			a.flashMsg(fmt.Sprintf("Switched to context: %s", selectedCtx), false)
 			a.updateHeader()
 			a.refresh()
+
+			// Restart watcher for new cluster
+			a.startWatch()
 		})
 	})
 
@@ -1627,7 +1783,7 @@ func (a *App) showSettings() {
 	hasAPIKey := a.config.LLM.APIKey != ""
 
 	// Provider dropdown
-	providers := []string{"openai", "ollama", "solar", "gemini", "anthropic", "bedrock", "azopenai"}
+	providers := []string{"openai", "ollama", "upstage", "gemini", "anthropic", "bedrock", "azopenai"}
 	providerIndex := 0
 	for i, p := range providers {
 		if p == provider {
@@ -1676,8 +1832,8 @@ func (a *App) showSettings() {
 					}
 				}
 			}
-		case "solar":
-			if endpoint == "" {
+		case "upstage":
+			if endpoint == "" || endpoint == "https://api.openai.com/v1" {
 				endpoint = "https://api.upstage.ai/v1"
 				if item := form.GetFormItemByLabel("Endpoint"); item != nil {
 					if input, ok := item.(*tview.InputField); ok {
@@ -1685,7 +1841,7 @@ func (a *App) showSettings() {
 					}
 				}
 			}
-			if model == "" {
+			if model == "" || model == "gpt-4o" || model == "llama3.2" {
 				model = "solar-pro2"
 				if item := form.GetFormItemByLabel("Model"); item != nil {
 					if input, ok := item.(*tview.InputField); ok {
