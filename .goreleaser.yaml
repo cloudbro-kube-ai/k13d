@@ -167,7 +167,7 @@ release:
     **Full Changelog**: https://github.com/cloudbro-kube-ai/k13d/compare/{{ .PreviousTag }}...{{ .Tag }}
   name_template: "v{{.Version}}"
   extra_files:
-    - glob: dist/k13d-*.tgz
+    - glob: .helm-out/k13d-*.tgz
 
 # Source code archive
 source:
