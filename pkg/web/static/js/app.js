@@ -1965,42 +1965,322 @@
             }).join('');
         }
 
-        // Show Custom Resource detail modal
+        // Show Custom Resource detail using the shared detail-modal
         async function showCRDetail(crdName, namespace, name) {
             const crdInfo = loadedCRDs.find(c => c.name === crdName);
             if (!crdInfo) return;
 
             try {
+                // Fetch full CR as JSON for overview
                 const ns = namespace ? `&namespace=${namespace}` : '';
-                const resp = await fetchWithAuth(`/api/crd/${crdName}/instances/${name}?format=yaml${ns}`);
-                const yamlContent = await resp.text();
+                const resp = await fetchWithAuth(`/api/crd/${crdName}/instances/${name}?${ns}`);
+                const crData = await resp.json();
 
-                // Show modal with YAML
-                let html = `
-                    <div class="modal-overlay" onclick="closeModal(event)">
-                        <div class="modal detail-modal" onclick="event.stopPropagation()">
-                            <div class="modal-header">
-                                <h3>${crdInfo.kind}: ${name}</h3>
-                                <button class="modal-close" onclick="closeAllModals()">&times;</button>
+                // Store as selectedResource for YAML/Events tabs
+                selectedResource = {
+                    name: name,
+                    namespace: namespace,
+                    _isCR: true,
+                    _crdName: crdName,
+                    _crdInfo: crdInfo,
+                    _crData: crData,
+                };
+
+                document.getElementById('detail-title').textContent = `${crdInfo.kind}: ${name}`;
+
+                // Overview tab
+                document.getElementById('detail-overview').innerHTML = generateCROverview(crdInfo, crData);
+
+                // YAML tab - load on demand
+                document.getElementById('detail-yaml').innerHTML = '<div class="yaml-viewer" style="color: var(--text-secondary);">Click the YAML tab to load...</div>';
+                document.getElementById('detail-yaml').dataset.loaded = 'false';
+
+                // Events tab - load on demand
+                document.getElementById('detail-events').innerHTML = '<p style="color: var(--text-secondary);">Click the Events tab to load...</p>';
+                document.getElementById('detail-events').dataset.loaded = 'false';
+
+                // Hide Related Pods tab
+                document.getElementById('detail-pods-tab').style.display = 'none';
+
+                document.getElementById('detail-modal').classList.add('active');
+                switchDetailTab('overview');
+            } catch (e) {
+                console.error('Failed to load CR detail:', e);
+            }
+        }
+
+        // Generate rich overview for Custom Resources
+        function generateCROverview(crdInfo, crData) {
+            const metadata = crData.metadata || {};
+            const spec = crData.spec || {};
+            const status = crData.status || {};
+            const labels = metadata.labels || {};
+            const annotations = metadata.annotations || {};
+
+            // Determine status from common patterns
+            let statusText = '-';
+            let statusColor = 'var(--text-secondary)';
+            const conditions = status.conditions || [];
+
+            if (status.phase) {
+                statusText = status.phase;
+            } else if (status.state) {
+                statusText = status.state;
+            } else if (typeof status.ready === 'boolean') {
+                statusText = status.ready ? 'Ready' : 'NotReady';
+            } else if (conditions.length > 0) {
+                const readyCond = conditions.find(c => c.type === 'Ready' || c.type === 'Available' || c.type === 'Synced');
+                if (readyCond) {
+                    statusText = readyCond.status === 'True' ? readyCond.type : `Not${readyCond.type}`;
+                }
+            }
+
+            // Also check printer columns for status
+            if (statusText === '-' && crdInfo.printerColumns) {
+                for (const col of crdInfo.printerColumns) {
+                    const key = col.name.toLowerCase();
+                    if (key === 'status' || key === 'phase' || key === 'state' || key === 'ready') {
+                        const val = resolveJSONPathClient(crData, col.jsonPath || col.JSONPath);
+                        if (val) { statusText = String(val); break; }
+                    }
+                }
+            }
+
+            const readyStates = ['ready', 'running', 'active', 'healthy', 'synced', 'true', 'available', 'bound', 'succeeded', 'complete'];
+            const failedStates = ['failed', 'error', 'notready', 'unavailable', 'false', 'degraded', 'crashloopbackoff'];
+            const statusLower = statusText.toLowerCase();
+            if (readyStates.some(s => statusLower.includes(s))) {
+                statusColor = 'var(--accent-green)';
+            } else if (failedStates.some(s => statusLower.includes(s))) {
+                statusColor = 'var(--accent-red)';
+            } else if (statusText !== '-') {
+                statusColor = 'var(--accent-yellow)';
+            }
+
+            // Build labels HTML
+            const labelHtml = Object.keys(labels).length > 0
+                ? Object.entries(labels).map(([k, v]) =>
+                    `<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:4px;background:var(--accent-blue)15;color:var(--accent-blue);font-size:11px;border:1px solid var(--accent-blue)30;font-family:monospace;">${escapeHtml(k)}=${escapeHtml(v)}</span>`
+                ).join('')
+                : '<span style="color:var(--text-secondary);font-size:12px;">None</span>';
+
+            // Build spec fields (top-level only, skip large nested objects)
+            const specEntries = Object.entries(spec).filter(([k, v]) => {
+                if (v === null || v === undefined) return false;
+                if (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length > 5) return false;
+                return true;
+            }).slice(0, 12);
+
+            const specHtml = specEntries.length > 0
+                ? specEntries.map(([k, v]) => {
+                    let display;
+                    if (typeof v === 'object') {
+                        display = Array.isArray(v) ? `[${v.length} items]` : JSON.stringify(v);
+                        if (display.length > 80) display = display.substring(0, 77) + '...';
+                    } else {
+                        display = String(v);
+                    }
+                    return `<div class="overview-stat">
+                        <span class="stat-label">${escapeHtml(k)}</span>
+                        <span class="stat-value" style="font-family:monospace;font-size:12px;word-break:break-all;">${escapeHtml(display)}</span>
+                    </div>`;
+                }).join('')
+                : '<div style="color:var(--text-secondary);font-size:12px;padding:8px;">No spec fields</div>';
+
+            // Build conditions table
+            let conditionsHtml = '';
+            if (conditions.length > 0) {
+                conditionsHtml = `
+                    <div class="overview-card" style="grid-column: 1 / -1;">
+                        <div class="overview-card-title">Conditions</div>
+                        <div style="overflow-x:auto;">
+                            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                                <thead>
+                                    <tr style="border-bottom:1px solid var(--border-color);">
+                                        <th style="text-align:left;padding:6px 8px;color:var(--text-secondary);">TYPE</th>
+                                        <th style="text-align:left;padding:6px 8px;color:var(--text-secondary);">STATUS</th>
+                                        <th style="text-align:left;padding:6px 8px;color:var(--text-secondary);">REASON</th>
+                                        <th style="text-align:left;padding:6px 8px;color:var(--text-secondary);">MESSAGE</th>
+                                        <th style="text-align:left;padding:6px 8px;color:var(--text-secondary);">LAST TRANSITION</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${conditions.map(c => {
+                                        const condColor = c.status === 'True' ? 'var(--accent-green)' : c.status === 'False' ? 'var(--accent-red)' : 'var(--accent-yellow)';
+                                        const age = c.lastTransitionTime ? formatTimeShort(c.lastTransitionTime) : '-';
+                                        return `<tr style="border-bottom:1px solid var(--border-color)20;">
+                                            <td style="padding:6px 8px;font-weight:500;">${escapeHtml(c.type || '-')}</td>
+                                            <td style="padding:6px 8px;color:${condColor};font-weight:600;">${escapeHtml(c.status || '-')}</td>
+                                            <td style="padding:6px 8px;color:var(--text-secondary);">${escapeHtml(c.reason || '-')}</td>
+                                            <td style="padding:6px 8px;color:var(--text-secondary);max-width:300px;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(c.message || '')}">${escapeHtml(c.message || '-')}</td>
+                                            <td style="padding:6px 8px;color:var(--text-secondary);">${age}</td>
+                                        </tr>`;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>`;
+            }
+
+            // Build status fields (excluding conditions)
+            const statusEntries = Object.entries(status).filter(([k]) => k !== 'conditions').slice(0, 8);
+            const statusFieldsHtml = statusEntries.length > 0
+                ? statusEntries.map(([k, v]) => {
+                    let display;
+                    if (typeof v === 'object') {
+                        display = JSON.stringify(v);
+                        if (display.length > 80) display = display.substring(0, 77) + '...';
+                    } else {
+                        display = String(v);
+                    }
+                    return `<div class="overview-stat">
+                        <span class="stat-label">${escapeHtml(k)}</span>
+                        <span class="stat-value" style="font-family:monospace;font-size:12px;">${escapeHtml(display)}</span>
+                    </div>`;
+                }).join('')
+                : '';
+
+            // Build printer columns card
+            let printerColsHtml = '';
+            const printerCols = crdInfo.printerColumns || [];
+            const displayCols = printerCols.filter(c => {
+                const key = c.name.toLowerCase();
+                return key !== 'age' && key !== 'name' && key !== 'namespace';
+            });
+            if (displayCols.length > 0) {
+                const colValues = displayCols.map(c => {
+                    const val = resolveJSONPathClient(crData, c.jsonPath || c.JSONPath) || '-';
+                    return `<div class="overview-stat">
+                        <span class="stat-label">${escapeHtml(c.name)}</span>
+                        <span class="stat-value" style="font-family:monospace;font-size:12px;">${escapeHtml(String(val))}</span>
+                    </div>`;
+                }).join('');
+                printerColsHtml = `
+                    <div class="overview-card">
+                        <div class="overview-card-title">Key Fields</div>
+                        <div class="overview-card-content">${colValues}</div>
+                    </div>`;
+            }
+
+            // Annotations (show first 5, truncated)
+            const annotationEntries = Object.entries(annotations).slice(0, 5);
+            const annotationsHtml = annotationEntries.length > 0
+                ? annotationEntries.map(([k, v]) => {
+                    const shortVal = v.length > 60 ? v.substring(0, 57) + '...' : v;
+                    return `<div class="overview-stat">
+                        <span class="stat-label" style="font-size:11px;" title="${escapeHtml(k)}">${escapeHtml(k.split('/').pop())}</span>
+                        <span class="stat-value" style="font-size:11px;font-family:monospace;" title="${escapeHtml(v)}">${escapeHtml(shortVal)}</span>
+                    </div>`;
+                }).join('')
+                : '';
+
+            return `
+                <div class="resource-overview-header">
+                    <div class="overview-status-badge" style="background: ${statusColor}20; color: ${statusColor}; border: 1px solid ${statusColor}40;">
+                        <span class="status-dot" style="background: ${statusColor};"></span>
+                        ${escapeHtml(statusText)}
+                    </div>
+                    <span style="color:var(--text-secondary);font-size:12px;margin-left:12px;">${escapeHtml(crdInfo.group)}/${escapeHtml(crdInfo.version)}</span>
+                </div>
+                <div class="overview-cards">
+                    <div class="overview-card">
+                        <div class="overview-card-title">Metadata</div>
+                        <div class="overview-card-content">
+                            <div class="overview-stat">
+                                <span class="stat-label">Name</span>
+                                <span class="stat-value" style="font-family:monospace;">${escapeHtml(metadata.name || '-')}</span>
                             </div>
-                            <div class="detail-tabs">
-                                <button class="detail-tab active" data-tab="yaml">YAML</button>
+                            ${metadata.namespace ? `<div class="overview-stat">
+                                <span class="stat-label">Namespace</span>
+                                <span class="stat-value">${escapeHtml(metadata.namespace)}</span>
+                            </div>` : ''}
+                            <div class="overview-stat">
+                                <span class="stat-label">Created</span>
+                                <span class="stat-value">${metadata.creationTimestamp ? formatTimeShort(metadata.creationTimestamp) : '-'}</span>
                             </div>
-                            <div class="modal-body" style="padding: 0;">
-                                <pre id="cr-yaml-content" style="padding: 16px; margin: 0; background: var(--bg-primary); overflow: auto; max-height: 60vh; font-size: 12px;">${escapeHtml(yamlContent)}</pre>
+                            <div class="overview-stat">
+                                <span class="stat-label">Generation</span>
+                                <span class="stat-value">${metadata.generation || '-'}</span>
                             </div>
                         </div>
                     </div>
-                `;
+                    ${printerColsHtml}
+                    <div class="overview-card">
+                        <div class="overview-card-title">Spec</div>
+                        <div class="overview-card-content">${specHtml}</div>
+                    </div>
+                    ${statusFieldsHtml ? `<div class="overview-card">
+                        <div class="overview-card-title">Status</div>
+                        <div class="overview-card-content">${statusFieldsHtml}</div>
+                    </div>` : ''}
+                </div>
+                ${conditionsHtml}
+                <div class="overview-card" style="margin-top:12px;">
+                    <div class="overview-card-title">Labels</div>
+                    <div style="padding:8px;">${labelHtml}</div>
+                </div>
+                ${annotationsHtml ? `<div class="overview-card" style="margin-top:12px;">
+                    <div class="overview-card-title">Annotations</div>
+                    <div class="overview-card-content">${annotationsHtml}</div>
+                </div>` : ''}
+            `;
+        }
 
-                const modalContainer = document.createElement('div');
-                modalContainer.id = 'cr-detail-modal';
-                modalContainer.innerHTML = html;
-                document.body.appendChild(modalContainer);
-            } catch (e) {
-                console.error('Failed to load CR detail:', e);
-                alert('Failed to load resource details: ' + e.message);
+        // Client-side JSONPath resolver (mirrors Go's ResolveJSONPath)
+        function resolveJSONPathClient(obj, path) {
+            if (!path || !obj) return null;
+            path = path.replace(/^\./, '');
+            return _resolvePathRec(obj, path);
+        }
+
+        function _resolvePathRec(current, path) {
+            if (!path || current === null || current === undefined) return current;
+            if (typeof current !== 'object' || Array.isArray(current)) return null;
+
+            const dotIdx = path.indexOf('.');
+            const bracketIdx = path.indexOf('[');
+
+            // Simple field (no dot, no bracket)
+            if (dotIdx < 0 && bracketIdx < 0) return current[path];
+
+            // Array bracket comes before dot (or no dot)
+            if (bracketIdx >= 0 && (dotIdx < 0 || bracketIdx < dotIdx)) {
+                const fieldName = path.substring(0, bracketIdx);
+                const rest = path.substring(bracketIdx);
+                const arr = current[fieldName];
+                if (!Array.isArray(arr)) return null;
+
+                const bracketEnd = rest.indexOf(']');
+                if (bracketEnd < 0) return null;
+                const bracketContent = rest.substring(1, bracketEnd);
+                let remaining = rest.substring(bracketEnd + 1);
+                if (remaining.startsWith('.')) remaining = remaining.substring(1);
+
+                // Array filter: ?(@.key=="value")
+                if (bracketContent.startsWith('?(@.')) {
+                    const expr = bracketContent.substring(4, bracketContent.length - 1); // strip ?(@. and )
+                    const eqParts = expr.split('==');
+                    if (eqParts.length === 2) {
+                        const key = eqParts[0];
+                        const value = eqParts[1].replace(/['"]/g, '');
+                        const found = arr.find(item => item && String(item[key]) === value);
+                        return remaining ? _resolvePathRec(found, remaining) : found;
+                    }
+                    return null;
+                }
+
+                // Numeric index
+                const idx = parseInt(bracketContent);
+                if (!isNaN(idx) && idx >= 0 && idx < arr.length) {
+                    return remaining ? _resolvePathRec(arr[idx], remaining) : arr[idx];
+                }
+                return null;
             }
+
+            // Dot-separated path
+            const fieldName = path.substring(0, dotIdx);
+            const rest = path.substring(dotIdx + 1);
+            return _resolvePathRec(current[fieldName], rest);
         }
 
         // Escape HTML for safe display
@@ -7799,9 +8079,18 @@ spec:
                 if (yamlEl.dataset.loaded !== 'true') {
                     yamlEl.innerHTML = `<div class="yaml-viewer" style="color: var(--text-secondary);">Loading YAML...</div>`;
                     try {
-                        const ns = selectedResource.namespace || '';
-                        const url = `/api/k8s/${currentResource}?name=${encodeURIComponent(selectedResource.name)}&namespace=${encodeURIComponent(ns)}&format=yaml`;
-                        const response = await fetch(url, { credentials: 'include' });
+                        let url;
+                        if (selectedResource._isCR) {
+                            // Custom Resource: use CRD API
+                            const crdName = selectedResource._crdName;
+                            const ns = selectedResource.namespace ? `&namespace=${encodeURIComponent(selectedResource.namespace)}` : '';
+                            url = `/api/crd/${crdName}/instances/${encodeURIComponent(selectedResource.name)}?format=yaml${ns}`;
+                        } else {
+                            // Built-in resource: use k8s API
+                            const ns = selectedResource.namespace || '';
+                            url = `/api/k8s/${currentResource}?name=${encodeURIComponent(selectedResource.name)}&namespace=${encodeURIComponent(ns)}&format=yaml`;
+                        }
+                        const response = await fetchWithAuth(url);
                         if (!response.ok) {
                             throw new Error(await response.text());
                         }
