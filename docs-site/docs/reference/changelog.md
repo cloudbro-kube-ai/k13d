@@ -2,22 +2,32 @@
 
 All notable changes to k13d are documented here.
 
+## [0.8.5] - 2026-02-16
+
+### Added
+- **TUI: Sort Picker (`:sort`)**: Interactive column picker modal for sorting resources
+- **TUI: Help Modal Sorting Section**: Help screen (`?`) now documents all sorting shortcuts (Shift+N/A/T/P/C/D)
+- **Web UI: Report Section Selection**: Choose which sections to include when generating reports
+- **Web UI: Rich Custom Resource Detail**: CRDs now display Overview/YAML/Events tabs
+- **Web UI: Historical Metrics Charts**: Time-series charts with configurable time ranges (5m–24h)
+- **Web UI: Collect Now Button**: Trigger immediate metrics collection
+- **AI Provider: Upstage/Solar**: Added Upstage (Solar) as a supported LLM provider
+
+### Fixed
+- **Web UI: Metrics Array Sync**: Fixed metricsHistory arrays going out of sync
+- **Web UI: Chart Cleanup**: Charts properly destroyed on Metrics modal close
+- **Web UI: Context Switch Stale Data**: Context switch now reloads namespaces and data
+
+### Removed
+- **Web UI: Healing View**: Removed auto-remediation rules UI
+
+---
+
 ## [0.8.4] - 2026-02-16
 
 ### Added
-- **Web UI: Report Section Selection**: Choose which sections (Nodes, Namespaces, Workloads, Events, Security, FinOps, Metrics) to include when generating reports
-- **Web UI: Rich Custom Resource Detail**: CRDs now display Overview/YAML/Events tabs with auto-generated status badge, metadata, printer columns, conditions table, and spec/status summary
-- **Web UI: Historical Metrics Charts**: CPU, Memory, Pod Count, and Node Count charts with configurable time ranges (5m–24h) backed by SQLite storage
-- **Web UI: Collect Now Button**: Trigger immediate metrics collection from the Metrics modal
-- **AI Provider: Upstage/Solar**: Added Upstage (Solar) as a supported LLM provider with default endpoint
-
-### Fixed
-- **Web UI: Metrics Array Sync**: Fixed metricsHistory arrays (timestamps, cpu, memory, pods, nodes) going out of sync during live updates
-- **Web UI: Chart Cleanup**: Charts are now properly destroyed and history reset when closing and reopening the Metrics modal
-- **Web UI: Context Switch Stale Data**: Switching cluster context now reloads namespaces and resource data
-
-### Removed
-- **Web UI: Healing View**: Removed auto-remediation rules UI (Healing nav item, rules CRUD, event history)
+- **Helm Chart Release**: Helm chart (.tgz) now included as extra file in goreleaser releases
+- **Validation Resource Counts**: Validation view now shows scanned resource counts
 
 ---
 

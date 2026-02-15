@@ -5,6 +5,30 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.5] - 2026-02-16
+
+### Added
+- **TUI: Sort Picker (`:sort`)**: Interactive column picker modal for sorting resources — dynamically lists current table columns with active sort indicator
+- **TUI: Help Modal Sorting Section**: Help screen (`?`) now documents all sorting shortcuts (Shift+N/A/T/P/C/D) and `:sort` command
+- **Web UI: Report Section Selection**: Choose which sections (Nodes, Namespaces, Workloads, Events, Security, FinOps, Metrics) to include when generating reports
+- **Web UI: Rich Custom Resource Detail**: CRDs now display Overview/YAML/Events tabs with auto-generated status badge, metadata, printer columns, conditions table, and spec/status summary
+- **Web UI: Historical Metrics Charts**: CPU, Memory, Pod Count, and Node Count charts with configurable time ranges (5m–24h) backed by SQLite storage
+- **Web UI: Collect Now Button**: Trigger immediate metrics collection from the Metrics modal
+- **AI Provider: Upstage/Solar**: Added Upstage (Solar) as a supported LLM provider with default endpoint
+
+### Fixed
+- **Web UI: Metrics Array Sync**: Fixed metricsHistory arrays going out of sync during live updates
+- **Web UI: Chart Cleanup**: Charts are now properly destroyed and history reset when closing Metrics modal
+- **Web UI: Context Switch Stale Data**: Switching cluster context now reloads namespaces and resource data
+
+### Removed
+- **Web UI: Healing View**: Removed auto-remediation rules UI
+
+### Documentation
+- Added 8 new screenshots to mkdocs (TUI autocomplete/help/LLM settings, Web UI applications/report preview/event timeline/network policy map/resource templates)
+- Added Event Timeline, Network Policy Map, Resource Templates sections to web-ui docs
+- Updated changelog, reports docs, and help references
+
 ## [0.8.4] - 2026-02-16
 
 ### Added
