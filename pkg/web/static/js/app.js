@@ -6657,48 +6657,25 @@ spec:
             statusText.textContent = 'Checking Ollama status...';
 
             try {
-                // Check if Ollama is running by trying to connect to default endpoint
-                const response = await fetch('http://localhost:11434/api/tags', {
-                    method: 'GET',
-                    signal: AbortSignal.timeout(3000)
-                });
-
+                // Check Ollama status through backend proxy (avoids CSP/CORS issues)
+                const response = await fetchWithAuth('/api/llm/ollama/status');
                 if (response.ok) {
                     const data = await response.json();
-                    ollamaModels = data.models || [];
-
-                    statusDot.style.background = 'var(--accent-green)';
-                    statusText.textContent = `Ollama running - ${ollamaModels.length} model(s) available`;
-                    notInstalled.style.display = 'none';
-                    installed.style.display = 'block';
-
-                    renderOllamaModels();
-                } else {
-                    throw new Error('Ollama not responding');
-                }
-            } catch (e) {
-                // Check if it's a CORS error (Ollama might be running but browser blocks)
-                if (e.name === 'TypeError' && e.message.includes('Failed to fetch')) {
-                    // Try through our backend proxy
-                    try {
-                        const proxyResponse = await fetchWithAuth('/api/llm/ollama/status');
-                        if (proxyResponse.ok) {
-                            const data = await proxyResponse.json();
-                            if (data.running) {
-                                ollamaModels = data.models || [];
-                                statusDot.style.background = 'var(--accent-green)';
-                                statusText.textContent = `Ollama running - ${ollamaModels.length} model(s) available`;
-                                notInstalled.style.display = 'none';
-                                installed.style.display = 'block';
-                                renderOllamaModels();
-                                return;
-                            }
-                        }
-                    } catch (proxyErr) {
-                        console.log('Backend proxy check failed:', proxyErr);
+                    if (data.running) {
+                        ollamaModels = data.models || [];
+                        statusDot.style.background = 'var(--accent-green)';
+                        statusText.textContent = `Ollama running - ${ollamaModels.length} model(s) available`;
+                        notInstalled.style.display = 'none';
+                        installed.style.display = 'block';
+                        renderOllamaModels();
+                        return;
                     }
                 }
-
+                statusDot.style.background = 'var(--accent-yellow)';
+                statusText.textContent = 'Ollama not detected';
+                notInstalled.style.display = 'block';
+                installed.style.display = 'none';
+            } catch (e) {
                 statusDot.style.background = 'var(--accent-yellow)';
                 statusText.textContent = 'Ollama not detected';
                 notInstalled.style.display = 'block';
@@ -9704,8 +9681,8 @@ spec:
             if (sel && !sel.value && currentNamespace) {
                 sel.value = currentNamespace;
             }
-            // Auto-load if a namespace is selected
-            if (sel?.value) loadValidateData();
+            // Always call loadValidateData - it shows a placeholder if no namespace is selected
+            loadValidateData();
         }
 
         async function loadValidateData() {
