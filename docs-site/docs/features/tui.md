@@ -94,6 +94,8 @@ When typing a command, k13d shows autocomplete suggestions:
   - **Esc**: Dismiss dropdown
   - Custom aliases from `aliases.yaml` are included in suggestions
 
+![TUI Autocomplete Dropdown](../images/tui_auto_complete.png)
+
 ---
 
 ## Resource Actions
@@ -179,6 +181,8 @@ Switch between configured AI model profiles:
 - **`:model gpt-4o`** - Switch directly to a named profile
 
 Model profiles are defined in `~/.config/k13d/config.yaml` under the `models` section.
+
+![TUI LLM Settings](../images/tui_llm_setting.png)
 
 ### AI Actions
 
@@ -600,6 +604,8 @@ The help modal shows context-sensitive keyboard shortcuts:
 | `?` | Show help modal |
 | `j` / `k` | Scroll within help |
 | `Esc` / `q` | Close help |
+
+![TUI Help Modal](../images/tui_help.png)
 
 ---
 

@@ -93,11 +93,57 @@ Click any node to view resource details and navigate to related resources.
 
 App-centric view grouping resources by `app.kubernetes.io/name` labels.
 
+![Web UI Applications View](../images/web_ui_applications.png)
+
 | Feature | Description |
 |---------|-------------|
 | **Auto-grouping** | Groups Deployments, Services, Pods by app label |
 | **Health Badges** | Color-coded health status per application |
 | **Namespace Filter** | Scope applications to a namespace |
+
+---
+
+## Event Timeline
+
+Cluster events visualized in chronological order with time-window grouping and severity indicators.
+
+![Web UI Event Timeline](../images/web_ui_event_timeline.png)
+
+| Feature | Description |
+|---------|-------------|
+| **Time-Window Grouping** | Events grouped by time windows with counts |
+| **Severity Indicators** | Warning/Normal event classification |
+| **Resource Filtering** | Filter events by namespace or resource type |
+| **Drill-Down** | Click events to view details and affected resources |
+
+---
+
+## Network Policy Map
+
+Visualize network policies and connectivity rules across your cluster.
+
+![Web UI Network Policy Map](../images/web_ui_network_policy_map.png)
+
+| Feature | Description |
+|---------|-------------|
+| **Policy Visualization** | Ingress/egress rule visualization per policy |
+| **Pod Selectors** | See which pods are affected by each policy |
+| **Rule Details** | View allowed ports, protocols, and CIDR blocks |
+| **Namespace Scoping** | Filter policies by namespace |
+
+---
+
+## Resource Templates
+
+Pre-built templates for quickly deploying common Kubernetes resources.
+
+![Web UI Resource Templates](../images/web_ui_resource_template.png)
+
+| Feature | Description |
+|---------|-------------|
+| **Template Library** | Common patterns (Nginx, Redis, PostgreSQL, etc.) |
+| **Customizable** | Edit templates before deploying |
+| **One-Click Deploy** | Deploy resources directly from template |
 
 ---
 
@@ -206,6 +252,10 @@ When generating a report, you can select which sections to include:
 | **Metrics** | CPU/Memory utilization metrics |
 
 By default, all standard sections are enabled except **Security Full** (which requires Trivy and can be slow).
+
+### Report Preview
+
+![Web UI Cluster Report Preview](../images/web_ui_cluster_report_preview.png)
 
 ### Security Assessment Report
 
