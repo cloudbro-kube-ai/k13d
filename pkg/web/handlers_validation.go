@@ -176,11 +176,11 @@ func (s *Server) handleValidate(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"namespace":       namespace,
-		"findings":        findings,
-		"total":           len(findings),
+		"namespace":         namespace,
+		"findings":          findings,
+		"total":             len(findings),
 		"resources_scanned": len(resources),
-		"resource_counts": resourceCounts,
+		"resource_counts":   resourceCounts,
 	})
 }
 

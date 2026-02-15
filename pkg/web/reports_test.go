@@ -278,9 +278,11 @@ func TestParseSections(t *testing.T) {
 			checkMsg: "Namespaces should be true, Nodes should be false",
 		},
 		{
-			name:     "all sections combined",
-			input:    "nodes,namespaces,workloads,events,security_full,finops,metrics",
-			checkFn:  func(s *ReportSections) bool { return s.Nodes && s.Namespaces && s.Workloads && s.Events && s.SecurityBasic && s.SecurityFull && s.FinOps && s.Metrics },
+			name:  "all sections combined",
+			input: "nodes,namespaces,workloads,events,security_full,finops,metrics",
+			checkFn: func(s *ReportSections) bool {
+				return s.Nodes && s.Namespaces && s.Workloads && s.Events && s.SecurityBasic && s.SecurityFull && s.FinOps && s.Metrics
+			},
 			checkMsg: "all sections should be true",
 		},
 		{
