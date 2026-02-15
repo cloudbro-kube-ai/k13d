@@ -9,6 +9,7 @@ before:
     - go mod tidy
     - go generate ./...
     - bash scripts/download-trivy.sh
+    - bash scripts/package-helm.sh {{ .Version }}
 
 builds:
   - id: k13d
@@ -165,6 +166,8 @@ release:
   footer: |
     **Full Changelog**: https://github.com/cloudbro-kube-ai/k13d/compare/{{ .PreviousTag }}...{{ .Tag }}
   name_template: "v{{.Version}}"
+  extra_files:
+    - glob: dist/k13d-*.tgz
 
 # Source code archive
 source:
