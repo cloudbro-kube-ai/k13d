@@ -580,7 +580,7 @@ func (am *AuthManager) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// Check for session cookie or Authorization header
+		// Check for session cookie, Authorization header, or query parameter
 		sessionID := ""
 		token := ""
 
@@ -594,6 +594,13 @@ func (am *AuthManager) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			auth := r.Header.Get("Authorization")
 			if strings.HasPrefix(auth, "Bearer ") {
 				token = strings.TrimPrefix(auth, "Bearer ")
+			}
+		}
+
+		// Try query parameter (for WebSocket connections that cannot set headers)
+		if sessionID == "" && token == "" {
+			if qToken := r.URL.Query().Get("token"); qToken != "" {
+				token = qToken
 			}
 		}
 

@@ -73,8 +73,8 @@ WORKDIR /home/k13d
 # K13D_DEFAULT_ROLE: Default TUI role (admin, user, viewer)
 ENV K13D_PORT=8080 \
     K13D_AUTH_MODE=token \
-    K13D_LLM_PROVIDER=ollama \
-    K13D_LLM_MODEL=llama3 \
+    K13D_LLM_PROVIDER="" \
+    K13D_LLM_MODEL="" \
     K13D_LLM_ENDPOINT="" \
     K13D_JWT_SECRET="" \
     K13D_DEFAULT_ROLE=admin

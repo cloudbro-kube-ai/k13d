@@ -1299,10 +1299,24 @@
                     throw new Error(data.error);
                 }
 
-                // Set up table headers for this CR
-                const headers = crdInfo.namespaced ?
-                    ['NAME', 'NAMESPACE', 'STATUS', 'AGE'] :
-                    ['NAME', 'STATUS', 'AGE'];
+                // Build dynamic headers from printerColumns
+                const printerCols = data.printerColumns || crdInfo.printerColumns || [];
+                const extraColNames = printerCols
+                    .filter(c => {
+                        const key = c.name.toLowerCase();
+                        return key !== 'age' && key !== 'name' && key !== 'namespace' && (c.priority || 0) === 0;
+                    })
+                    .map(c => c.name.toUpperCase());
+
+                let headers;
+                if (crdInfo.namespaced) {
+                    headers = ['NAME', 'NAMESPACE', ...extraColNames, 'STATUS', 'AGE'];
+                } else {
+                    headers = ['NAME', ...extraColNames, 'STATUS', 'AGE'];
+                }
+
+                // Store printer column info for renderTableBody
+                crdInfo._extraColumns = extraColNames;
 
                 // Store headers dynamically
                 tableHeaders[`crd:${crdInfo.name}`] = headers;
@@ -1896,21 +1910,28 @@
                         // Handle Custom Resources (crd:xxx format) and unknown types
                         if (resource.startsWith('crd:')) {
                             const crdInfo = currentCRD;
+                            const extra = item.extra || {};
+                            const extraCols = crdInfo?._extraColumns || [];
+                            const extraCells = extraCols.map(col => {
+                                const key = col.toLowerCase().replace(/[- ]/g, '_');
+                                return `<td>${escapeHtml(extra[key] || '-')}</td>`;
+                            }).join('');
+                            const statusVal = item.status || '-';
+                            const statusClass = statusVal.toLowerCase().includes('ready') || statusVal.toLowerCase() === 'true' ? 'status-running' :
+                                               statusVal.toLowerCase().includes('failed') || statusVal.toLowerCase() === 'false' ? 'status-failed' : '';
                             if (crdInfo && crdInfo.namespaced) {
-                                const statusClass = (item.status || '').toLowerCase().includes('ready') ? 'status-running' :
-                                                   (item.status || '').toLowerCase().includes('failed') ? 'status-failed' : '';
                                 return `<tr data-index="${index}" onclick="showCRDetail('${crdInfo.name}', '${item.namespace || ''}', '${item.name}')">
                                     <td>${item.name}</td>
                                     <td>${item.namespace || '-'}</td>
-                                    <td class="${statusClass}">${item.status || '-'}</td>
+                                    ${extraCells}
+                                    <td class="${statusClass}">${escapeHtml(statusVal)}</td>
                                     <td>${item.age || '-'}</td>
                                 </tr>`;
                             } else {
-                                const statusClass = (item.status || '').toLowerCase().includes('ready') ? 'status-running' :
-                                                   (item.status || '').toLowerCase().includes('failed') ? 'status-failed' : '';
                                 return `<tr data-index="${index}" onclick="showCRDetail('${crdInfo?.name || ''}', '', '${item.name}')">
                                     <td>${item.name}</td>
-                                    <td class="${statusClass}">${item.status || '-'}</td>
+                                    ${extraCells}
+                                    <td class="${statusClass}">${escapeHtml(statusVal)}</td>
                                     <td>${item.age || '-'}</td>
                                 </tr>`;
                             }
@@ -8158,9 +8179,13 @@ spec:
                 currentTerminalWs = null;
             }
 
-            // Build WebSocket URL
+            // Build WebSocket URL with auth token (WebSocket cannot set headers)
             const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${wsProtocol}//${window.location.host}/api/terminal/${terminalNamespace}/${terminalPodName}${terminalContainer ? '?container=' + terminalContainer : ''}`;
+            const wsParams = new URLSearchParams();
+            if (terminalContainer) wsParams.set('container', terminalContainer);
+            if (authToken && authToken !== 'anonymous') wsParams.set('token', authToken);
+            const wsQuery = wsParams.toString() ? '?' + wsParams.toString() : '';
+            const wsUrl = `${wsProtocol}//${window.location.host}/api/terminal/${terminalNamespace}/${terminalPodName}${wsQuery}`;
 
             currentTerminalWs = new WebSocket(wsUrl);
 
@@ -9456,13 +9481,26 @@ spec:
                 if (!sel) return;
                 const prev = sel.value;
                 sel.innerHTML = '';
+                // For validate, add a placeholder instead of "All Namespaces"
+                const needsPlaceholder = (id === 'validate-ns-select');
                 for (const opt of src.options) {
                     const o = document.createElement('option');
                     o.value = opt.value;
-                    o.textContent = opt.textContent;
+                    if (needsPlaceholder && opt.value === '') {
+                        o.textContent = '-- Select Namespace --';
+                    } else {
+                        o.textContent = opt.textContent;
+                    }
                     sel.appendChild(o);
                 }
-                sel.value = prev || '';
+                // Restore previous selection, or use currentNamespace if available
+                if (prev) {
+                    sel.value = prev;
+                } else if (currentNamespace) {
+                    sel.value = currentNamespace;
+                } else {
+                    sel.value = '';
+                }
             });
         }
 
@@ -9661,9 +9699,13 @@ spec:
         // ============================
         function showValidateView() {
             showCustomView('validate-container', 'validate');
+            // Auto-select current namespace if validate select is empty
+            const sel = document.getElementById('validate-ns-select');
+            if (sel && !sel.value && currentNamespace) {
+                sel.value = currentNamespace;
+            }
             // Auto-load if a namespace is selected
-            const ns = document.getElementById('validate-ns-select')?.value;
-            if (ns) loadValidateData();
+            if (sel?.value) loadValidateData();
         }
 
         async function loadValidateData() {

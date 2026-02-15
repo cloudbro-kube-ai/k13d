@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1048,15 +1049,24 @@ func (c *Client) ListCRDs(ctx context.Context) ([]apiextv1.CustomResourceDefinit
 	return crds, nil
 }
 
+// PrinterColumn represents an additionalPrinterColumn from a CRD spec.
+type PrinterColumn struct {
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	JSONPath string `json:"jsonPath"`
+	Priority int    `json:"priority"`
+}
+
 // CRDInfo contains information about a Custom Resource Definition
 type CRDInfo struct {
-	Name       string   `json:"name"`
-	Group      string   `json:"group"`
-	Version    string   `json:"version"`
-	Kind       string   `json:"kind"`
-	Plural     string   `json:"plural"`
-	Namespaced bool     `json:"namespaced"`
-	ShortNames []string `json:"shortNames"`
+	Name           string          `json:"name"`
+	Group          string          `json:"group"`
+	Version        string          `json:"version"`
+	Kind           string          `json:"kind"`
+	Plural         string          `json:"plural"`
+	Namespaced     bool            `json:"namespaced"`
+	ShortNames     []string        `json:"shortNames"`
+	PrinterColumns []PrinterColumn `json:"printerColumns,omitempty"`
 }
 
 // GetCRDInfo returns detailed information about a CRD by name
@@ -1094,12 +1104,14 @@ func (c *Client) GetCRDInfo(ctx context.Context, crdName string) (*CRDInfo, erro
 	// Extract versions and find the served/storage version
 	versions, _, _ := unstructured.NestedSlice(obj.Object, "spec", "versions")
 	var version string
+	var printerColumns []PrinterColumn
 	for _, v := range versions {
 		if vMap, ok := v.(map[string]interface{}); ok {
 			served, _ := vMap["served"].(bool)
 			storage, _ := vMap["storage"].(bool)
 			if served && storage {
 				version, _ = vMap["name"].(string)
+				printerColumns = extractPrinterColumns(vMap)
 				break
 			}
 		}
@@ -1108,17 +1120,21 @@ func (c *Client) GetCRDInfo(ctx context.Context, crdName string) (*CRDInfo, erro
 	if version == "" && len(versions) > 0 {
 		if vMap, ok := versions[0].(map[string]interface{}); ok {
 			version, _ = vMap["name"].(string)
+			if len(printerColumns) == 0 {
+				printerColumns = extractPrinterColumns(vMap)
+			}
 		}
 	}
 
 	return &CRDInfo{
-		Name:       crdName,
-		Group:      group,
-		Version:    version,
-		Kind:       kind,
-		Plural:     plural,
-		Namespaced: namespaced,
-		ShortNames: shortNames,
+		Name:           crdName,
+		Group:          group,
+		Version:        version,
+		Kind:           kind,
+		Plural:         plural,
+		Namespaced:     namespaced,
+		ShortNames:     shortNames,
+		PrinterColumns: printerColumns,
 	}, nil
 }
 
@@ -1165,12 +1181,14 @@ func (c *Client) parseCRDItem(obj *unstructured.Unstructured) (*CRDInfo, error) 
 
 	versions, _, _ := unstructured.NestedSlice(obj.Object, "spec", "versions")
 	var version string
+	var printerColumns []PrinterColumn
 	for _, v := range versions {
 		if vMap, ok := v.(map[string]interface{}); ok {
 			served, _ := vMap["served"].(bool)
 			storage, _ := vMap["storage"].(bool)
 			if served && storage {
 				version, _ = vMap["name"].(string)
+				printerColumns = extractPrinterColumns(vMap)
 				break
 			}
 		}
@@ -1178,18 +1196,161 @@ func (c *Client) parseCRDItem(obj *unstructured.Unstructured) (*CRDInfo, error) 
 	if version == "" && len(versions) > 0 {
 		if vMap, ok := versions[0].(map[string]interface{}); ok {
 			version, _ = vMap["name"].(string)
+			if len(printerColumns) == 0 {
+				printerColumns = extractPrinterColumns(vMap)
+			}
 		}
 	}
 
 	return &CRDInfo{
-		Name:       obj.GetName(),
-		Group:      group,
-		Version:    version,
-		Kind:       kind,
-		Plural:     plural,
-		Namespaced: namespaced,
-		ShortNames: shortNames,
+		Name:           obj.GetName(),
+		Group:          group,
+		Version:        version,
+		Kind:           kind,
+		Plural:         plural,
+		Namespaced:     namespaced,
+		ShortNames:     shortNames,
+		PrinterColumns: printerColumns,
 	}, nil
+}
+
+// extractPrinterColumns parses additionalPrinterColumns from a CRD version map.
+func extractPrinterColumns(versionMap map[string]interface{}) []PrinterColumn {
+	cols, ok := versionMap["additionalPrinterColumns"].([]interface{})
+	if !ok || len(cols) == 0 {
+		return nil
+	}
+	var result []PrinterColumn
+	for _, col := range cols {
+		colMap, ok := col.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		name, _ := colMap["name"].(string)
+		colType, _ := colMap["type"].(string)
+		jsonPath, _ := colMap["jsonPath"].(string)
+		priority, _ := colMap["priority"].(int64)
+		if name != "" && jsonPath != "" {
+			result = append(result, PrinterColumn{
+				Name:     name,
+				Type:     colType,
+				JSONPath: jsonPath,
+				Priority: int(priority),
+			})
+		}
+	}
+	return result
+}
+
+// ResolveJSONPath extracts a value from an unstructured map using a simplified JSONPath.
+// Supports: .field.subfield, .field[index], .field[?(@.key=="value")].resultField
+func ResolveJSONPath(obj map[string]interface{}, jsonPath string) string {
+	path := strings.TrimPrefix(jsonPath, ".")
+	if path == "" {
+		return ""
+	}
+	val := resolvePathRecursive(obj, path)
+	if val == nil {
+		return ""
+	}
+	switch v := val.(type) {
+	case string:
+		return v
+	case bool:
+		if v {
+			return "True"
+		}
+		return "False"
+	case float64:
+		if v == float64(int64(v)) {
+			return fmt.Sprintf("%d", int64(v))
+		}
+		return fmt.Sprintf("%.2f", v)
+	case int64:
+		return fmt.Sprintf("%d", v)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+func resolvePathRecursive(current interface{}, path string) interface{} {
+	if path == "" || current == nil {
+		return current
+	}
+	m, ok := current.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	// Check for array bracket in current segment
+	dotIdx := strings.Index(path, ".")
+	bracketIdx := strings.Index(path, "[")
+
+	// Simple field (no dot, no bracket)
+	if dotIdx < 0 && bracketIdx < 0 {
+		return m[path]
+	}
+
+	// Array bracket comes before dot (or no dot)
+	if bracketIdx >= 0 && (dotIdx < 0 || bracketIdx < dotIdx) {
+		fieldName := path[:bracketIdx]
+		rest := path[bracketIdx:]
+
+		arr, ok := m[fieldName].([]interface{})
+		if !ok {
+			return nil
+		}
+
+		bracketEnd := strings.Index(rest, "]")
+		if bracketEnd < 0 {
+			return nil
+		}
+
+		bracketContent := rest[1:bracketEnd]
+		remaining := ""
+		if bracketEnd+1 < len(rest) {
+			remaining = strings.TrimPrefix(rest[bracketEnd+1:], ".")
+		}
+
+		// Array filter: ?(@.key=="value")
+		if strings.HasPrefix(bracketContent, "?(@.") {
+			expr := strings.TrimPrefix(bracketContent, "?(@.")
+			expr = strings.TrimSuffix(expr, ")")
+			parts := strings.SplitN(expr, "==", 2)
+			if len(parts) == 2 {
+				key := parts[0]
+				value := strings.Trim(parts[1], "\"'")
+				for _, elem := range arr {
+					elemMap, ok := elem.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					if fmt.Sprintf("%v", elemMap[key]) == value {
+						if remaining == "" {
+							return elem
+						}
+						return resolvePathRecursive(elem, remaining)
+					}
+				}
+			}
+			return nil
+		}
+
+		// Numeric index
+		idx, err := strconv.Atoi(bracketContent)
+		if err == nil && idx >= 0 && idx < len(arr) {
+			if remaining == "" {
+				return arr[idx]
+			}
+			return resolvePathRecursive(arr[idx], remaining)
+		}
+		return nil
+	}
+
+	// Dot-separated path
+	fieldName := path[:dotIdx]
+	rest := path[dotIdx+1:]
+	return resolvePathRecursive(m[fieldName], rest)
 }
 
 // ListCustomResources lists instances of a custom resource
