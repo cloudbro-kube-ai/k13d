@@ -52,8 +52,17 @@ func (s *Server) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 
 	logs, err := db.GetAuditLogsFiltered(filter)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": err.Error(),
+			"logs":  []interface{}{},
+		})
 		return
+	}
+
+	if logs == nil {
+		logs = []map[string]interface{}{}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

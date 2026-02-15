@@ -4271,6 +4271,10 @@ ${escapeHtml(execInfo.result)}</div>
                 if (auditFilter.onlyErrors) params.append('only_errors', 'true');
 
                 const resp = await fetchWithAuth('/api/audit?' + params.toString());
+                if (!resp.ok) {
+                    const errText = await resp.text();
+                    throw new Error(errText || `HTTP ${resp.status}`);
+                }
                 const data = await resp.json();
 
                 document.getElementById('audit-entry-count').textContent =

@@ -181,11 +181,15 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 	helmClient := helm.NewClient("", "")
 	fmt.Printf("  Helm client: Ready\n")
 
-	// Initialize database
-	if err := db.Init(""); err != nil {
-		fmt.Printf("  Database: Failed to initialize (%v)\n", err)
+	// Initialize database (skip if already initialized by main)
+	if db.DB == nil {
+		if err := db.Init(""); err != nil {
+			fmt.Printf("  Database: Failed to initialize (%v)\n", err)
+		} else {
+			fmt.Printf("  Database: Ready\n")
+		}
 	} else {
-		fmt.Printf("  Database: Ready\n")
+		fmt.Printf("  Database: Ready (pre-initialized)\n")
 	}
 
 	// Initialize auth manager
