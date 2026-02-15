@@ -349,12 +349,6 @@
                     <div class="nav-item" data-resource="healing" onclick="showHealingView()">
                         <span>Healing</span>
                     </div>
-                    <div class="nav-item" data-resource="helm" onclick="showHelmView()">
-                        <span>Helm</span>
-                    </div>
-                    <div class="nav-item" data-resource="gitops" onclick="showGitOpsView()">
-                        <span>GitOps</span>
-                    </div>
                     <div class="nav-item" data-resource="templates" onclick="showTemplatesView()">
                         <span>Templates</span>
                     </div>
@@ -528,7 +522,6 @@
                                     <button class="overview-action-btn" onclick="showMetricsDashboard()">Metrics</button>
                                     <button class="overview-action-btn" onclick="showApplicationsView()">Applications</button>
                                     <button class="overview-action-btn" onclick="showValidateView()">Validate</button>
-                                    <button class="overview-action-btn" onclick="showHelmView()">Helm</button>
                                 </div>
                             </div>
                             <div class="overview-section">
@@ -634,21 +627,6 @@
                     </div>
                 </div>
 
-                <!-- Helm View Container -->
-                <div class="custom-view-container" id="helm-container" style="display:none;">
-                    <div class="custom-view-toolbar">
-                        <h2>Helm Releases</h2>
-                        <div style="display:flex;gap:8px;align-items:center;">
-                            <select id="helm-ns-select" onchange="loadHelmData()">
-                                <option value="">All Namespaces</option>
-                            </select>
-                            <button onclick="loadHelmData()">↻ Refresh</button>
-                        </div>
-                    </div>
-                    <div class="custom-view-body" id="helm-body">
-                        <div class="loading-placeholder">Loading Helm releases...</div>
-                    </div>
-                </div>
 
                 <!-- RBAC Visualization Container -->
                 <div class="custom-view-container" id="rbac-viz-container" style="display:none;">
@@ -711,21 +689,6 @@
                     </div>
                 </div>
 
-                <!-- GitOps Container -->
-                <div class="custom-view-container" id="gitops-container" style="display:none;">
-                    <div class="custom-view-toolbar">
-                        <h2>GitOps</h2>
-                        <div style="display:flex;gap:8px;align-items:center;">
-                            <select id="gitops-ns-select" onchange="loadGitOpsData()">
-                                <option value="">All Namespaces</option>
-                            </select>
-                            <button onclick="loadGitOpsData()">↻ Refresh</button>
-                        </div>
-                    </div>
-                    <div class="custom-view-body" id="gitops-body">
-                        <div class="loading-placeholder">Loading GitOps status...</div>
-                    </div>
-                </div>
 
                 <!-- Templates Container -->
                 <div class="custom-view-container" id="templates-container" style="display:none;">
@@ -740,6 +703,7 @@
                                 <option value="queue">Message Queue</option>
                                 <option value="monitoring">Monitoring</option>
                                 <option value="batch">Batch Jobs</option>
+                                <option value="networking">Networking</option>
                             </select>
                         </div>
                     </div>

@@ -16,7 +16,7 @@ type ResourceTemplate struct {
 var builtinTemplates = []ResourceTemplate{
 	{
 		Name:        "Nginx Deployment",
-		Category:    "Web Server",
+		Category:    "webserver",
 		Description: "A basic Nginx web server deployment with 2 replicas",
 		YAML: `apiVersion: apps/v1
 kind: Deployment
@@ -49,7 +49,7 @@ spec:
 	},
 	{
 		Name:        "Redis StatefulSet",
-		Category:    "Database",
+		Category:    "database",
 		Description: "Redis StatefulSet with persistent storage",
 		YAML: `apiVersion: apps/v1
 kind: StatefulSet
@@ -92,7 +92,7 @@ spec:
 	},
 	{
 		Name:        "PostgreSQL Deployment",
-		Category:    "Database",
+		Category:    "database",
 		Description: "PostgreSQL database with persistent volume claim",
 		YAML: `apiVersion: apps/v1
 kind: Deployment
@@ -142,7 +142,7 @@ spec:
 	},
 	{
 		Name:        "CronJob Example",
-		Category:    "Batch",
+		Category:    "batch",
 		Description: "A CronJob that runs every hour",
 		YAML: `apiVersion: batch/v1
 kind: CronJob
@@ -174,7 +174,7 @@ spec:
 	},
 	{
 		Name:        "Service + Ingress",
-		Category:    "Networking",
+		Category:    "networking",
 		Description: "ClusterIP Service with Ingress for external access",
 		YAML: `apiVersion: v1
 kind: Service

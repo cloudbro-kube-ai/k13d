@@ -9425,7 +9425,7 @@ spec:
         // ============================
         // Custom View Helpers
         // ============================
-        const customViewIds = ['overview-container','metrics-dashboard-container','topology-tree-container','applications-container','validate-container','healing-container','helm-container','rbac-viz-container','netpol-viz-container','timeline-container','gitops-container','templates-container'];
+        const customViewIds = ['overview-container','metrics-dashboard-container','topology-tree-container','applications-container','validate-container','healing-container','rbac-viz-container','netpol-viz-container','timeline-container','templates-container'];
 
         function hideAllCustomViews() {
             customViewIds.forEach(id => {
@@ -9453,7 +9453,7 @@ spec:
         function syncCustomViewNamespaces() {
             const src = document.getElementById('namespace-select');
             if (!src) return;
-            ['metrics-dash-ns-select','topo-tree-ns-select','apps-ns-select','validate-ns-select','helm-ns-select','rbac-viz-ns-select','netpol-viz-ns-select','timeline-ns-select','gitops-ns-select'].forEach(id => {
+            ['metrics-dash-ns-select','topo-tree-ns-select','apps-ns-select','validate-ns-select','rbac-viz-ns-select','netpol-viz-ns-select','timeline-ns-select'].forEach(id => {
                 const sel = document.getElementById(id);
                 if (!sel) return;
                 const prev = sel.value;
@@ -10414,7 +10414,7 @@ spec:
                 body.innerHTML = '<div class="loading-placeholder">No templates available</div>';
                 return;
             }
-            const icons = {webserver:'🌐',database:'💾',cache:'⚡',queue:'📨',monitoring:'📊',batch:'⏱️'};
+            const icons = {webserver:'🌐',database:'💾',cache:'⚡',queue:'📨',monitoring:'📊',batch:'⏱️',networking:'🔗'};
             body.innerHTML = `<div class="templates-grid">${templates.map((t, i) => `
                 <div class="template-card" onclick="openTemplateDeploy(${i})">
                     <div class="template-card-icon">${icons[t.category] || '📦'}</div>
@@ -10443,15 +10443,21 @@ spec:
             const yaml = document.getElementById('template-deploy-yaml').value;
             const ns = document.getElementById('template-deploy-ns').value || 'default';
             try {
-                await fetchWithAuth('/api/templates/apply', {
+                const resp = await fetchWithAuth('/api/templates/apply', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({yaml, namespace: ns})
                 });
-                alert('Template deployed successfully!');
+                if (!resp.ok) {
+                    const errText = await resp.text();
+                    showNotification('Deploy failed: ' + errText, 'error');
+                    return;
+                }
+                const data = await resp.json();
+                showNotification('Template deployed: ' + (data.result || 'success'), 'success');
                 closeTemplateDeployModal();
             } catch (e) {
-                alert('Deploy failed: ' + e.message);
+                showNotification('Deploy failed: ' + e.message, 'error');
             }
         }
 
