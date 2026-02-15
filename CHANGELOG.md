@@ -5,15 +5,17 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.8.4] - 2026-02-15
+## [0.8.4] - 2026-02-16
 
 ### Added
 - **Helm Chart Release**: Helm chart (.tgz) now included as extra file in goreleaser releases
+- **Validation Resource Counts**: Validation view now shows scanned resource counts (Pods, Services, Deployments, etc.)
 
 ### Fixed
+- **Web UI: Report AI Check**: Report generation now shows error if AI is not connected instead of silently failing
 - **Web UI: Ollama CSP Violation**: Ollama status check now uses backend proxy instead of direct browser fetch blocked by Content Security Policy
 - **Web UI: Validation View**: Shows placeholder message when no namespace is selected instead of blank page
-- **Web UI: Template Deployment**: Fixed silent failure — now checks HTTP response status and shows proper error/success notifications
+- **Web UI: Template Deployment**: Fixed `showNotification` undefined error and silent failure — now uses `showToast` with proper error/success feedback
 - **Web UI: Template Category Filter**: Fixed case mismatch between backend categories and frontend dropdown values
 - **Web UI: Audit Logs**: Fixed "Failed to load audit logs" caused by double DB initialization and non-JSON error responses
 - **Web UI: Context Switch**: Context switch now properly reloads namespaces and data
