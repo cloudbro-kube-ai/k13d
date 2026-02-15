@@ -5,6 +5,20 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.4] - 2026-02-15
+
+### Added
+- **Helm Chart Release**: Helm chart (.tgz) now included as extra file in goreleaser releases
+
+### Fixed
+- **Web UI: Context Switch**: Context switch now properly reloads namespaces and data
+- **Web UI: Log Download**: Log download filename now includes pod name and timestamp
+- **Web UI: Namespace Indicator**: Shows available namespaces instead of empty list
+- **Web UI: Multiple Fixes**: Deployment and UI fixes for stability
+
+### Documentation
+- **MkDocs Expansion**: Detailed plugin, hotkey, alias, views, and TUI feature documentation
+
 ## [0.8.3] - 2026-02-14
 
 ### Added
