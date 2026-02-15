@@ -81,20 +81,20 @@ k13d provides comprehensive Kubernetes management with both TUI and Web interfac
 
 ---
 
-### TUI Dashboard
+### TUI - Help & Keybindings
 
-![TUI Full Screen](../images/tui-full-screen.png)
+![TUI Help](../images/tui_help.png)
 
-*Terminal dashboard with k9s-style interface*
+*Help modal showing all keybindings including sorting and AI shortcuts*
 
-### TUI - AI Assistant
+### TUI - Autocomplete
 
-![TUI AI Panel](../images/tui-assistant-pannel.png)
+![TUI Autocomplete](../images/tui_auto_complete.png)
 
-*AI assistant integrated in TUI*
+*Command autocomplete with dropdown suggestions*
 
-### TUI - AI Conversation
+### TUI - LLM Settings
 
-![TUI AI Conversation](../images/tui-ask-answer-test.png)
+![TUI LLM Settings](../images/tui_llm_setting.png)
 
-*Example AI interaction with tool execution*
+*Model switching between configured AI profiles*

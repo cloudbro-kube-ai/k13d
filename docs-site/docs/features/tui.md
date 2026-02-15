@@ -10,19 +10,13 @@ The TUI provides a k9s-style terminal dashboard for Kubernetes management.
 
 ### Main Interface
 
-![TUI Full Screen](../images/tui-full-screen.png)
+![TUI Help](../images/tui_help.png)
 
 The TUI interface provides:
 
 - **Left Panel**: Resource list with status indicators
 - **Right Panel**: AI Assistant for natural language queries
-- **Bottom**: Status bar with context and namespace info
-
-### Full Screen View
-
-![TUI Full Screen 2](../images/tui-full-screen2.png)
-
-Different resource views with real-time updates.
+- **Bottom**: Status bar with context, namespace, sort, and filter info
 
 ---
 
@@ -143,8 +137,6 @@ When typing a command, k13d shows autocomplete suggestions:
 
 ### AI Panel
 
-![TUI AI Panel](../images/tui-assistant-pannel.png)
-
 The AI panel is accessible by pressing `Tab` to switch focus.
 
 | Feature | Description |
@@ -162,16 +154,6 @@ AI conversations are preserved within each TUI session:
 - Previous Q&A sessions are kept above, separated by visual dividers (`────────────────────────────`)
 - Scroll up in the AI panel to review past conversations
 - History is maintained for the duration of the TUI session
-
-### AI Conversation
-
-![TUI AI Conversation](../images/tui-ask-answer-test.png)
-
-Example AI interaction showing:
-
-- Natural language question input
-- AI response with analysis
-- Tool execution results
 
 ### LLM Model Switching
 
@@ -192,8 +174,6 @@ Model profiles are defined in `~/.config/k13d/config.yaml` under the `models` se
 | `h` | Explain | Get explanation of resource |
 
 ### Tool Approval
-
-![TUI Decision Required](../images/tui-decision-required.png)
 
 When AI needs to execute a command, an approval dialog appears:
 

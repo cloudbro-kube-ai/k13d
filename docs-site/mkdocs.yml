@@ -149,6 +149,8 @@ nav:
     - Environment Variables: reference/env-vars.md
     - Teleport Comparison: reference/teleport-comparison.md
     - Changelog: reference/changelog.md
+  - 한국어 (Korean):
+    - 한국어 가이드: ko/index.md
 
 # Extra
 extra:
