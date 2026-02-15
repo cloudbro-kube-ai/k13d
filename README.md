@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <code><b>k</b>ube<b>a</b>i<b>d</b>ashboard</code> — 14 letters — <code><b>k</b></code> + <code>13</code> + <code><b>d</b></code> = <code><b>k13d</b></code>
+  <code><b>k</b>ube<b>a</b>i<b>d</b>ashboard<b>k</b></code> + <code>13 letters</code> + <code><b>d</b></code> = <code><b>k13d</b></code>
 </p>
 
 <p align="center">
@@ -141,13 +141,13 @@ That's it. Your kubeconfig is auto-detected.
 
 ## Why k13d?
 
-| | k13d | k9s | Lens | kubectl |
-|---|:---:|:---:|:---:|:---:|
-| Terminal UI | **Yes** | Yes | - | - |
-| Web UI | **Yes** | - | Yes | - |
-| AI Assistant | **Yes** | - | - | - |
-| Single binary, zero deps | **Yes** | Yes | - | Yes |
-| Free & open source | **Yes** | Yes | Paid | Yes |
+|                          |  k13d   | k9s | Lens | kubectl |
+| ------------------------ | :-----: | :-: | :--: | :-----: |
+| Terminal UI              | **Yes** | Yes |  -   |    -    |
+| Web UI                   | **Yes** |  -  | Yes  |    -    |
+| AI Assistant             | **Yes** |  -  |  -   |    -    |
+| Single binary, zero deps | **Yes** | Yes |  -   |   Yes   |
+| Free & open source       | **Yes** | Yes | Paid |   Yes   |
 
 ### Web UI — Everything in the browser
 
@@ -194,6 +194,7 @@ ollama pull qwen2.5:3b && ollama serve
 ```
 
 The AI assistant can:
+
 - Diagnose pod crashes and suggest fixes
 - Execute kubectl commands with your approval
 - Scale deployments, restart rollouts
