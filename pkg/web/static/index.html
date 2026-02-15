@@ -346,10 +346,7 @@
                     <div class="nav-item" data-resource="validate" onclick="showValidateView()">
                         <span>Validate</span>
                     </div>
-                    <div class="nav-item" data-resource="healing" onclick="showHealingView()">
-                        <span>Healing</span>
-                    </div>
-                    <div class="nav-item" data-resource="templates" onclick="showTemplatesView()">
+<div class="nav-item" data-resource="templates" onclick="showTemplatesView()">
                         <span>Templates</span>
                     </div>
                 </div>
@@ -606,24 +603,6 @@
                     </div>
                     <div class="custom-view-body" id="validate-body">
                         <div class="loading-placeholder">Select a namespace and run validation...</div>
-                    </div>
-                </div>
-
-                <!-- Healing View Container -->
-                <div class="custom-view-container" id="healing-container" style="display:none;">
-                    <div class="custom-view-toolbar">
-                        <h2>Auto-Healing</h2>
-                        <div style="display:flex;gap:8px;align-items:center;">
-                            <div class="healing-tab-bar">
-                                <button class="healing-tab active" data-tab="rules" onclick="switchHealingTab('rules')">Rules</button>
-                                <button class="healing-tab" data-tab="events" onclick="switchHealingTab('events')">Events</button>
-                            </div>
-                            <button onclick="showAddHealingRuleForm()">+ Add Rule</button>
-                            <button onclick="loadHealingData()">↻ Refresh</button>
-                        </div>
-                    </div>
-                    <div class="custom-view-body" id="healing-body">
-                        <div class="loading-placeholder">Loading healing rules...</div>
                     </div>
                 </div>
 
@@ -2019,9 +1998,9 @@ spec:
             </div>
             <div class="log-controls">
                 <div class="time-range-selector">
-                    <button class="time-range-btn active" data-minutes="5" onclick="setMetricsTimeRangeMinutes(5)">5m</button>
+                    <button class="time-range-btn" data-minutes="5" onclick="setMetricsTimeRangeMinutes(5)">5m</button>
                     <button class="time-range-btn" data-minutes="15" onclick="setMetricsTimeRangeMinutes(15)">15m</button>
-                    <button class="time-range-btn" data-minutes="30" onclick="setMetricsTimeRangeMinutes(30)">30m</button>
+                    <button class="time-range-btn active" data-minutes="30" onclick="setMetricsTimeRangeMinutes(30)">30m</button>
                     <button class="time-range-btn" data-hours="1" onclick="setMetricsTimeRange(1)">1h</button>
                     <button class="time-range-btn" data-hours="6" onclick="setMetricsTimeRange(6)">6h</button>
                     <button class="time-range-btn" data-hours="24" onclick="setMetricsTimeRange(24)">24h</button>
@@ -2033,6 +2012,7 @@ spec:
                     <input type="checkbox" id="metrics-auto-refresh" checked onchange="toggleMetricsAutoRefresh()">
                     <label for="metrics-auto-refresh" style="font-size:11px;color:var(--text-secondary);cursor:pointer;">Auto</label>
                 </div>
+                <button onclick="collectMetricsNow()" title="Trigger immediate metrics collection" style="background:var(--accent-green);color:#1a1b26;">Collect</button>
                 <button onclick="loadMetrics()">Refresh</button>
                 <button class="terminal-close" onclick="closeMetrics()">&times;</button>
             </div>

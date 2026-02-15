@@ -8762,7 +8762,7 @@ spec:
         let llmUsageHistory = { requests: [], tokens: [], timestamps: [] };
         let metricsInterval = null;
         let metricsHistoryLoaded = false;
-        let metricsTimeRangeMinutes = 5; // Default time range in minutes
+        let metricsTimeRangeMinutes = 30; // Default time range in minutes
 
         function setMetricsTimeRangeMinutes(minutes) {
             metricsTimeRangeMinutes = minutes;
@@ -8912,12 +8912,20 @@ spec:
                 if (legacyMem) legacyMem.textContent = formatBytes(totalMem * 1024 * 1024);
                 if (legacyPods) legacyPods.textContent = podCount;
 
-                // Only append to history if we haven't loaded historical data, or for real-time updates
+                // Append real-time data point to history
                 metricsHistory.timestamps.push(formatTimeShort(new Date()));
                 metricsHistory.cpu.push(totalCpu);
                 metricsHistory.memory.push(totalMem);
-                if (metricsHistory.timestamps.length > 100) {
-                    metricsHistory.timestamps.shift(); metricsHistory.cpu.shift(); metricsHistory.memory.shift();
+                metricsHistory.pods.push(podCount);
+                // Keep last known node count for real-time updates
+                metricsHistory.nodes.push(metricsHistory.nodes.length > 0 ? metricsHistory.nodes[metricsHistory.nodes.length - 1] : 0);
+                const maxHistory = 100;
+                while (metricsHistory.timestamps.length > maxHistory) {
+                    metricsHistory.timestamps.shift();
+                    metricsHistory.cpu.shift();
+                    metricsHistory.memory.shift();
+                    metricsHistory.pods.shift();
+                    metricsHistory.nodes.shift();
                 }
                 updateMetricsCharts();
                 updateTopConsumers(data.items || []);
@@ -8958,6 +8966,11 @@ spec:
                 const totalNodes = nodesData.items?.length || 0;
                 const readyNodes = Object.values(nodeInfo).filter(n => n.ready).length;
                 document.getElementById('metrics-nodes-value').textContent = `${readyNodes}/${totalNodes}`;
+
+                // Update last nodes value in history for real-time sync
+                if (metricsHistory.nodes.length > 0) {
+                    metricsHistory.nodes[metricsHistory.nodes.length - 1] = readyNodes;
+                }
 
                 // Build node health cards
                 if (data.items && data.items.length > 0) {
@@ -9298,7 +9311,26 @@ spec:
             document.getElementById('metrics-modal').classList.remove('active');
             if (metricsInterval) { clearInterval(metricsInterval); metricsInterval = null; }
             metricsHistoryLoaded = false;
+            // Reset history to avoid stale data on reopen
+            metricsHistory = { cpu: [], memory: [], timestamps: [], pods: [], nodes: [] };
+            // Destroy all charts so they're recreated fresh on next open
+            if (cpuChart) { cpuChart.destroy(); cpuChart = null; }
+            if (memoryChart) { memoryChart.destroy(); memoryChart = null; }
             if (llmUsageChart) { llmUsageChart.destroy(); llmUsageChart = null; }
+        }
+
+        async function collectMetricsNow() {
+            try {
+                const resp = await fetchWithAuth('/api/metrics/collect', { method: 'POST' });
+                const data = await resp.json();
+                if (data.success) {
+                    // Reload data after collection completes
+                    await loadHistoricalMetrics();
+                    await loadMetrics();
+                }
+            } catch (e) {
+                console.error('Failed to trigger metrics collection:', e);
+            }
         }
 
         // ==========================================
@@ -9608,7 +9640,7 @@ spec:
         // ============================
         // Custom View Helpers
         // ============================
-        const customViewIds = ['overview-container','metrics-dashboard-container','topology-tree-container','applications-container','validate-container','healing-container','rbac-viz-container','netpol-viz-container','timeline-container','templates-container'];
+        const customViewIds = ['overview-container','metrics-dashboard-container','topology-tree-container','applications-container','validate-container','rbac-viz-container','netpol-viz-container','timeline-container','templates-container'];
 
         function hideAllCustomViews() {
             customViewIds.forEach(id => {
@@ -9952,191 +9984,6 @@ spec:
         }
 
         // ============================
-        // Healing View
-        // ============================
-        let healingCurrentTab = 'rules';
-
-        function showHealingView() {
-            showCustomView('healing-container', 'healing');
-            healingCurrentTab = 'rules';
-            loadHealingData();
-        }
-
-        function switchHealingTab(tab) {
-            healingCurrentTab = tab;
-            document.querySelectorAll('.healing-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-            loadHealingData();
-        }
-
-        async function loadHealingData() {
-            const body = document.getElementById('healing-body');
-            body.innerHTML = '<div class="loading-placeholder">Loading...</div>';
-            try {
-                if (healingCurrentTab === 'rules') {
-                    const resp = await fetchWithAuth('/api/healing/rules');
-                    const data = await resp.json();
-                    const rules = data.rules || [];
-                    if (rules.length === 0) {
-                        body.innerHTML = '<div class="loading-placeholder">No healing rules configured. Click "+ Add Rule" to create one.</div>';
-                        return;
-                    }
-                    body.innerHTML = rules.map(r => `
-                        <div class="healing-rule-card">
-                            <div class="healing-rule-status ${r.enabled ? 'enabled' : 'disabled'}"></div>
-                            <div class="healing-rule-info">
-                                <div class="healing-rule-name">${escapeHtml(r.name)}</div>
-                                <div class="healing-rule-meta">
-                                    <span>Condition: <strong>${escapeHtml(r.condition?.type || '-')}</strong></span>
-                                    ${r.condition?.threshold ? `<span>Threshold: ${r.condition.threshold}</span>` : ''}
-                                    <span>Action: <strong>${escapeHtml(r.action?.type || '-')}</strong></span>
-                                    ${r.cooldown ? `<span>Cooldown: ${escapeHtml(r.cooldown)}</span>` : ''}
-                                    ${r.namespaces?.length ? `<span>NS: ${r.namespaces.map(n => escapeHtml(n)).join(', ')}</span>` : ''}
-                                </div>
-                            </div>
-                            <div class="healing-rule-actions">
-                                <button onclick="toggleHealingRule('${r.id}', ${!r.enabled})">${r.enabled ? 'Disable' : 'Enable'}</button>
-                                <button class="delete" onclick="deleteHealingRule('${r.id}')">Delete</button>
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    const resp = await fetchWithAuth('/api/healing/events?limit=100');
-                    const data = await resp.json();
-                    const events = data.events || [];
-                    if (events.length === 0) {
-                        body.innerHTML = '<div class="loading-placeholder">No healing events recorded yet.</div>';
-                        return;
-                    }
-                    body.innerHTML = `
-                        <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;overflow:hidden;">
-                            ${events.map(e => `
-                                <div class="healing-event-row">
-                                    <span style="color:var(--text-muted);min-width:140px;">${e.timestamp ? new Date(e.timestamp).toLocaleString() : '-'}</span>
-                                    <span style="color:var(--accent-cyan);min-width:120px;font-family:monospace;">${escapeHtml(e.resource || '')}</span>
-                                    <span style="min-width:80px;">${escapeHtml(e.namespace || '')}</span>
-                                    <span style="min-width:100px;">Rule: <strong>${escapeHtml(e.ruleName || '')}</strong></span>
-                                    <span style="min-width:80px;">Action: ${escapeHtml(e.action || '')}</span>
-                                    <span class="healing-event-result ${e.result || ''}">${escapeHtml(e.result || '')}</span>
-                                    <span style="flex:1;color:var(--text-secondary);">${escapeHtml(e.details || '')}</span>
-                                </div>
-                            `).join('')}
-                        </div>`;
-                }
-            } catch (e) {
-                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed to load healing data: ${escapeHtml(e.message)}</div>`;
-            }
-        }
-
-        async function toggleHealingRule(id, enabled) {
-            try {
-                const resp = await fetchWithAuth(`/api/healing/rules?id=${encodeURIComponent(id)}`);
-                const rules = (await resp.json()).rules || [];
-                const rule = rules.find(r => r.id === id);
-                if (!rule) return;
-                rule.enabled = enabled;
-                await fetchWithAuth(`/api/healing/rules?id=${encodeURIComponent(id)}`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(rule)
-                });
-                loadHealingData();
-            } catch (e) {
-                console.error('Toggle healing rule failed:', e);
-            }
-        }
-
-        async function deleteHealingRule(id) {
-            if (!confirm('Delete this healing rule?')) return;
-            try {
-                await fetchWithAuth(`/api/healing/rules?id=${encodeURIComponent(id)}`, {method: 'DELETE'});
-                loadHealingData();
-            } catch (e) {
-                console.error('Delete healing rule failed:', e);
-            }
-        }
-
-        function showAddHealingRuleForm() {
-            const overlay = document.createElement('div');
-            overlay.className = 'healing-form-overlay';
-            overlay.id = 'healing-form-overlay';
-            overlay.innerHTML = `
-                <div class="healing-form">
-                    <h3>Add Healing Rule</h3>
-                    <div class="form-group">
-                        <label>Rule Name</label>
-                        <input type="text" id="healing-rule-name" placeholder="e.g., restart-crashloop">
-                    </div>
-                    <div class="form-group">
-                        <label>Condition Type</label>
-                        <select id="healing-rule-condition">
-                            <option value="crashloop">CrashLoop</option>
-                            <option value="oom">OOM (Out of Memory)</option>
-                            <option value="pending">Pending</option>
-                            <option value="high_restart">High Restart Count</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Threshold</label>
-                        <input type="number" id="healing-rule-threshold" value="5" min="1">
-                    </div>
-                    <div class="form-group">
-                        <label>Action</label>
-                        <select id="healing-rule-action">
-                            <option value="restart">Restart Pod</option>
-                            <option value="delete_pod">Delete Pod</option>
-                            <option value="scale_up">Scale Up</option>
-                            <option value="notify">Notify Only</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Cooldown</label>
-                        <input type="text" id="healing-rule-cooldown" value="10m" placeholder="e.g., 10m, 1h">
-                    </div>
-                    <div class="form-group">
-                        <label>Max Retries</label>
-                        <input type="number" id="healing-rule-retries" value="3" min="1" max="10">
-                    </div>
-                    <div class="healing-form-buttons">
-                        <button class="btn-cancel" onclick="closeHealingForm()">Cancel</button>
-                        <button class="btn-primary" onclick="submitHealingRule()">Create Rule</button>
-                    </div>
-                </div>`;
-            document.body.appendChild(overlay);
-        }
-
-        function closeHealingForm() {
-            const overlay = document.getElementById('healing-form-overlay');
-            if (overlay) overlay.remove();
-        }
-
-        async function submitHealingRule() {
-            const name = document.getElementById('healing-rule-name')?.value?.trim();
-            if (!name) { alert('Rule name is required'); return; }
-            const rule = {
-                name: name,
-                enabled: true,
-                condition: {
-                    type: document.getElementById('healing-rule-condition')?.value || 'crashloop',
-                    threshold: parseInt(document.getElementById('healing-rule-threshold')?.value) || 5,
-                },
-                action: {
-                    type: document.getElementById('healing-rule-action')?.value || 'restart',
-                },
-                cooldown: document.getElementById('healing-rule-cooldown')?.value || '10m',
-                maxRetries: parseInt(document.getElementById('healing-rule-retries')?.value) || 3,
-            };
-            try {
-                await fetchWithAuth('/api/healing/rules', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(rule)
-                });
-                closeHealingForm();
-                loadHealingData();
-            } catch (e) {
-                alert('Failed to create rule: ' + e.message);
-            }
-        }
 
         // ============================
         // Helm View
