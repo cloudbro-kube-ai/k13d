@@ -879,6 +879,64 @@ func (a *App) showAbout() {
 	})
 }
 
+// showSortPicker displays a modal to choose sort column
+func (a *App) showSortPicker() {
+	a.mx.RLock()
+	headers := a.tableHeaders
+	sortCol := a.sortColumn
+	sortAsc := a.sortAscending
+	a.mx.RUnlock()
+
+	if len(headers) == 0 {
+		a.flashMsg("No columns available to sort", true)
+		return
+	}
+
+	list := tview.NewList()
+	list.SetBorder(true).SetTitle(" Sort By ")
+	list.SetBackgroundColor(tcell.NewRGBColor(26, 27, 38))       // #1a1b26
+	list.SetMainTextColor(tcell.NewRGBColor(192, 202, 245))      // #c0caf5
+	list.SetSecondaryTextColor(tcell.NewRGBColor(169, 177, 214)) // #a9b1d6
+	list.SetSelectedBackgroundColor(tcell.NewRGBColor(41, 46, 66))
+	list.SetSelectedTextColor(tcell.NewRGBColor(122, 162, 247)) // #7aa2f7
+
+	for i, h := range headers {
+		label := h
+		desc := ""
+		if i == sortCol {
+			dir := "▲ ascending"
+			if !sortAsc {
+				dir = "▼ descending"
+			}
+			label = fmt.Sprintf("%s  %s", h, dir)
+			desc = "  (current — select again to toggle direction)"
+		}
+		list.AddItem(label, desc, 0, nil)
+	}
+
+	list.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+		a.closeModal("sort-picker")
+		a.SetFocus(a.table)
+		a.sortByColumn(index)
+	})
+
+	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			a.closeModal("sort-picker")
+			a.SetFocus(a.table)
+			return nil
+		}
+		return event
+	})
+
+	height := len(headers)*2 + 4
+	if height > 20 {
+		height = 20
+	}
+	a.showModal("sort-picker", centered(list, 55, height), true)
+	a.SetFocus(list)
+}
+
 // showHelp displays help modal
 func (a *App) showHelp() {
 	helpText := fmt.Sprintf(`
@@ -903,6 +961,12 @@ func (a *App) showHelp() {
   [yellow]e[white]        Edit ($EDITOR)      [yellow]Ctrl+D[white]   Delete
   [yellow]r[white]        Refresh             [yellow]c[white]        Switch context
   [yellow]n[white]        Cycle namespace     [yellow]Space[white]    Multi-select
+
+[cyan::b]SORTING[white::-]
+  [yellow]Shift+N[white]  Sort by NAME        [yellow]Shift+A[white]  Sort by AGE
+  [yellow]Shift+T[white]  Sort by STATUS      [yellow]Shift+P[white]  Sort by NAMESPACE
+  [yellow]Shift+C[white]  Sort by RESTARTS    [yellow]Shift+D[white]  Sort by READY
+  [yellow]:sort[white]    Sort column picker  [gray](toggle direction by sorting same column twice)[white]
 
 [cyan::b]NAMESPACE SHORTCUTS[white::-] (k9s style)
   [yellow]0[white] All namespaces      [yellow]n[white]   Cycle through namespaces

@@ -13,13 +13,13 @@ Of║  q/Ctrl+C Quit application                                              �
 │ ║  r        Refresh             c        Switch context                   ║  │
 │ ║  n        Cycle namespace     Space    Multi-select                     ║  │
 │ ║                                                                         ║  │
-│ ║NAMESPACE SHORTCUTS (k9s style)                                          ║  │
-│ ║  0 All namespaces      n   Cycle through namespaces                     ║  │
-│ ║  u Use namespace (on namespace view)                                    ║  │
-│ ║  :ns <name>           Switch to specific namespace                      ║  │
+│ ║SORTING                                                                  ║  │
+│ ║  Shift+N  Sort by NAME        Shift+A  Sort by AGE                      ║  │
+│ ║  Shift+T  Sort by STATUS      Shift+P  Sort by NAMESPACE                ║  │
+│ ║  Shift+C  Sort by RESTARTS    Shift+D  Sort by READY                    ║  │
+│ ║  :sort    Sort column picker  (toggle direction by sorting same column  ║  │
+│ ║twice)                                                                   ║  │
 │ ║                                                                         ║  │
-│ ║POD ACTIONS                                                              ║  │
-│ ║  l        Logs                p        Previous logs                    ║  │
-└─║  s        Shell               a        Attach                           ║──┘
-  ║  o        Show node           k/Ctrl+K Kill (force delete)              ║
- :║  Shift+F  Port forward        f        Show port-forward                ║
+└─║NAMESPACE SHORTCUTS (k9s style)                                          ║──┘
+  ║  0 All namespaces      n   Cycle through namespaces                     ║
+ :║  u Use namespace (on namespace view)                                    ║
