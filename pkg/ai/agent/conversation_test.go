@@ -474,9 +474,9 @@ func TestCancelPendingTools(t *testing.T) {
 
 func TestSafetyQuickCheck(t *testing.T) {
 	tests := []struct {
-		cmd              string
-		expectReadOnly   bool
-		expectDangerous  bool
+		cmd             string
+		expectReadOnly  bool
+		expectDangerous bool
 	}{
 		{"kubectl get pods", true, false},
 		{"kubectl delete pod nginx", false, true},

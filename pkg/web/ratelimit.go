@@ -14,7 +14,7 @@ type RateLimiter struct {
 	limit    int           // requests per window
 	window   time.Duration // time window
 	cleanup  time.Duration // cleanup interval
-	done     chan struct{}  // signals cleanup goroutine to stop
+	done     chan struct{} // signals cleanup goroutine to stop
 }
 
 // visitor tracks rate limit state for a single IP/user

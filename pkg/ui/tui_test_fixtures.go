@@ -6,9 +6,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/gdamore/tcell/v2"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
 	appsv1 "k8s.io/api/apps/v1"

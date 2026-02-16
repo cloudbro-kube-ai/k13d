@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -190,6 +191,54 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 		fmt.Printf("  LLM Settings: Loaded from SQLite\n")
 	}
 
+	// Load tool approval settings from SQLite if available
+	if taSettings, dbErr := db.GetWebSettingsWithPrefix("tool_approval."); dbErr == nil && len(taSettings) > 0 {
+		if v, ok := taSettings["tool_approval.auto_approve_read_only"]; ok && v != "" {
+			cfg.Authorization.ToolApproval.AutoApproveReadOnly = v == "true"
+		}
+		if v, ok := taSettings["tool_approval.require_approval_for_write"]; ok && v != "" {
+			cfg.Authorization.ToolApproval.RequireApprovalForWrite = v == "true"
+		}
+		if v, ok := taSettings["tool_approval.require_approval_for_unknown"]; ok && v != "" {
+			cfg.Authorization.ToolApproval.RequireApprovalForUnknown = v == "true"
+		}
+		if v, ok := taSettings["tool_approval.block_dangerous"]; ok && v != "" {
+			cfg.Authorization.ToolApproval.BlockDangerous = v == "true"
+		}
+		if v, ok := taSettings["tool_approval.approval_timeout_seconds"]; ok && v != "" {
+			if seconds := parseIntSafe(v, 60); seconds > 0 && seconds <= 600 {
+				cfg.Authorization.ToolApproval.ApprovalTimeoutSeconds = seconds
+			}
+		}
+		if v, ok := taSettings["tool_approval.blocked_patterns"]; ok && v != "" {
+			cfg.Authorization.ToolApproval.BlockedPatterns = strings.Split(v, "\n")
+		}
+		fmt.Printf("  Tool Approval Settings: Loaded from SQLite\n")
+	}
+
+	// Load agent loop settings from SQLite if available
+	if agentSettings, dbErr := db.GetWebSettingsWithPrefix("agent."); dbErr == nil && len(agentSettings) > 0 {
+		if v, ok := agentSettings["agent.max_iterations"]; ok && v != "" {
+			if n, parseErr := strconv.Atoi(v); parseErr == nil && n >= 1 && n <= 30 {
+				cfg.LLM.MaxIterations = n
+			}
+		}
+		if v, ok := agentSettings["agent.temperature"]; ok && v != "" {
+			if f, parseErr := strconv.ParseFloat(v, 64); parseErr == nil && f >= 0 && f <= 2.0 {
+				cfg.LLM.Temperature = f
+			}
+		}
+		if v, ok := agentSettings["agent.max_tokens"]; ok && v != "" {
+			if n, parseErr := strconv.Atoi(v); parseErr == nil && n >= 0 {
+				cfg.LLM.MaxTokens = n
+			}
+		}
+		if v, ok := agentSettings["agent.reasoning_effort"]; ok && v != "" {
+			cfg.LLM.ReasoningEffort = v
+		}
+		fmt.Printf("  Agent Settings: Loaded from SQLite\n")
+	}
+
 	fmt.Printf("  LLM Provider: %s, Model: %s\n", cfg.LLM.Provider, cfg.LLM.Model)
 
 	if cfg.LLM.Endpoint != "" {
@@ -328,7 +377,37 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 	// Load persisted user locks
 	authManager.LoadUserLocks()
 
+	// Load custom roles from DB and register with authorizer
+	server.loadCustomRoles()
+
+	// Set role validator on auth manager so user creation accepts custom roles
+	authManager.SetRoleValidator(func(role string) bool {
+		return server.authorizer.GetRole(role) != nil
+	})
+
 	return server, nil
+}
+
+// loadCustomRoles loads custom roles from the database and registers them with the authorizer
+func (s *Server) loadCustomRoles() {
+	rows, err := db.ListCustomRoles()
+	if err != nil {
+		fmt.Printf("  Custom Roles: Failed to load (%v)\n", err)
+		return
+	}
+	if len(rows) == 0 {
+		return
+	}
+	for _, row := range rows {
+		var role RoleDefinition
+		if err := json.Unmarshal([]byte(row.Definition), &role); err != nil {
+			fmt.Printf("  Custom Role %s: Failed to parse (%v)\n", row.Name, err)
+			continue
+		}
+		role.IsCustom = true
+		s.authorizer.RegisterRole(&role)
+	}
+	fmt.Printf("  Custom Roles: Loaded %d\n", len(rows))
 }
 
 // initMCPServers connects to all enabled MCP servers
@@ -608,9 +687,9 @@ func (s *Server) Start() error {
 	// Auth - current user
 	mux.HandleFunc("/api/auth/me", s.authManager.AuthMiddleware(s.authManager.HandleCurrentUser))
 
-	// AI chat and tool approval
-	mux.HandleFunc("/api/chat/agentic", s.authManager.AuthMiddleware(s.handleAgenticChat))
-	mux.HandleFunc("/api/tool/approve", s.authManager.AuthMiddleware(s.handleToolApprove))
+	// AI chat and tool approval (feature-gated)
+	mux.HandleFunc("/api/chat/agentic", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureAIAssistant)(s.handleAgenticChat)))
+	mux.HandleFunc("/api/tool/approve", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureAIAssistant)(s.handleToolApprove)))
 
 	// AI session management
 	mux.HandleFunc("/api/sessions", s.authManager.AuthMiddleware(s.handleSessions))
@@ -619,6 +698,7 @@ func (s *Server) Start() error {
 	// AI / LLM configuration and status
 	mux.HandleFunc("/api/settings", s.authManager.AuthMiddleware(s.handleSettings))
 	mux.HandleFunc("/api/settings/llm", s.authManager.AuthMiddleware(s.handleLLMSettings))
+	mux.HandleFunc("/api/settings/agent", s.authManager.AuthMiddleware(s.handleAgentSettings))
 	mux.HandleFunc("/api/llm/test", s.authManager.AuthMiddleware(s.handleLLMTest))
 	mux.HandleFunc("/api/llm/status", s.authManager.AuthMiddleware(s.handleLLMStatus))
 	mux.HandleFunc("/api/ai/ping", s.authManager.AuthMiddleware(s.handleAIPing))
@@ -640,12 +720,13 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/crd/", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionView)(s.handleCustomResources)))
 	mux.HandleFunc("/api/overview", s.authManager.AuthMiddleware(s.handleClusterOverview))
 	mux.HandleFunc("/api/applications", s.authManager.AuthMiddleware(s.handleApplications))
-	mux.HandleFunc("/api/topology/", s.authManager.AuthMiddleware(s.handleTopology))
+	mux.HandleFunc("/api/topology/", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureTopology)(s.handleTopology)))
 	mux.HandleFunc("/api/cost", s.authManager.AuthMiddleware(s.handleCostEstimate))
 	mux.HandleFunc("/api/healing/rules", s.authManager.AuthMiddleware(s.handleHealingRules))
 	mux.HandleFunc("/api/healing/events", s.authManager.AuthMiddleware(s.handleHealingEvents))
 	mux.HandleFunc("/api/search", s.authManager.AuthMiddleware(s.handleGlobalSearch))
 	mux.HandleFunc("/api/safety/analyze", s.authManager.AuthMiddleware(s.handleSafetyAnalysis))
+	mux.HandleFunc("/api/settings/tool-approval", s.authManager.AuthMiddleware(s.handleToolApprovalSettings))
 	mux.HandleFunc("/api/validate", s.authManager.AuthMiddleware(s.handleValidate))
 	mux.HandleFunc("/api/pulse", s.authManager.AuthMiddleware(s.handlePulse))
 	mux.HandleFunc("/api/xray", s.authManager.AuthMiddleware(s.handleXRay))
@@ -663,9 +744,9 @@ func (s *Server) Start() error {
 	// GitOps status (ArgoCD / Flux)
 	mux.HandleFunc("/api/gitops/status", s.authManager.AuthMiddleware(s.handleGitOpsStatus))
 
-	// Resource templates
-	mux.HandleFunc("/api/templates", s.authManager.AuthMiddleware(s.handleTemplates))
-	mux.HandleFunc("/api/templates/apply", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionApply)(s.handleTemplateApply)))
+	// Resource templates (feature-gated)
+	mux.HandleFunc("/api/templates", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureTemplates)(s.handleTemplates)))
+	mux.HandleFunc("/api/templates/apply", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureTemplates)(s.authorizer.AuthzMiddleware("*", ActionApply)(s.handleTemplateApply))))
 
 	// Notification webhook configuration
 	mux.HandleFunc("/api/notifications/config", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionEdit)(s.handleNotificationConfig)))
@@ -683,16 +764,16 @@ func (s *Server) Start() error {
 	// Resource diff
 	mux.HandleFunc("/api/diff", s.authManager.AuthMiddleware(s.handleResourceDiff))
 
-	// Event timeline
-	mux.HandleFunc("/api/events/timeline", s.authManager.AuthMiddleware(s.handleEventTimeline))
+	// Event timeline (feature-gated)
+	mux.HandleFunc("/api/events/timeline", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureEventTimeline)(s.handleEventTimeline)))
 
 	// Pod operations
 	mux.HandleFunc("/api/pods/", s.authManager.AuthMiddleware(s.handlePodLogs))
 	mux.HandleFunc("/api/workload/pods", s.authManager.AuthMiddleware(s.handleWorkloadPods))
 
-	// WebSocket terminal
+	// WebSocket terminal (feature-gated)
 	terminalHandler := NewTerminalHandler(s.k8sClient)
-	mux.HandleFunc("/api/terminal/", s.authManager.AuthMiddleware(terminalHandler.HandleTerminal))
+	mux.HandleFunc("/api/terminal/", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureTerminal)(terminalHandler.HandleTerminal)))
 
 	// Workload operations (RBAC-protected)
 	mux.HandleFunc("/api/deployment/scale", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("deployments", ActionScale)(s.handleDeploymentScale)))
@@ -717,43 +798,48 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/portforward/list", s.authManager.AuthMiddleware(s.handlePortForwardList))
 	mux.HandleFunc("/api/portforward/", s.authManager.AuthMiddleware(s.handlePortForwardStop))
 
-	// Helm operations (RBAC-protected for mutations)
-	mux.HandleFunc("/api/helm/releases", s.authManager.AuthMiddleware(s.handleHelmReleases))
-	mux.HandleFunc("/api/helm/release/", s.authManager.AuthMiddleware(s.handleHelmRelease))
-	mux.HandleFunc("/api/helm/install", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("helm", ActionCreate)(s.handleHelmInstall)))
-	mux.HandleFunc("/api/helm/upgrade", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("helm", ActionEdit)(s.handleHelmUpgrade)))
-	mux.HandleFunc("/api/helm/uninstall", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("helm", ActionDelete)(s.handleHelmUninstall)))
-	mux.HandleFunc("/api/helm/rollback", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("helm", ActionEdit)(s.handleHelmRollback)))
-	mux.HandleFunc("/api/helm/repos", s.authManager.AuthMiddleware(s.handleHelmRepos))
-	mux.HandleFunc("/api/helm/search", s.authManager.AuthMiddleware(s.handleHelmSearch))
+	// Helm operations (RBAC-protected for mutations, feature-gated)
+	mux.HandleFunc("/api/helm/releases", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureHelmManagement)(s.handleHelmReleases)))
+	mux.HandleFunc("/api/helm/release/", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureHelmManagement)(s.handleHelmRelease)))
+	mux.HandleFunc("/api/helm/install", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureHelmManagement)(s.authorizer.AuthzMiddleware("helm", ActionCreate)(s.handleHelmInstall))))
+	mux.HandleFunc("/api/helm/upgrade", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureHelmManagement)(s.authorizer.AuthzMiddleware("helm", ActionEdit)(s.handleHelmUpgrade))))
+	mux.HandleFunc("/api/helm/uninstall", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureHelmManagement)(s.authorizer.AuthzMiddleware("helm", ActionDelete)(s.handleHelmUninstall))))
+	mux.HandleFunc("/api/helm/rollback", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureHelmManagement)(s.authorizer.AuthzMiddleware("helm", ActionEdit)(s.handleHelmRollback))))
+	mux.HandleFunc("/api/helm/repos", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureHelmManagement)(s.handleHelmRepos)))
+	mux.HandleFunc("/api/helm/search", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureHelmManagement)(s.handleHelmSearch)))
 
-	// Metrics (real-time and historical)
-	mux.HandleFunc("/api/metrics/pods", s.authManager.AuthMiddleware(s.handlePodMetrics))
-	mux.HandleFunc("/api/metrics/nodes", s.authManager.AuthMiddleware(s.handleNodeMetrics))
-	mux.HandleFunc("/api/metrics/history/cluster", s.authManager.AuthMiddleware(s.handleClusterMetricsHistory))
-	mux.HandleFunc("/api/metrics/history/nodes", s.authManager.AuthMiddleware(s.handleNodeMetricsHistory))
-	mux.HandleFunc("/api/metrics/history/pods", s.authManager.AuthMiddleware(s.handlePodMetricsHistory))
-	mux.HandleFunc("/api/metrics/history/summary", s.authManager.AuthMiddleware(s.handleMetricsSummary))
-	mux.HandleFunc("/api/metrics/history/aggregated", s.authManager.AuthMiddleware(s.handleAggregatedMetrics))
-	mux.HandleFunc("/api/metrics/collect", s.authManager.AuthMiddleware(s.handleMetricsCollectNow))
+	// Metrics (real-time and historical, feature-gated)
+	mux.HandleFunc("/api/metrics/pods", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureMetrics)(s.handlePodMetrics)))
+	mux.HandleFunc("/api/metrics/nodes", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureMetrics)(s.handleNodeMetrics)))
+	mux.HandleFunc("/api/metrics/history/cluster", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureMetrics)(s.handleClusterMetricsHistory)))
+	mux.HandleFunc("/api/metrics/history/nodes", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureMetrics)(s.handleNodeMetricsHistory)))
+	mux.HandleFunc("/api/metrics/history/pods", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureMetrics)(s.handlePodMetricsHistory)))
+	mux.HandleFunc("/api/metrics/history/summary", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureMetrics)(s.handleMetricsSummary)))
+	mux.HandleFunc("/api/metrics/history/aggregated", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureMetrics)(s.handleAggregatedMetrics)))
+	mux.HandleFunc("/api/metrics/collect", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureMetrics)(s.handleMetricsCollectNow)))
 	mux.HandleFunc("/api/prometheus/settings", s.authManager.AuthMiddleware(s.handlePrometheusSettings))
 	mux.HandleFunc("/api/prometheus/test", s.authManager.AuthMiddleware(s.handlePrometheusTest))
 	mux.HandleFunc("/api/prometheus/query", s.authManager.AuthMiddleware(s.handlePrometheusQuery))
 
-	// Security scanning
-	mux.HandleFunc("/api/security/scan", s.authManager.AuthMiddleware(s.handleSecurityScan))
-	mux.HandleFunc("/api/security/scan/quick", s.authManager.AuthMiddleware(s.handleSecurityQuickScan))
-	mux.HandleFunc("/api/security/scans", s.authManager.AuthMiddleware(s.handleSecurityScanHistory))
-	mux.HandleFunc("/api/security/scans/stats", s.authManager.AuthMiddleware(s.handleSecurityScanStats))
-	mux.HandleFunc("/api/security/scan/", s.authManager.AuthMiddleware(s.handleSecurityScanDetail))
-	mux.HandleFunc("/api/security/trivy/status", s.authManager.AuthMiddleware(s.handleTrivyStatus))
-	mux.HandleFunc("/api/security/trivy/install", s.authManager.AuthMiddleware(s.handleTrivyInstall))
-	mux.HandleFunc("/api/security/trivy/instructions", s.authManager.AuthMiddleware(s.handleTrivyInstructions))
+	// Security scanning (feature-gated)
+	mux.HandleFunc("/api/security/scan", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureSecurityScan)(s.handleSecurityScan)))
+	mux.HandleFunc("/api/security/scan/quick", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureSecurityScan)(s.handleSecurityQuickScan)))
+	mux.HandleFunc("/api/security/scans", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureSecurityScan)(s.handleSecurityScanHistory)))
+	mux.HandleFunc("/api/security/scans/stats", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureSecurityScan)(s.handleSecurityScanStats)))
+	mux.HandleFunc("/api/security/scan/", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureSecurityScan)(s.handleSecurityScanDetail)))
+	mux.HandleFunc("/api/security/trivy/status", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureSecurityScan)(s.handleTrivyStatus)))
+	mux.HandleFunc("/api/security/trivy/install", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureSecurityScan)(s.handleTrivyInstall)))
+	mux.HandleFunc("/api/security/trivy/instructions", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureSecurityScan)(s.handleTrivyInstructions)))
 
-	// Audit and reports
-	mux.HandleFunc("/api/audit", s.authManager.AuthMiddleware(s.handleAuditLogs))
-	mux.HandleFunc("/api/reports", s.authManager.AuthMiddleware(s.reportGenerator.HandleReports))
-	mux.HandleFunc("/api/reports/preview", s.authManager.AuthMiddleware(s.reportGenerator.HandleReportPreview))
+	// Audit and reports (feature-gated)
+	mux.HandleFunc("/api/audit", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureAuditLogs)(s.handleAuditLogs)))
+	mux.HandleFunc("/api/reports", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureReports)(s.reportGenerator.HandleReports)))
+	mux.HandleFunc("/api/reports/preview", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureReports)(s.reportGenerator.HandleReportPreview)))
+
+	// Role management (admin-only for mutations, auth for read)
+	mux.HandleFunc("/api/roles", s.authManager.AuthMiddleware(s.handleRoles))
+	mux.HandleFunc("/api/roles/", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.handleRoleByName)))
+	mux.HandleFunc("/api/auth/permissions", s.authManager.AuthMiddleware(s.handleUserPermissions))
 
 	// --- Admin-only routes ---
 	mux.HandleFunc("/api/admin/users", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.handleAdminUsers)))
@@ -781,8 +867,8 @@ func (s *Server) Start() error {
 	handler := recoveryMiddleware(
 		requestLoggingMiddleware(
 			RateLimitMiddleware(s.apiRateLimiter, s.authRateLimiter)(
-				maxBodyMiddleware(1<<20)( // 1 MB max body size
-					timeoutMiddleware(60*time.Second)(
+				maxBodyMiddleware(1 << 20)( // 1 MB max body size
+					timeoutMiddleware(60 * time.Second)(
 						securityHeadersMiddleware(
 							corsMiddleware(
 								s.authManager.CSRFMiddleware(mux),
@@ -862,7 +948,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 			"":                       true, // Same origin (no Origin header)
 			"http://localhost:8080":  true,
 			"http://localhost:3000":  true,
-			"http://127.0.0.1:8080": true,
+			"http://127.0.0.1:8080":  true,
 			"https://localhost:8080": true,
 		}
 
@@ -977,4 +1063,13 @@ func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(info)
+}
+
+// parseIntSafe parses a string to int, returning defaultVal on error.
+func parseIntSafe(s string, defaultVal int) int {
+	v, err := strconv.Atoi(s)
+	if err != nil {
+		return defaultVal
+	}
+	return v
 }

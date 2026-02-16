@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
 	"github.com/cloudbro-kube-ai/k13d/pkg/bench/cluster"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/google/uuid"
 )
 
 // Runner executes benchmark tasks

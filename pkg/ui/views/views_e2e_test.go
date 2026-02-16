@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gdamore/tcell/v2"
 	"github.com/cloudbro-kube-ai/k13d/pkg/ui/actions"
 	"github.com/cloudbro-kube-ai/k13d/pkg/ui/models"
 	"github.com/cloudbro-kube-ai/k13d/pkg/ui/render"
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 

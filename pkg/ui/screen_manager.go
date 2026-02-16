@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gdamore/tcell/v2"
 	"github.com/cloudbro-kube-ai/k13d/pkg/ui/views"
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -44,7 +44,6 @@ type ScreenManager struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	done   chan struct{}
-
 }
 
 // ScreenManagerConfig holds configuration for ScreenManager.

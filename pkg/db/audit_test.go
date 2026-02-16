@@ -743,4 +743,3 @@ func TestNilDatabaseHandling(t *testing.T) {
 		t.Errorf("RecordSecurityScan() with nil DB should not error, got %v", err)
 	}
 }
-

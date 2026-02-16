@@ -384,6 +384,11 @@ func createTables() error {
 		fmt.Printf("Warning: failed to create web_settings table: %v\n", err)
 	}
 
+	// Create custom_roles table for user-defined RBAC roles
+	if err := InitCustomRolesTable(); err != nil {
+		fmt.Printf("Warning: failed to create custom_roles table: %v\n", err)
+	}
+
 	return nil
 }
 

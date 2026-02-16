@@ -156,7 +156,7 @@ type StorageConfig struct {
 	DBPort     int    `yaml:"db_port" json:"db_port"`         // Database port
 	DBName     string `yaml:"db_name" json:"db_name"`         // Database name
 	DBUser     string `yaml:"db_user" json:"db_user"`         // Database username
-	DBPassword string `yaml:"db_password" json:"-"` // Database password
+	DBPassword string `yaml:"db_password" json:"-"`           // Database password
 	DBSSLMode  string `yaml:"db_ssl_mode" json:"db_ssl_mode"` // SSL mode (for postgres)
 
 	// Data persistence options
@@ -189,6 +189,9 @@ type LLMConfig struct {
 	MaxBackoff      float64 `yaml:"max_backoff" json:"max_backoff"`           // seconds
 	UseJSONMode     bool    `yaml:"use_json_mode" json:"use_json_mode"`       // Fallback for models without tool calling
 	ReasoningEffort string  `yaml:"reasoning_effort" json:"reasoning_effort"` // For Solar Pro2: "minimal" (default) or "high"
+	Temperature     float64 `yaml:"temperature" json:"temperature"`           // LLM temperature (0.0-2.0)
+	MaxTokens       int     `yaml:"max_tokens" json:"max_tokens"`             // Max output tokens
+	MaxIterations   int     `yaml:"max_iterations" json:"max_iterations"`     // Agent loop max iterations (1-30)
 }
 
 // ModelProfile represents a saved LLM model configuration
@@ -197,7 +200,7 @@ type ModelProfile struct {
 	Provider        string `yaml:"provider" json:"provider"`           // Provider type
 	Model           string `yaml:"model" json:"model"`                 // Model identifier
 	Endpoint        string `yaml:"endpoint" json:"endpoint,omitempty"` // Custom endpoint
-	APIKey          string `yaml:"api_key" json:"-"`   // API key (never exposed in JSON)
+	APIKey          string `yaml:"api_key" json:"-"`                   // API key (never exposed in JSON)
 	Region          string `yaml:"region" json:"region,omitempty"`     // For AWS Bedrock
 	AzureDeployment string `yaml:"azure_deployment" json:"azure_deployment,omitempty"`
 	Description     string `yaml:"description" json:"description,omitempty"` // User description
@@ -259,12 +262,15 @@ func DefaultSessionsPath() string {
 func NewDefaultConfig() *Config {
 	return &Config{
 		LLM: LLMConfig{
-			Provider:     "upstage",
-			Model:        DefaultSolarModel,
-			Endpoint:     DefaultSolarEndpoint,
-			RetryEnabled: true,
-			MaxRetries:   5,
-			MaxBackoff:   10.0,
+			Provider:      "upstage",
+			Model:         DefaultSolarModel,
+			Endpoint:      DefaultSolarEndpoint,
+			RetryEnabled:  true,
+			MaxRetries:    5,
+			MaxBackoff:    10.0,
+			Temperature:   0.7,
+			MaxTokens:     4096,
+			MaxIterations: 10,
 		},
 		Storage: StorageConfig{
 			DBType:                "sqlite",

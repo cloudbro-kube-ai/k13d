@@ -1044,6 +1044,8 @@
             }
             // Initialize AI status (model name and connection status)
             updateAIStatus();
+            // Load user permissions for feature gating
+            loadUserPermissions();
         }
 
         // Login tab switching
@@ -3051,12 +3053,15 @@ ${escapeHtml(execInfo.result)}</div>
                 updateEndpointPlaceholder();
                 loadLLMStatus();
                 onLLMTabOpened();
+                loadToolApprovalSettings();
+                loadAgentSettings();
             } else if (tab === 'mcp') {
                 loadMCPServers();
                 loadMCPTools();
             } else if (tab === 'admin') {
                 loadAdminUsers();
                 loadAuthStatus();
+                loadRoles();
             } else if (tab === 'security') {
                 checkTrivyStatus();
                 loadTrivyInstructions();
@@ -3821,6 +3826,224 @@ ${escapeHtml(execInfo.result)}</div>
                 }
             } catch (e) {
                 alert('Failed to add MCP server: ' + e.message);
+            }
+        }
+
+        // === Feature Permissions ===
+        let userPermissions = {};
+
+        async function loadUserPermissions() {
+            try {
+                const resp = await fetchWithAuth('/api/auth/permissions');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    userPermissions = data.features || {};
+                    applyFeaturePermissions();
+                }
+            } catch (e) {
+                console.warn('Failed to load permissions:', e);
+            }
+        }
+
+        function hasFeature(name) {
+            if (!userPermissions || Object.keys(userPermissions).length === 0) return true;
+            return userPermissions[name] === true;
+        }
+
+        function applyFeaturePermissions() {
+            const featureMap = {
+                'topology': 'topology',
+                'reports': 'reports',
+                'helm': 'helm',
+                'security': 'security_scanning',
+                'templates': 'templates',
+            };
+            document.querySelectorAll('.sidebar-item[data-view]').forEach(item => {
+                const view = item.getAttribute('data-view');
+                const feature = featureMap[view];
+                if (feature && !hasFeature(feature)) {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // === Roles Management ===
+        async function loadRoles() {
+            try {
+                const resp = await fetchWithAuth('/api/roles');
+                if (!resp.ok) return;
+                const roles = await resp.json();
+                const container = document.getElementById('roles-list-container');
+                if (!container) return;
+
+                let html = '<table class="data-table" style="width:100%;"><thead><tr><th>Role</th><th>Type</th><th>Features</th><th>Actions</th></tr></thead><tbody>';
+                for (const role of roles) {
+                    const type = role.is_custom ? '<span style="color:var(--accent-color);">Custom</span>' : 'Built-in';
+                    const featureCount = role.allowed_features ? (role.allowed_features.includes('*') ? 'All' : role.allowed_features.length) : 0;
+                    const actions = role.is_custom ? `<button class="btn btn-sm" onclick="editRole('${escapeHtml(role.name)}')">Edit</button> <button class="btn btn-sm btn-danger" onclick="deleteRole('${escapeHtml(role.name)}')">Delete</button>` : '<span style="color:var(--text-secondary);">Protected</span>';
+                    html += `<tr><td><strong>${escapeHtml(role.name)}</strong></td><td>${type}</td><td>${featureCount}</td><td>${actions}</td></tr>`;
+                }
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Failed to load roles:', e);
+            }
+        }
+
+        async function showCreateRoleModal() {
+            const allFeatures = ['dashboard','topology','reports','metrics','helm','terminal','rbac_viewer','network_policy','event_timeline','templates','ai_assistant','security_scanning','audit_logs','settings_general','settings_ai','settings_metrics','settings_mcp','settings_notifications'];
+
+            let checkboxes = allFeatures.map(f => `<label style="display:block;margin:4px 0;"><input type="checkbox" value="${f}" checked> ${f.replace(/_/g, ' ')}</label>`).join('');
+
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `<div class="modal-content" style="max-width:500px;max-height:80vh;overflow-y:auto;">
+                <h3>Create Custom Role</h3>
+                <div class="form-group"><label>Role Name</label><input type="text" id="new-role-name" class="form-control" placeholder="e.g., developer"></div>
+                <div class="form-group"><label>Description</label><input type="text" id="new-role-desc" class="form-control" placeholder="e.g., Developer with limited access"></div>
+                <div class="form-group"><label>Allowed Features</label><div id="new-role-features" style="max-height:300px;overflow-y:auto;border:1px solid var(--border-color);padding:8px;border-radius:4px;">${checkboxes}</div></div>
+                <div style="display:flex;gap:8px;margin-top:16px;">
+                    <button class="btn btn-primary" onclick="createRole()">Create</button>
+                    <button class="btn" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                </div>
+            </div>`;
+            document.body.appendChild(modal);
+        }
+
+        async function createRole() {
+            const name = document.getElementById('new-role-name').value.trim();
+            const desc = document.getElementById('new-role-desc').value.trim();
+            if (!name) { showToast('Role name is required', 'error'); return; }
+
+            const features = [];
+            document.querySelectorAll('#new-role-features input:checked').forEach(cb => features.push(cb.value));
+
+            try {
+                const resp = await fetchWithAuth('/api/roles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, description: desc, allowed_features: features, is_custom: true })
+                });
+                if (resp.ok) {
+                    showToast('Role created successfully');
+                    document.querySelector('.modal-overlay').remove();
+                    loadRoles();
+                } else {
+                    const err = await resp.text();
+                    showToast(err, 'error');
+                }
+            } catch (e) {
+                showToast('Failed to create role', 'error');
+            }
+        }
+
+        async function deleteRole(name) {
+            if (!confirm(`Delete role "${name}"?`)) return;
+            try {
+                const resp = await fetchWithAuth(`/api/roles/${name}`, { method: 'DELETE' });
+                if (resp.ok) {
+                    showToast('Role deleted');
+                    loadRoles();
+                } else {
+                    showToast(await resp.text(), 'error');
+                }
+            } catch (e) {
+                showToast('Failed to delete role', 'error');
+            }
+        }
+
+        // === Tool Approval Settings ===
+        async function loadToolApprovalSettings() {
+            try {
+                const resp = await fetchWithAuth('/api/settings/tool-approval');
+                if (!resp.ok) return;
+                const policy = await resp.json();
+
+                const setToggle = (id, active) => {
+                    const el = document.getElementById(id);
+                    if (el) el.classList.toggle('active', active);
+                };
+                setToggle('ta-auto-approve-ro', policy.auto_approve_read_only !== false);
+                setToggle('ta-require-write', policy.require_approval_for_write !== false);
+                setToggle('ta-block-dangerous', policy.block_dangerous === true);
+                setToggle('ta-require-unknown', policy.require_approval_for_unknown !== false);
+
+                const timeout = document.getElementById('ta-timeout');
+                if (timeout) timeout.value = policy.approval_timeout_seconds || 60;
+
+                const patterns = document.getElementById('ta-blocked-patterns');
+                if (patterns) patterns.value = (policy.blocked_patterns || []).join('\n');
+            } catch (e) {
+                console.error('Failed to load tool approval settings:', e);
+            }
+        }
+
+        function toggleToolApproval(el) {
+            el.classList.toggle('active');
+        }
+
+        async function saveToolApprovalSettings() {
+            const policy = {
+                auto_approve_read_only: document.getElementById('ta-auto-approve-ro')?.classList.contains('active') ?? true,
+                require_approval_for_write: document.getElementById('ta-require-write')?.classList.contains('active') ?? true,
+                block_dangerous: document.getElementById('ta-block-dangerous')?.classList.contains('active') ?? false,
+                require_approval_for_unknown: document.getElementById('ta-require-unknown')?.classList.contains('active') ?? true,
+                approval_timeout_seconds: parseInt(document.getElementById('ta-timeout')?.value) || 60,
+                blocked_patterns: (document.getElementById('ta-blocked-patterns')?.value || '').split('\n').filter(l => l.trim()),
+            };
+            try {
+                const resp = await fetchWithAuth('/api/settings/tool-approval', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(policy)
+                });
+                if (resp.ok) showToast('Tool approval settings saved');
+                else showToast('Failed to save settings', 'error');
+            } catch (e) {
+                showToast('Failed to save settings', 'error');
+            }
+        }
+
+        // === Agent Settings ===
+        async function loadAgentSettings() {
+            try {
+                const resp = await fetchWithAuth('/api/settings/agent');
+                if (!resp.ok) return;
+                const data = await resp.json();
+
+                const maxIter = document.getElementById('agent-max-iterations');
+                if (maxIter) { maxIter.value = data.max_iterations || 10; document.getElementById('agent-max-iter-val').textContent = maxIter.value; }
+
+                const effort = document.getElementById('agent-reasoning-effort');
+                if (effort) effort.value = data.reasoning_effort || 'medium';
+
+                const temp = document.getElementById('agent-temperature');
+                if (temp) { temp.value = Math.round((data.temperature || 0.7) * 100); document.getElementById('agent-temp-val').textContent = (temp.value/100).toFixed(1); }
+
+                const tokens = document.getElementById('agent-max-tokens');
+                if (tokens) tokens.value = data.max_tokens || 4096;
+            } catch (e) {
+                console.error('Failed to load agent settings:', e);
+            }
+        }
+
+        async function saveAgentSettings() {
+            const settings = {
+                max_iterations: parseInt(document.getElementById('agent-max-iterations')?.value) || 10,
+                reasoning_effort: document.getElementById('agent-reasoning-effort')?.value || 'medium',
+                temperature: parseInt(document.getElementById('agent-temperature')?.value || '70') / 100,
+                max_tokens: parseInt(document.getElementById('agent-max-tokens')?.value) || 4096,
+            };
+            try {
+                const resp = await fetchWithAuth('/api/settings/agent', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                if (resp.ok) showToast('Agent settings saved');
+                else showToast('Failed to save settings', 'error');
+            } catch (e) {
+                showToast('Failed to save settings', 'error');
             }
         }
 

@@ -24,6 +24,97 @@ type LLMCapabilities struct {
 	Recommendation string `json:"recommendation,omitempty"`
 }
 
+// handleAgentSettings handles agent loop settings (GET/PUT)
+func (s *Server) handleAgentSettings(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	switch r.Method {
+	case http.MethodGet:
+		s.aiMu.RLock()
+		settings := map[string]interface{}{
+			"max_iterations":   s.cfg.LLM.MaxIterations,
+			"reasoning_effort": s.cfg.LLM.ReasoningEffort,
+			"temperature":      s.cfg.LLM.Temperature,
+			"max_tokens":       s.cfg.LLM.MaxTokens,
+		}
+		s.aiMu.RUnlock()
+		json.NewEncoder(w).Encode(settings)
+
+	case http.MethodPut:
+		role := r.Header.Get("X-User-Role")
+		if role != "admin" {
+			http.Error(w, "Admin access required", http.StatusForbidden)
+			return
+		}
+
+		var req struct {
+			MaxIterations   int     `json:"max_iterations"`
+			ReasoningEffort string  `json:"reasoning_effort"`
+			Temperature     float64 `json:"temperature"`
+			MaxTokens       int     `json:"max_tokens"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
+			return
+		}
+
+		// Clamp values to safe ranges
+		if req.MaxIterations < 1 {
+			req.MaxIterations = 1
+		}
+		if req.MaxIterations > 30 {
+			req.MaxIterations = 30
+		}
+		if req.Temperature < 0 {
+			req.Temperature = 0
+		}
+		if req.Temperature > 2.0 {
+			req.Temperature = 2.0
+		}
+		if req.MaxTokens < 0 {
+			req.MaxTokens = 0
+		}
+
+		s.aiMu.Lock()
+		s.cfg.LLM.MaxIterations = req.MaxIterations
+		s.cfg.LLM.Temperature = req.Temperature
+		s.cfg.LLM.MaxTokens = req.MaxTokens
+		if req.ReasoningEffort == "low" || req.ReasoningEffort == "medium" || req.ReasoningEffort == "high" {
+			s.cfg.LLM.ReasoningEffort = req.ReasoningEffort
+		}
+		s.aiMu.Unlock()
+
+		// Save to YAML config
+		if err := s.cfg.Save(); err != nil {
+			fmt.Printf("Warning: failed to save agent settings to YAML: %v\n", err)
+		}
+
+		// Persist to SQLite for web UI persistence
+		if err := db.SaveWebSettings(map[string]string{
+			"agent.max_iterations":   fmt.Sprintf("%d", req.MaxIterations),
+			"agent.reasoning_effort": req.ReasoningEffort,
+			"agent.temperature":      fmt.Sprintf("%.2f", req.Temperature),
+			"agent.max_tokens":       fmt.Sprintf("%d", req.MaxTokens),
+		}); err != nil {
+			fmt.Printf("Warning: failed to save agent settings to SQLite: %v\n", err)
+		}
+
+		// Record audit
+		username := r.Header.Get("X-Username")
+		db.RecordAudit(db.AuditEntry{
+			User:     username,
+			Action:   "update_agent_settings",
+			Resource: "settings",
+			Details:  fmt.Sprintf("MaxIterations: %d, Temperature: %.2f, MaxTokens: %d, ReasoningEffort: %s", req.MaxIterations, req.Temperature, req.MaxTokens, req.ReasoningEffort),
+		})
+
+		json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
+
+	default:
+		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
+}
+
 // handleLLMSettings handles LLM settings updates
 func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -402,7 +493,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			})
 			return approved
 
-		case <-time.After(60 * time.Second):
+		case <-time.After(s.getToolApprovalTimeout()):
 			// Timeout - cleanup and reject
 			s.pendingApprovalMutex.Lock()
 			delete(s.pendingApprovals, approvalID)

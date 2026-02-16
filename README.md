@@ -37,80 +37,11 @@
   <img src="docs-site/docs/images/webui-full-screen.png" alt="Web UI Dashboard" width="100%">
 </p>
 
-<table>
-  <tr>
-    <td width="50%" align="center">
-      <img src="docs-site/docs/images/webui-topology-view-all.png" alt="Topology View" width="100%">
-      <br><sub><b>Topology View</b> — Resource relationship graph</sub>
-    </td>
-    <td width="50%" align="center">
-      <img src="docs-site/docs/images/web_ui_applications.png" alt="Applications View" width="100%">
-      <br><sub><b>Applications</b> — App-centric grouped view</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="docs-site/docs/images/web_ui_cluster_report_preview.png" alt="Cluster Report" width="100%">
-      <br><sub><b>Reports</b> — Cluster health & FinOps analysis</sub>
-    </td>
-    <td align="center">
-      <img src="docs-site/docs/images/webui-metrics.png" alt="Metrics Dashboard" width="100%">
-      <br><sub><b>Metrics</b> — Historical CPU/Memory charts</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="docs-site/docs/images/web_ui_event_timeline.png" alt="Event Timeline" width="100%">
-      <br><sub><b>Event Timeline</b> — Cluster events by time window</sub>
-    </td>
-    <td align="center">
-      <img src="docs-site/docs/images/web_ui_network_policy_map.png" alt="Network Policy Map" width="100%">
-      <br><sub><b>Network Policy</b> — Ingress/egress visualization</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="docs-site/docs/images/webui-assistant-pannel.png" alt="AI Assistant" width="100%">
-      <br><sub><b>AI Assistant</b> — Natural language + tool execution</sub>
-    </td>
-    <td align="center">
-      <img src="docs-site/docs/images/webui-pod-terminal-access.png" alt="Pod Terminal" width="100%">
-      <br><sub><b>Pod Terminal</b> — xterm.js shell in browser</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="docs-site/docs/images/web_ui_resource_template.png" alt="Resource Templates" width="100%">
-      <br><sub><b>Templates</b> — One-click deploy common patterns</sub>
-    </td>
-    <td align="center">
-      <img src="docs-site/docs/images/webui-settings-llm.png" alt="Settings" width="100%">
-      <br><sub><b>Settings</b> — LLM, MCP, themes, user management</sub>
-    </td>
-  </tr>
-</table>
-
 ## TUI
 
-<table>
-  <tr>
-    <td width="50%" align="center">
-      <img src="docs-site/docs/images/tui_help.png" alt="TUI Help" width="100%">
-      <br><sub><b>Help & Keybindings</b> — k9s-style shortcuts</sub>
-    </td>
-    <td width="50%" align="center">
-      <img src="docs-site/docs/images/tui_auto_complete.png" alt="TUI Autocomplete" width="100%">
-      <br><sub><b>Autocomplete</b> — Dropdown command suggestions</sub>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="docs-site/docs/images/tui_llm_setting.png" alt="TUI LLM Settings" width="100%">
-      <br><sub><b>LLM Model Switching</b> — Multiple AI profiles</sub>
-    </td>
-    <td></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs-site/docs/images/tui_auto_complete.png" alt="TUI Dashboard" width="100%">
+</p>
 
 ---
 

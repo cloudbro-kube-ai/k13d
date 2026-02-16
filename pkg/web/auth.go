@@ -63,7 +63,13 @@ type AuthManager struct {
 	ldapProvider   *LDAPProvider
 	tokenValidator *K8sTokenValidator
 	oidcProvider   *OIDCProvider
-	jwtManager     *JWTManager // JWT token manager (Teleport-inspired)
+	jwtManager     *JWTManager       // JWT token manager (Teleport-inspired)
+	roleValidator  func(string) bool // Optional: validates custom role names
+}
+
+// SetRoleValidator sets a function that validates custom role names
+func (am *AuthManager) SetRoleValidator(fn func(string) bool) {
+	am.roleValidator = fn
 }
 
 // AuthConfig holds authentication configuration
@@ -1004,9 +1010,10 @@ func (am *AuthManager) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 		req.Role = "user"
 	}
 
-	// Validate role
-	if req.Role != "admin" && req.Role != "user" && req.Role != "viewer" {
-		http.Error(w, "Invalid role. Must be admin, user, or viewer", http.StatusBadRequest)
+	// Validate role: accept built-in roles; custom roles validated via roleValidator if set
+	validBuiltIn := req.Role == "admin" || req.Role == "user" || req.Role == "viewer"
+	if !validBuiltIn && (am.roleValidator == nil || !am.roleValidator(req.Role)) {
+		http.Error(w, "Invalid role. Must be admin, user, viewer, or a valid custom role", http.StatusBadRequest)
 		return
 	}
 
@@ -1069,7 +1076,8 @@ func (am *AuthManager) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 
 	// Update fields
 	if req.Role != "" {
-		if req.Role != "admin" && req.Role != "user" && req.Role != "viewer" {
+		validBuiltIn := req.Role == "admin" || req.Role == "user" || req.Role == "viewer"
+		if !validBuiltIn && (am.roleValidator == nil || !am.roleValidator(req.Role)) {
 			http.Error(w, "Invalid role", http.StatusBadRequest)
 			return
 		}

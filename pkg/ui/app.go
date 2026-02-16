@@ -16,12 +16,12 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/gdamore/tcell/v2"
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/i18n"
 	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 

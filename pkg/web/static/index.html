@@ -1122,6 +1122,73 @@
 
                         <button class="btn btn-secondary" onclick="clearGuardrailsHistory()" style="margin-top:12px;">Clear History</button>
                     </div>
+
+                    <!-- Tool Approval Policy -->
+                    <div class="settings-section" style="margin-top:20px;">
+                        <h4>Tool Approval Policy</h4>
+                        <p class="settings-description">Control which AI tool commands require user approval</p>
+                        <div class="settings-row">
+                            <div><div class="settings-label">Auto-approve read-only commands</div>
+                            <div class="settings-description">kubectl get, describe, logs, etc.</div></div>
+                            <div class="auto-refresh-toggle active" id="ta-auto-approve-ro" onclick="toggleToolApproval(this)"></div>
+                        </div>
+                        <div class="settings-row">
+                            <div><div class="settings-label">Require approval for write operations</div>
+                            <div class="settings-description">kubectl apply, scale, restart, etc.</div></div>
+                            <div class="auto-refresh-toggle active" id="ta-require-write" onclick="toggleToolApproval(this)"></div>
+                        </div>
+                        <div class="settings-row">
+                            <div><div class="settings-label">Block dangerous commands entirely</div>
+                            <div class="settings-description">Dangerous operations will be blocked, not just requiring approval</div></div>
+                            <div class="auto-refresh-toggle" id="ta-block-dangerous" onclick="toggleToolApproval(this)"></div>
+                        </div>
+                        <div class="settings-row">
+                            <div><div class="settings-label">Require approval for unknown commands</div></div>
+                            <div class="auto-refresh-toggle active" id="ta-require-unknown" onclick="toggleToolApproval(this)"></div>
+                        </div>
+                        <div class="form-group" style="margin-top:12px;">
+                            <label>Approval Timeout (seconds)</label>
+                            <input type="number" id="ta-timeout" class="form-control" value="60" min="10" max="600" style="width:120px;">
+                        </div>
+                        <div class="form-group">
+                            <label>Blocked Patterns (one regex per line)</label>
+                            <textarea id="ta-blocked-patterns" class="form-control" rows="3" placeholder="rm -rf.*&#10;kubectl delete ns.*"></textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="saveToolApprovalSettings()">Save Tool Approval Settings</button>
+                    </div>
+
+                    <!-- Agent Settings -->
+                    <div class="settings-section" style="margin-top:20px;">
+                        <h4>Agent Settings</h4>
+                        <p class="settings-description">Configure AI agent behavior for tool-calling conversations</p>
+                        <div class="form-group">
+                            <label>Max Iterations (agent loop depth: 1-30)</label>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <input type="range" id="agent-max-iterations" min="1" max="30" value="10" style="flex:1;" oninput="document.getElementById('agent-max-iter-val').textContent=this.value">
+                                <span id="agent-max-iter-val" style="min-width:24px;">10</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Reasoning Effort</label>
+                            <select id="agent-reasoning-effort" class="form-control" style="width:200px;">
+                                <option value="low">Low (faster)</option>
+                                <option value="medium" selected>Medium (balanced)</option>
+                                <option value="high">High (deeper reasoning)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Temperature (0.0 = deterministic, 2.0 = creative)</label>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <input type="range" id="agent-temperature" min="0" max="200" value="70" step="10" style="flex:1;" oninput="document.getElementById('agent-temp-val').textContent=(this.value/100).toFixed(1)">
+                                <span id="agent-temp-val" style="min-width:32px;">0.7</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Max Tokens (0 = provider default)</label>
+                            <input type="number" id="agent-max-tokens" class="form-control" value="4096" min="0" max="128000" step="256" style="width:150px;">
+                        </div>
+                        <button class="btn btn-primary" onclick="saveAgentSettings()">Save Agent Settings</button>
+                    </div>
                 </div>
 
                 <!-- MCP Tab -->
@@ -1725,6 +1792,13 @@
                                 Save Authentication Settings
                             </button>
                         </div>
+                    </div>
+
+                    <div class="settings-section" style="margin-top:20px;">
+                        <h4>Roles & Permissions</h4>
+                        <p class="settings-description">Manage custom roles and feature access permissions</p>
+                        <div id="roles-list-container"></div>
+                        <button class="btn btn-primary" style="margin-top:12px;" onclick="showCreateRoleModal()">+ Create Custom Role</button>
                     </div>
                 </div>
             </div>

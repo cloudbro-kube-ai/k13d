@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gdamore/tcell/v2"
 	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
+	"github.com/gdamore/tcell/v2"
 )
 
 func GetJobsView(ctx context.Context, client *k8s.Client, namespace, filter string) (ResourceView, error) {

@@ -1,8 +1,8 @@
 package resources
 
 import (
-	"github.com/gdamore/tcell/v2"
 	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
+	"github.com/gdamore/tcell/v2"
 )
 
 func GetContextsView(client *k8s.Client) (ResourceView, string, error) {
