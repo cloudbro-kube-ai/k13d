@@ -44,7 +44,7 @@ regex = '''bearer\s+[a-zA-Z0-9\-_.]{50,}'''
 keywords = ["bearer"]
 
 # Stopwords - commonly flagged but not secrets
-[[rules.allowlist]]
+[rules.allowlist]
 stopwords = [
     "example",
     "placeholder",
