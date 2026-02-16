@@ -4,12 +4,15 @@
 
 set -e
 
-# Configuration
-API_ENDPOINT="https://youngjudell.hopto.org/api/v1"
-API_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImMzY2UwNzE4LTNlOWItNGFhMy05MGVmLTAyYTBiZWE1MDUzNCIsImV4cCI6MTc4Njg4NjE4NSwianRpIjoiNzRmYmRlNTctZGVmZC00OTNlLWE1OTUtYWM0NWUzN2ZiM2I0In0.vRWcXbBOUXojLcuLNYSyY88s_6b-U7AcCARxJd52e0o"
+# Configuration - set these environment variables before running:
+#   BENCH_API_ENDPOINT: Remote Ollama endpoint
+#   BENCH_API_KEY: JWT token for remote Ollama
+#   SOLAR_API_KEY: Upstage Solar API key
+API_ENDPOINT="${BENCH_API_ENDPOINT:?Error: BENCH_API_ENDPOINT not set}"
+API_KEY="${BENCH_API_KEY:?Error: BENCH_API_KEY not set}"
 
 SOLAR_ENDPOINT="https://api.upstage.ai/v1"
-SOLAR_API_KEY="up_z13Pj76IBqhcMRIM2FAbdqYTzzGLi"
+SOLAR_API_KEY="${SOLAR_API_KEY:?Error: SOLAR_API_KEY not set}"
 
 OUTPUT_DIR=".build/bench-results"
 TASK_DIR="benchmarks/tasks"

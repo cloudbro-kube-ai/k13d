@@ -166,17 +166,34 @@ var benchTasks = []struct {
 	},
 }
 
-var models = []struct {
+// getModels returns model configurations with API keys from environment variables:
+//
+//	BENCH_API_KEY: JWT token for remote Ollama endpoint
+//	SOLAR_API_KEY: Upstage Solar API key
+//	BENCH_API_ENDPOINT: Remote Ollama endpoint (default: http://localhost:11434/api/v1)
+func getModels() []struct {
 	name     string
 	endpoint string
 	apiKey   string
-}{
-	{"qwen3:8b", "https://youngjudell.hopto.org/api/v1", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImMzY2UwNzE4LTNlOWItNGFhMy05MGVmLTAyYTBiZWE1MDUzNCIsImV4cCI6MTc4Njg4NjE4NSwianRpIjoiNzRmYmRlNTctZGVmZC00OTNlLWE1OTUtYWM0NWUzN2ZiM2I0In0.vRWcXbBOUXojLcuLNYSyY88s_6b-U7AcCARxJd52e0o"},
-	{"gemma3:4b", "https://youngjudell.hopto.org/api/v1", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImMzY2UwNzE4LTNlOWItNGFhMy05MGVmLTAyYTBiZWE1MDUzNCIsImV4cCI6MTc4Njg4NjE4NSwianRpIjoiNzRmYmRlNTctZGVmZC00OTNlLWE1OTUtYWM0NWUzN2ZiM2I0In0.vRWcXbBOUXojLcuLNYSyY88s_6b-U7AcCARxJd52e0o"},
-	{"gemma3:27b", "https://youngjudell.hopto.org/api/v1", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImMzY2UwNzE4LTNlOWItNGFhMy05MGVmLTAyYTBiZWE1MDUzNCIsImV4cCI6MTc4Njg4NjE4NSwianRpIjoiNzRmYmRlNTctZGVmZC00OTNlLWE1OTUtYWM0NWUzN2ZiM2I0In0.vRWcXbBOUXojLcuLNYSyY88s_6b-U7AcCARxJd52e0o"},
-	{"gpt-oss:latest", "https://youngjudell.hopto.org/api/v1", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImMzY2UwNzE4LTNlOWItNGFhMy05MGVmLTAyYTBiZWE1MDUzNCIsImV4cCI6MTc4Njg4NjE4NSwianRpIjoiNzRmYmRlNTctZGVmZC00OTNlLWE1OTUtYWM0NWUzN2ZiM2I0In0.vRWcXbBOUXojLcuLNYSyY88s_6b-U7AcCARxJd52e0o"},
-	{"deepseek-r1:32b", "https://youngjudell.hopto.org/api/v1", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImMzY2UwNzE4LTNlOWItNGFhMy05MGVmLTAyYTBiZWE1MDUzNCIsImV4cCI6MTc4Njg4NjE4NSwianRpIjoiNzRmYmRlNTctZGVmZC00OTNlLWE1OTUtYWM0NWUzN2ZiM2I0In0.vRWcXbBOUXojLcuLNYSyY88s_6b-U7AcCARxJd52e0o"},
-	{"solar-pro2", "https://api.upstage.ai/v1", "up_z13Pj76IBqhcMRIM2FAbdqYTzzGLi"},
+} {
+	apiKey := os.Getenv("BENCH_API_KEY")
+	solarKey := os.Getenv("SOLAR_API_KEY")
+	endpoint := os.Getenv("BENCH_API_ENDPOINT")
+	if endpoint == "" {
+		endpoint = "http://localhost:11434/api/v1"
+	}
+	return []struct {
+		name     string
+		endpoint string
+		apiKey   string
+	}{
+		{"qwen3:8b", endpoint, apiKey},
+		{"gemma3:4b", endpoint, apiKey},
+		{"gemma3:27b", endpoint, apiKey},
+		{"gpt-oss:latest", endpoint, apiKey},
+		{"deepseek-r1:32b", endpoint, apiKey},
+		{"solar-pro2", "https://api.upstage.ai/v1", solarKey},
+	}
 }
 
 type ChatRequest struct {
@@ -212,6 +229,7 @@ func main() {
 	fmt.Println("=" + strings.Repeat("=", 69))
 	fmt.Println()
 
+	models := getModels()
 	var allResults []Result
 	modelStats := make(map[string]struct {
 		easy, medium, hard                int
@@ -425,12 +443,12 @@ func saveReport(results []Result, stats map[string]struct {
 	}
 
 	sb.WriteString("\n## Detailed Results\n\n")
-	for _, model := range models {
-		sb.WriteString(fmt.Sprintf("### %s\n\n", model.name))
+	for _, m := range scores {
+		sb.WriteString(fmt.Sprintf("### %s\n\n", m.name))
 		sb.WriteString("| Task | Difficulty | Result |\n")
 		sb.WriteString("|------|------------|--------|\n")
 		for _, r := range results {
-			if r.Model == model.name {
+			if r.Model == m.name {
 				status := "✓"
 				if !r.Passed {
 					status = "✗"

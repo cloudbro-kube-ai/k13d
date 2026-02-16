@@ -43,7 +43,7 @@ func main() {
 	// Solar API 키 설정
 	solarAPIKey := os.Getenv("SOLAR_API_KEY")
 	if solarAPIKey == "" {
-		solarAPIKey = "up_z13Pj76IBqhcMRIM2FAbdqYTzzGLi"
+		fmt.Println("Warning: SOLAR_API_KEY not set, solar models will be skipped")
 	}
 
 	// 벤치마크 태스크 로드

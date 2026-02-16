@@ -18,6 +18,8 @@ paths = [
     '''tests/mocks/.*''',
     '''docs/.*\.md$''',
     '''benchmarks/tasks/.*\.yaml$''',
+    '''scripts/.*''',
+    '''docs-site/pages/.*''',
 ]
 
 # Regex patterns that are allowed (false positives)
@@ -28,6 +30,13 @@ regexes = [
     '''<your-.*-here>''',
     '''YOUR_.*_KEY''',
     '''REPLACE_WITH_.*''',
+]
+
+# Historical commits that contained hardcoded secrets (now removed from code).
+# These secrets have been rotated. Git history rewrite is not performed.
+commits = [
+    "9c3fe0028e673f72c105e2f2d879523bd6879c60",
+    "47660b41b9d00df656377ce8c3c61966d7dbde5f",
 ]
 
 # Additional custom rules for k13d-specific patterns
