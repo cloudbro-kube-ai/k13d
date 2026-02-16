@@ -127,14 +127,14 @@ func TestDoneWriterRace(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			dw.mu.Lock()
-			_ = dw.written
-			dw.written = true
+			_ = dw.timedOut
+			dw.timedOut = true
 			dw.mu.Unlock()
 		}()
 	}
 	wg.Wait()
 
-	if !dw.written {
-		t.Error("doneWriter.written should be true")
+	if !dw.timedOut {
+		t.Error("doneWriter.timedOut should be true")
 	}
 }

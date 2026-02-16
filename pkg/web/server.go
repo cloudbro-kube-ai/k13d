@@ -589,24 +589,25 @@ func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 // doneWriter wraps http.ResponseWriter to prevent writes after timeout.
 type doneWriter struct {
 	http.ResponseWriter
-	mu      sync.Mutex
-	written bool
+	mu         sync.Mutex
+	headerSent bool
+	timedOut   bool
 }
 
 func (dw *doneWriter) WriteHeader(code int) {
 	dw.mu.Lock()
 	defer dw.mu.Unlock()
-	if dw.written {
+	if dw.headerSent || dw.timedOut {
 		return
 	}
-	dw.written = true
+	dw.headerSent = true
 	dw.ResponseWriter.WriteHeader(code)
 }
 
 func (dw *doneWriter) Write(b []byte) (int, error) {
 	dw.mu.Lock()
 	defer dw.mu.Unlock()
-	if dw.written {
+	if dw.timedOut {
 		return 0, nil
 	}
 	return dw.ResponseWriter.Write(b)
@@ -645,12 +646,12 @@ func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 			case <-done:
 				// Request completed successfully
 			case <-ctx.Done():
-				// Timeout occurred — mark doneWriter as written to block handler goroutine
+				// Timeout occurred — block further writes from handler goroutine
 				dw.mu.Lock()
-				timedOut := !dw.written
-				dw.written = true
+				dw.timedOut = true
+				headerSent := dw.headerSent
 				dw.mu.Unlock()
-				if timedOut && ctx.Err() == context.DeadlineExceeded {
+				if !headerSent && ctx.Err() == context.DeadlineExceeded {
 					WriteError(w, NewAPIError(ErrCodeTimeout, "Request timed out"))
 				}
 			}
@@ -1006,7 +1007,7 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 		// Content Security Policy (all assets vendored locally for air-gapped support)
 		w.Header().Set("Content-Security-Policy",
 			"default-src 'self'; "+
-				"script-src 'self'; "+
+				"script-src 'self' 'unsafe-inline'; "+
 				"style-src 'self' 'unsafe-inline'; "+
 				"font-src 'self'; "+
 				"img-src 'self' data:; "+
