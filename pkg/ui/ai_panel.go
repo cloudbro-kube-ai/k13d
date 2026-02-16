@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -9,7 +10,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/agent"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/agent"
 )
 
 // AIPanel manages the AI assistant UI component.
@@ -33,6 +34,9 @@ type AIPanel struct {
 	autoScroll        bool       // Whether to auto-scroll on new content
 	lineCount         int        // Cached line count for efficient scroll detection
 	mu                sync.Mutex
+
+	// Listener lifecycle
+	listenerCancel context.CancelFunc // Cancels previous listenToAgent goroutine
 
 	// Callbacks
 	onSubmit func(string) // Called when user submits a question
@@ -101,18 +105,20 @@ func NewAIPanel(app *tview.Application) *AIPanel {
 
 // SetAgent connects the panel to an agent using the Listener pattern (k9s style)
 func (p *AIPanel) SetAgent(a *agent.Agent) {
+	// Cancel previous listener if any
+	p.mu.Lock()
+	if p.listenerCancel != nil {
+		p.listenerCancel()
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	p.listenerCancel = cancel
+	p.mu.Unlock()
+
 	p.agent = a
 	// Register as listener (k9s pattern)
 	a.SetListener(p)
 	// Also start channel listener for backward compatibility
-	go p.listenToAgent()
-}
-
-// SetAgentWithChannels connects using only channel-based communication
-// Use SetAgent for the preferred listener pattern
-func (p *AIPanel) SetAgentWithChannels(a *agent.Agent) {
-	p.agent = a
-	go p.listenToAgent()
+	go p.listenToAgent(ctx)
 }
 
 // SetOnSubmit sets the callback for when user submits a question
@@ -126,54 +132,62 @@ func (p *AIPanel) SetOnFocus(fn func()) {
 }
 
 // listenToAgent processes messages from the agent
-func (p *AIPanel) listenToAgent() {
+func (p *AIPanel) listenToAgent(ctx context.Context) {
 	if p.agent == nil {
 		return
 	}
 
-	for msg := range p.agent.Output {
-		switch msg.Type {
-		case agent.MsgText:
-			p.app.QueueUpdateDraw(func() {
-				p.appendText("\n" + msg.Content)
-			})
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case msg, ok := <-p.agent.Output:
+			if !ok {
+				return
+			}
+			switch msg.Type {
+			case agent.MsgText:
+				p.app.QueueUpdateDraw(func() {
+					p.appendText("\n" + msg.Content)
+				})
 
-		case agent.MsgStreamChunk:
-			p.app.QueueUpdateDraw(func() {
-				p.appendText(msg.Content)
-			})
+			case agent.MsgStreamChunk:
+				p.app.QueueUpdateDraw(func() {
+					p.appendText(msg.Content)
+				})
 
-		case agent.MsgStreamEnd:
-			p.app.QueueUpdateDraw(func() {
-				p.appendText("\n")
-				p.setStatus("Ready")
-			})
+			case agent.MsgStreamEnd:
+				p.app.QueueUpdateDraw(func() {
+					p.appendText("\n")
+					p.setStatus("Ready")
+				})
 
-		case agent.MsgError:
-			p.app.QueueUpdateDraw(func() {
-				p.appendText(fmt.Sprintf("\n[red]Error: %s[white]\n", msg.Content))
-				p.setStatus("Error")
-			})
+			case agent.MsgError:
+				p.app.QueueUpdateDraw(func() {
+					p.appendText(fmt.Sprintf("\n[red]Error: %s[white]\n", msg.Content))
+					p.setStatus("Error")
+				})
 
-		case agent.MsgUserChoiceRequest:
-			p.app.QueueUpdateDraw(func() {
-				p.showApprovalUI(msg.Choice)
-			})
+			case agent.MsgUserChoiceRequest:
+				p.app.QueueUpdateDraw(func() {
+					p.showApprovalUI(msg.Choice)
+				})
 
-		case agent.MsgToolCallRequest:
-			p.app.QueueUpdateDraw(func() {
-				p.showToolCallUI(msg.ToolCall)
-			})
+			case agent.MsgToolCallRequest:
+				p.app.QueueUpdateDraw(func() {
+					p.showToolCallUI(msg.ToolCall)
+				})
 
-		case agent.MsgToolCallResponse:
-			p.app.QueueUpdateDraw(func() {
-				p.showToolResultUI(msg.ToolCall)
-			})
+			case agent.MsgToolCallResponse:
+				p.app.QueueUpdateDraw(func() {
+					p.showToolResultUI(msg.ToolCall)
+				})
 
-		case agent.MsgStateChange:
-			p.app.QueueUpdateDraw(func() {
-				p.updateStatusFromState(msg.Content)
-			})
+			case agent.MsgStateChange:
+				p.app.QueueUpdateDraw(func() {
+					p.updateStatusFromState(msg.Content)
+				})
+			}
 		}
 	}
 }

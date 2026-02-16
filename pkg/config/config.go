@@ -140,7 +140,7 @@ type PrometheusConfig struct {
 	// Username for basic auth to external Prometheus
 	Username string `yaml:"username" json:"username"`
 	// Password for basic auth to external Prometheus
-	Password string `yaml:"password" json:"password"`
+	Password string `yaml:"password" json:"-"`
 	// CollectK8sMetrics enables Kubernetes metrics collection
 	CollectK8sMetrics bool `yaml:"collect_k8s_metrics" json:"collect_k8s_metrics"`
 	// CollectionInterval in seconds (default: 60)
@@ -156,7 +156,7 @@ type StorageConfig struct {
 	DBPort     int    `yaml:"db_port" json:"db_port"`         // Database port
 	DBName     string `yaml:"db_name" json:"db_name"`         // Database name
 	DBUser     string `yaml:"db_user" json:"db_user"`         // Database username
-	DBPassword string `yaml:"db_password" json:"db_password"` // Database password
+	DBPassword string `yaml:"db_password" json:"-"` // Database password
 	DBSSLMode  string `yaml:"db_ssl_mode" json:"db_ssl_mode"` // SSL mode (for postgres)
 
 	// Data persistence options
@@ -180,7 +180,7 @@ type LLMConfig struct {
 	Provider        string  `yaml:"provider" json:"provider"`
 	Model           string  `yaml:"model" json:"model"`
 	Endpoint        string  `yaml:"endpoint" json:"endpoint"`
-	APIKey          string  `yaml:"api_key" json:"api_key"`
+	APIKey          string  `yaml:"api_key" json:"-"`
 	Region          string  `yaml:"region" json:"region"`                     // For AWS Bedrock
 	AzureDeployment string  `yaml:"azure_deployment" json:"azure_deployment"` // For Azure OpenAI
 	SkipTLSVerify   bool    `yaml:"skip_tls_verify" json:"skip_tls_verify"`
@@ -197,7 +197,7 @@ type ModelProfile struct {
 	Provider        string `yaml:"provider" json:"provider"`           // Provider type
 	Model           string `yaml:"model" json:"model"`                 // Model identifier
 	Endpoint        string `yaml:"endpoint" json:"endpoint,omitempty"` // Custom endpoint
-	APIKey          string `yaml:"api_key" json:"api_key,omitempty"`   // API key (masked in UI)
+	APIKey          string `yaml:"api_key" json:"-"`   // API key (never exposed in JSON)
 	Region          string `yaml:"region" json:"region,omitempty"`     // For AWS Bedrock
 	AzureDeployment string `yaml:"azure_deployment" json:"azure_deployment,omitempty"`
 	Description     string `yaml:"description" json:"description,omitempty"` // User description
@@ -497,6 +497,8 @@ func LoadConfig() (*Config, error) {
 
 	cfg := NewDefaultConfig()
 	if err := yaml.Unmarshal(data, cfg); err != nil {
+		// TODO: Log warning when config file exists but fails to parse.
+		// Currently silently falls back to defaults which can be confusing.
 		cfg = NewDefaultConfig()
 	}
 
@@ -540,5 +542,5 @@ func (c *Config) Save() error {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600)
 }

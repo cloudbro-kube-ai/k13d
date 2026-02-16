@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"

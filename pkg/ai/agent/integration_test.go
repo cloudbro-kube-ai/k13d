@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/analyzers"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/analyzers"
 )
 
 func TestAnonymizerIntegration_Enabled(t *testing.T) {

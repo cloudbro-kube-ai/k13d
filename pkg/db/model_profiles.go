@@ -33,7 +33,9 @@ type ModelProfile struct {
 	LastUsedAt    *time.Time `json:"last_used_at,omitempty"`
 }
 
-// InitModelProfilesTable creates the model_profiles table if it doesn't exist
+// InitModelProfilesTable creates the model_profiles table if it doesn't exist.
+// TODO: DDL uses SQLite-only syntax (INTEGER PRIMARY KEY AUTOINCREMENT).
+// Add multi-DB DDL variants when supporting Postgres/MySQL.
 func InitModelProfilesTable() error {
 	if DB == nil {
 		return ErrDBNotInitialized
@@ -401,7 +403,7 @@ func SyncModelProfilesFromConfig(profiles []struct {
 
 		// Hash API key if provided
 		if p.APIKey != "" {
-			profile.APIKeyHash = hashAPIKey(p.APIKey)
+			profile.APIKeyHash = maskAPIKey(p.APIKey)
 		}
 
 		if err := SaveModelProfile(profile); err != nil {
@@ -412,13 +414,13 @@ func SyncModelProfilesFromConfig(profiles []struct {
 	return nil
 }
 
-// hashAPIKey creates a simple hash of the API key for comparison
-// Note: This is not for security, just to detect if key has changed
-func hashAPIKey(apiKey string) string {
+// maskAPIKey creates a masked version of the API key for display/comparison.
+// Note: This is NOT a cryptographic hash — it's a visual mask to detect if the key has changed.
+func maskAPIKey(apiKey string) string {
 	if apiKey == "" {
 		return ""
 	}
-	// Simple hash - first 4 chars + length + last 4 chars
+	// Show first 4 chars + ellipsis + last 4 chars
 	if len(apiKey) <= 8 {
 		return "***"
 	}

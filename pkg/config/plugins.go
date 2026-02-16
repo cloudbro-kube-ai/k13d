@@ -121,7 +121,9 @@ type PluginContext struct {
 	Annotations map[string]string
 }
 
-// ExpandArgs expands variables in plugin arguments
+// ExpandArgs expands variables in plugin arguments.
+// NOTE: Only whole-token variables ($NAMESPACE, $NAME, etc.) are supported.
+// Inline expansion like "prefix-$NAME-suffix" is not handled; each arg must be exactly one variable.
 func (p *PluginConfig) ExpandArgs(ctx *PluginContext) []string {
 	expanded := make([]string, len(p.Args))
 	for i, arg := range p.Args {
@@ -158,9 +160,28 @@ func (p *PluginConfig) ExpandArgs(ctx *PluginContext) []string {
 	return expanded
 }
 
+// containsShellMetachar returns true if s contains shell metacharacters
+// that could lead to command injection when used as arguments.
+func containsShellMetachar(s string) bool {
+	for _, c := range s {
+		switch c {
+		case '|', '&', ';', '$', '`', '(', ')', '{', '}', '<', '>', '\n', '\r':
+			return true
+		}
+	}
+	return false
+}
+
 // Execute runs the plugin command
 func (p *PluginConfig) Execute(ctx context.Context, pCtx *PluginContext) error {
 	args := p.ExpandArgs(pCtx)
+
+	// Validate expanded args — reject shell metacharacters to prevent injection
+	for _, arg := range args {
+		if containsShellMetachar(arg) {
+			return fmt.Errorf("expanded argument contains unsafe shell characters: %q", arg)
+		}
+	}
 
 	// Check if command exists
 	path, err := exec.LookPath(p.Command)

@@ -83,7 +83,7 @@ func (p *AzureOpenAIProvider) Ask(ctx context.Context, prompt string, callback f
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
@@ -154,7 +154,7 @@ func (p *AzureOpenAIProvider) AskNonStreaming(ctx context.Context, prompt string
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return "", fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
@@ -220,7 +220,7 @@ When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`},
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 			resp.Body.Close()
 			return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 		}

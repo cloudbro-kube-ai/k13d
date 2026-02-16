@@ -114,8 +114,8 @@ func (p *GeminiProvider) IsReady() bool {
 }
 
 func (p *GeminiProvider) Ask(ctx context.Context, prompt string, callback func(string)) error {
-	endpoint := fmt.Sprintf("%s/models/%s:streamGenerateContent?key=%s&alt=sse",
-		p.endpoint, p.config.Model, p.config.APIKey)
+	endpoint := fmt.Sprintf("%s/models/%s:streamGenerateContent?alt=sse",
+		p.endpoint, p.config.Model)
 
 	reqBody := geminiRequest{
 		SystemInstruction: &geminiContent{
@@ -140,6 +140,7 @@ func (p *GeminiProvider) Ask(ctx context.Context, prompt string, callback func(s
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-goog-api-key", p.config.APIKey)
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
@@ -148,7 +149,7 @@ func (p *GeminiProvider) Ask(ctx context.Context, prompt string, callback func(s
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
@@ -190,8 +191,8 @@ func (p *GeminiProvider) Ask(ctx context.Context, prompt string, callback func(s
 }
 
 func (p *GeminiProvider) AskNonStreaming(ctx context.Context, prompt string) (string, error) {
-	endpoint := fmt.Sprintf("%s/models/%s:generateContent?key=%s",
-		p.endpoint, p.config.Model, p.config.APIKey)
+	endpoint := fmt.Sprintf("%s/models/%s:generateContent",
+		p.endpoint, p.config.Model)
 
 	reqBody := geminiRequest{
 		SystemInstruction: &geminiContent{
@@ -216,6 +217,7 @@ func (p *GeminiProvider) AskNonStreaming(ctx context.Context, prompt string) (st
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-goog-api-key", p.config.APIKey)
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
@@ -224,7 +226,7 @@ func (p *GeminiProvider) AskNonStreaming(ctx context.Context, prompt string) (st
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return "", fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
@@ -245,12 +247,13 @@ func (p *GeminiProvider) AskNonStreaming(ctx context.Context, prompt string) (st
 }
 
 func (p *GeminiProvider) ListModels(ctx context.Context) ([]string, error) {
-	endpoint := fmt.Sprintf("%s/models?key=%s", p.endpoint, p.config.APIKey)
+	endpoint := fmt.Sprintf("%s/models", p.endpoint)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
+	req.Header.Set("x-goog-api-key", p.config.APIKey)
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
@@ -299,8 +302,8 @@ func (p *GeminiProvider) AskWithTools(ctx context.Context, prompt string, tools 
 
 	maxIterations := 10
 	for i := 0; i < maxIterations; i++ {
-		endpoint := fmt.Sprintf("%s/models/%s:generateContent?key=%s",
-			p.endpoint, p.config.Model, p.config.APIKey)
+		endpoint := fmt.Sprintf("%s/models/%s:generateContent",
+			p.endpoint, p.config.Model)
 
 		reqBody := geminiRequest{
 			SystemInstruction: &geminiContent{
@@ -323,6 +326,7 @@ When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`}},
 		}
 
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("x-goog-api-key", p.config.APIKey)
 
 		resp, err := p.httpClient.Do(req)
 		if err != nil {
@@ -330,7 +334,7 @@ When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`}},
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 			resp.Body.Close()
 			return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 		}

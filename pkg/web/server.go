@@ -9,18 +9,20 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/session"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/helm"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/mcp"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/metrics"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/security"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/session"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/helm"
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
+	"github.com/cloudbro-kube-ai/k13d/pkg/mcp"
+	"github.com/cloudbro-kube-ai/k13d/pkg/metrics"
+	"github.com/cloudbro-kube-ai/k13d/pkg/security"
 )
 
 //go:embed static/*
@@ -50,6 +52,9 @@ type Server struct {
 	embeddedLLM      bool // Using embedded LLM server
 	versionInfo      *VersionInfo
 
+	// Protects concurrent access to aiClient and cfg.LLM
+	aiMu sync.RWMutex
+
 	// Tool approval management
 	pendingApprovals     map[string]*PendingToolApproval
 	pendingApprovalMutex sync.RWMutex
@@ -66,6 +71,10 @@ type Server struct {
 
 	// Notification manager
 	notifManager *NotificationManager
+
+	// Port forwarding sessions
+	portForwardSessions map[string]*PortForwardSession
+	pfMutex             sync.Mutex
 }
 
 // PendingToolApproval represents a tool call waiting for user approval
@@ -266,6 +275,7 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 		apiRateLimiter:       apiRateLimiter,
 		authRateLimiter:      authRateLimiter,
 		healingStore:         NewHealingStore(),
+		portForwardSessions:  make(map[string]*PortForwardSession),
 	}
 
 	server.reportGenerator = NewReportGenerator(server)
@@ -497,6 +507,32 @@ func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, fmt.Errorf("underlying ResponseWriter does not implement http.Hijacker")
 }
 
+// doneWriter wraps http.ResponseWriter to prevent writes after timeout.
+type doneWriter struct {
+	http.ResponseWriter
+	mu      sync.Mutex
+	written bool
+}
+
+func (dw *doneWriter) WriteHeader(code int) {
+	dw.mu.Lock()
+	defer dw.mu.Unlock()
+	if dw.written {
+		return
+	}
+	dw.written = true
+	dw.ResponseWriter.WriteHeader(code)
+}
+
+func (dw *doneWriter) Write(b []byte) (int, error) {
+	dw.mu.Lock()
+	defer dw.mu.Unlock()
+	if dw.written {
+		return 0, nil
+	}
+	return dw.ResponseWriter.Write(b)
+}
+
 // timeoutMiddleware adds request timeouts to prevent hanging requests
 func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -513,12 +549,15 @@ func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 			ctx, cancel := context.WithTimeout(r.Context(), timeout)
 			defer cancel()
 
+			// Wrap ResponseWriter to prevent writes after timeout
+			dw := &doneWriter{ResponseWriter: w}
+
 			// Channel to signal completion
 			done := make(chan struct{})
 
 			// Process request in goroutine
 			go func() {
-				next.ServeHTTP(w, r.WithContext(ctx))
+				next.ServeHTTP(dw, r.WithContext(ctx))
 				close(done)
 			}()
 
@@ -527,8 +566,12 @@ func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 			case <-done:
 				// Request completed successfully
 			case <-ctx.Done():
-				// Timeout occurred
-				if ctx.Err() == context.DeadlineExceeded {
+				// Timeout occurred — mark doneWriter as written to block handler goroutine
+				dw.mu.Lock()
+				timedOut := !dw.written
+				dw.written = true
+				dw.mu.Unlock()
+				if timedOut && ctx.Err() == context.DeadlineExceeded {
 					WriteError(w, NewAPIError(ErrCodeTimeout, "Request timed out"))
 				}
 			}
@@ -734,14 +777,16 @@ func (s *Server) Start() error {
 		mux.Handle("/", http.FileServer(http.FS(staticFS)))
 	}
 
-	// Apply middleware chain: recovery -> request logging -> rate limiting -> timeout -> security headers -> CORS -> CSRF -> handler
+	// Apply middleware chain: recovery -> request logging -> rate limiting -> body limit -> timeout -> security headers -> CORS -> CSRF -> handler
 	handler := recoveryMiddleware(
 		requestLoggingMiddleware(
 			RateLimitMiddleware(s.apiRateLimiter, s.authRateLimiter)(
-				timeoutMiddleware(60 * time.Second)(
-					securityHeadersMiddleware(
-						corsMiddleware(
-							s.authManager.CSRFMiddleware(mux),
+				maxBodyMiddleware(1<<20)( // 1 MB max body size
+					timeoutMiddleware(60*time.Second)(
+						securityHeadersMiddleware(
+							corsMiddleware(
+								s.authManager.CSRFMiddleware(mux),
+							),
 						),
 					),
 				),
@@ -774,6 +819,14 @@ func (s *Server) Stop() error {
 		s.notifManager.Stop()
 	}
 
+	// Stop rate limiter cleanup goroutines
+	if s.apiRateLimiter != nil {
+		s.apiRateLimiter.Stop()
+	}
+	if s.authRateLimiter != nil {
+		s.authRateLimiter.Stop()
+	}
+
 	// Disconnect all MCP servers
 	if s.mcpClient != nil {
 		s.mcpClient.DisconnectAll()
@@ -788,18 +841,39 @@ func (s *Server) Stop() error {
 	return nil
 }
 
+// maxBodyMiddleware limits request body size to prevent memory exhaustion
+func maxBodyMiddleware(maxBytes int64) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Body != nil && r.ContentLength != 0 {
+				r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 
 		// Only allow same-origin requests or explicitly trusted origins
-		// In production, configure allowed origins via environment variable
 		allowedOrigins := map[string]bool{
 			"":                       true, // Same origin (no Origin header)
 			"http://localhost:8080":  true,
 			"http://localhost:3000":  true,
-			"http://127.0.0.1:8080":  true,
+			"http://127.0.0.1:8080": true,
 			"https://localhost:8080": true,
+		}
+
+		// Support configurable CORS origins via K13D_CORS_ALLOWED_ORIGINS env var
+		if extraOrigins := os.Getenv("K13D_CORS_ALLOWED_ORIGINS"); extraOrigins != "" {
+			for _, o := range strings.Split(extraOrigins, ",") {
+				o = strings.TrimSpace(o)
+				if o != "" {
+					allowedOrigins[o] = true
+				}
+			}
 		}
 
 		if origin != "" {
@@ -846,7 +920,7 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 		// Content Security Policy (all assets vendored locally for air-gapped support)
 		w.Header().Set("Content-Security-Policy",
 			"default-src 'self'; "+
-				"script-src 'self' 'unsafe-inline'; "+
+				"script-src 'self'; "+
 				"style-src 'self' 'unsafe-inline'; "+
 				"font-src 'self'; "+
 				"img-src 'self' data:; "+

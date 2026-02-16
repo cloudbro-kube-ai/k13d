@@ -2,7 +2,6 @@ package render
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -158,72 +157,3 @@ type PodMetrics struct {
 	Memory string
 }
 
-// ContainerRenderer renders container information.
-type ContainerRenderer struct{}
-
-// RenderContainers renders pod containers to rows.
-func (c *ContainerRenderer) RenderContainers(pod *corev1.Pod) []Row {
-	var rows []Row
-
-	for _, container := range pod.Spec.Containers {
-		// Find status
-		var cs *corev1.ContainerStatus
-		for i := range pod.Status.ContainerStatuses {
-			if pod.Status.ContainerStatuses[i].Name == container.Name {
-				cs = &pod.Status.ContainerStatuses[i]
-				break
-			}
-		}
-
-		status := "Waiting"
-		ready := "false"
-		restarts := "0"
-
-		if cs != nil {
-			restarts = fmt.Sprintf("%d", cs.RestartCount)
-			if cs.Ready {
-				ready = "true"
-			}
-			if cs.State.Running != nil {
-				status = "Running"
-			} else if cs.State.Terminated != nil {
-				status = cs.State.Terminated.Reason
-				if status == "" {
-					status = "Terminated"
-				}
-			} else if cs.State.Waiting != nil && cs.State.Waiting.Reason != "" {
-				status = cs.State.Waiting.Reason
-			}
-		}
-
-		rows = append(rows, Row{
-			ID: container.Name,
-			Fields: []string{
-				container.Name,
-				container.Image,
-				status,
-				ready,
-				restarts,
-				strings.Join(containerPorts(container), ","),
-			},
-		})
-	}
-
-	return rows
-}
-
-// containerPorts extracts port strings from a container.
-func containerPorts(c corev1.Container) []string {
-	var ports []string
-	for _, p := range c.Ports {
-		port := fmt.Sprintf("%d", p.ContainerPort)
-		if p.Name != "" {
-			port = p.Name + ":" + port
-		}
-		if p.Protocol != corev1.ProtocolTCP {
-			port += "/" + string(p.Protocol)
-		}
-		ports = append(ports, port)
-	}
-	return ports
-}

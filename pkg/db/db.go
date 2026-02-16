@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/adrg/xdg"
 	_ "github.com/go-sql-driver/mysql"
@@ -13,7 +14,10 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-var DB *sql.DB
+var (
+	DB   *sql.DB
+	dbMu sync.RWMutex // protects DB and currentDBType
+)
 
 // DBType represents the database type
 type DBType string
@@ -25,7 +29,7 @@ const (
 	DBTypeMySQL    DBType = "mysql"
 )
 
-// Current database type
+// currentDBType tracks the current database type (protected by dbMu)
 var currentDBType DBType = DBTypeSQLite
 
 // DBConfig holds database configuration
@@ -50,6 +54,9 @@ func Init(dbPath string) error {
 
 // InitWithConfig initializes database with configuration
 func InitWithConfig(cfg DBConfig) error {
+	dbMu.Lock()
+	defer dbMu.Unlock()
+
 	var db *sql.DB
 	var err error
 
@@ -139,6 +146,8 @@ func initMySQL(cfg DBConfig) (*sql.DB, error) {
 
 // GetDBType returns the current database type
 func GetDBType() DBType {
+	dbMu.RLock()
+	defer dbMu.RUnlock()
 	return currentDBType
 }
 
@@ -352,7 +361,10 @@ func createTables() error {
 	// Create indexes
 	indexQueries := getIndexQueries()
 	for _, q := range indexQueries {
-		DB.Exec(q) // Ignore index errors
+		if _, err := DB.Exec(q); err != nil {
+			// Log but don't fail — index may already exist (MySQL doesn't support IF NOT EXISTS)
+			fmt.Printf("Warning: index creation: %v\n", err)
+		}
 	}
 
 	// Create llm_usage table for token tracking

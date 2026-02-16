@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/log"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
+	"github.com/cloudbro-kube-ai/k13d/pkg/log"
 	corev1 "k8s.io/api/core/v1"
 )
 

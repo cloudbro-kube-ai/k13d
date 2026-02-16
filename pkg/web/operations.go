@@ -1,13 +1,14 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -736,37 +737,41 @@ func (s *Server) handleNodeDrain(w http.ResponseWriter, r *http.Request) {
 		drainer.Timeout = time.Duration(req.Timeout) * time.Second
 	}
 
-	// Get pods to evict
-	podList, errs := drainer.GetPodsForDeletion(req.Name)
-	if len(errs) > 0 {
-		errMsgs := make([]string, len(errs))
-		for i, e := range errs {
-			errMsgs[i] = e.Error()
+	// Run drain asynchronously — return 202 Accepted immediately
+	// The drain can take a long time depending on pod count and grace periods
+	go func() {
+		drainCtx := context.Background()
+		if req.Timeout > 0 {
+			var cancel context.CancelFunc
+			drainCtx, cancel = context.WithTimeout(drainCtx, time.Duration(req.Timeout)*time.Second)
+			defer cancel()
 		}
-		http.Error(w, fmt.Sprintf("Failed to get pods: %s", strings.Join(errMsgs, "; ")), http.StatusInternalServerError)
-		return
-	}
+		drainer.Ctx = drainCtx
 
-	// Evict pods
-	err = drainer.DeleteOrEvictPods(podList.Pods())
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to drain node: %v", err), http.StatusInternalServerError)
-		return
-	}
+		podList, errs := drainer.GetPodsForDeletion(req.Name)
+		if len(errs) > 0 {
+			fmt.Printf("[drain] Failed to get pods for node %s: %v\n", req.Name, errs)
+			return
+		}
 
-	// Record audit log
-	db.RecordAudit(db.AuditEntry{
-		User:     username,
-		Action:   "drain",
-		Resource: fmt.Sprintf("node/%s", req.Name),
-		Details:  fmt.Sprintf("Drained node %s, evicted %d pods", req.Name, len(podList.Pods())),
-	})
+		err := drainer.DeleteOrEvictPods(podList.Pods())
+		if err != nil {
+			fmt.Printf("[drain] Failed to drain node %s: %v\n", req.Name, err)
+		}
+
+		db.RecordAudit(db.AuditEntry{
+			User:     username,
+			Action:   "drain",
+			Resource: fmt.Sprintf("node/%s", req.Name),
+			Details:  fmt.Sprintf("Drained node %s, evicted %d pods, err=%v", req.Name, len(podList.Pods()), err),
+		})
+	}()
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":     true,
-		"message":     fmt.Sprintf("Node %s drained successfully", req.Name),
-		"evictedPods": len(podList.Pods()),
+		"success": true,
+		"message": fmt.Sprintf("Node %s drain initiated (running in background)", req.Name),
 	})
 }
 

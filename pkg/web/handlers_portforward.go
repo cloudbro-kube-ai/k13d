@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 )
 
 // ==========================================
@@ -25,12 +25,8 @@ type PortForwardSession struct {
 	Active     bool      `json:"active"`
 	StartedAt  time.Time `json:"startedAt"`
 	stopChan   chan struct{}
+	closeOnce  sync.Once
 }
-
-var (
-	portForwardSessions = make(map[string]*PortForwardSession)
-	pfMutex             sync.Mutex
-)
 
 func (s *Server) handlePortForwardStart(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -76,16 +72,16 @@ func (s *Server) handlePortForwardStart(w http.ResponseWriter, r *http.Request) 
 		if err != nil {
 			fmt.Printf("Port forward error: %v\n", err)
 		}
-		pfMutex.Lock()
-		if sess, ok := portForwardSessions[sessionID]; ok {
+		s.pfMutex.Lock()
+		if sess, ok := s.portForwardSessions[sessionID]; ok {
 			sess.Active = false
 		}
-		pfMutex.Unlock()
+		s.pfMutex.Unlock()
 	}()
 
-	pfMutex.Lock()
-	portForwardSessions[sessionID] = session
-	pfMutex.Unlock()
+	s.pfMutex.Lock()
+	s.portForwardSessions[sessionID] = session
+	s.pfMutex.Unlock()
 
 	// Record audit
 	username := r.Header.Get("X-Username")
@@ -106,12 +102,12 @@ func (s *Server) handlePortForwardList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pfMutex.Lock()
-	sessions := make([]*PortForwardSession, 0, len(portForwardSessions))
-	for _, sess := range portForwardSessions {
+	s.pfMutex.Lock()
+	sessions := make([]*PortForwardSession, 0, len(s.portForwardSessions))
+	for _, sess := range s.portForwardSessions {
 		sessions = append(sessions, sess)
 	}
-	pfMutex.Unlock()
+	s.pfMutex.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -129,18 +125,18 @@ func (s *Server) handlePortForwardStop(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/portforward/")
 	sessionID := strings.TrimSuffix(path, "/")
 
-	pfMutex.Lock()
-	session, ok := portForwardSessions[sessionID]
+	s.pfMutex.Lock()
+	session, ok := s.portForwardSessions[sessionID]
 	if !ok {
-		pfMutex.Unlock()
+		s.pfMutex.Unlock()
 		http.Error(w, "Session not found", http.StatusNotFound)
 		return
 	}
 
-	// Stop the port forward
-	close(session.stopChan)
-	delete(portForwardSessions, sessionID)
-	pfMutex.Unlock()
+	// Stop the port forward (sync.Once prevents double-close panic)
+	session.closeOnce.Do(func() { close(session.stopChan) })
+	delete(s.portForwardSessions, sessionID)
+	s.pfMutex.Unlock()
 
 	// Record audit
 	username := r.Header.Get("X-Username")

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/providers"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/providers"
 )
 
 // Task defines a benchmark evaluation task

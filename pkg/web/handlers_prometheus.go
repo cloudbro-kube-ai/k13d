@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 )
 
 // handlePrometheusMetrics exposes metrics in Prometheus format

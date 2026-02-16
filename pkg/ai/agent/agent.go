@@ -5,12 +5,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/analyzers"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/anonymizer"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/providers"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/safety"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/sessions"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/tools"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/analyzers"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/anonymizer"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/providers"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/sessions"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/tools"
 )
 
 // Agent manages the AI conversation loop with state machine.
@@ -24,13 +24,14 @@ type Agent struct {
 	state   State
 	stateMu sync.RWMutex
 
-	// Configuration
+	// Configuration (protected by configMu)
+	configMu            sync.RWMutex
 	maxIterations       int
 	approvalTimeout     time.Duration
 	autoApproveReadOnly bool
 	language            string // Display language for responses (e.g., "ko", "en")
 
-	// Dependencies
+	// Dependencies (protected by configMu)
 	provider       providers.Provider
 	toolProvider   providers.ToolProvider
 	toolRegistry   *tools.Registry
@@ -211,8 +212,10 @@ func (a *Agent) IsRunning() bool {
 	return a.running
 }
 
-// SetProvider sets the LLM provider
+// SetProvider sets the LLM provider (thread-safe)
 func (a *Agent) SetProvider(p providers.Provider) {
+	a.configMu.Lock()
+	defer a.configMu.Unlock()
 	a.provider = p
 	if tp, ok := p.(providers.ToolProvider); ok {
 		a.toolProvider = tp
@@ -221,8 +224,10 @@ func (a *Agent) SetProvider(p providers.Provider) {
 	}
 }
 
-// SetToolRegistry sets the tool registry
+// SetToolRegistry sets the tool registry (thread-safe)
 func (a *Agent) SetToolRegistry(r *tools.Registry) {
+	a.configMu.Lock()
+	defer a.configMu.Unlock()
 	a.toolRegistry = r
 }
 

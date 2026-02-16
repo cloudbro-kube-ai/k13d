@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/helm"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/mcp"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/helm"
+	"github.com/cloudbro-kube-ai/k13d/pkg/mcp"
 )
 
 // setupHelmTestServer creates a test server with a Helm client for handler testing.

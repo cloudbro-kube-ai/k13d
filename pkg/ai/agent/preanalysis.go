@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/analyzers"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/analyzers"
 )
 
 // runPreAnalysis runs SRE analyzers on the resource context and returns findings summary.

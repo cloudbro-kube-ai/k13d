@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 )
 
 // Action represents a resource action type for RBAC (Teleport-inspired)

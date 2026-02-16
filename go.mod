@@ -1,4 +1,7 @@
-module github.com/kube-ai-dashbaord/kube-ai-dashboard-cli
+// NOTE: Module path contains a typo ("dashbaord" instead of "dashboard").
+// This cannot be changed without breaking all imports across the codebase.
+// The module works correctly despite the cosmetic typo.
+module github.com/cloudbro-kube-ai/k13d
 
 go 1.25.0
 

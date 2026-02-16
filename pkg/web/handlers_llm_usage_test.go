@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 )
 
 func TestHandleLLMUsage_MethodNotAllowed(t *testing.T) {

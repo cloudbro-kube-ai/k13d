@@ -3,6 +3,7 @@
 package models
 
 import (
+	"strings"
 	"sync"
 )
 
@@ -164,22 +165,22 @@ func (ft *FilteredTable) GetFilter() string {
 
 // applyFilter filters the rows based on the current filter.
 func (ft *FilteredTable) applyFilter() {
+	// Snapshot both rows and filter atomically
 	ft.mx.RLock()
 	rows := ft.rows
 	ft.mx.RUnlock()
 
 	ft.filterMx.Lock()
+	defer ft.filterMx.Unlock()
+
 	filter := ft.filter
-	ft.filterMx.Unlock()
 
 	if filter == "" {
-		ft.filterMx.Lock()
 		ft.filteredRows = rows
 		ft.filterIndices = make([]int, len(rows))
 		for i := range rows {
 			ft.filterIndices[i] = i
 		}
-		ft.filterMx.Unlock()
 		return
 	}
 
@@ -196,10 +197,8 @@ func (ft *FilteredTable) applyFilter() {
 		}
 	}
 
-	ft.filterMx.Lock()
 	ft.filteredRows = filtered
 	ft.filterIndices = indices
-	ft.filterMx.Unlock()
 }
 
 // FilteredRows returns the filtered rows.
@@ -236,31 +235,5 @@ func containsIgnoreCase(s, substr string) bool {
 	if len(substr) == 0 {
 		return true
 	}
-	if len(s) < len(substr) {
-		return false
-	}
-
-	// Simple case-insensitive search
-	sLower := toLower(s)
-	substrLower := toLower(substr)
-
-	for i := 0; i <= len(sLower)-len(substrLower); i++ {
-		if sLower[i:i+len(substrLower)] == substrLower {
-			return true
-		}
-	}
-	return false
-}
-
-// toLower converts a string to lowercase (ASCII only for performance).
-func toLower(s string) string {
-	b := make([]byte, len(s))
-	for i := range s {
-		c := s[i]
-		if c >= 'A' && c <= 'Z' {
-			c += 'a' - 'A'
-		}
-		b[i] = c
-	}
-	return string(b)
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }

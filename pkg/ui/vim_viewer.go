@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -15,6 +16,7 @@ type VimViewer struct {
 	*tview.TextView
 	app           *App
 	pageName      string
+	mu            sync.RWMutex // Protects mutable state below
 	searchPattern string
 	searchRegex   *regexp.Regexp
 	searchMatches []int // Line numbers with matches
@@ -62,9 +64,11 @@ func NewVimViewer(app *App, pageName, title string) *VimViewer {
 
 // SetContent sets the viewer content and prepares search indexes
 func (v *VimViewer) SetContent(content string) {
+	v.mu.Lock()
 	v.content = content
 	v.lines = strings.Split(content, "\n")
 	v.totalLines = len(v.lines)
+	v.mu.Unlock()
 	v.TextView.Clear()
 	v.TextView.SetText(content)
 }

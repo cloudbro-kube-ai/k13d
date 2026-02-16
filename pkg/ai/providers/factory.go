@@ -161,36 +161,17 @@ func (r *retryProvider) AskNonStreaming(ctx context.Context, prompt string) (str
 }
 
 // AskWithTools implements ToolProvider interface by delegating to the underlying provider
-// if it supports tool calling. This ensures the retry wrapper doesn't break tool support.
+// if it supports tool calling. Tool calls have side effects (executing commands), so
+// retrying could cause duplicate executions. We do NOT retry this method.
 func (r *retryProvider) AskWithTools(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
 	toolProvider, ok := r.provider.(ToolProvider)
 	if !ok {
 		return fmt.Errorf("underlying provider does not support tool calling")
 	}
 
-	var lastErr error
-	for attempt := 0; attempt < r.config.MaxAttempts; attempt++ {
-		if attempt > 0 {
-			backoff := r.calculateBackoff(attempt)
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(backoff):
-			}
-		}
-
-		err := toolProvider.AskWithTools(ctx, prompt, tools, callback, toolCallback)
-		if err == nil {
-			return nil
-		}
-
-		if !isRetryableError(err) {
-			return err
-		}
-
-		lastErr = err
-	}
-	return fmt.Errorf("max retries exceeded: %w", lastErr)
+	// Do not retry — tool calls have side effects and retrying could
+	// cause duplicate tool executions.
+	return toolProvider.AskWithTools(ctx, prompt, tools, callback, toolCallback)
 }
 
 // SupportsTools returns true if the underlying provider supports tool calling

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/log"
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
+	"github.com/cloudbro-kube-ai/k13d/pkg/log"
 )
 
 func GetPodsView(ctx context.Context, client *k8s.Client, namespace, filter string, getStatusColor func(string) any) (ResourceView, error) {

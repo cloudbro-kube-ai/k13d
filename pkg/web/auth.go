@@ -7,13 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 
 	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -277,8 +278,9 @@ func NewAuthManager(cfg *AuthConfig) *AuthManager {
 		if adminPass == "" {
 			// Generate a secure random password instead of hardcoded default
 			adminPass = generateSecurePassword(16)
-			fmt.Printf("  WARNING: Generated random admin password: %s\n", adminPass)
-			fmt.Printf("  Please change this password immediately after first login!\n")
+			// Print password to stderr to avoid capture in structured log output
+			fmt.Fprintf(os.Stderr, "  Admin password: %s\n", adminPass)
+			fmt.Printf("  WARNING: Random admin password generated (see stderr). Change after first login.\n")
 		}
 		am.createLocalUser(adminUser, adminPass, "admin")
 	}
@@ -339,6 +341,10 @@ func (am *AuthManager) CreateUser(username, password, role string) error {
 
 	if _, exists := am.users[username]; exists {
 		return fmt.Errorf("user already exists: %s", username)
+	}
+
+	if len(password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters")
 	}
 
 	am.users[username] = &User{
@@ -506,8 +512,8 @@ func (am *AuthManager) GetLDAPConfig() *LDAPConfig {
 
 // ValidateSession checks if a session is valid
 func (am *AuthManager) ValidateSession(sessionID string) (*Session, error) {
-	am.mu.RLock()
-	defer am.mu.RUnlock()
+	am.mu.Lock()
+	defer am.mu.Unlock()
 
 	session, exists := am.sessions[sessionID]
 	if !exists {
@@ -1543,7 +1549,11 @@ func (am *AuthManager) CSRFMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Skip CSRF check for API endpoints that use Bearer token auth
+		// Skip CSRF check for API endpoints that use Bearer token auth.
+		// This is intentional: Bearer token authentication is not vulnerable to CSRF
+		// because browsers do not automatically attach Authorization headers to
+		// cross-origin requests (unlike cookies). API clients using Bearer tokens
+		// are therefore exempt from CSRF validation.
 		if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
 			next.ServeHTTP(w, r)
 			return

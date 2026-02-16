@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/web"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/web"
 )
 
 func TestWebServer_Health(t *testing.T) {

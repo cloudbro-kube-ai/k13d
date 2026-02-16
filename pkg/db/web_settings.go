@@ -13,7 +13,9 @@ type WebSetting struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// InitWebSettingsTable creates the web_settings table if it doesn't exist
+// InitWebSettingsTable creates the web_settings table if it doesn't exist.
+// TODO: DDL uses SQLite-only syntax (TEXT PRIMARY KEY, ON CONFLICT).
+// Add multi-DB DDL variants when supporting Postgres/MySQL.
 func InitWebSettingsTable() error {
 	if DB == nil {
 		return ErrDBNotInitialized

@@ -1,8 +1,10 @@
 package views
 
 import (
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ui/actions"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ui/render"
+	"sync"
+
+	"github.com/cloudbro-kube-ai/k13d/pkg/ui/actions"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ui/render"
 )
 
 // GVR represents a Group/Version/Resource identifier.
@@ -59,6 +61,7 @@ type MetaViewers map[GVR]MetaViewer
 type Registrar struct {
 	viewers MetaViewers
 	aliases map[string]GVR
+	mx      sync.RWMutex
 }
 
 // NewRegistrar creates a new Registrar with default viewers.
@@ -199,6 +202,8 @@ func (r *Registrar) loadDefaultViewers() {
 
 // Register registers a viewer for a GVR.
 func (r *Registrar) Register(gvr GVR, viewer MetaViewer) {
+	r.mx.Lock()
+	defer r.mx.Unlock()
 	r.viewers[gvr] = viewer
 	for _, alias := range viewer.Aliases {
 		r.aliases[alias] = gvr
@@ -207,12 +212,16 @@ func (r *Registrar) Register(gvr GVR, viewer MetaViewer) {
 
 // Get returns the viewer for a GVR.
 func (r *Registrar) Get(gvr GVR) (MetaViewer, bool) {
+	r.mx.RLock()
+	defer r.mx.RUnlock()
 	v, ok := r.viewers[gvr]
 	return v, ok
 }
 
 // Lookup looks up a GVR by alias or name.
 func (r *Registrar) Lookup(name string) (GVR, bool) {
+	r.mx.RLock()
+	defer r.mx.RUnlock()
 	if gvr, ok := r.aliases[name]; ok {
 		return gvr, true
 	}
@@ -225,6 +234,8 @@ func (r *Registrar) Lookup(name string) (GVR, bool) {
 
 // IsNamespaced returns true if the resource is namespaced.
 func (r *Registrar) IsNamespaced(gvr GVR) bool {
+	r.mx.RLock()
+	defer r.mx.RUnlock()
 	v, ok := r.viewers[gvr]
 	if !ok {
 		return true // Default to namespaced
@@ -234,6 +245,8 @@ func (r *Registrar) IsNamespaced(gvr GVR) bool {
 
 // AllAliases returns all registered aliases.
 func (r *Registrar) AllAliases() []string {
+	r.mx.RLock()
+	defer r.mx.RUnlock()
 	aliases := make([]string, 0, len(r.aliases))
 	for alias := range r.aliases {
 		aliases = append(aliases, alias)
@@ -243,6 +256,8 @@ func (r *Registrar) AllAliases() []string {
 
 // AllGVRs returns all registered GVRs.
 func (r *Registrar) AllGVRs() []GVR {
+	r.mx.RLock()
+	defer r.mx.RUnlock()
 	gvrs := make([]GVR, 0, len(r.viewers))
 	for gvr := range r.viewers {
 		gvrs = append(gvrs, gvr)
@@ -252,7 +267,9 @@ func (r *Registrar) AllGVRs() []GVR {
 
 // GetRenderer returns the renderer for a GVR.
 func (r *Registrar) GetRenderer(gvr GVR) render.Renderer {
+	r.mx.RLock()
 	v, ok := r.viewers[gvr]
+	r.mx.RUnlock()
 	if !ok || v.RendererFn == nil {
 		return nil
 	}
@@ -261,7 +278,9 @@ func (r *Registrar) GetRenderer(gvr GVR) render.Renderer {
 
 // GetActions returns the actions for a GVR.
 func (r *Registrar) GetActions(gvr GVR) *actions.KeyActions {
+	r.mx.RLock()
 	v, ok := r.viewers[gvr]
+	r.mx.RUnlock()
 	if !ok || v.ActionsFn == nil {
 		return nil
 	}

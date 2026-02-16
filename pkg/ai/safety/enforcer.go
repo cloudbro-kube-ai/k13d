@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 )
 
 // PolicyEnforcer applies approval policy to command classifications.

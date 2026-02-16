@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 	"github.com/rivo/tview"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -285,7 +285,7 @@ func (a *App) confirmDelete() {
 			a.SetFocus(a.table)
 
 			if buttonLabel == "Delete" {
-				go a.deleteResource(ns, name, resource)
+				a.safeGo("deleteResource", func() { a.deleteResource(ns, name, resource) })
 			}
 		})
 
@@ -377,7 +377,7 @@ func (a *App) deleteResource(ns, name, resource string) {
 
 	a.flashMsg(fmt.Sprintf("Deleted %s/%s", resource, name), false)
 	a.recordTUIAudit("delete", resourcePath, fmt.Sprintf("Deleted %s %s", resource, name), true, "")
-	go a.refresh()
+	a.safeGo("deleteResource-refresh", func() { a.refresh() })
 }
 
 // execShell opens an interactive shell in the selected pod
@@ -417,7 +417,7 @@ func (a *App) execShell() {
 		return
 	}
 
-	go a.selectPodAndShell(ns, name, resource)
+	a.safeGo("selectPodAndShell", func() { a.selectPodAndShell(ns, name, resource) })
 }
 
 // runShellForPod suspends the TUI and opens a shell into the given pod
@@ -445,7 +445,7 @@ func (a *App) runShellForPod(ns, name string) {
 
 // selectPodAndShell lists pods for a workload and lets the user pick one for shell access
 func (a *App) selectPodAndShell(ns, name, resource string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(a.getAppContext(), 10*time.Second)
 	defer cancel()
 
 	// Get the workload's label selector
@@ -611,7 +611,7 @@ func (a *App) portForward() {
 			return
 		}
 
-		go a.startPortForward(ns, name, resource, localPort, remotePort)
+		a.safeGo("startPortForward", func() { a.startPortForward(ns, name, resource, localPort, remotePort) })
 	})
 	form.AddButton("Cancel", func() {
 		a.closeModal("port-forward")
@@ -697,13 +697,16 @@ func (a *App) showPortForwards() {
 	}
 
 	list.SetSelectedFunc(func(idx int, _, _ string, _ rune) {
-		if idx < len(forwards) {
-			pf := forwards[idx]
+		// Re-acquire lock and look up by identity to avoid stale snapshot
+		a.pfMx.Lock()
+		if idx < len(a.portForwards) {
+			pf := a.portForwards[idx]
 			if pf.Cmd.Process != nil {
 				pf.Cmd.Process.Kill()
 				a.flashMsg(fmt.Sprintf("Stopped port-forward localhost:%s", pf.LocalPort), false)
 			}
 		}
+		a.pfMx.Unlock()
 		a.closeModal("portforwards")
 		a.SetFocus(a.table)
 	})
@@ -833,8 +836,11 @@ func (a *App) showHealth() {
 	sb.WriteString("\n")
 
 	// AI status
-	if a.aiClient != nil && a.aiClient.IsReady() {
-		sb.WriteString(fmt.Sprintf(" [green]✓[white] AI: Online (%s)\n", a.aiClient.GetModel()))
+	a.aiMx.RLock()
+	aiClient := a.aiClient
+	a.aiMx.RUnlock()
+	if aiClient != nil && aiClient.IsReady() {
+		sb.WriteString(fmt.Sprintf(" [green]✓[white] AI: Online (%s)\n", aiClient.GetModel()))
 	} else {
 		sb.WriteString(" [red]✗[white] AI: Offline\n")
 		sb.WriteString("   Configure in ~/.kube-ai-dashboard/config.yaml\n")
@@ -1193,7 +1199,7 @@ func (a *App) editResource() {
 	a.recordTUIAudit("edit", resourcePath, fmt.Sprintf("Edited %s %s via $EDITOR", resource, name), true, "")
 
 	// Refresh after edit
-	go a.refresh()
+	a.safeGo("editResource-refresh", func() { a.refresh() })
 }
 
 // attachContainer attaches to a container (k9s a key)
@@ -1824,7 +1830,7 @@ func (a *App) aiBriefing() {
 		a.briefing.Toggle()
 	}
 
-	go a.briefing.UpdateWithAI()
+	a.safeGo("briefing-ai", func() { a.briefing.UpdateWithAI() })
 }
 
 // showSettings displays settings modal with LLM connection test and save functionality
@@ -1986,7 +1992,9 @@ func (a *App) showSettings() {
 				})
 				return
 			}
+			a.aiMx.Lock()
 			a.aiClient = newClient
+			a.aiMx.Unlock()
 
 			a.QueueUpdateDraw(func() {
 				statusView.SetText("[green]●[white] Configuration saved! Press 'Test Connection' to verify")
@@ -2002,14 +2010,17 @@ func (a *App) showSettings() {
 		a.QueueUpdateDraw(func() {})
 
 		a.safeGo("testConnection", func() {
+			a.aiMx.RLock()
+			testClient := a.aiClient
+			a.aiMx.RUnlock()
 			var resultText string
-			if a.aiClient == nil {
+			if testClient == nil {
 				resultText = "[red]✗[white] LLM Not Configured - Save settings first"
 			} else {
 				ctx, cancel := context.WithTimeout(a.getAppContext(), 30*time.Second)
 				defer cancel()
 
-				status := a.aiClient.TestConnection(ctx)
+				status := testClient.TestConnection(ctx)
 				if status.Connected {
 					resultText = fmt.Sprintf("[green]●[white] Connected! %s/%s (%dms)",
 						status.Provider, status.Model, status.ResponseTime)
@@ -2057,12 +2068,15 @@ func (a *App) showSettings() {
 
 	// Check initial status
 	a.safeGo("initConfig-status", func() {
+		a.aiMx.RLock()
+		initClient := a.aiClient
+		a.aiMx.RUnlock()
 		var initialStatus string
-		if a.aiClient == nil {
+		if initClient == nil {
 			initialStatus = "[gray]●[white] LLM Not Configured - Enter settings and Save"
-		} else if a.aiClient.IsReady() {
+		} else if initClient.IsReady() {
 			initialStatus = fmt.Sprintf("[yellow]●[white] LLM: %s/%s - Press 'Test' to verify",
-				a.aiClient.GetProvider(), a.aiClient.GetModel())
+				initClient.GetProvider(), initClient.GetModel())
 		} else {
 			initialStatus = "[gray]●[white] LLM Configuration Incomplete - Enter settings and Save"
 		}
@@ -2147,7 +2161,9 @@ func (a *App) switchModel(name string) {
 		a.flashMsg(fmt.Sprintf("Failed to initialize model '%s': %v. Check your API keys and model configuration.", name, err), true)
 		return
 	}
+	a.aiMx.Lock()
 	a.aiClient = newClient
+	a.aiMx.Unlock()
 	a.flashMsg(fmt.Sprintf("Switched to model: %s (%s/%s)", name, a.config.LLM.Provider, a.config.LLM.Model), false)
 	a.updateHeader()
 }
@@ -2242,14 +2258,14 @@ func (a *App) executePlugin(name string, plugin config.PluginConfig) {
 				a.closeModal("plugin-confirm")
 				a.SetFocus(a.table)
 				if buttonLabel == "Execute" {
-					go a.runPlugin(name, plugin, ctx)
+					a.safeGo("runPlugin-"+name, func() { a.runPlugin(name, plugin, ctx) })
 				}
 			})
 		a.showModal("plugin-confirm", modal, true)
 		return
 	}
 
-	go a.runPlugin(name, plugin, ctx)
+	a.safeGo("runPlugin-"+name, func() { a.runPlugin(name, plugin, ctx) })
 }
 
 // runPlugin executes a plugin command

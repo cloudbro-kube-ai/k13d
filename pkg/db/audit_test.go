@@ -3,13 +3,13 @@ package db
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
 
 func TestAuditLogging(t *testing.T) {
-	dbPath := "test_audit.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_audit.db")
 
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
@@ -49,8 +49,7 @@ func TestAuditLogging(t *testing.T) {
 }
 
 func TestAuditEntryFields(t *testing.T) {
-	dbPath := "test_audit_fields.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_audit_fields.db")
 
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
@@ -108,8 +107,7 @@ func TestAuditEntryFields(t *testing.T) {
 }
 
 func TestAuditLLMFields(t *testing.T) {
-	dbPath := "test_audit_llm.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_audit_llm.db")
 
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
@@ -156,8 +154,7 @@ func TestAuditLLMFields(t *testing.T) {
 }
 
 func TestAuditFilteredQueries(t *testing.T) {
-	dbPath := "test_audit_filters.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_audit_filters.db")
 
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
@@ -240,8 +237,7 @@ func TestAuditFilteredQueries(t *testing.T) {
 }
 
 func TestAuditSkipViewActions(t *testing.T) {
-	dbPath := "test_audit_views.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_audit_views.db")
 
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
@@ -300,8 +296,7 @@ func TestAuditSkipViewActions(t *testing.T) {
 }
 
 func TestAuditLogsJSON(t *testing.T) {
-	dbPath := "test_audit_json.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_audit_json.db")
 
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
@@ -416,7 +411,7 @@ func TestFormatAuditLogLine(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := formatAuditLogLine(ts, tt.entry)
 			for _, substr := range tt.contains {
-				if !containsString(result, substr) {
+				if !strings.Contains(result, substr) {
 					t.Errorf("formatAuditLogLine() = %q, should contain %q", result, substr)
 				}
 			}
@@ -461,8 +456,7 @@ func TestAuditFileOperations(t *testing.T) {
 	defer CloseAuditFile()
 
 	// Record an entry (this writes to file)
-	dbPath := "test_audit_file.db"
-	defer os.Remove(dbPath)
+	dbPath := filepath.Join(t.TempDir(), "test_audit_file.db")
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
@@ -488,15 +482,13 @@ func TestAuditFileOperations(t *testing.T) {
 		t.Error("Audit file should not be empty")
 	}
 
-	if !containsString(string(data), "file-action") {
+	if !strings.Contains(string(data), "file-action") {
 		t.Error("Audit file should contain 'file-action'")
 	}
 }
 
 func TestSecurityScanRecord(t *testing.T) {
-	dbPath := "test_security_scan.db"
-	defer os.Remove(dbPath)
-
+	dbPath := filepath.Join(t.TempDir(), "test_security_scan.db")
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
@@ -552,9 +544,7 @@ func TestSecurityScanRecord(t *testing.T) {
 }
 
 func TestSecurityScanFilters(t *testing.T) {
-	dbPath := "test_security_filters.db"
-	defer os.Remove(dbPath)
-
+	dbPath := filepath.Join(t.TempDir(), "test_security_filters.db")
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
@@ -629,9 +619,7 @@ func TestSecurityScanFilters(t *testing.T) {
 }
 
 func TestSecurityScanByID(t *testing.T) {
-	dbPath := "test_scan_by_id.db"
-	defer os.Remove(dbPath)
-
+	dbPath := filepath.Join(t.TempDir(), "test_scan_by_id.db")
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
@@ -674,9 +662,7 @@ func TestSecurityScanByID(t *testing.T) {
 }
 
 func TestSecurityScanStats(t *testing.T) {
-	dbPath := "test_scan_stats.db"
-	defer os.Remove(dbPath)
-
+	dbPath := filepath.Join(t.TempDir(), "test_scan_stats.db")
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
@@ -758,16 +744,3 @@ func TestNilDatabaseHandling(t *testing.T) {
 	}
 }
 
-// Helper function
-func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsStringHelper(s, substr))
-}
-
-func containsStringHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}

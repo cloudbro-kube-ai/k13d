@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 )
 
 func TestNewClient(t *testing.T) {

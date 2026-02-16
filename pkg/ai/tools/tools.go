@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -69,6 +70,7 @@ type MCPToolExecutor interface {
 
 // Registry holds all available tools
 type Registry struct {
+	mu          sync.RWMutex
 	tools       map[string]*Tool
 	executor    *Executor
 	mcpExecutor MCPToolExecutor
@@ -131,21 +133,29 @@ func (r *Registry) registerDefaultTools() {
 
 // Register adds a tool to the registry
 func (r *Registry) Register(tool *Tool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.tools[tool.Name] = tool
 }
 
 // Unregister removes a tool from the registry
 func (r *Registry) Unregister(name string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	delete(r.tools, name)
 }
 
 // SetMCPExecutor sets the MCP tool executor
 func (r *Registry) SetMCPExecutor(executor MCPToolExecutor) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.mcpExecutor = executor
 }
 
 // RegisterMCPTool registers an MCP-provided tool
 func (r *Registry) RegisterMCPTool(name, description, serverName string, inputSchema map[string]interface{}) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.tools[name] = &Tool{
 		Name:        name,
 		Description: description,
@@ -157,6 +167,8 @@ func (r *Registry) RegisterMCPTool(name, description, serverName string, inputSc
 
 // UnregisterMCPTools removes all tools from a specific MCP server
 func (r *Registry) UnregisterMCPTools(serverName string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	for name, tool := range r.tools {
 		if tool.Type == ToolTypeMCP && tool.ServerName == serverName {
 			delete(r.tools, name)
@@ -166,6 +178,8 @@ func (r *Registry) UnregisterMCPTools(serverName string) {
 
 // GetMCPTools returns all MCP-provided tools
 func (r *Registry) GetMCPTools() []*Tool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	var mcpTools []*Tool
 	for _, tool := range r.tools {
 		if tool.Type == ToolTypeMCP {
@@ -177,12 +191,16 @@ func (r *Registry) GetMCPTools() []*Tool {
 
 // Get returns a tool by name
 func (r *Registry) Get(name string) (*Tool, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	tool, ok := r.tools[name]
 	return tool, ok
 }
 
 // List returns all registered tools
 func (r *Registry) List() []*Tool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	tools := make([]*Tool, 0, len(r.tools))
 	for _, t := range r.tools {
 		tools = append(tools, t)
@@ -192,6 +210,8 @@ func (r *Registry) List() []*Tool {
 
 // ToOpenAIFormat returns tools in OpenAI function calling format
 func (r *Registry) ToOpenAIFormat() []map[string]interface{} {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	result := make([]map[string]interface{}, 0, len(r.tools))
 	for _, tool := range r.tools {
 		result = append(result, map[string]interface{}{
@@ -208,7 +228,11 @@ func (r *Registry) ToOpenAIFormat() []map[string]interface{} {
 
 // Execute runs a tool call and returns the result
 func (r *Registry) Execute(ctx context.Context, call *ToolCall) *ToolResult {
+	r.mu.RLock()
 	tool, ok := r.tools[call.Function.Name]
+	mcpExec := r.mcpExecutor
+	r.mu.RUnlock()
+
 	if !ok {
 		return &ToolResult{
 			ToolCallID: call.ID,
@@ -222,7 +246,7 @@ func (r *Registry) Execute(ctx context.Context, call *ToolCall) *ToolResult {
 
 	// Handle MCP tools specially
 	if tool.Type == ToolTypeMCP {
-		if r.mcpExecutor == nil {
+		if mcpExec == nil {
 			return &ToolResult{
 				ToolCallID: call.ID,
 				Content:    "MCP executor not configured",
@@ -242,7 +266,7 @@ func (r *Registry) Execute(ctx context.Context, call *ToolCall) *ToolResult {
 			}
 		}
 
-		result, err = r.mcpExecutor.CallTool(ctx, call.Function.Name, args)
+		result, err = mcpExec.CallTool(ctx, call.Function.Name, args)
 	} else {
 		result, err = r.executor.Execute(ctx, tool, call.Function.Arguments)
 	}
@@ -293,25 +317,40 @@ func (e *Executor) Execute(ctx context.Context, tool *Tool, argsJSON string) (st
 	}
 }
 
-// executeKubectl runs a kubectl command
+// executeKubectl runs a kubectl command using explicit argument arrays (no shell injection)
 func (e *Executor) executeKubectl(ctx context.Context, argsJSON string) (string, error) {
 	var args KubectlArgs
 	if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
 		return "", fmt.Errorf("invalid kubectl arguments: %w", err)
 	}
 
-	// Build the kubectl command
+	// Parse the command into individual arguments
 	cmdStr := args.Command
-	if !strings.HasPrefix(cmdStr, "kubectl") {
-		cmdStr = "kubectl " + cmdStr
+	// Strip "kubectl" prefix if present
+	if strings.HasPrefix(cmdStr, "kubectl ") {
+		cmdStr = strings.TrimPrefix(cmdStr, "kubectl ")
+	} else if cmdStr == "kubectl" {
+		cmdStr = ""
 	}
+	cmdStr = strings.TrimSpace(cmdStr)
+
+	cmdArgs := strings.Fields(cmdStr)
 
 	// Add namespace if specified and not already in command
-	if args.Namespace != "" && !strings.Contains(cmdStr, "-n ") && !strings.Contains(cmdStr, "--namespace") {
-		cmdStr = strings.Replace(cmdStr, "kubectl ", fmt.Sprintf("kubectl -n %s ", args.Namespace), 1)
+	if args.Namespace != "" {
+		hasNamespace := false
+		for _, arg := range cmdArgs {
+			if arg == "-n" || arg == "--namespace" || strings.HasPrefix(arg, "-n=") || strings.HasPrefix(arg, "--namespace=") {
+				hasNamespace = true
+				break
+			}
+		}
+		if !hasNamespace {
+			cmdArgs = append([]string{"-n", args.Namespace}, cmdArgs...)
+		}
 	}
 
-	return e.runCommand(ctx, cmdStr, e.timeout)
+	return e.runKubectlCommand(ctx, cmdArgs, e.timeout)
 }
 
 // executeBash runs a bash command
@@ -327,6 +366,42 @@ func (e *Executor) executeBash(ctx context.Context, argsJSON string) (string, er
 	}
 
 	return e.runCommand(ctx, args.Command, timeout)
+}
+
+// runKubectlCommand executes kubectl with explicit arguments (no shell interpolation)
+func (e *Executor) runKubectlCommand(ctx context.Context, args []string, timeout time.Duration) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, e.kubectlPath, args...)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+
+	output := stdout.String()
+	if stderr.Len() > 0 {
+		if output != "" {
+			output += "\n"
+		}
+		output += stderr.String()
+	}
+
+	if ctx.Err() == context.DeadlineExceeded {
+		return output, fmt.Errorf("command timed out after %v", timeout)
+	}
+
+	if err != nil {
+		if output == "" {
+			return "", err
+		}
+		// Return output even on error (often contains useful info)
+		return output, nil
+	}
+
+	return output, nil
 }
 
 // runCommand executes a shell command with timeout

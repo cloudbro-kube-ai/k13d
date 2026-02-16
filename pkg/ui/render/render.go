@@ -134,7 +134,9 @@ func (r *BaseRenderer) ColorerFunc() ColorerFunc {
 
 // Age formatting utilities
 
-// FormatAge formats a duration as a human-readable age string.
+// FormatAge formats a time.Time as a human-readable age string by computing duration since now.
+// This is the timestamp-based variant used by renderers (e.g., Pod, Deployment).
+// For the duration-based variant, see resources.FormatAge.
 func FormatAge(t time.Time) string {
 	if t.IsZero() {
 		return "<none>"

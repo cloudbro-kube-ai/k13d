@@ -80,7 +80,12 @@ func (b *BriefingPanel) Toggle() {
 	if visible {
 		b.startPulse()
 		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer func() {
+				if r := recover(); r != nil {
+					// Silently recover - briefing update failure is non-critical
+				}
+			}()
+			ctx, cancel := context.WithTimeout(b.app.getAppContext(), 10*time.Second)
 			defer cancel()
 			b.Update(ctx)
 		}()
@@ -150,18 +155,33 @@ func (b *BriefingPanel) fetchData(ctx context.Context) (*BriefingData, error) {
 
 	// Goroutine 1: Fetch pods
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				podsCh <- podsResult{err: fmt.Errorf("panic: %v", r)}
+			}
+		}()
 		pods, err := b.app.k8s.ListPods(ctx, ns)
 		podsCh <- podsResult{pods: pods, err: err}
 	}()
 
 	// Goroutine 2: Fetch nodes (always cluster-wide)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				nodesCh <- nodesResult{err: fmt.Errorf("panic: %v", r)}
+			}
+		}()
 		nodes, err := b.app.k8s.ListNodes(ctx)
 		nodesCh <- nodesResult{nodes: nodes, err: err}
 	}()
 
 	// Goroutine 3: Fetch deployments
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				deployReadyCh <- [2]int{0, 0}
+			}
+		}()
 		deployments, err := b.app.k8s.ListDeployments(ctx, ns)
 		if err != nil {
 			deployReadyCh <- [2]int{0, 0}
@@ -188,6 +208,11 @@ func (b *BriefingPanel) fetchData(ctx context.Context) (*BriefingData, error) {
 	}
 	metricsResultCh := make(chan metricsResult, 1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				metricsResultCh <- metricsResult{}
+			}
+		}()
 		podMetrics, _ := b.app.k8s.GetPodMetrics(ctx, ns)
 		nodeMetrics, _ := b.app.k8s.GetNodeMetrics(ctx)
 		metricsResultCh <- metricsResult{podMetrics: podMetrics, nodeMetrics: nodeMetrics}
@@ -472,6 +497,11 @@ func (b *BriefingPanel) startPulse() {
 	stopCh := b.stopPulse
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				// Silently recover - pulse animation failure is non-critical
+			}
+		}()
 		ticker := time.NewTicker(400 * time.Millisecond)
 		defer ticker.Stop()
 
@@ -524,7 +554,7 @@ func (b *BriefingPanel) UpdateWithAI() {
 		b.SetText(" [cyan]Generating AI briefing...[white]")
 	})
 
-	ctx := context.Background()
+	ctx := b.app.getAppContext()
 	data, err := b.fetchData(ctx)
 	if err != nil {
 		b.app.QueueUpdateDraw(func() {

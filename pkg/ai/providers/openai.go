@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/log"
+	"github.com/cloudbro-kube-ai/k13d/pkg/log"
 )
 
 // OpenAIProvider implements the Provider interface for OpenAI and compatible APIs
@@ -125,7 +125,7 @@ func (p *OpenAIProvider) Ask(ctx context.Context, prompt string, callback func(s
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
@@ -197,7 +197,7 @@ func (p *OpenAIProvider) AskNonStreaming(ctx context.Context, prompt string) (st
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return "", fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
@@ -366,7 +366,7 @@ When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`},
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 			resp.Body.Close()
 			log.Debugf("API error (status %d): %s", resp.StatusCode, string(body))
 			return false
@@ -459,8 +459,10 @@ When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`},
 
 // streamFinalResponse makes a streaming request after tool execution for better UX
 func (p *OpenAIProvider) streamFinalResponse(ctx context.Context, endpoint string, messages []ChatMessage, callback func(string)) {
-	// Add instruction to summarize results
-	finalMessages := append(messages, ChatMessage{
+	// Copy messages slice to avoid aliasing the caller's slice
+	finalMessages := make([]ChatMessage, len(messages), len(messages)+1)
+	copy(finalMessages, messages)
+	finalMessages = append(finalMessages, ChatMessage{
 		Role:    "user",
 		Content: "Based on the tool execution results above, please provide a clear and helpful summary.",
 	})
@@ -495,7 +497,7 @@ func (p *OpenAIProvider) streamFinalResponse(ctx context.Context, endpoint strin
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		log.Debugf("Streaming API error (status %d): %s", resp.StatusCode, string(body))
 		return
 	}
@@ -615,7 +617,7 @@ func (p *OpenAIProvider) askWithToolsShim(ctx context.Context, endpoint, prompt 
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 			resp.Body.Close()
 			return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 		}

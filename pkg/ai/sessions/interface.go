@@ -1,7 +1,18 @@
+// Package sessions provides the original session management system.
+// Deprecated: Use pkg/ai/session instead, which provides crypto-secure IDs,
+// message limits, input validation, and atomic writes.
 package sessions
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"time"
+)
+
+const (
+	// MaxMessagesPerSession limits messages per session for memory safety
+	MaxMessagesPerSession = 10000
 )
 
 // Message represents a single message in a conversation
@@ -79,8 +90,13 @@ func NewSession(provider, model string) *Session {
 	}
 }
 
-// AddMessage adds a message to the session
+// AddMessage adds a message to the session.
+// Returns without adding if the session has reached MaxMessagesPerSession.
 func (s *Session) AddMessage(role, content string) {
+	if len(s.Messages) >= MaxMessagesPerSession {
+		return
+	}
+
 	s.Messages = append(s.Messages, Message{
 		Role:      role,
 		Content:   content,
@@ -143,9 +159,14 @@ func (s *Session) ToMetadata() SessionMetadata {
 	}
 }
 
-// generateID creates a unique session ID
+// generateID creates a unique session ID using crypto/rand
 func generateID() string {
-	return time.Now().Format("20060102-150405")
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback to timestamp if crypto/rand fails
+		return fmt.Sprintf("%d", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
 }
 
 // truncateTitle truncates a string to create a session title

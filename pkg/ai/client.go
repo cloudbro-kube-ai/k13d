@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/providers"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/tools"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/providers"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/tools"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 )
 
 // Client wraps an LLM provider with additional functionality

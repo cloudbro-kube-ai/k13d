@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/session"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/log"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/session"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/log"
 )
 
 // LLMCapabilities represents the capabilities of the configured LLM
@@ -44,7 +44,8 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Update LLM settings
+		// Update LLM settings (protected by mutex)
+		s.aiMu.Lock()
 		s.cfg.LLM.Provider = llmSettings.Provider
 		s.cfg.LLM.Model = llmSettings.Model
 		s.cfg.LLM.Endpoint = llmSettings.Endpoint
@@ -60,11 +61,13 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 		// Recreate AI client
 		newClient, err := ai.NewClient(&s.cfg.LLM)
 		if err != nil {
+			s.aiMu.Unlock()
 			apiErr := ParseLLMError(err, llmSettings.Provider)
 			WriteError(w, apiErr)
 			return
 		}
 		s.aiClient = newClient
+		s.aiMu.Unlock()
 
 		// Save to YAML
 		if err := s.cfg.Save(); err != nil {
@@ -831,19 +834,36 @@ func (s *SSEWriter) WriteEvent(event string, data string) error {
 	return nil
 }
 
-// handleAvailableModels fetches available models from the current LLM provider
+// handleAvailableModels fetches available models from the current LLM provider.
+// GET: uses the existing AI client.
+// POST: accepts provider/api_key/endpoint in request body (avoids API key in URL).
 func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if r.Method != http.MethodGet {
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
 		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
-	// Allow querying models for a specific provider via query param
-	provider := r.URL.Query().Get("provider")
-	apiKey := r.URL.Query().Get("api_key")
-	endpoint := r.URL.Query().Get("endpoint")
+	var provider, apiKey, endpoint string
+
+	if r.Method == http.MethodPost {
+		// POST: read credentials from request body (avoids API key in URL)
+		var req struct {
+			Provider string `json:"provider"`
+			APIKey   string `json:"api_key"`
+			Endpoint string `json:"endpoint"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			provider = req.Provider
+			apiKey = req.APIKey
+			endpoint = req.Endpoint
+		}
+	} else {
+		// GET: only non-sensitive params from query (uses existing client)
+		provider = r.URL.Query().Get("provider")
+		endpoint = r.URL.Query().Get("endpoint")
+	}
 
 	var client *ai.Client
 	if provider != "" && apiKey != "" {

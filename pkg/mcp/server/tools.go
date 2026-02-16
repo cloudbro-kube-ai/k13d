@@ -202,16 +202,31 @@ func kubectlHandler(ctx context.Context, args map[string]interface{}) (string, e
 		return "", fmt.Errorf("command is required")
 	}
 
+	// Strip "kubectl" prefix if present and parse into individual arguments
 	cmdStr := command
-	if !strings.HasPrefix(cmdStr, "kubectl") {
-		cmdStr = "kubectl " + cmdStr
+	if strings.HasPrefix(cmdStr, "kubectl ") {
+		cmdStr = strings.TrimPrefix(cmdStr, "kubectl ")
+	} else if cmdStr == "kubectl" {
+		cmdStr = ""
+	}
+	cmdStr = strings.TrimSpace(cmdStr)
+	cmdArgs := strings.Fields(cmdStr)
+
+	// Add namespace if specified and not already in command
+	if namespace != "" {
+		hasNamespace := false
+		for _, arg := range cmdArgs {
+			if arg == "-n" || arg == "--namespace" || strings.HasPrefix(arg, "-n=") || strings.HasPrefix(arg, "--namespace=") {
+				hasNamespace = true
+				break
+			}
+		}
+		if !hasNamespace {
+			cmdArgs = append([]string{"-n", namespace}, cmdArgs...)
+		}
 	}
 
-	if namespace != "" && !strings.Contains(cmdStr, "-n ") && !strings.Contains(cmdStr, "--namespace") {
-		cmdStr = strings.Replace(cmdStr, "kubectl ", fmt.Sprintf("kubectl -n %s ", namespace), 1)
-	}
-
-	return runCommand(ctx, cmdStr, 60*time.Second)
+	return runKubectlArgs(ctx, cmdArgs, 60*time.Second)
 }
 
 func kubectlGetHandler(ctx context.Context, args map[string]interface{}) (string, error) {
@@ -225,23 +240,23 @@ func kubectlGetHandler(ctx context.Context, args map[string]interface{}) (string
 		return "", fmt.Errorf("resource is required")
 	}
 
-	cmd := "kubectl get " + resource
+	cmdArgs := []string{"get", resource}
 	if name != "" {
-		cmd += " " + name
+		cmdArgs = append(cmdArgs, name)
 	}
 	if namespace == "all" {
-		cmd += " --all-namespaces"
+		cmdArgs = append(cmdArgs, "--all-namespaces")
 	} else if namespace != "" {
-		cmd += " -n " + namespace
+		cmdArgs = append(cmdArgs, "-n", namespace)
 	}
 	if output != "" {
-		cmd += " -o " + output
+		cmdArgs = append(cmdArgs, "-o", output)
 	}
 	if selector != "" {
-		cmd += " -l " + selector
+		cmdArgs = append(cmdArgs, "-l", selector)
 	}
 
-	return runCommand(ctx, cmd, 30*time.Second)
+	return runKubectlArgs(ctx, cmdArgs, 30*time.Second)
 }
 
 func kubectlDescribeHandler(ctx context.Context, args map[string]interface{}) (string, error) {
@@ -253,12 +268,12 @@ func kubectlDescribeHandler(ctx context.Context, args map[string]interface{}) (s
 		return "", fmt.Errorf("resource and name are required")
 	}
 
-	cmd := fmt.Sprintf("kubectl describe %s %s", resource, name)
+	cmdArgs := []string{"describe", resource, name}
 	if namespace != "" {
-		cmd += " -n " + namespace
+		cmdArgs = append(cmdArgs, "-n", namespace)
 	}
 
-	return runCommand(ctx, cmd, 30*time.Second)
+	return runKubectlArgs(ctx, cmdArgs, 30*time.Second)
 }
 
 func kubectlLogsHandler(ctx context.Context, args map[string]interface{}) (string, error) {
@@ -272,23 +287,23 @@ func kubectlLogsHandler(ctx context.Context, args map[string]interface{}) (strin
 		return "", fmt.Errorf("pod is required")
 	}
 
-	cmd := "kubectl logs " + pod
+	cmdArgs := []string{"logs", pod}
 	if namespace != "" {
-		cmd += " -n " + namespace
+		cmdArgs = append(cmdArgs, "-n", namespace)
 	}
 	if container != "" {
-		cmd += " -c " + container
+		cmdArgs = append(cmdArgs, "-c", container)
 	}
 	if tail > 0 {
-		cmd += fmt.Sprintf(" --tail=%d", int(tail))
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--tail=%d", int(tail)))
 	} else {
-		cmd += " --tail=100"
+		cmdArgs = append(cmdArgs, "--tail=100")
 	}
 	if previous {
-		cmd += " --previous"
+		cmdArgs = append(cmdArgs, "--previous")
 	}
 
-	return runCommand(ctx, cmd, 30*time.Second)
+	return runKubectlArgs(ctx, cmdArgs, 30*time.Second)
 }
 
 func kubectlApplyHandler(ctx context.Context, args map[string]interface{}) (string, error) {
@@ -300,15 +315,15 @@ func kubectlApplyHandler(ctx context.Context, args map[string]interface{}) (stri
 		return "", fmt.Errorf("manifest is required")
 	}
 
-	cmd := "kubectl apply -f -"
+	cmdArgs := []string{"apply", "-f", "-"}
 	if namespace != "" {
-		cmd += " -n " + namespace
+		cmdArgs = append(cmdArgs, "-n", namespace)
 	}
 	if dryRun {
-		cmd += " --dry-run=client"
+		cmdArgs = append(cmdArgs, "--dry-run=client")
 	}
 
-	return runCommandWithInput(ctx, cmd, manifest, 30*time.Second)
+	return runKubectlArgsWithInput(ctx, cmdArgs, manifest, 30*time.Second)
 }
 
 func bashHandler(ctx context.Context, args map[string]interface{}) (string, error) {
@@ -328,6 +343,71 @@ func bashHandler(ctx context.Context, args map[string]interface{}) (string, erro
 	}
 
 	return runCommand(ctx, command, timeout)
+}
+
+// runKubectlArgs executes kubectl with explicit arguments (no shell interpolation)
+func runKubectlArgs(ctx context.Context, args []string, timeout time.Duration) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "kubectl", args...)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+
+	output := stdout.String()
+	if stderr.Len() > 0 {
+		if output != "" {
+			output += "\n"
+		}
+		output += stderr.String()
+	}
+
+	if ctx.Err() == context.DeadlineExceeded {
+		return output, fmt.Errorf("command timed out after %v", timeout)
+	}
+
+	if err != nil && output == "" {
+		return "", err
+	}
+
+	return output, nil
+}
+
+// runKubectlArgsWithInput executes kubectl with explicit arguments and stdin input
+func runKubectlArgsWithInput(ctx context.Context, args []string, input string, timeout time.Duration) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "kubectl", args...)
+	cmd.Stdin = strings.NewReader(input)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+
+	output := stdout.String()
+	if stderr.Len() > 0 {
+		if output != "" {
+			output += "\n"
+		}
+		output += stderr.String()
+	}
+
+	if ctx.Err() == context.DeadlineExceeded {
+		return output, fmt.Errorf("command timed out after %v", timeout)
+	}
+
+	if err != nil && output == "" {
+		return "", err
+	}
+
+	return output, nil
 }
 
 // runCommand executes a shell command

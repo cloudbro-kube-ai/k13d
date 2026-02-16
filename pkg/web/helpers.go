@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/safety"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -352,7 +352,11 @@ func (s *Server) recordAuditWithK8sContext(r *http.Request, entry db.AuditEntry)
 	db.RecordAudit(entry)
 }
 
-// getClientIP extracts client IP from request
+// getClientIP extracts client IP from request.
+// WARNING: X-Forwarded-For and X-Real-IP headers can be spoofed by clients.
+// This function should only be used for logging and rate limiting, NOT for
+// security decisions, unless the server is behind a trusted reverse proxy
+// that strips and re-sets these headers.
 func getClientIP(r *http.Request) string {
 	// Check X-Forwarded-For header (for proxies)
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {

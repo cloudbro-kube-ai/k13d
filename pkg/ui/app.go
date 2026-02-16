@@ -17,11 +17,11 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/gdamore/tcell/v2"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/safety"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/i18n"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/i18n"
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
 	"github.com/rivo/tview"
 )
 
@@ -617,7 +617,10 @@ User question: %s
 Please provide a concise, helpful answer. If you suggest kubectl commands, wrap them in code blocks.`, question)
 
 	// Call AI
-	if a.aiClient == nil || !a.aiClient.IsReady() {
+	a.aiMx.RLock()
+	client := a.aiClient
+	a.aiMx.RUnlock()
+	if client == nil || !client.IsReady() {
 		a.QueueUpdateDraw(func() {
 			a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[red]AI is not available.[white]\n\nConfigure LLM in config file:\n[gray]~/.kube-ai-dashboard/config.yaml", question))
 		})
@@ -628,13 +631,13 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 	var fullResponse strings.Builder
 	var err error
 
-	if a.aiClient.SupportsTools() {
+	if client.SupportsTools() {
 		// Use agentic mode with tool calling
 		a.QueueUpdateDraw(func() {
 			a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[cyan]🤖 Agentic Mode[white] - AI can execute kubectl commands\n\n[gray]Thinking...", question))
 		})
 
-		err = a.aiClient.AskWithTools(ctx, prompt, func(chunk string) {
+		err = client.AskWithTools(ctx, prompt, func(chunk string) {
 			fullResponse.WriteString(chunk)
 			// Throttle streaming draws to reduce ghosting (50ms minimum interval)
 			now := time.Now().UnixNano()
@@ -748,7 +751,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 		})
 	} else {
 		// Fallback to regular streaming
-		err = a.aiClient.Ask(ctx, prompt, func(chunk string) {
+		err = client.Ask(ctx, prompt, func(chunk string) {
 			fullResponse.WriteString(chunk)
 			// Throttle streaming draws to reduce ghosting (50ms minimum interval)
 			now := time.Now().UnixNano()
@@ -770,7 +773,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 		if finalResponse != "" {
 			a.QueueUpdateDraw(func() {
 				prefix := "[cyan]🤖 Agentic Mode[white]\n\n"
-				if !a.aiClient.SupportsTools() {
+				if !client.SupportsTools() {
 					prefix = ""
 				}
 				a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n%s[green]A:[white] %s", question, prefix, finalResponse))
@@ -786,7 +789,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 	}
 
 	// After response complete, analyze for commands that need approval (fallback mode)
-	if !a.aiClient.SupportsTools() {
+	if !client.SupportsTools() {
 		finalResponse := fullResponse.String()
 		a.analyzeAndShowDecisions(question, finalResponse)
 	}
@@ -2064,7 +2067,7 @@ func (a *App) setupKeybindings() {
 
 			for name, plugin := range a.plugins.GetPluginsForScope(resource) {
 				if matchPluginShortcut(event, plugin.ShortCut) {
-					go a.executePlugin(name, plugin)
+					a.safeGo("executePlugin-"+name, func() { a.executePlugin(name, plugin) })
 					return nil
 				}
 			}
@@ -2117,11 +2120,11 @@ func (a *App) setupKeybindings() {
 				case '1', '2', '3', '4', '5', '6', '7', '8', '9':
 					idx := int(event.Rune() - '1')
 					if idx < numDecisions {
-						go a.executeDecision(idx)
+						a.safeGo("executeDecision", func() { a.executeDecision(idx) })
 					}
 					return nil
 				case 'a', 'A':
-					go a.executeAllDecisions()
+					a.safeGo("executeAllDecisions", func() { a.executeAllDecisions() })
 					return nil
 				}
 			}
@@ -2192,8 +2195,11 @@ func (a *App) updateHeader() {
 		currentNsDisplay = "[#9ece6a]" + ns + "[-]"
 	}
 
+	a.aiMx.RLock()
+	headerAIClient := a.aiClient
+	a.aiMx.RUnlock()
 	aiStatus := "[#f7768e]● Offline[-]"
-	if a.aiClient != nil && a.aiClient.IsReady() {
+	if headerAIClient != nil && headerAIClient.IsReady() {
 		aiStatus = "[#9ece6a]● Online[-]"
 	}
 
@@ -2450,7 +2456,7 @@ func (a *App) refresh() {
 
 	// Update briefing panel if visible
 	if a.briefing != nil && a.briefing.IsVisible() {
-		go a.briefing.Update(ctx)
+		a.safeGo("briefing-update", func() { a.briefing.Update(ctx) })
 	}
 
 	a.logger.Info("Refresh completed", "resource", resource, "count", len(rows))
@@ -2483,7 +2489,7 @@ func (a *App) startWatch() {
 
 	onChange := func() {
 		// Trigger a refresh through the existing mechanism
-		go a.refresh()
+		a.safeGo("watch-refresh", func() { a.refresh() })
 	}
 
 	cfg := k8s.DefaultWatcherConfig()

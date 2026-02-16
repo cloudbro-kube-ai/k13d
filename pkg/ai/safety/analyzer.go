@@ -50,8 +50,10 @@ func NewAnalyzer() *Analyzer {
 			"api-versions":  true,
 			"cluster-info":  true,
 			"diff":          true,
-			"auth":          true, // auth can-i is read-only
-			"config":        true, // config view is read-only
+			// NOTE: "auth" and "config" are NOT read-only in general.
+			// "auth can-i" is read-only but "auth reconcile" is a write.
+			// "config view" is read-only but "config set-context" is a write.
+			// These are handled in analyzeKubectl via subcommand checking.
 		},
 		writeVerbs: map[string]bool{
 			"create":   true,
@@ -151,6 +153,14 @@ func (a *Analyzer) Analyze(cmd string) *Report {
 // analyzeKubectl analyzes kubectl commands
 func (a *Analyzer) analyzeKubectl(report *Report, parsed *ParsedCommand) {
 	verb := parsed.Verb
+
+	// Handle mixed verbs that can be read-only or write depending on subcommand
+	if verb == "auth" || verb == "config" {
+		a.analyzeMixedVerb(report, parsed)
+		a.checkDangerousPatterns(report, parsed)
+		a.checkInteractivePatterns(report, parsed)
+		return
+	}
 
 	// Check verb type
 	if a.readOnlyVerbs[verb] {
@@ -281,6 +291,41 @@ func (a *Analyzer) checkDangerousPatterns(report *Report, parsed *ParsedCommand)
 			report.Warnings = append(report.Warnings, "Recursive file deletion")
 		}
 	}
+}
+
+// analyzeMixedVerb handles commands like "auth" and "config" that have both
+// read-only and write subcommands.
+func (a *Analyzer) analyzeMixedVerb(report *Report, parsed *ParsedCommand) {
+	readOnlySubcommands := map[string]map[string]bool{
+		"auth":   {"can-i": true, "whoami": true},
+		"config": {"view": true, "get-contexts": true, "get-clusters": true, "current-context": true},
+	}
+
+	// The subcommand is the second non-flag arg (stored as Resource by the parser)
+	subcommand := parsed.Resource
+	if subcommand == "" {
+		// Fallback: look for second non-flag arg
+		nonFlagCount := 0
+		for _, arg := range parsed.Args {
+			if !strings.HasPrefix(arg, "-") {
+				nonFlagCount++
+				if nonFlagCount == 2 {
+					subcommand = arg
+					break
+				}
+			}
+		}
+	}
+
+	if readOnly, ok := readOnlySubcommands[parsed.Verb]; ok && readOnly[subcommand] {
+		report.Type = TypeReadOnly
+		report.IsReadOnly = true
+		return
+	}
+
+	// Default: treat as write (requires approval)
+	report.Type = TypeWrite
+	report.RequiresApproval = true
 }
 
 // checkInteractivePatterns checks for interactive command patterns

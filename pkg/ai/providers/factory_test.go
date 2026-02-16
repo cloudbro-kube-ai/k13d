@@ -102,13 +102,13 @@ func TestRetryProviderAskWithTools(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "provider with tool error is retried",
+			name: "provider with tool error is not retried (side effects)",
 			provider: &mockToolProvider{
 				mockProvider: mockProvider{name: "mock-tools", ready: true},
 				toolsErr:     errors.New("status 503: service unavailable"),
 			},
 			wantErr:     true,
-			errContains: "max retries exceeded",
+			errContains: "service unavailable",
 		},
 	}
 

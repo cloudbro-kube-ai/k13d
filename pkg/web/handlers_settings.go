@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 )
 
 // ==========================================
@@ -109,11 +109,13 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Update settings
+		// Update settings (protected by mutex for concurrent access)
+		s.aiMu.Lock()
 		s.cfg.Language = newSettings.Language
 		s.cfg.BeginnerMode = newSettings.BeginnerMode
 		s.cfg.EnableAudit = newSettings.EnableAudit
 		s.cfg.LogLevel = newSettings.LogLevel
+		s.aiMu.Unlock()
 
 		// Save to YAML
 		if err := s.cfg.Save(); err != nil {
@@ -268,7 +270,9 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		s.aiMu.Lock()
 		if !s.cfg.SetActiveModel(req.Name) {
+			s.aiMu.Unlock()
 			http.Error(w, "Model not found", http.StatusNotFound)
 			return
 		}
@@ -276,10 +280,12 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 		// Recreate AI client with new model
 		newClient, err := ai.NewClient(&s.cfg.LLM)
 		if err != nil {
+			s.aiMu.Unlock()
 			http.Error(w, fmt.Sprintf("Failed to create AI client: %v", err), http.StatusInternalServerError)
 			return
 		}
 		s.aiClient = newClient
+		s.aiMu.Unlock()
 
 		// Re-register MCP tools
 		for _, serverName := range s.mcpClient.GetConnectedServers() {

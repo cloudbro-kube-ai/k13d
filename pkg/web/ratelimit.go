@@ -14,6 +14,7 @@ type RateLimiter struct {
 	limit    int           // requests per window
 	window   time.Duration // time window
 	cleanup  time.Duration // cleanup interval
+	done     chan struct{}  // signals cleanup goroutine to stop
 }
 
 // visitor tracks rate limit state for a single IP/user
@@ -32,12 +33,18 @@ func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
 		limit:    limit,
 		window:   window,
 		cleanup:  5 * time.Minute, // Clean up stale entries every 5 minutes
+		done:     make(chan struct{}),
 	}
 
 	// Start background cleanup goroutine
 	go rl.cleanupLoop()
 
 	return rl
+}
+
+// Stop signals the cleanup goroutine to exit
+func (rl *RateLimiter) Stop() {
+	close(rl.done)
 }
 
 // Allow checks if a request from the given identifier should be allowed
@@ -98,17 +105,22 @@ func (rl *RateLimiter) cleanupLoop() {
 	ticker := time.NewTicker(rl.cleanup)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		rl.mu.Lock()
-		now := time.Now()
-		for id, v := range rl.visitors {
-			v.mu.Lock()
-			if now.Sub(v.lastReset) > rl.window*2 {
-				delete(rl.visitors, id)
+	for {
+		select {
+		case <-ticker.C:
+			rl.mu.Lock()
+			now := time.Now()
+			for id, v := range rl.visitors {
+				v.mu.Lock()
+				if now.Sub(v.lastReset) > rl.window*2 {
+					delete(rl.visitors, id)
+				}
+				v.mu.Unlock()
 			}
-			v.mu.Unlock()
+			rl.mu.Unlock()
+		case <-rl.done:
+			return
 		}
-		rl.mu.Unlock()
 	}
 }
 

@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/providers"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/safety"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/tools"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/providers"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/tools"
 )
 
 // systemPrompt is the default system prompt for the agent
@@ -147,7 +146,14 @@ func (a *Agent) handleUserMessage(content string) error {
 
 // callLLM calls the LLM provider and handles the response
 func (a *Agent) callLLM() error {
-	if a.provider == nil {
+	// Snapshot config under read lock to avoid races with SetProvider/SetToolRegistry
+	a.configMu.RLock()
+	provider := a.provider
+	toolProvider := a.toolProvider
+	toolRegistry := a.toolRegistry
+	a.configMu.RUnlock()
+
+	if provider == nil {
 		return fmt.Errorf("no LLM provider configured")
 	}
 
@@ -168,7 +174,7 @@ func (a *Agent) callLLM() error {
 	}
 
 	// Check if we have tool support
-	if a.toolProvider != nil && a.toolRegistry != nil {
+	if toolProvider != nil && toolRegistry != nil {
 		// Use tool-enabled asking
 		toolDefs := a.buildToolDefinitions()
 
@@ -176,13 +182,13 @@ func (a *Agent) callLLM() error {
 			return a.handleToolCall(call)
 		}
 
-		err := a.toolProvider.AskWithTools(a.ctx, anonymizedPrompt, toolDefs, streamCallback, toolCallback)
+		err := toolProvider.AskWithTools(a.ctx, anonymizedPrompt, toolDefs, streamCallback, toolCallback)
 		if err != nil {
 			return err
 		}
 	} else {
 		// Basic asking without tools
-		err := a.provider.Ask(a.ctx, anonymizedPrompt, streamCallback)
+		err := provider.Ask(a.ctx, anonymizedPrompt, streamCallback)
 		if err != nil {
 			return err
 		}
@@ -209,8 +215,11 @@ func (a *Agent) buildPromptWithHistory() string {
 	sb.WriteString("\n\n")
 
 	// Language instruction
-	if a.language != "" && a.language != "en" {
-		langInstruction := getLanguageInstruction(a.language)
+	a.configMu.RLock()
+	lang := a.language
+	a.configMu.RUnlock()
+	if lang != "" && lang != "en" {
+		langInstruction := getLanguageInstruction(lang)
 		if langInstruction != "" {
 			sb.WriteString(langInstruction)
 			sb.WriteString("\n\n")
@@ -460,18 +469,6 @@ func (a *Agent) cancelPendingTools() {
 	a.pendingToolCalls = a.pendingToolCalls[:0]
 }
 
-// isReadOnlyCommand checks if a command is read-only using safety analyzer
-func (a *Agent) isReadOnlyCommand(cmd string) bool {
-	isReadOnly, _ := safety.QuickCheck(cmd)
-	return isReadOnly
-}
-
-// isDangerousCommand checks if a command is dangerous using safety analyzer
-func (a *Agent) isDangerousCommand(cmd string) bool {
-	_, isDangerous := safety.QuickCheck(cmd)
-	return isDangerous
-}
-
 // getLanguageInstruction returns the language instruction for the given language code
 func getLanguageInstruction(lang string) string {
 	switch lang {
@@ -486,7 +483,9 @@ func getLanguageInstruction(lang string) string {
 	}
 }
 
-// SetLanguage sets the display language for the agent
+// SetLanguage sets the display language for the agent (thread-safe)
 func (a *Agent) SetLanguage(lang string) {
+	a.configMu.Lock()
+	defer a.configMu.Unlock()
 	a.language = lang
 }

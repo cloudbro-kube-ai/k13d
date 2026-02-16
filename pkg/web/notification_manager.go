@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -433,16 +433,20 @@ func (nm *NotificationManager) SendTestEmail() error {
 	return smtp.SendMail(addr, auth, smtpCfg.From, smtpCfg.To, []byte(msg))
 }
 
-func (nm *NotificationManager) postJSON(url string, payload interface{}) error {
+func (nm *NotificationManager) postJSON(webhookURL string, payload interface{}) error {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	resp, err := nm.httpClient.Post(url, "application/json", bytes.NewReader(data))
+	resp, err := nm.httpClient.Post(webhookURL, "application/json", bytes.NewReader(data))
 	if err != nil {
-		// Single retry after 2 seconds
-		time.Sleep(2 * time.Second)
-		resp, err = nm.httpClient.Post(url, "application/json", bytes.NewReader(data))
+		// Context-aware retry: respects shutdown signal instead of blocking sleep
+		select {
+		case <-time.After(2 * time.Second):
+		case <-nm.stopCh:
+			return fmt.Errorf("notification manager shutting down")
+		}
+		resp, err = nm.httpClient.Post(webhookURL, "application/json", bytes.NewReader(data))
 		if err != nil {
 			return fmt.Errorf("webhook failed after retry: %w", err)
 		}

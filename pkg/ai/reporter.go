@@ -2,6 +2,7 @@ package ai
 
 import (
 	"fmt"
+	"html"
 	"os"
 	"path/filepath"
 	"strings"
@@ -94,11 +95,11 @@ func (r *Reporter) SaveHTML() error {
                 <td><details><summary>View Details</summary><pre>%s</pre></details></td>
             </tr>`,
 			a.Timestamp.Format("15:04:05"),
-			opClass, a.Operation,
-			a.Resource,
-			a.Namespace,
-			a.Name,
-			a.Details,
+			html.EscapeString(opClass), html.EscapeString(a.Operation),
+			html.EscapeString(a.Resource),
+			html.EscapeString(a.Namespace),
+			html.EscapeString(a.Name),
+			html.EscapeString(a.Details),
 		)
 	}
 

@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/providers"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/tools"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/providers"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/tools"
 )
 
 func TestAgentRun_AlreadyRunning(t *testing.T) {
@@ -471,45 +472,27 @@ func TestCancelPendingTools(t *testing.T) {
 	}
 }
 
-func TestIsReadOnlyCommand(t *testing.T) {
-	agent := New(nil)
-
+func TestSafetyQuickCheck(t *testing.T) {
 	tests := []struct {
-		cmd      string
-		expected bool
+		cmd              string
+		expectReadOnly   bool
+		expectDangerous  bool
 	}{
-		{"kubectl get pods", true},
-		{"kubectl delete pod nginx", false},
-		{"kubectl describe node worker-1", true},
+		{"kubectl get pods", true, false},
+		{"kubectl delete pod nginx", false, true},
+		{"kubectl describe node worker-1", true, false},
+		{"kubectl delete ns production", false, true},
+		{"rm -rf /", false, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.cmd, func(t *testing.T) {
-			result := agent.isReadOnlyCommand(tt.cmd)
-			if result != tt.expected {
-				t.Errorf("isReadOnlyCommand(%s) = %v, want %v", tt.cmd, result, tt.expected)
+			isReadOnly, isDangerous := safety.QuickCheck(tt.cmd)
+			if isReadOnly != tt.expectReadOnly {
+				t.Errorf("QuickCheck(%s) readOnly = %v, want %v", tt.cmd, isReadOnly, tt.expectReadOnly)
 			}
-		})
-	}
-}
-
-func TestIsDangerousCommand(t *testing.T) {
-	agent := New(nil)
-
-	tests := []struct {
-		cmd      string
-		expected bool
-	}{
-		{"kubectl get pods", false},
-		{"kubectl delete ns production", true},
-		{"rm -rf /", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.cmd, func(t *testing.T) {
-			result := agent.isDangerousCommand(tt.cmd)
-			if result != tt.expected {
-				t.Errorf("isDangerousCommand(%s) = %v, want %v", tt.cmd, result, tt.expected)
+			if isDangerous != tt.expectDangerous {
+				t.Errorf("QuickCheck(%s) dangerous = %v, want %v", tt.cmd, isDangerous, tt.expectDangerous)
 			}
 		})
 	}

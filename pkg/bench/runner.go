@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/bench/cluster"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
+	"github.com/cloudbro-kube-ai/k13d/pkg/bench/cluster"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 )
 
 // Runner executes benchmark tasks

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/analyzers"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/analyzers"
 )
 
 func TestParseResourceContext_Full(t *testing.T) {

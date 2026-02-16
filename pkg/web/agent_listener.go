@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/agent"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/agent"
 )
 
 // SSEAgentListener implements agent.AgentListener for WebUI.

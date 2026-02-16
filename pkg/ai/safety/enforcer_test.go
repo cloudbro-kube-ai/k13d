@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 )
 
 func TestPolicyEnforcer_Evaluate(t *testing.T) {

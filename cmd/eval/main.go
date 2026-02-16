@@ -11,8 +11,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/providers"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/eval"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/providers"
+	"github.com/cloudbro-kube-ai/k13d/pkg/eval"
 	"gopkg.in/yaml.v3"
 )
 
