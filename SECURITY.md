@@ -29,3 +29,29 @@ k13d includes several security features:
 - **Command Safety Analysis**: AI-suggested commands are analyzed for safety before execution
 - **Audit Logging**: All actions are logged to SQLite for accountability
 - **No External Dependencies**: CGO-free SQLite, self-contained binary
+
+## CI/CD Security
+
+Our CI/CD pipeline includes multiple security layers:
+
+| Layer | Tool | Purpose |
+|-------|------|---------|
+| Secrets Detection | [Gitleaks](https://github.com/gitleaks/gitleaks) | Prevents accidental credential commits |
+| Dependency Scanning | [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) | Detects vulnerable Go dependencies |
+| Static Analysis | [gosec](https://github.com/securego/gosec) | Finds security issues in Go code |
+| Container Scanning | [Trivy](https://github.com/aquasecurity/trivy) | Scans Docker images for vulnerabilities |
+| Dependency Updates | [Dependabot](https://docs.github.com/en/code-security/dependabot) | Automated security patches |
+
+## Local Development Security
+
+We recommend installing pre-commit hooks:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+This enables local security checks including:
+- Secret detection before commits
+- Private key detection
+- Go formatting and vetting

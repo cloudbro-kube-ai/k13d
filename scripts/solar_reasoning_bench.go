@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -22,10 +23,9 @@ var solarConfigs = []struct {
 	{"solar-pro2 (high)", "high"},
 }
 
-const (
-	solarEndpoint = "https://api.upstage.ai/v1"
-	solarAPIKey   = "up_z13Pj76IBqhcMRIM2FAbdqYTzzGLi"
-)
+const solarEndpoint = "https://api.upstage.ai/v1"
+
+var solarAPIKey = os.Getenv("SOLAR_API_KEY")
 
 // k8s-ai-bench 태스크들
 var benchTasks = []struct {

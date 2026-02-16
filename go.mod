@@ -3,7 +3,7 @@
 // The module works correctly despite the cosmetic typo.
 module github.com/cloudbro-kube-ai/k13d
 
-go 1.25.0
+go 1.25.7
 
 require (
 	github.com/adrg/xdg v0.5.3

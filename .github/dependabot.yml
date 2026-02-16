@@ -1,0 +1,58 @@
+# Dependabot configuration for k13d
+# Automatically creates PRs for dependency updates with security fixes
+# https://docs.github.com/en/code-security/dependabot
+
+version: 2
+
+updates:
+  # Go modules - weekly security and version updates
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "go"
+    commit-message:
+      prefix: "deps(go)"
+    groups:
+      # Group Kubernetes client updates together
+      kubernetes:
+        patterns:
+          - "k8s.io/*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Group testing dependencies
+      testing:
+        patterns:
+          - "github.com/stretchr/*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions - monthly updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "deps(actions)"
+
+  # Docker base images - weekly security updates
+  - package-ecosystem: "docker"
+    directory: "/deploy/docker"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "deps(docker)"
