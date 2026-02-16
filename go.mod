@@ -25,7 +25,7 @@ require (
 	k8s.io/client-go v0.35.0
 	k8s.io/kubectl v0.35.0
 	k8s.io/metrics v0.35.0
-	modernc.org/sqlite v1.43.0
+	modernc.org/sqlite v1.45.0
 	mvdan.cc/sh/v3 v3.12.0
 	sigs.k8s.io/yaml v1.6.0
 )
@@ -96,7 +96,7 @@ require (
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
-	github.com/ncruces/go-strftime v0.1.9 // indirect
+	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
@@ -116,7 +116,7 @@ require (
 	github.com/xlab/treeprint v1.2.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
+	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.18.0 // indirect
@@ -135,7 +135,7 @@ require (
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250910181357-589584f1c912 // indirect
 	k8s.io/utils v0.0.0-20251002143259-bc988d571ff4 // indirect
-	modernc.org/libc v1.66.10 // indirect
+	modernc.org/libc v1.67.6 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 	oras.land/oras-go/v2 v2.6.0 // indirect
