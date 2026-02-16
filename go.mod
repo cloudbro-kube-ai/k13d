@@ -8,7 +8,7 @@ go 1.25.7
 require (
 	github.com/adrg/xdg v0.5.3
 	github.com/cenkalti/backoff/v4 v4.3.0
-	github.com/gdamore/tcell/v2 v2.13.6
+	github.com/gdamore/tcell/v2 v2.13.8
 	github.com/go-ldap/ldap/v3 v3.4.12
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/google/uuid v1.6.0
