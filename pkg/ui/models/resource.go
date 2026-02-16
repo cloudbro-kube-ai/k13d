@@ -16,6 +16,7 @@ type ResourceModel struct {
 	autoRefresh bool
 	refreshCh   chan struct{}
 	stopCh      chan struct{}
+	stopOnce    sync.Once
 }
 
 // NewResourceModel creates a new ResourceModel.
@@ -91,8 +92,11 @@ func (rm *ResourceModel) IsAutoRefresh() bool {
 }
 
 // Stop stops the resource model (for cleanup).
+// Safe to call multiple times.
 func (rm *ResourceModel) Stop() {
-	close(rm.stopCh)
+	rm.stopOnce.Do(func() {
+		close(rm.stopCh)
+	})
 }
 
 // StopChan returns the stop channel.

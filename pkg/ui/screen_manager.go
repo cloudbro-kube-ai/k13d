@@ -4,11 +4,10 @@ package ui
 import (
 	"context"
 	"sync"
-	"sync/atomic"
 	"time"
 
+	"github.com/cloudbro-kube-ai/k13d/pkg/ui/views"
 	"github.com/gdamore/tcell/v2"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ui/views"
 	"github.com/rivo/tview"
 )
 
@@ -45,9 +44,6 @@ type ScreenManager struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	done   chan struct{}
-
-	// Atomic guards for thread safety
-	isDrawing int32
 }
 
 // ScreenManagerConfig holds configuration for ScreenManager.
@@ -180,12 +176,24 @@ func (sm *ScreenManager) Run() error {
 // RunAsync starts the TUI application in a goroutine.
 // Returns a cleanup function that stops the application.
 func (sm *ScreenManager) RunAsync() func() {
+	ready := make(chan struct{})
+	origOnStart := sm.onStart
+	sm.onStart = func() {
+		if origOnStart != nil {
+			origOnStart()
+		}
+		close(ready)
+	}
+
 	go func() {
 		_ = sm.Run()
 	}()
 
-	// Wait for initialization
-	time.Sleep(50 * time.Millisecond)
+	// Wait for initialization with timeout fallback
+	select {
+	case <-ready:
+	case <-time.After(2 * time.Second):
+	}
 
 	return func() {
 		sm.Stop()
@@ -208,22 +216,14 @@ func (sm *ScreenManager) Stop() {
 }
 
 // QueueUpdateDraw queues a UI update safely.
+// tview internally serializes QueueUpdateDraw calls, so no additional
+// atomic guard is needed. The previous atomic-based batching caused
+// deadlocks when Draw() was called inside a QueueUpdate handler.
 func (sm *ScreenManager) QueueUpdateDraw(f func()) {
 	if sm.app == nil || !sm.IsRunning() {
 		return
 	}
-
-	// Use atomic to prevent concurrent draw calls
-	if !atomic.CompareAndSwapInt32(&sm.isDrawing, 0, 1) {
-		// Queue the update to be processed after current draw
-		sm.app.QueueUpdate(f)
-		return
-	}
-
-	sm.app.QueueUpdateDraw(func() {
-		defer atomic.StoreInt32(&sm.isDrawing, 0)
-		f()
-	})
+	sm.app.QueueUpdateDraw(f)
 }
 
 // Draw forces a screen redraw.

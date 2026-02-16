@@ -1,0 +1,53 @@
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: k13d
+spec:
+  version: v0.7.7
+  homepage: https://github.com/cloudbro-kube-ai/k13d
+  shortDescription: AI-Powered Kubernetes Dashboard with TUI and Web UI
+  description: |
+    k13d is a comprehensive Kubernetes management tool that provides both a
+    terminal-based UI (TUI) and a web-based dashboard with an integrated
+    agentic AI assistant. It combines the TUI experience of k9s with the
+    AI-powered intelligence of kubectl-ai.
+
+    Features:
+    - Dual Interface: Both TUI and Web UI with same feature set
+    - k9s Parity: Full-featured TUI dashboard with Vim-style navigation
+    - AI Assistant: Agentic AI loop with tool-use (kubectl, bash, MCP)
+    - Deep Context: AI analysis with full context (YAML + Events + Logs)
+    - Enterprise Ready: Authentication, audit logging, and report generation
+  caveats: |
+    This plugin requires an AI provider (OpenAI, Ollama, or Anthropic) for
+    AI features. Set your API key via config or environment variables.
+    Run 'kubectl k13d --help' for usage information.
+  platforms:
+    - selector:
+        matchLabels:
+          os: linux
+          arch: amd64
+      uri: https://github.com/cloudbro-kube-ai/k13d/releases/download/v0.7.7/k13d-plugin_v0.7.7_linux_amd64.tar.gz
+      sha256: PLACEHOLDER_LINUX_AMD64_SHA256
+      bin: kubectl-k13d
+    - selector:
+        matchLabels:
+          os: linux
+          arch: arm64
+      uri: https://github.com/cloudbro-kube-ai/k13d/releases/download/v0.7.7/k13d-plugin_v0.7.7_linux_arm64.tar.gz
+      sha256: PLACEHOLDER_LINUX_ARM64_SHA256
+      bin: kubectl-k13d
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: amd64
+      uri: https://github.com/cloudbro-kube-ai/k13d/releases/download/v0.7.7/k13d-plugin_v0.7.7_darwin_amd64.tar.gz
+      sha256: PLACEHOLDER_DARWIN_AMD64_SHA256
+      bin: kubectl-k13d
+    - selector:
+        matchLabels:
+          os: darwin
+          arch: arm64
+      uri: https://github.com/cloudbro-kube-ai/k13d/releases/download/v0.7.7/k13d-plugin_v0.7.7_darwin_arm64.tar.gz
+      sha256: PLACEHOLDER_DARWIN_ARM64_SHA256
+      bin: kubectl-k13d

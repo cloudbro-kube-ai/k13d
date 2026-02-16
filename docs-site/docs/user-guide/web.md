@@ -186,21 +186,26 @@ Settings → Admin → Users
 
 ## Reports
 
-Generate comprehensive cluster reports:
+Generate comprehensive cluster reports with selectable sections:
 
 1. Navigate to Reports section
 2. Select report type:
    - **Cluster Overview** - General health
    - **Security Audit** - Security findings
    - **Cost Analysis** - Resource costs
-   - **Compliance** - Compliance check
-
-3. Configure options:
+3. Choose which sections to include (Nodes, Namespaces, Workloads, Events, Security, FinOps, Metrics)
+4. Configure options:
    - Namespace filter
-   - Time range
-   - Format (PDF, HTML, Markdown)
+   - Output format
+5. Click "Generate"
 
-4. Click "Generate"
+## Custom Resource Detail
+
+Click on any Custom Resource to view a rich detail modal:
+
+- **Overview** tab with auto-detected status, metadata, key fields, spec/status summary, conditions table, labels, and annotations
+- **YAML** tab with full manifest
+- **Events** tab with related Kubernetes events
 
 ## Pod Actions
 

@@ -3,6 +3,7 @@
 /k13d_test
 k13d-bench
 k13d-eval
+/eval
 build/
 *.exe
 *.exe~
@@ -43,6 +44,8 @@ k13d_test
 
 # GoReleaser build output
 dist/
+.helm-out/
+.trivy-cache/
 
 # Golden file test artifacts
 *.golden.actual

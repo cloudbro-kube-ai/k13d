@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/bench"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/eval"
+	"github.com/cloudbro-kube-ai/k13d/pkg/bench"
+	"github.com/cloudbro-kube-ai/k13d/pkg/eval"
 )
 
 const (

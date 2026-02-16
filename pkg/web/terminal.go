@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
 	"github.com/gorilla/websocket"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -42,9 +42,9 @@ func checkOrigin(r *http.Request) bool {
 		return true
 	}
 
-	// Check against allowed origins
+	// Check against allowed origins (exact host match to prevent subdomain bypass)
 	for _, allowed := range allowedOrigins {
-		if strings.HasPrefix(origin, allowed) {
+		if origin == allowed || strings.HasPrefix(origin, allowed+":") || strings.HasPrefix(origin, allowed+"/") {
 			return true
 		}
 	}

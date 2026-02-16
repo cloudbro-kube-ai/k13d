@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
 )
 
 func GetStatefulSetsView(ctx context.Context, client *k8s.Client, namespace, filter string) (ResourceView, error) {

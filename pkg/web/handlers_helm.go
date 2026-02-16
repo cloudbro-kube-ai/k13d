@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/helm"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/helm"
 )
 
 // ==========================================

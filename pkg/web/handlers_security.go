@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/security"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/security"
 )
 
 // ==========================================
@@ -31,11 +31,7 @@ func (s *Server) handleSecurityScan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	namespace := r.URL.Query().Get("namespace")
-	username := r.Context().Value("username")
-	triggeredBy := ""
-	if username != nil {
-		triggeredBy = username.(string)
-	}
+	triggeredBy := r.Header.Get("X-Username")
 
 	result, err := s.securityScanner.Scan(r.Context(), namespace)
 	if err != nil {
@@ -67,11 +63,7 @@ func (s *Server) handleSecurityQuickScan(w http.ResponseWriter, r *http.Request)
 	}
 
 	namespace := r.URL.Query().Get("namespace")
-	username := r.Context().Value("username")
-	triggeredBy := ""
-	if username != nil {
-		triggeredBy = username.(string)
-	}
+	triggeredBy := r.Header.Get("X-Username")
 
 	result, err := s.securityScanner.QuickScan(r.Context(), namespace)
 	if err != nil {

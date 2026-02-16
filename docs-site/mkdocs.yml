@@ -155,6 +155,8 @@ nav:
     - Feature Gap Analysis: reference/feature-gap-analysis.md
     - TUI Testing Strategy: reference/tui-testing.md
     - Changelog: reference/changelog.md
+  - 한국어 (Korean):
+    - 한국어 가이드: ko/index.md
 
 # Extra
 extra:

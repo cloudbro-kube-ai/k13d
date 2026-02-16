@@ -205,6 +205,90 @@ func (s *MetricsStore) SavePodMetrics(ctx context.Context, m *PodMetrics) error 
 	return err
 }
 
+// SaveNodeMetricsBatch saves multiple node metrics in a single transaction.
+func (s *MetricsStore) SaveNodeMetricsBatch(ctx context.Context, metrics []NodeMetrics) error {
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx,
+		`INSERT INTO node_metrics
+		(timestamp, context, node_name, cpu_millis, memory_mb, cpu_capacity, mem_capacity, pod_count, is_ready, is_schedulable)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return fmt.Errorf("prepare: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, m := range metrics {
+		ts := m.Timestamp
+		if ts.IsZero() {
+			ts = time.Now()
+		}
+		isReady := 0
+		if m.IsReady {
+			isReady = 1
+		}
+		isSchedulable := 0
+		if m.IsSchedulable {
+			isSchedulable = 1
+		}
+		if _, err := stmt.ExecContext(ctx, ts, m.Context, m.NodeName, m.CPUMillis, m.MemoryMB,
+			m.CPUCapacity, m.MemCapacity, m.PodCount, isReady, isSchedulable); err != nil {
+			return fmt.Errorf("insert node %s: %w", m.NodeName, err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// SavePodMetricsBatch saves multiple pod metrics in a single transaction.
+func (s *MetricsStore) SavePodMetricsBatch(ctx context.Context, metrics []PodMetrics) error {
+	if len(metrics) == 0 {
+		return nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx,
+		`INSERT INTO pod_metrics
+		(timestamp, context, namespace, pod_name, cpu_millis, memory_mb, status, restarts)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return fmt.Errorf("prepare: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, m := range metrics {
+		ts := m.Timestamp
+		if ts.IsZero() {
+			ts = time.Now()
+		}
+		if _, err := stmt.ExecContext(ctx, ts, m.Context, m.Namespace, m.PodName,
+			m.CPUMillis, m.MemoryMB, m.Status, m.Restarts); err != nil {
+			return fmt.Errorf("insert pod %s/%s: %w", m.Namespace, m.PodName, err)
+		}
+	}
+
+	return tx.Commit()
+}
+
 // GetClusterMetrics retrieves cluster metrics for a time range
 func (s *MetricsStore) GetClusterMetrics(ctx context.Context, contextName string, start, end time.Time, limit int) ([]ClusterMetrics, error) {
 	s.mu.RLock()
@@ -311,6 +395,14 @@ func (s *MetricsStore) GetLatestClusterMetrics(ctx context.Context, contextName 
 	return &metrics[0], nil
 }
 
+// validMetricsTables is the set of known metrics table names, used to prevent SQL injection
+// when constructing cleanup queries with fmt.Sprintf.
+var validMetricsTables = map[string]bool{
+	"cluster_metrics": true,
+	"node_metrics":    true,
+	"pod_metrics":     true,
+}
+
 // CleanupOldMetrics removes metrics older than the specified duration
 func (s *MetricsStore) CleanupOldMetrics(ctx context.Context, retention time.Duration) error {
 	s.mu.Lock()
@@ -318,8 +410,10 @@ func (s *MetricsStore) CleanupOldMetrics(ctx context.Context, retention time.Dur
 
 	cutoff := time.Now().Add(-retention)
 
-	tables := []string{"cluster_metrics", "node_metrics", "pod_metrics"}
-	for _, table := range tables {
+	for _, table := range []string{"cluster_metrics", "node_metrics", "pod_metrics"} {
+		if !validMetricsTables[table] {
+			return fmt.Errorf("unknown metrics table: %s", table)
+		}
 		query := fmt.Sprintf("DELETE FROM %s WHERE timestamp < ?", table)
 		if _, err := s.db.ExecContext(ctx, query, cutoff); err != nil {
 			return fmt.Errorf("failed to cleanup %s: %w", table, err)
@@ -373,20 +467,23 @@ func (s *MetricsStore) GetMetricsSummary(ctx context.Context, contextName string
 	return summary, nil
 }
 
-// GetAggregatedClusterMetrics returns aggregated metrics (hourly/daily averages)
+// validIntervalFormats maps allowed interval values to SQLite strftime formats.
+// Only these values are accepted to prevent SQL injection via the interval parameter.
+var validIntervalFormats = map[string]string{
+	"hour": "%Y-%m-%d %H:00:00",
+	"day":  "%Y-%m-%d 00:00:00",
+}
+
+// GetAggregatedClusterMetrics returns aggregated metrics (hourly/daily averages).
+// TODO: Uses SQLite-specific strftime(); add DB-specific aggregation for Postgres/MySQL.
 func (s *MetricsStore) GetAggregatedClusterMetrics(ctx context.Context, contextName string, start, end time.Time, interval string) ([]map[string]interface{}, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	// SQLite datetime format for grouping
-	var groupFormat string
-	switch interval {
-	case "hour":
-		groupFormat = "%Y-%m-%d %H:00:00"
-	case "day":
-		groupFormat = "%Y-%m-%d 00:00:00"
-	default:
-		groupFormat = "%Y-%m-%d %H:00:00"
+	// Validate interval against whitelist
+	groupFormat, ok := validIntervalFormats[interval]
+	if !ok {
+		groupFormat = validIntervalFormats["hour"]
 	}
 
 	query := fmt.Sprintf(`SELECT

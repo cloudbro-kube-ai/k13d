@@ -9,7 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -613,13 +614,14 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 		items := make([]map[string]interface{}, len(crds))
 		for i, crd := range crds {
 			items[i] = map[string]interface{}{
-				"name":       crd.Name,
-				"group":      crd.Group,
-				"version":    crd.Version,
-				"kind":       crd.Kind,
-				"plural":     crd.Plural,
-				"namespaced": crd.Namespaced,
-				"shortNames": crd.ShortNames,
+				"name":           crd.Name,
+				"group":          crd.Group,
+				"version":        crd.Version,
+				"kind":           crd.Kind,
+				"plural":         crd.Plural,
+				"namespaced":     crd.Namespaced,
+				"shortNames":     crd.ShortNames,
+				"printerColumns": crd.PrinterColumns,
 			}
 		}
 
@@ -641,13 +643,14 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 		}
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"name":       crdInfo.Name,
-			"group":      crdInfo.Group,
-			"version":    crdInfo.Version,
-			"kind":       crdInfo.Kind,
-			"plural":     crdInfo.Plural,
-			"namespaced": crdInfo.Namespaced,
-			"shortNames": crdInfo.ShortNames,
+			"name":           crdInfo.Name,
+			"group":          crdInfo.Group,
+			"version":        crdInfo.Version,
+			"kind":           crdInfo.Kind,
+			"plural":         crdInfo.Plural,
+			"namespaced":     crdInfo.Namespaced,
+			"shortNames":     crdInfo.ShortNames,
+			"printerColumns": crdInfo.PrinterColumns,
 		})
 		return
 	}
@@ -722,13 +725,37 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
+
+			// Extract printer column values
+			extraFields := make(map[string]string)
+			for _, col := range crdInfo.PrinterColumns {
+				// Skip Age (already provided) and Name (already provided)
+				colKey := strings.ToLower(strings.ReplaceAll(col.Name, " ", "_"))
+				if colKey == "age" || colKey == "name" || colKey == "namespace" {
+					continue
+				}
+				val := k8s.ResolveJSONPath(inst.Object, col.JSONPath)
+				if val != "" {
+					extraFields[colKey] = val
+					// Also set status from printer column if not already set
+					if colKey == "status" || colKey == "phase" || colKey == "state" || colKey == "ready" {
+						if _, exists := items[i]["status"]; !exists {
+							items[i]["status"] = val
+						}
+					}
+				}
+			}
+			if len(extraFields) > 0 {
+				items[i]["extra"] = extraFields
+			}
 		}
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"kind":       crdInfo.Kind + "List",
-			"crd":        crdInfo.Name,
-			"namespaced": crdInfo.Namespaced,
-			"items":      items,
+			"kind":           crdInfo.Kind + "List",
+			"crd":            crdInfo.Name,
+			"namespaced":     crdInfo.Namespaced,
+			"printerColumns": crdInfo.PrinterColumns,
+			"items":          items,
 		})
 		return
 	}

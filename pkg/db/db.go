@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/adrg/xdg"
 	_ "github.com/go-sql-driver/mysql"
@@ -13,7 +14,10 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-var DB *sql.DB
+var (
+	DB   *sql.DB
+	dbMu sync.RWMutex // protects DB and currentDBType
+)
 
 // DBType represents the database type
 type DBType string
@@ -25,7 +29,7 @@ const (
 	DBTypeMySQL    DBType = "mysql"
 )
 
-// Current database type
+// currentDBType tracks the current database type (protected by dbMu)
 var currentDBType DBType = DBTypeSQLite
 
 // DBConfig holds database configuration
@@ -50,6 +54,9 @@ func Init(dbPath string) error {
 
 // InitWithConfig initializes database with configuration
 func InitWithConfig(cfg DBConfig) error {
+	dbMu.Lock()
+	defer dbMu.Unlock()
+
 	var db *sql.DB
 	var err error
 
@@ -96,7 +103,25 @@ func initSQLite(dbPath string) (*sql.DB, error) {
 		return nil, err
 	}
 
-	return sql.Open("sqlite", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Enable WAL mode for concurrent read/write performance
+	pragmas := []string{
+		"PRAGMA journal_mode=WAL",
+		"PRAGMA synchronous=NORMAL",
+		"PRAGMA busy_timeout=5000",
+		"PRAGMA cache_size=-64000",
+	}
+	for _, p := range pragmas {
+		if _, execErr := db.Exec(p); execErr != nil {
+			fmt.Printf("Warning: failed to set %s: %v\n", p, execErr)
+		}
+	}
+
+	return db, nil
 }
 
 func initPostgres(cfg DBConfig) (*sql.DB, error) {
@@ -121,6 +146,8 @@ func initMySQL(cfg DBConfig) (*sql.DB, error) {
 
 // GetDBType returns the current database type
 func GetDBType() DBType {
+	dbMu.RLock()
+	defer dbMu.RUnlock()
 	return currentDBType
 }
 
@@ -334,7 +361,10 @@ func createTables() error {
 	// Create indexes
 	indexQueries := getIndexQueries()
 	for _, q := range indexQueries {
-		DB.Exec(q) // Ignore index errors
+		if _, err := DB.Exec(q); err != nil {
+			// Log but don't fail — index may already exist (MySQL doesn't support IF NOT EXISTS)
+			fmt.Printf("Warning: index creation: %v\n", err)
+		}
 	}
 
 	// Create llm_usage table for token tracking
@@ -347,6 +377,16 @@ func createTables() error {
 	if err := InitModelProfilesTable(); err != nil {
 		// Log but don't fail - non-critical feature
 		fmt.Printf("Warning: failed to create model_profiles table: %v\n", err)
+	}
+
+	// Create web_settings table for persistent web UI settings
+	if err := InitWebSettingsTable(); err != nil {
+		fmt.Printf("Warning: failed to create web_settings table: %v\n", err)
+	}
+
+	// Create custom_roles table for user-defined RBAC roles
+	if err := InitCustomRolesTable(); err != nil {
+		fmt.Printf("Warning: failed to create custom_roles table: %v\n", err)
 	}
 
 	return nil

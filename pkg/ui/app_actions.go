@@ -9,11 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 	"github.com/gdamore/tcell/v2"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
 	"github.com/rivo/tview"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // portForwardInfo tracks a running port-forward process
@@ -29,7 +30,12 @@ type portForwardInfo struct {
 // Returns true if allowed, false if denied (with flash error shown)
 func (a *App) checkTUIPermission(resource, action string) bool {
 	if a.authorizer == nil {
-		return true // No authorizer configured, allow all (backward compatible)
+		// Warn once that RBAC is not configured (fail-open for backward compatibility)
+		if !a.warnedNoRBAC {
+			a.warnedNoRBAC = true
+			a.logger.Warn("TUI RBAC not configured - all actions allowed. Configure authorizer for production use.")
+		}
+		return true
 	}
 
 	role := a.tuiRole
@@ -116,6 +122,15 @@ func (a *App) closeModal(name string) {
 	a.requestSync()
 }
 
+// getTableCellText safely retrieves cell text, returning "" if cell is nil.
+func (a *App) getTableCellText(row, col int) string {
+	cell := a.table.GetCell(row, col)
+	if cell == nil {
+		return ""
+	}
+	return cell.Text
+}
+
 // showLogs shows logs for selected pod with Vim-style navigation
 func (a *App) showLogs() {
 	a.mx.RLock()
@@ -131,21 +146,25 @@ func (a *App) showLogs() {
 		return
 	}
 
-	ns := a.table.GetCell(row, 0).Text
-	name := a.table.GetCell(row, 1).Text
+	ns := a.getTableCellText(row, 0)
+	name := a.getTableCellText(row, 1)
 
 	// Use VimViewer for Vim-style navigation and search
 	logView := NewVimViewer(a, "logs",
-		fmt.Sprintf(" Logs: %s/%s [gray](Esc:close /search n/N:next/prev Ctrl+D/U:scroll)[white] ", ns, name))
+		fmt.Sprintf(" Logs: %s/%s [gray](Esc:close /search s:autoscroll w:wrap m:mark)[white] ", ns, name))
+	logView.isLogView = true
+	logView.autoScroll = true
+	logView.textWrap = true
 
 	logView.SetContent("[yellow]Loading...[white]")
+	logView.updateTitle()
 
 	a.showModal("logs", logView, true)
 	a.SetFocus(logView)
 
 	// Fetch logs
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	a.safeGo("showLogs-fetch", func() {
+		ctx, cancel := context.WithTimeout(a.getAppContext(), 30*time.Second)
 		defer cancel()
 
 		logs, err := a.k8s.GetPodLogs(ctx, ns, name, "", 100)
@@ -159,7 +178,7 @@ func (a *App) showLogs() {
 				logView.ScrollToEnd()
 			}
 		})
-	}()
+	})
 }
 
 // describeResource shows YAML for selected resource
@@ -176,10 +195,10 @@ func (a *App) describeResource() {
 	var ns, name string
 	switch resource {
 	case "nodes", "no", "namespaces", "ns":
-		name = a.table.GetCell(row, 0).Text
+		name = a.getTableCellText(row, 0)
 	default:
-		ns = a.table.GetCell(row, 0).Text
-		name = a.table.GetCell(row, 1).Text
+		ns = a.getTableCellText(row, 0)
+		name = a.getTableCellText(row, 1)
 	}
 
 	descView := tview.NewTextView().
@@ -192,8 +211,8 @@ func (a *App) describeResource() {
 	a.SetFocus(descView)
 
 	// Fetch YAML
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	a.safeGo("showYAML-fetch", func() {
+		ctx, cancel := context.WithTimeout(a.getAppContext(), 10*time.Second)
 		defer cancel()
 
 		gvr, ok := a.k8s.GetGVR(resource)
@@ -212,7 +231,7 @@ func (a *App) describeResource() {
 				descView.SetText(yaml)
 			}
 		})
-	}()
+	})
 
 	descView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEsc {
@@ -251,10 +270,10 @@ func (a *App) confirmDelete() {
 	var ns, name string
 	switch resource {
 	case "nodes", "no", "namespaces", "ns":
-		name = a.table.GetCell(row, 0).Text
+		name = a.getTableCellText(row, 0)
 	default:
-		ns = a.table.GetCell(row, 0).Text
-		name = a.table.GetCell(row, 1).Text
+		ns = a.getTableCellText(row, 0)
+		name = a.getTableCellText(row, 1)
 	}
 
 	// Create confirmation modal
@@ -266,7 +285,7 @@ func (a *App) confirmDelete() {
 			a.SetFocus(a.table)
 
 			if buttonLabel == "Delete" {
-				go a.deleteResource(ns, name, resource)
+				a.safeGo("deleteResource", func() { a.deleteResource(ns, name, resource) })
 			}
 		})
 
@@ -296,10 +315,10 @@ func (a *App) confirmDeleteMultiple() {
 		var ns, name string
 		switch resource {
 		case "nodes", "no", "namespaces", "ns":
-			name = strings.TrimSpace(tview.TranslateANSI(a.table.GetCell(row, 0).Text))
+			name = strings.TrimSpace(tview.TranslateANSI(a.getTableCellText(row, 0)))
 		default:
-			ns = strings.TrimSpace(tview.TranslateANSI(a.table.GetCell(row, 0).Text))
-			name = strings.TrimSpace(tview.TranslateANSI(a.table.GetCell(row, 1).Text))
+			ns = strings.TrimSpace(tview.TranslateANSI(a.getTableCellText(row, 0)))
+			name = strings.TrimSpace(tview.TranslateANSI(a.getTableCellText(row, 1)))
 		}
 		if name != "" {
 			items = append(items, struct{ ns, name string }{ns, name})
@@ -315,13 +334,13 @@ func (a *App) confirmDeleteMultiple() {
 			a.SetFocus(a.table)
 
 			if buttonLabel == "Delete All" {
-				go func() {
+				a.safeGo("deleteResource-batch", func() {
 					for _, item := range items {
 						a.deleteResource(item.ns, item.name, resource)
 					}
 					a.clearSelections()
 					a.refresh()
-				}()
+				})
 			}
 		})
 
@@ -332,7 +351,7 @@ func (a *App) confirmDeleteMultiple() {
 
 // deleteResource deletes the specified resource
 func (a *App) deleteResource(ns, name, resource string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(a.getAppContext(), 30*time.Second)
 	defer cancel()
 
 	gvr, ok := a.k8s.GetGVR(resource)
@@ -358,7 +377,7 @@ func (a *App) deleteResource(ns, name, resource string) {
 
 	a.flashMsg(fmt.Sprintf("Deleted %s/%s", resource, name), false)
 	a.recordTUIAudit("delete", resourcePath, fmt.Sprintf("Deleted %s %s", resource, name), true, "")
-	go a.refresh()
+	a.safeGo("deleteResource-refresh", func() { a.refresh() })
 }
 
 // execShell opens an interactive shell in the selected pod
@@ -366,11 +385,6 @@ func (a *App) execShell() {
 	a.mx.RLock()
 	resource := a.currentResource
 	a.mx.RUnlock()
-
-	if resource != "pods" && resource != "po" {
-		a.flashMsg("Shell only available for pods", true)
-		return
-	}
 
 	// RBAC check
 	if !a.checkTUIPermission("pods", "exec") {
@@ -382,10 +396,32 @@ func (a *App) execShell() {
 		return
 	}
 
-	ns := a.table.GetCell(row, 0).Text
-	name := a.table.GetCell(row, 1).Text
+	ns := a.getTableCellText(row, 0)
+	name := a.getTableCellText(row, 1)
 
-	// Suspend the TUI and run kubectl exec
+	// Direct shell for pods
+	if resource == "pods" || resource == "po" {
+		a.runShellForPod(ns, name)
+		return
+	}
+
+	// For workloads, show pod selector
+	workloadResources := map[string]bool{
+		"deployments": true, "deploy": true,
+		"statefulsets": true, "sts": true,
+		"daemonsets": true, "ds": true,
+		"replicasets": true, "rs": true,
+	}
+	if !workloadResources[resource] {
+		a.flashMsg("Shell is available for pods and workloads (deploy/sts/ds/rs)", true)
+		return
+	}
+
+	a.safeGo("selectPodAndShell", func() { a.selectPodAndShell(ns, name, resource) })
+}
+
+// runShellForPod suspends the TUI and opens a shell into the given pod
+func (a *App) runShellForPod(ns, name string) {
 	a.Suspend(func() {
 		// Try bash first, fall back to sh
 		cmd := exec.Command("kubectl", "exec", "-it", "-n", ns, name, "--", "/bin/bash")
@@ -407,6 +443,130 @@ func (a *App) execShell() {
 	})
 }
 
+// selectPodAndShell lists pods for a workload and lets the user pick one for shell access
+func (a *App) selectPodAndShell(ns, name, resource string) {
+	ctx, cancel := context.WithTimeout(a.getAppContext(), 10*time.Second)
+	defer cancel()
+
+	// Get the workload's label selector
+	var labelSelector string
+	switch resource {
+	case "deployments", "deploy":
+		dep, err := a.k8s.Clientset.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			a.QueueUpdateDraw(func() {
+				a.flashMsg(fmt.Sprintf("Failed to get deployment: %v", err), true)
+			})
+			return
+		}
+		labelSelector = metav1.FormatLabelSelector(dep.Spec.Selector)
+	case "statefulsets", "sts":
+		sts, err := a.k8s.Clientset.AppsV1().StatefulSets(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			a.QueueUpdateDraw(func() {
+				a.flashMsg(fmt.Sprintf("Failed to get statefulset: %v", err), true)
+			})
+			return
+		}
+		labelSelector = metav1.FormatLabelSelector(sts.Spec.Selector)
+	case "daemonsets", "ds":
+		ds, err := a.k8s.Clientset.AppsV1().DaemonSets(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			a.QueueUpdateDraw(func() {
+				a.flashMsg(fmt.Sprintf("Failed to get daemonset: %v", err), true)
+			})
+			return
+		}
+		labelSelector = metav1.FormatLabelSelector(ds.Spec.Selector)
+	case "replicasets", "rs":
+		rs, err := a.k8s.Clientset.AppsV1().ReplicaSets(ns).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			a.QueueUpdateDraw(func() {
+				a.flashMsg(fmt.Sprintf("Failed to get replicaset: %v", err), true)
+			})
+			return
+		}
+		labelSelector = metav1.FormatLabelSelector(rs.Spec.Selector)
+	default:
+		return
+	}
+
+	// List pods matching the selector
+	podList, err := a.k8s.Clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		a.QueueUpdateDraw(func() {
+			a.flashMsg(fmt.Sprintf("Failed to list pods: %v", err), true)
+		})
+		return
+	}
+
+	// Filter to running pods
+	var runningPods []struct {
+		Name   string
+		Status string
+	}
+	for _, pod := range podList.Items {
+		status := string(pod.Status.Phase)
+		if status == "Running" {
+			runningPods = append(runningPods, struct {
+				Name   string
+				Status string
+			}{Name: pod.Name, Status: status})
+		}
+	}
+
+	if len(runningPods) == 0 {
+		a.QueueUpdateDraw(func() {
+			a.flashMsg(fmt.Sprintf("No running pods found for %s/%s", resource, name), true)
+		})
+		return
+	}
+
+	// If only one pod, shell directly
+	if len(runningPods) == 1 {
+		a.QueueUpdateDraw(func() {
+			a.runShellForPod(ns, runningPods[0].Name)
+		})
+		return
+	}
+
+	// Show pod selector modal
+	a.QueueUpdateDraw(func() {
+		list := tview.NewList()
+		list.SetBorder(true).SetTitle(fmt.Sprintf(" Select Pod for Shell (%s/%s) ", resource, name))
+
+		for _, pod := range runningPods {
+			podName := pod.Name
+			list.AddItem(podName, fmt.Sprintf("  Status: %s", pod.Status), 0, nil)
+		}
+
+		list.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+			selectedPod := runningPods[index].Name
+			a.closeModal("pod-shell-selector")
+			a.SetFocus(a.table)
+			a.runShellForPod(ns, selectedPod)
+		})
+
+		list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyEsc {
+				a.closeModal("pod-shell-selector")
+				a.SetFocus(a.table)
+				return nil
+			}
+			return event
+		})
+
+		height := len(runningPods)*2 + 4
+		if height > 20 {
+			height = 20
+		}
+		a.showModal("pod-shell-selector", centered(list, 65, height), true)
+		a.SetFocus(list)
+	})
+}
+
 // portForward shows port forwarding dialog
 func (a *App) portForward() {
 	a.mx.RLock()
@@ -414,7 +574,7 @@ func (a *App) portForward() {
 	a.mx.RUnlock()
 
 	if resource != "pods" && resource != "po" && resource != "services" && resource != "svc" {
-		a.flashMsg("Port forward only available for pods and services", true)
+		a.flashMsg("Port forwarding is only available for pods and services. Navigate to one of these resources first using :pods or :services", true)
 		return
 	}
 
@@ -428,8 +588,8 @@ func (a *App) portForward() {
 		return
 	}
 
-	ns := a.table.GetCell(row, 0).Text
-	name := a.table.GetCell(row, 1).Text
+	ns := a.getTableCellText(row, 0)
+	name := a.getTableCellText(row, 1)
 
 	// Create port forward dialog
 	form := tview.NewForm()
@@ -451,7 +611,7 @@ func (a *App) portForward() {
 			return
 		}
 
-		go a.startPortForward(ns, name, resource, localPort, remotePort)
+		a.safeGo("startPortForward", func() { a.startPortForward(ns, name, resource, localPort, remotePort) })
 	})
 	form.AddButton("Cancel", func() {
 		a.closeModal("port-forward")
@@ -493,7 +653,7 @@ func (a *App) startPortForward(ns, name, resource, localPort, remotePort string)
 	a.pfMx.Unlock()
 
 	// Wait for process to exit in background and clean up
-	go func() {
+	a.safeGo("portforward-cleanup", func() {
 		cmd.Wait()
 		a.pfMx.Lock()
 		for i, p := range a.portForwards {
@@ -503,7 +663,7 @@ func (a *App) startPortForward(ns, name, resource, localPort, remotePort string)
 			}
 		}
 		a.pfMx.Unlock()
-	}()
+	})
 
 	a.flashMsg(fmt.Sprintf("Port forward active: localhost:%s -> %s:%s (PID: %d)", localPort, name, remotePort, cmd.Process.Pid), false)
 }
@@ -537,13 +697,16 @@ func (a *App) showPortForwards() {
 	}
 
 	list.SetSelectedFunc(func(idx int, _, _ string, _ rune) {
-		if idx < len(forwards) {
-			pf := forwards[idx]
+		// Re-acquire lock and look up by identity to avoid stale snapshot
+		a.pfMx.Lock()
+		if idx < len(a.portForwards) {
+			pf := a.portForwards[idx]
 			if pf.Cmd.Process != nil {
 				pf.Cmd.Process.Kill()
 				a.flashMsg(fmt.Sprintf("Stopped port-forward localhost:%s", pf.LocalPort), false)
 			}
 		}
+		a.pfMx.Unlock()
 		a.closeModal("portforwards")
 		a.SetFocus(a.table)
 	})
@@ -606,18 +769,32 @@ func (a *App) showContextSwitcher() {
 			return
 		}
 
-		go func() {
+		a.safeGo("switchContext", func() {
 			a.flashMsg(fmt.Sprintf("Switching to context: %s...", selectedCtx), false)
+
+			// Stop watcher before switching (it holds old cluster connection)
+			a.stopWatch()
+
 			err := a.k8s.SwitchContext(selectedCtx)
 			if err != nil {
 				a.flashMsg(fmt.Sprintf("Failed to switch context: %v", err), true)
 				return
 			}
 
+			// Reset namespace to new context's default and clear cached namespace list
+			newNs := a.k8s.GetCurrentNamespace()
+			a.mx.Lock()
+			a.currentNamespace = newNs
+			a.namespaces = nil
+			a.mx.Unlock()
+
 			a.flashMsg(fmt.Sprintf("Switched to context: %s", selectedCtx), false)
 			a.updateHeader()
 			a.refresh()
-		}()
+
+			// Restart watcher for new cluster
+			a.startWatch()
+		})
 	})
 
 	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -659,8 +836,11 @@ func (a *App) showHealth() {
 	sb.WriteString("\n")
 
 	// AI status
-	if a.aiClient != nil && a.aiClient.IsReady() {
-		sb.WriteString(fmt.Sprintf(" [green]✓[white] AI: Online (%s)\n", a.aiClient.GetModel()))
+	a.aiMx.RLock()
+	aiClient := a.aiClient
+	a.aiMx.RUnlock()
+	if aiClient != nil && aiClient.IsReady() {
+		sb.WriteString(fmt.Sprintf(" [green]✓[white] AI: Online (%s)\n", aiClient.GetModel()))
 	} else {
 		sb.WriteString(" [red]✗[white] AI: Offline\n")
 		sb.WriteString("   Configure in ~/.kube-ai-dashboard/config.yaml\n")
@@ -705,6 +885,64 @@ func (a *App) showAbout() {
 	})
 }
 
+// showSortPicker displays a modal to choose sort column
+func (a *App) showSortPicker() {
+	a.mx.RLock()
+	headers := a.tableHeaders
+	sortCol := a.sortColumn
+	sortAsc := a.sortAscending
+	a.mx.RUnlock()
+
+	if len(headers) == 0 {
+		a.flashMsg("No columns available to sort", true)
+		return
+	}
+
+	list := tview.NewList()
+	list.SetBorder(true).SetTitle(" Sort By ")
+	list.SetBackgroundColor(tcell.NewRGBColor(26, 27, 38))       // #1a1b26
+	list.SetMainTextColor(tcell.NewRGBColor(192, 202, 245))      // #c0caf5
+	list.SetSecondaryTextColor(tcell.NewRGBColor(169, 177, 214)) // #a9b1d6
+	list.SetSelectedBackgroundColor(tcell.NewRGBColor(41, 46, 66))
+	list.SetSelectedTextColor(tcell.NewRGBColor(122, 162, 247)) // #7aa2f7
+
+	for i, h := range headers {
+		label := h
+		desc := ""
+		if i == sortCol {
+			dir := "▲ ascending"
+			if !sortAsc {
+				dir = "▼ descending"
+			}
+			label = fmt.Sprintf("%s  %s", h, dir)
+			desc = "  (current — select again to toggle direction)"
+		}
+		list.AddItem(label, desc, 0, nil)
+	}
+
+	list.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
+		a.closeModal("sort-picker")
+		a.SetFocus(a.table)
+		a.sortByColumn(index)
+	})
+
+	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEsc {
+			a.closeModal("sort-picker")
+			a.SetFocus(a.table)
+			return nil
+		}
+		return event
+	})
+
+	height := len(headers)*2 + 4
+	if height > 20 {
+		height = 20
+	}
+	a.showModal("sort-picker", centered(list, 55, height), true)
+	a.SetFocus(list)
+}
+
 // showHelp displays help modal
 func (a *App) showHelp() {
 	helpText := fmt.Sprintf(`
@@ -729,6 +967,12 @@ func (a *App) showHelp() {
   [yellow]e[white]        Edit ($EDITOR)      [yellow]Ctrl+D[white]   Delete
   [yellow]r[white]        Refresh             [yellow]c[white]        Switch context
   [yellow]n[white]        Cycle namespace     [yellow]Space[white]    Multi-select
+
+[cyan::b]SORTING[white::-]
+  [yellow]Shift+N[white]  Sort by NAME        [yellow]Shift+A[white]  Sort by AGE
+  [yellow]Shift+T[white]  Sort by STATUS      [yellow]Shift+P[white]  Sort by NAMESPACE
+  [yellow]Shift+C[white]  Sort by RESTARTS    [yellow]Shift+D[white]  Sort by READY
+  [yellow]:sort[white]    Sort column picker  [gray](toggle direction by sorting same column twice)[white]
 
 [cyan::b]NAMESPACE SHORTCUTS[white::-] (k9s style)
   [yellow]0[white] All namespaces      [yellow]n[white]   Cycle through namespaces
@@ -807,15 +1051,23 @@ func (a *App) showYAML() {
 	switch resource {
 	case "nodes", "no", "namespaces", "ns", "persistentvolumes", "storageclasses",
 		"clusterroles", "clusterrolebindings", "customresourcedefinitions":
-		name = a.table.GetCell(row, 0).Text
+		name = a.getTableCellText(row, 0)
 	default:
-		ns = a.table.GetCell(row, 0).Text
-		name = a.table.GetCell(row, 1).Text
+		ns = a.getTableCellText(row, 0)
+		name = a.getTableCellText(row, 1)
 	}
 
 	// Use VimViewer for Vim-style navigation and search
-	yamlView := NewVimViewer(a, "yaml",
-		fmt.Sprintf(" YAML: %s/%s [gray](Esc:close /search n/N:next/prev Ctrl+D/U:scroll)[white] ", resource, name))
+	isSecret := resource == "secrets" || resource == "sec"
+	title := fmt.Sprintf(" YAML: %s/%s [gray](Esc:close /search n/N:next/prev Ctrl+D/U:scroll)[white] ", resource, name)
+	if isSecret {
+		title = fmt.Sprintf(" YAML: %s/%s [gray](Esc:close /search x:decode)[white] ", resource, name)
+	}
+	yamlView := NewVimViewer(a, "yaml", title)
+	if isSecret {
+		yamlView.isSecretView = true
+		yamlView.updateTitle()
+	}
 
 	yamlView.SetContent("[yellow]Loading...[white]")
 
@@ -823,8 +1075,8 @@ func (a *App) showYAML() {
 	a.SetFocus(yamlView)
 
 	// Fetch YAML
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	a.safeGo("editResource-fetch", func() {
+		ctx, cancel := context.WithTimeout(a.getAppContext(), 10*time.Second)
 		defer cancel()
 
 		gvr, ok := a.k8s.GetGVR(resource)
@@ -841,9 +1093,12 @@ func (a *App) showYAML() {
 				yamlView.SetContent(fmt.Sprintf("[red]Error: %v", err))
 			} else {
 				yamlView.SetContent(yaml)
+				if isSecret {
+					yamlView.rawYAML = yaml
+				}
 			}
 		})
-	}()
+	})
 }
 
 // showLogsPrevious shows logs for previous container (k9s p key) with Vim-style navigation
@@ -853,7 +1108,7 @@ func (a *App) showLogsPrevious() {
 	a.mx.RUnlock()
 
 	if resource != "pods" && resource != "po" {
-		a.flashMsg("Logs only available for pods", true)
+		a.flashMsg("Log viewing is only available for pods. Navigate to pods view first using :pods", true)
 		return
 	}
 
@@ -862,21 +1117,25 @@ func (a *App) showLogsPrevious() {
 		return
 	}
 
-	ns := a.table.GetCell(row, 0).Text
-	name := a.table.GetCell(row, 1).Text
+	ns := a.getTableCellText(row, 0)
+	name := a.getTableCellText(row, 1)
 
 	// Use VimViewer for Vim-style navigation and search
 	logView := NewVimViewer(a, "logs",
-		fmt.Sprintf(" Previous Logs: %s/%s [gray](Esc:close /search n/N:next/prev Ctrl+D/U:scroll)[white] ", ns, name))
+		fmt.Sprintf(" Previous Logs: %s/%s [gray](Esc:close /search s:autoscroll w:wrap m:mark)[white] ", ns, name))
+	logView.isLogView = true
+	logView.autoScroll = true
+	logView.textWrap = true
 
 	logView.SetContent("[yellow]Loading...[white]")
+	logView.updateTitle()
 
 	a.showModal("logs", logView, true)
 	a.SetFocus(logView)
 
 	// Fetch previous logs
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	a.safeGo("showLogsPrevious-fetch", func() {
+		ctx, cancel := context.WithTimeout(a.getAppContext(), 30*time.Second)
 		defer cancel()
 
 		logs, err := a.k8s.GetPodLogsPrevious(ctx, ns, name, "", 100)
@@ -890,7 +1149,7 @@ func (a *App) showLogsPrevious() {
 				logView.ScrollToEnd()
 			}
 		})
-	}()
+	})
 }
 
 // editResource opens the resource in $EDITOR (k9s e key)
@@ -908,10 +1167,10 @@ func (a *App) editResource() {
 	switch resource {
 	case "nodes", "no", "namespaces", "ns", "persistentvolumes", "storageclasses",
 		"clusterroles", "clusterrolebindings", "customresourcedefinitions":
-		name = a.table.GetCell(row, 0).Text
+		name = a.getTableCellText(row, 0)
 	default:
-		ns = a.table.GetCell(row, 0).Text
-		name = a.table.GetCell(row, 1).Text
+		ns = a.getTableCellText(row, 0)
+		name = a.getTableCellText(row, 1)
 	}
 
 	resourcePath := fmt.Sprintf("%s/%s", resource, name)
@@ -940,7 +1199,7 @@ func (a *App) editResource() {
 	a.recordTUIAudit("edit", resourcePath, fmt.Sprintf("Edited %s %s via $EDITOR", resource, name), true, "")
 
 	// Refresh after edit
-	go a.refresh()
+	a.safeGo("editResource-refresh", func() { a.refresh() })
 }
 
 // attachContainer attaches to a container (k9s a key)
@@ -950,7 +1209,7 @@ func (a *App) attachContainer() {
 	a.mx.RUnlock()
 
 	if resource != "pods" && resource != "po" {
-		a.flashMsg("Attach only available for pods", true)
+		a.flashMsg("Attach is only available for pods. Navigate to pods view first using :pods", true)
 		return
 	}
 
@@ -959,8 +1218,8 @@ func (a *App) attachContainer() {
 		return
 	}
 
-	ns := a.table.GetCell(row, 0).Text
-	name := a.table.GetCell(row, 1).Text
+	ns := a.getTableCellText(row, 0)
+	name := a.getTableCellText(row, 1)
 
 	// Suspend TUI and run kubectl attach
 	a.Suspend(func() {
@@ -982,7 +1241,7 @@ func (a *App) useNamespace() {
 	a.mx.RUnlock()
 
 	if resource != "namespaces" && resource != "ns" {
-		a.flashMsg("Use 'u' only on namespaces view", true)
+		a.flashMsg("The 'u' key (use namespace) only works in namespaces view. Navigate to namespaces first using :namespaces", true)
 		return
 	}
 
@@ -991,29 +1250,15 @@ func (a *App) useNamespace() {
 		return
 	}
 
-	nsName := a.table.GetCell(row, 0).Text
-
-	a.mx.Lock()
-	a.currentNamespace = nsName
-	a.currentResource = "pods"
-	a.mx.Unlock()
-
-	// Force full terminal sync to prevent ghosting during namespace switch
-	a.requestSync()
-
-	// Clear table immediately to prevent visual artifacts
-	a.QueueUpdateDraw(func() {
-		a.table.Clear()
-		a.table.SetTitle(" pods - Loading... ")
-		a.table.SetCell(0, 0, tview.NewTableCell("Loading...").SetTextColor(tcell.ColorYellow))
-	})
+	nsName := a.getTableCellText(row, 0)
+	if nsName == "" {
+		return
+	}
 
 	a.flashMsg(fmt.Sprintf("Switched to namespace: %s", nsName), false)
 
-	go func() {
-		a.updateHeader()
-		a.refresh()
-	}()
+	// navigateTo() handles stop-watch, state mutation, refresh, and start-watch safely
+	a.navigateTo("pods", nsName, "")
 }
 
 // showNode shows the node where the selected pod is running (k9s o key)
@@ -1023,7 +1268,7 @@ func (a *App) showNode() {
 	a.mx.RUnlock()
 
 	if resource != "pods" && resource != "po" {
-		a.flashMsg("Show node only available for pods", true)
+		a.flashMsg("Show node is only available for pods. Navigate to pods view first using :pods", true)
 		return
 	}
 
@@ -1032,16 +1277,16 @@ func (a *App) showNode() {
 		return
 	}
 
-	ns := a.table.GetCell(row, 0).Text
-	name := a.table.GetCell(row, 1).Text
+	ns := a.getTableCellText(row, 0)
+	name := a.getTableCellText(row, 1)
 
 	// Get pod to find node
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(a.getAppContext(), 5*time.Second)
 	defer cancel()
 
 	pods, err := a.k8s.ListPods(ctx, ns)
 	if err != nil {
-		a.flashMsg(fmt.Sprintf("Error: %v", err), true)
+		a.flashMsg(fmt.Sprintf("Failed to list pods in namespace %s: %v. Check cluster connectivity.", ns, err), true)
 		return
 	}
 
@@ -1054,26 +1299,19 @@ func (a *App) showNode() {
 	}
 
 	if nodeName == "" {
-		a.flashMsg("Pod not scheduled to a node yet", true)
+		a.flashMsg("Pod not scheduled to a node yet. Wait for the scheduler to assign it or check pod events.", true)
 		return
 	}
 
-	// Save current state and navigate to nodes with filter
-	a.mx.Lock()
+	// Push nav history (navMx only, no nesting with mx)
 	a.navMx.Lock()
+	a.mx.RLock()
 	a.navigationStack = append(a.navigationStack, navHistory{resource, a.currentNamespace, a.filterText})
+	a.mx.RUnlock()
 	a.navMx.Unlock()
-	a.currentResource = "nodes"
-	a.currentNamespace = ""
-	a.filterText = nodeName
-	a.mx.Unlock()
 
-	a.requestSync()
-
-	go func() {
-		a.updateHeader()
-		a.refresh()
-	}()
+	// navigateTo() handles mx, watcher, and refresh safely
+	a.navigateTo("nodes", "", nodeName)
 }
 
 // killPod force deletes a pod (k9s k or Ctrl+K key)
@@ -1083,7 +1321,7 @@ func (a *App) killPod() {
 	a.mx.RUnlock()
 
 	if resource != "pods" && resource != "po" {
-		a.flashMsg("Kill only available for pods", true)
+		a.flashMsg("Kill operation is only available for pods. Navigate to pods view first using :pods", true)
 		return
 	}
 
@@ -1097,8 +1335,8 @@ func (a *App) killPod() {
 		return
 	}
 
-	ns := a.table.GetCell(row, 0).Text
-	name := a.table.GetCell(row, 1).Text
+	ns := a.getTableCellText(row, 0)
+	name := a.getTableCellText(row, 1)
 
 	modal := tview.NewModal().
 		SetText(fmt.Sprintf("[red]Kill pod?[white]\n\n%s/%s\n\nThis will force delete the pod.", ns, name)).
@@ -1108,8 +1346,8 @@ func (a *App) killPod() {
 			a.SetFocus(a.table)
 
 			if buttonLabel == "Kill" {
-				go func() {
-					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				a.safeGo("killPod", func() {
+					ctx, cancel := context.WithTimeout(a.getAppContext(), 30*time.Second)
 					defer cancel()
 
 					a.flashMsg(fmt.Sprintf("Killing pod %s/%s...", ns, name), false)
@@ -1125,7 +1363,7 @@ func (a *App) killPod() {
 					a.flashMsg(fmt.Sprintf("Killed pod %s/%s", ns, name), false)
 					a.recordTUIAudit("kill", resourcePath, fmt.Sprintf("Force deleted pod %s", name), true, "")
 					a.refresh()
-				}()
+				})
 			}
 		})
 
@@ -1135,7 +1373,7 @@ func (a *App) killPod() {
 
 // showBenchmark runs benchmark on service (k9s b key) - placeholder
 func (a *App) showBenchmark() {
-	a.flashMsg("Benchmark feature not yet implemented", true)
+	a.flashMsg("Benchmark feature is not yet implemented. This feature will be available in a future release.", true)
 }
 
 // triggerCronJob manually triggers a cronjob (k9s t key)
@@ -1145,7 +1383,7 @@ func (a *App) triggerCronJob() {
 	a.mx.RUnlock()
 
 	if resource != "cronjobs" && resource != "cj" {
-		a.flashMsg("Trigger only available for cronjobs", true)
+		a.flashMsg("Trigger is only available for cronjobs. Navigate to cronjobs view first using :cronjobs", true)
 		return
 	}
 
@@ -1154,8 +1392,8 @@ func (a *App) triggerCronJob() {
 		return
 	}
 
-	ns := a.table.GetCell(row, 0).Text
-	name := a.table.GetCell(row, 1).Text
+	ns := a.getTableCellText(row, 0)
+	name := a.getTableCellText(row, 1)
 
 	modal := tview.NewModal().
 		SetText(fmt.Sprintf("Trigger CronJob?\n\n%s/%s\n\nThis will create a new job from this cronjob.", ns, name)).
@@ -1165,7 +1403,7 @@ func (a *App) triggerCronJob() {
 			a.SetFocus(a.table)
 
 			if buttonLabel == "Trigger" {
-				go func() {
+				a.safeGo("triggerCronJob", func() {
 					a.flashMsg(fmt.Sprintf("Triggering cronjob %s/%s...", ns, name), false)
 
 					// Use kubectl to create job from cronjob
@@ -1182,7 +1420,7 @@ func (a *App) triggerCronJob() {
 					a.flashMsg(fmt.Sprintf("Created job %s from cronjob %s", jobName, name), false)
 					a.recordTUIAudit("trigger", resourcePath, fmt.Sprintf("Triggered cronjob %s, created job %s", name, jobName), true, "")
 					a.refresh()
-				}()
+				})
 			}
 		})
 
@@ -1204,31 +1442,27 @@ func (a *App) showRelatedResource() {
 	switch resource {
 	case "nodes", "namespaces", "persistentvolumes", "storageclasses",
 		"clusterroles", "clusterrolebindings", "customresourcedefinitions":
-		name = a.table.GetCell(row, 0).Text
+		name = a.getTableCellText(row, 0)
 	default:
-		ns = a.table.GetCell(row, 0).Text
-		name = a.table.GetCell(row, 1).Text
+		ns = a.getTableCellText(row, 0)
+		name = a.getTableCellText(row, 1)
 	}
 
 	// Different behavior based on resource type
 	switch resource {
 	case "deployments", "deploy":
-		// Show ReplicaSets
-		a.mx.Lock()
+		// Push nav history (navMx only, no nesting with mx)
 		a.navMx.Lock()
+		a.mx.RLock()
 		a.navigationStack = append(a.navigationStack, navHistory{resource, a.currentNamespace, a.filterText})
+		a.mx.RUnlock()
 		a.navMx.Unlock()
-		a.currentResource = "replicasets"
-		a.currentNamespace = ns
-		a.filterText = name
-		a.mx.Unlock()
-		go func() {
-			a.updateHeader()
-			a.refresh()
-		}()
+
+		// navigateTo() handles mx, watcher, and refresh safely
+		a.navigateTo("replicasets", ns, name)
 
 	default:
-		a.flashMsg(fmt.Sprintf("No related resources for %s", resource), true)
+		a.flashMsg(fmt.Sprintf("No related resources defined for %s. Try navigating manually using command mode (:)", resource), true)
 	}
 }
 
@@ -1246,7 +1480,7 @@ func (a *App) scaleResource() {
 	}
 
 	if !scalable[resource] {
-		a.flashMsg("Scale only available for deployments, statefulsets, replicasets", true)
+		a.flashMsg("Scale is only available for deployments, statefulsets, and replicasets. Navigate to one of these resources first.", true)
 		return
 	}
 
@@ -1260,8 +1494,8 @@ func (a *App) scaleResource() {
 		return
 	}
 
-	ns := a.table.GetCell(row, 0).Text
-	name := a.table.GetCell(row, 1).Text
+	ns := a.getTableCellText(row, 0)
+	name := a.getTableCellText(row, 1)
 
 	// Create scale dialog
 	form := tview.NewForm()
@@ -1275,20 +1509,20 @@ func (a *App) scaleResource() {
 		// Validate replica count
 		n, err := fmt.Sscanf(replicas, "%d", new(int))
 		if n != 1 || err != nil {
-			a.flashMsg("Invalid replica count: must be a number", true)
+			a.flashMsg("Invalid replica count. Please enter a valid number (0-999).", true)
 			return
 		}
 		var replicaCount int
 		fmt.Sscanf(replicas, "%d", &replicaCount)
 		if replicaCount < 0 || replicaCount > 999 {
-			a.flashMsg("Replica count must be between 0 and 999", true)
+			a.flashMsg("Replica count must be between 0 and 999. Please enter a valid number.", true)
 			return
 		}
 
 		a.closeModal("scale-dialog")
 		a.SetFocus(a.table)
 
-		go func() {
+		a.safeGo("scaleResource", func() {
 			a.flashMsg(fmt.Sprintf("Scaling %s/%s to %s replicas...", ns, name, replicas), false)
 
 			resourceType := resource
@@ -1312,7 +1546,7 @@ func (a *App) scaleResource() {
 			a.flashMsg(fmt.Sprintf("Scaled %s/%s to %s replicas", ns, name, replicas), false)
 			a.recordTUIAudit("scale", resourcePath, fmt.Sprintf("Scaled to %s replicas", replicas), true, "")
 			a.refresh()
-		}()
+		})
 	})
 	form.AddButton("Cancel", func() {
 		a.closeModal("scale-dialog")
@@ -1335,7 +1569,7 @@ func (a *App) restartResource() {
 	}
 
 	if !restartable[resource] {
-		a.flashMsg("Restart only available for deployments, statefulsets, daemonsets", true)
+		a.flashMsg("Restart is only available for deployments, statefulsets, and daemonsets. Navigate to one of these resources first.", true)
 		return
 	}
 
@@ -1349,8 +1583,8 @@ func (a *App) restartResource() {
 		return
 	}
 
-	ns := a.table.GetCell(row, 0).Text
-	name := a.table.GetCell(row, 1).Text
+	ns := a.getTableCellText(row, 0)
+	name := a.getTableCellText(row, 1)
 
 	modal := tview.NewModal().
 		SetText(fmt.Sprintf("Restart %s?\n\n%s/%s\n\nThis will trigger a rolling restart.", resource, ns, name)).
@@ -1360,7 +1594,7 @@ func (a *App) restartResource() {
 			a.SetFocus(a.table)
 
 			if buttonLabel == "Restart" {
-				go func() {
+				a.safeGo("restartResource", func() {
 					a.flashMsg(fmt.Sprintf("Restarting %s/%s...", ns, name), false)
 
 					resourceType := resource
@@ -1384,7 +1618,7 @@ func (a *App) restartResource() {
 					a.flashMsg(fmt.Sprintf("Restarted %s/%s", ns, name), false)
 					a.recordTUIAudit("restart", resourcePath, fmt.Sprintf("Rollout restart %s", name), true, "")
 					a.refresh()
-				}()
+				})
 			}
 		})
 
@@ -1395,7 +1629,7 @@ func (a *App) restartResource() {
 func (a *App) showDescribe() {
 	row, _ := a.table.GetSelection()
 	if row <= 0 {
-		a.flashMsg("No resource selected", true)
+		a.flashMsg("No resource selected. Please select a resource from the list first.", true)
 		return
 	}
 
@@ -1407,7 +1641,7 @@ func (a *App) showDescribe() {
 	nsCell := a.table.GetCell(row, 0)
 	nameCell := a.table.GetCell(row, 1)
 	if nsCell == nil || nameCell == nil {
-		a.flashMsg("Cannot get resource info", true)
+		a.flashMsg("Cannot get resource info from table. The resource may be invalid or not fully loaded.", true)
 		return
 	}
 
@@ -1433,7 +1667,7 @@ func (a *App) showDescribe() {
 	a.SetFocus(descView)
 
 	// Fetch describe output in background
-	go func() {
+	a.safeGo("describeResource-fetch", func() {
 		ctx := a.prepareContext()
 		output, err := a.k8s.DescribeResource(ctx, resource, ns, name)
 		if err != nil {
@@ -1447,7 +1681,7 @@ func (a *App) showDescribe() {
 			descView.SetContent(output)
 			descView.ScrollToBeginning()
 		})
-	}()
+	})
 }
 
 // toggleSelection toggles selection of the current row (k9s Space key)
@@ -1596,7 +1830,7 @@ func (a *App) aiBriefing() {
 		a.briefing.Toggle()
 	}
 
-	go a.briefing.UpdateWithAI()
+	a.safeGo("briefing-ai", func() { a.briefing.UpdateWithAI() })
 }
 
 // showSettings displays settings modal with LLM connection test and save functionality
@@ -1619,7 +1853,7 @@ func (a *App) showSettings() {
 	hasAPIKey := a.config.LLM.APIKey != ""
 
 	// Provider dropdown
-	providers := []string{"openai", "ollama", "solar", "gemini", "anthropic", "bedrock", "azopenai"}
+	providers := []string{"openai", "ollama", "upstage", "gemini", "anthropic", "bedrock", "azopenai"}
 	providerIndex := 0
 	for i, p := range providers {
 		if p == provider {
@@ -1668,8 +1902,8 @@ func (a *App) showSettings() {
 					}
 				}
 			}
-		case "solar":
-			if endpoint == "" {
+		case "upstage":
+			if endpoint == "" || endpoint == "https://api.openai.com/v1" {
 				endpoint = "https://api.upstage.ai/v1"
 				if item := form.GetFormItemByLabel("Endpoint"); item != nil {
 					if input, ok := item.(*tview.InputField); ok {
@@ -1677,7 +1911,7 @@ func (a *App) showSettings() {
 					}
 				}
 			}
-			if model == "" {
+			if model == "" || model == "gpt-4o" || model == "llama3.2" {
 				model = "solar-pro2"
 				if item := form.GetFormItemByLabel("Model"); item != nil {
 					if input, ok := item.(*tview.InputField); ok {
@@ -1732,7 +1966,7 @@ func (a *App) showSettings() {
 		statusView.SetText("[yellow]◐[white] Saving configuration...")
 		a.QueueUpdateDraw(func() {})
 
-		go func() {
+		a.safeGo("saveConfig", func() {
 			// Update config
 			a.config.LLM.Provider = provider
 			a.config.LLM.Model = model
@@ -1758,14 +1992,16 @@ func (a *App) showSettings() {
 				})
 				return
 			}
+			a.aiMx.Lock()
 			a.aiClient = newClient
+			a.aiMx.Unlock()
 
 			a.QueueUpdateDraw(func() {
 				statusView.SetText("[green]●[white] Configuration saved! Press 'Test Connection' to verify")
 				updateInfoView(infoView)
 				a.updateHeader() // Update AI status in header
 			})
-		}()
+		})
 	})
 
 	// Add test connection button
@@ -1773,15 +2009,18 @@ func (a *App) showSettings() {
 		statusView.SetText("[yellow]◐[white] Testing connection...")
 		a.QueueUpdateDraw(func() {})
 
-		go func() {
+		a.safeGo("testConnection", func() {
+			a.aiMx.RLock()
+			testClient := a.aiClient
+			a.aiMx.RUnlock()
 			var resultText string
-			if a.aiClient == nil {
+			if testClient == nil {
 				resultText = "[red]✗[white] LLM Not Configured - Save settings first"
 			} else {
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				ctx, cancel := context.WithTimeout(a.getAppContext(), 30*time.Second)
 				defer cancel()
 
-				status := a.aiClient.TestConnection(ctx)
+				status := testClient.TestConnection(ctx)
 				if status.Connected {
 					resultText = fmt.Sprintf("[green]●[white] Connected! %s/%s (%dms)",
 						status.Provider, status.Model, status.ResponseTime)
@@ -1796,7 +2035,7 @@ func (a *App) showSettings() {
 			a.QueueUpdateDraw(func() {
 				statusView.SetText(resultText)
 			})
-		}()
+		})
 	})
 
 	form.AddButton("Close", func() {
@@ -1828,26 +2067,29 @@ func (a *App) showSettings() {
 	})
 
 	// Check initial status
-	go func() {
+	a.safeGo("initConfig-status", func() {
+		a.aiMx.RLock()
+		initClient := a.aiClient
+		a.aiMx.RUnlock()
 		var initialStatus string
-		if a.aiClient == nil {
+		if initClient == nil {
 			initialStatus = "[gray]●[white] LLM Not Configured - Enter settings and Save"
-		} else if a.aiClient.IsReady() {
+		} else if initClient.IsReady() {
 			initialStatus = fmt.Sprintf("[yellow]●[white] LLM: %s/%s - Press 'Test' to verify",
-				a.aiClient.GetProvider(), a.aiClient.GetModel())
+				initClient.GetProvider(), initClient.GetModel())
 		} else {
 			initialStatus = "[gray]●[white] LLM Configuration Incomplete - Enter settings and Save"
 		}
 		a.QueueUpdateDraw(func() {
 			statusView.SetText(initialStatus)
 		})
-	}()
+	})
 }
 
 // showModelSelector displays a modal for switching AI model profiles
 func (a *App) showModelSelector() {
 	if a.config == nil || len(a.config.Models) == 0 {
-		a.flashMsg("No model profiles configured. Add models in config.yaml", true)
+		a.flashMsg("No AI model profiles configured. Add model definitions to your config.yaml file under the 'models' section.", true)
 		return
 	}
 
@@ -1898,28 +2140,30 @@ func (a *App) showModelSelector() {
 // switchModel switches to a named AI model profile
 func (a *App) switchModel(name string) {
 	if a.config == nil {
-		a.flashMsg("No config available", true)
+		a.flashMsg("Configuration not available. Cannot switch AI model without config.yaml.", true)
 		return
 	}
 
 	if !a.config.SetActiveModel(name) {
-		a.flashMsg(fmt.Sprintf("Model '%s' not found", name), true)
+		a.flashMsg(fmt.Sprintf("Model profile '%s' not found in config.yaml. Check available models using :model command.", name), true)
 		return
 	}
 
 	// Save config
 	if err := a.config.Save(); err != nil {
-		a.flashMsg(fmt.Sprintf("Config save failed: %v", err), true)
+		a.flashMsg(fmt.Sprintf("Failed to save config: %v. Model switch may not persist.", err), true)
 		return
 	}
 
 	// Reinitialize AI client with new model
 	newClient, err := ai.NewClient(&a.config.LLM)
 	if err != nil {
-		a.flashMsg(fmt.Sprintf("Failed to init model '%s': %v", name, err), true)
+		a.flashMsg(fmt.Sprintf("Failed to initialize model '%s': %v. Check your API keys and model configuration.", name, err), true)
 		return
 	}
+	a.aiMx.Lock()
 	a.aiClient = newClient
+	a.aiMx.Unlock()
 	a.flashMsg(fmt.Sprintf("Switched to model: %s (%s/%s)", name, a.config.LLM.Provider, a.config.LLM.Model), false)
 	a.updateHeader()
 }
@@ -1977,7 +2221,7 @@ func (a *App) showPlugins() {
 func (a *App) executePlugin(name string, plugin config.PluginConfig) {
 	row, _ := a.table.GetSelection()
 	if row <= 0 {
-		a.flashMsg("No resource selected for plugin", true)
+		a.flashMsg("No resource selected. Please select a resource from the list before running a plugin.", true)
 		return
 	}
 
@@ -2014,21 +2258,21 @@ func (a *App) executePlugin(name string, plugin config.PluginConfig) {
 				a.closeModal("plugin-confirm")
 				a.SetFocus(a.table)
 				if buttonLabel == "Execute" {
-					go a.runPlugin(name, plugin, ctx)
+					a.safeGo("runPlugin-"+name, func() { a.runPlugin(name, plugin, ctx) })
 				}
 			})
 		a.showModal("plugin-confirm", modal, true)
 		return
 	}
 
-	go a.runPlugin(name, plugin, ctx)
+	a.safeGo("runPlugin-"+name, func() { a.runPlugin(name, plugin, ctx) })
 }
 
 // runPlugin executes a plugin command
 func (a *App) runPlugin(name string, plugin config.PluginConfig, ctx *config.PluginContext) {
 	if plugin.Background {
 		a.flashMsg(fmt.Sprintf("Running plugin '%s' in background...", name), false)
-		if err := plugin.Execute(context.Background(), ctx); err != nil {
+		if err := plugin.Execute(a.getAppContext(), ctx); err != nil {
 			a.flashMsg(fmt.Sprintf("Plugin '%s' error: %v", name, err), true)
 		}
 		return
@@ -2037,7 +2281,7 @@ func (a *App) runPlugin(name string, plugin config.PluginConfig, ctx *config.Plu
 	// Foreground execution - suspend TUI
 	a.flashMsg(fmt.Sprintf("Running plugin '%s'...", name), false)
 	a.Suspend(func() {
-		if err := plugin.Execute(context.Background(), ctx); err != nil {
+		if err := plugin.Execute(a.getAppContext(), ctx); err != nil {
 			fmt.Fprintf(os.Stderr, "Plugin '%s' error: %v\n", name, err)
 		}
 	})

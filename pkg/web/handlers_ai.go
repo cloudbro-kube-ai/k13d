@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/session"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/log"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/session"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/log"
 )
 
 // LLMCapabilities represents the capabilities of the configured LLM
@@ -22,6 +22,97 @@ type LLMCapabilities struct {
 	Streaming      bool   `json:"streaming"`
 	MaxTokens      int    `json:"max_tokens,omitempty"`
 	Recommendation string `json:"recommendation,omitempty"`
+}
+
+// handleAgentSettings handles agent loop settings (GET/PUT)
+func (s *Server) handleAgentSettings(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	switch r.Method {
+	case http.MethodGet:
+		s.aiMu.RLock()
+		settings := map[string]interface{}{
+			"max_iterations":   s.cfg.LLM.MaxIterations,
+			"reasoning_effort": s.cfg.LLM.ReasoningEffort,
+			"temperature":      s.cfg.LLM.Temperature,
+			"max_tokens":       s.cfg.LLM.MaxTokens,
+		}
+		s.aiMu.RUnlock()
+		json.NewEncoder(w).Encode(settings)
+
+	case http.MethodPut:
+		role := r.Header.Get("X-User-Role")
+		if role != "admin" {
+			http.Error(w, "Admin access required", http.StatusForbidden)
+			return
+		}
+
+		var req struct {
+			MaxIterations   int     `json:"max_iterations"`
+			ReasoningEffort string  `json:"reasoning_effort"`
+			Temperature     float64 `json:"temperature"`
+			MaxTokens       int     `json:"max_tokens"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
+			return
+		}
+
+		// Clamp values to safe ranges
+		if req.MaxIterations < 1 {
+			req.MaxIterations = 1
+		}
+		if req.MaxIterations > 30 {
+			req.MaxIterations = 30
+		}
+		if req.Temperature < 0 {
+			req.Temperature = 0
+		}
+		if req.Temperature > 2.0 {
+			req.Temperature = 2.0
+		}
+		if req.MaxTokens < 0 {
+			req.MaxTokens = 0
+		}
+
+		s.aiMu.Lock()
+		s.cfg.LLM.MaxIterations = req.MaxIterations
+		s.cfg.LLM.Temperature = req.Temperature
+		s.cfg.LLM.MaxTokens = req.MaxTokens
+		if req.ReasoningEffort == "low" || req.ReasoningEffort == "medium" || req.ReasoningEffort == "high" {
+			s.cfg.LLM.ReasoningEffort = req.ReasoningEffort
+		}
+		s.aiMu.Unlock()
+
+		// Save to YAML config
+		if err := s.cfg.Save(); err != nil {
+			fmt.Printf("Warning: failed to save agent settings to YAML: %v\n", err)
+		}
+
+		// Persist to SQLite for web UI persistence
+		if err := db.SaveWebSettings(map[string]string{
+			"agent.max_iterations":   fmt.Sprintf("%d", req.MaxIterations),
+			"agent.reasoning_effort": req.ReasoningEffort,
+			"agent.temperature":      fmt.Sprintf("%.2f", req.Temperature),
+			"agent.max_tokens":       fmt.Sprintf("%d", req.MaxTokens),
+		}); err != nil {
+			fmt.Printf("Warning: failed to save agent settings to SQLite: %v\n", err)
+		}
+
+		// Record audit
+		username := r.Header.Get("X-Username")
+		db.RecordAudit(db.AuditEntry{
+			User:     username,
+			Action:   "update_agent_settings",
+			Resource: "settings",
+			Details:  fmt.Sprintf("MaxIterations: %d, Temperature: %.2f, MaxTokens: %d, ReasoningEffort: %s", req.MaxIterations, req.Temperature, req.MaxTokens, req.ReasoningEffort),
+		})
+
+		json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
+
+	default:
+		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
 }
 
 // handleLLMSettings handles LLM settings updates
@@ -44,7 +135,8 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Update LLM settings
+		// Update LLM settings (protected by mutex)
+		s.aiMu.Lock()
 		s.cfg.LLM.Provider = llmSettings.Provider
 		s.cfg.LLM.Model = llmSettings.Model
 		s.cfg.LLM.Endpoint = llmSettings.Endpoint
@@ -60,16 +152,33 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 		// Recreate AI client
 		newClient, err := ai.NewClient(&s.cfg.LLM)
 		if err != nil {
+			s.aiMu.Unlock()
 			apiErr := ParseLLMError(err, llmSettings.Provider)
 			WriteError(w, apiErr)
 			return
 		}
 		s.aiClient = newClient
+		s.aiMu.Unlock()
 
-		// Save to disk
+		// Save to YAML
 		if err := s.cfg.Save(); err != nil {
 			WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to save settings"))
 			return
+		}
+
+		// Also persist LLM settings to SQLite for web UI persistence
+		llmDBSettings := map[string]string{
+			"llm.provider":         llmSettings.Provider,
+			"llm.model":            llmSettings.Model,
+			"llm.endpoint":         llmSettings.Endpoint,
+			"llm.use_json_mode":    fmt.Sprintf("%v", llmSettings.UseJSONMode),
+			"llm.reasoning_effort": llmSettings.ReasoningEffort,
+		}
+		if llmSettings.APIKey != "" {
+			llmDBSettings["llm.api_key"] = llmSettings.APIKey
+		}
+		if err := db.SaveWebSettings(llmDBSettings); err != nil {
+			fmt.Printf("Warning: failed to save LLM settings to SQLite: %v\n", err)
 		}
 
 		// Record audit
@@ -81,7 +190,15 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			Details:  fmt.Sprintf("Provider: %s, Model: %s, JSONMode: %v", llmSettings.Provider, llmSettings.Model, llmSettings.UseJSONMode),
 		})
 
-		json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":         "ok",
+			"message":        "LLM settings updated successfully",
+			"provider":       s.cfg.LLM.Provider,
+			"model":          s.cfg.LLM.Model,
+			"endpoint":       s.aiClient.GetEndpoint(),
+			"ready":          s.aiClient.IsReady(),
+			"supports_tools": s.aiClient.SupportsTools(),
+		})
 
 	default:
 		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -163,12 +280,12 @@ func (s *Server) handleLLMTest(w http.ResponseWriter, r *http.Request) {
 	capabilities := getLLMCapabilities(testClient, testProvider)
 
 	response := map[string]interface{}{
-		"connected":     status.Connected,
-		"provider":      status.Provider,
-		"model":         status.Model,
-		"endpoint":      status.Endpoint,
-		"response_time": status.ResponseTime,
-		"capabilities":  capabilities,
+		"connected":        status.Connected,
+		"provider":         status.Provider,
+		"model":            status.Model,
+		"endpoint":         status.Endpoint,
+		"response_time_ms": status.ResponseTime,
+		"capabilities":     capabilities,
 	}
 
 	if status.Error != "" {
@@ -376,7 +493,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			})
 			return approved
 
-		case <-time.After(60 * time.Second):
+		case <-time.After(s.getToolApprovalTimeout()):
 			// Timeout - cleanup and reject
 			s.pendingApprovalMutex.Lock()
 			delete(s.pendingApprovals, approvalID)
@@ -745,30 +862,48 @@ func getLLMCapabilities(client *ai.Client, provider string) LLMCapabilities {
 	case "openai":
 		caps.JSONMode = true
 		caps.MaxTokens = 128000 // GPT-4 turbo
-		if !caps.ToolCalling {
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available with tool calling support"
+		} else {
 			caps.Recommendation = "Consider using GPT-4 or GPT-3.5-turbo for full tool calling support"
 		}
 	case "anthropic":
 		caps.JSONMode = true
 		caps.MaxTokens = 200000 // Claude 3
-		if !caps.ToolCalling {
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available with tool calling support"
+		} else {
 			caps.Recommendation = "Consider using Claude 3 Opus, Sonnet, or Haiku for tool calling support"
 		}
 	case "gemini":
 		caps.JSONMode = true
 		caps.MaxTokens = 32000
-		if !caps.ToolCalling {
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available with Gemini function calling"
+		} else {
 			caps.Recommendation = "Consider using Gemini Pro for tool calling support"
 		}
 	case "ollama":
 		caps.JSONMode = true
-		caps.Recommendation = "Ollama models vary in capabilities. Try llama3, mistral, or codellama for better results"
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available. Ollama tool calling enabled"
+		} else {
+			caps.Recommendation = "Ollama models vary in capabilities. Try llama3, mistral, or qwen2.5 for tool calling support"
+		}
 	case "bedrock":
 		caps.JSONMode = true
-		caps.Recommendation = "AWS Bedrock capabilities depend on the selected model"
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available via AWS Bedrock"
+		} else {
+			caps.Recommendation = "AWS Bedrock capabilities depend on the selected model"
+		}
 	case "azopenai":
 		caps.JSONMode = true
-		caps.Recommendation = "Azure OpenAI capabilities depend on the deployed model"
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available via Azure OpenAI"
+		} else {
+			caps.Recommendation = "Azure OpenAI capabilities depend on the deployed model"
+		}
 	default:
 		caps.JSONMode = false
 		caps.Recommendation = "Unknown provider - capabilities may be limited"
@@ -788,6 +923,93 @@ func (s *SSEWriter) WriteEvent(event string, data string) error {
 	}
 	s.flusher.Flush()
 	return nil
+}
+
+// handleAvailableModels fetches available models from the current LLM provider.
+// GET: uses the existing AI client.
+// POST: accepts provider/api_key/endpoint in request body (avoids API key in URL).
+func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	var provider, apiKey, endpoint string
+
+	if r.Method == http.MethodPost {
+		// POST: read credentials from request body (avoids API key in URL)
+		var req struct {
+			Provider string `json:"provider"`
+			APIKey   string `json:"api_key"`
+			Endpoint string `json:"endpoint"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			provider = req.Provider
+			apiKey = req.APIKey
+			endpoint = req.Endpoint
+		}
+	} else {
+		// GET: only non-sensitive params from query (uses existing client)
+		provider = r.URL.Query().Get("provider")
+		endpoint = r.URL.Query().Get("endpoint")
+	}
+
+	var client *ai.Client
+	if provider != "" && apiKey != "" {
+		// Create temporary client with provided config
+		tempConfig := config.LLMConfig{
+			Provider: provider,
+			Model:    "temp",
+			Endpoint: endpoint,
+			APIKey:   apiKey,
+		}
+		var err error
+		client, err = ai.NewClient(&tempConfig)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"models": []string{},
+				"error":  fmt.Sprintf("Failed to create client: %v", err),
+			})
+			return
+		}
+	} else if s.aiClient != nil {
+		client = s.aiClient
+	} else {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"models": []string{},
+			"error":  "No AI client configured",
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	models, err := client.ListModels(ctx)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"models": []string{},
+			"error":  fmt.Sprintf("Failed to list models: %v", err),
+		})
+		return
+	}
+
+	// For Gemini, filter to only generateContent-capable models
+	if provider == "gemini" || s.cfg.LLM.Provider == "gemini" {
+		var filtered []string
+		for _, m := range models {
+			if strings.HasPrefix(m, "gemini-") {
+				filtered = append(filtered, m)
+			}
+		}
+		models = filtered
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"models": models,
+	})
 }
 
 // handleAIPing checks if the AI client is configured and can connect
@@ -840,9 +1062,14 @@ func (s *Server) handleOllamaStatus(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	// Try to connect to Ollama's default endpoint
+	// Use configured Ollama endpoint, falling back to default
+	ollamaEndpoint := "http://localhost:11434"
+	if s.cfg.LLM.Provider == "ollama" && s.cfg.LLM.Endpoint != "" {
+		ollamaEndpoint = strings.TrimSuffix(s.cfg.LLM.Endpoint, "/")
+	}
+
 	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get("http://localhost:11434/api/tags")
+	resp, err := client.Get(ollamaEndpoint + "/api/tags")
 
 	if err != nil {
 		json.NewEncoder(w).Encode(OllamaStatusResponse{
@@ -909,7 +1136,12 @@ func (s *Server) handleOllamaPull(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Send pull request to Ollama
+	// Use configured Ollama endpoint, falling back to default
+	ollamaEndpoint := "http://localhost:11434"
+	if s.cfg.LLM.Provider == "ollama" && s.cfg.LLM.Endpoint != "" {
+		ollamaEndpoint = strings.TrimSuffix(s.cfg.LLM.Endpoint, "/")
+	}
+
 	client := &http.Client{Timeout: 10 * time.Minute} // Model pull can take a while
 
 	pullBody, _ := json.Marshal(map[string]interface{}{
@@ -917,7 +1149,7 @@ func (s *Server) handleOllamaPull(w http.ResponseWriter, r *http.Request) {
 		"stream": false,
 	})
 
-	resp, err := client.Post("http://localhost:11434/api/pull", "application/json", strings.NewReader(string(pullBody)))
+	resp, err := client.Post(ollamaEndpoint+"/api/pull", "application/json", strings.NewReader(string(pullBody)))
 	if err != nil {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": fmt.Sprintf("Failed to connect to Ollama: %v", err),

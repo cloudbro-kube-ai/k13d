@@ -212,7 +212,7 @@ spec:
   containers:
     # k13d dashboard
     - name: k13d
-      image: youngjukim/k13d:latest
+      image: fjvbn2003/k13d:latest
       imagePullPolicy: IfNotPresent
 
       ports:

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 )
 
 // ==========================================
@@ -128,13 +130,23 @@ func (s *Server) handleClusterMetricsHistory(w http.ResponseWriter, r *http.Requ
 	end := time.Now()
 	start := end.Add(-time.Duration(minutes) * time.Minute)
 
-	metrics, err := s.metricsCollector.GetStore().GetClusterMetrics(r.Context(), contextName, start, end, limit)
-	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"error": err.Error(),
-			"items": []interface{}{},
-		})
-		return
+	// Try ring buffer cache first for recent data
+	var metrics []db.ClusterMetrics
+	if cache := s.metricsCollector.GetCache(); cache != nil {
+		metrics = cache.GetClusterMetrics(contextName, start, end, limit)
+	}
+
+	// Fall back to SQLite if cache doesn't cover the range
+	if metrics == nil {
+		var err error
+		metrics, err = s.metricsCollector.GetStore().GetClusterMetrics(r.Context(), contextName, start, end, limit)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": err.Error(),
+				"items": []interface{}{},
+			})
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -185,13 +197,22 @@ func (s *Server) handleNodeMetricsHistory(w http.ResponseWriter, r *http.Request
 	end := time.Now()
 	start := end.Add(-time.Duration(minutes) * time.Minute)
 
-	metrics, err := s.metricsCollector.GetStore().GetNodeMetricsHistory(r.Context(), contextName, nodeName, start, end, limit)
-	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"error": err.Error(),
-			"items": []interface{}{},
-		})
-		return
+	// Try ring buffer cache first
+	var metrics []db.NodeMetrics
+	if cache := s.metricsCollector.GetCache(); cache != nil {
+		metrics = cache.GetNodeMetrics(contextName, nodeName, start, end, limit)
+	}
+
+	if metrics == nil {
+		var err error
+		metrics, err = s.metricsCollector.GetStore().GetNodeMetricsHistory(r.Context(), contextName, nodeName, start, end, limit)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": err.Error(),
+				"items": []interface{}{},
+			})
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -247,13 +268,22 @@ func (s *Server) handlePodMetricsHistory(w http.ResponseWriter, r *http.Request)
 	end := time.Now()
 	start := end.Add(-time.Duration(minutes) * time.Minute)
 
-	metrics, err := s.metricsCollector.GetStore().GetPodMetricsHistory(r.Context(), contextName, namespace, podName, start, end, limit)
-	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"error": err.Error(),
-			"items": []interface{}{},
-		})
-		return
+	// Try ring buffer cache first
+	var metrics []db.PodMetrics
+	if cache := s.metricsCollector.GetCache(); cache != nil {
+		metrics = cache.GetPodMetrics(contextName, namespace, podName, start, end, limit)
+	}
+
+	if metrics == nil {
+		var err error
+		metrics, err = s.metricsCollector.GetStore().GetPodMetricsHistory(r.Context(), contextName, namespace, podName, start, end, limit)
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": err.Error(),
+				"items": []interface{}{},
+			})
+			return
+		}
 	}
 
 	json.NewEncoder(w).Encode(map[string]interface{}{

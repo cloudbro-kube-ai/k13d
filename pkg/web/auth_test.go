@@ -455,8 +455,8 @@ func TestAuthManager_GetUsers(t *testing.T) {
 	})
 
 	// Create additional users
-	am.CreateUser("user1", "pass1", "user")
-	am.CreateUser("user2", "pass2", "viewer")
+	am.CreateUser("user1", "password1", "user")
+	am.CreateUser("user2", "password2", "viewer")
 
 	users := am.GetUsers()
 	if len(users) != 3 { // admin + user1 + user2

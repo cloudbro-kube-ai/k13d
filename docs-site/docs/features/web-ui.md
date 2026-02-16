@@ -44,11 +44,24 @@ Click on any resource to view detailed information including:
 
 ---
 
+## Cluster Overview
+
+Dedicated overview page showing cluster health at a glance.
+
+| Feature | Description |
+|---------|-------------|
+| **Health Cards** | Nodes Ready, Pods Running, Deployments Healthy, Namespaces |
+| **Quick Actions** | One-click navigation to Pods, Deployments, Services, Topology, Metrics, Helm |
+| **Recent Events** | Latest cluster events with warning/normal indicators |
+| **Clean Layout** | AI panel auto-hides on Overview for a focused view |
+
+---
+
 ## Topology View
 
 Visualize cluster resources and their relationships.
 
-### Cluster Topology
+### Cluster Topology (Graph)
 
 ![Topology View](../images/webui-topology-view-all.png)
 
@@ -58,11 +71,106 @@ Interactive graph showing:
 - Network connections
 - Resource dependencies
 
+### Topology Tree View
+
+Hierarchical resource ownership visualization:
+
+| Feature | Description |
+|---------|-------------|
+| **Tree Nodes** | Collapsible parent-child hierarchy |
+| **Namespace Scoping** | Filter by namespace |
+| **Cross-navigation** | Switch between Graph and Tree views via toolbar |
+
 ### Topology Detail Modal
 
 ![Topology Modal](../images/webui-topology-modal-view.png)
 
 Click any node to view resource details and navigate to related resources.
+
+---
+
+## Applications View
+
+App-centric view grouping resources by `app.kubernetes.io/name` labels.
+
+![Web UI Applications View](../images/web_ui_applications.png)
+
+| Feature | Description |
+|---------|-------------|
+| **Auto-grouping** | Groups Deployments, Services, Pods by app label |
+| **Health Badges** | Color-coded health status per application |
+| **Namespace Filter** | Scope applications to a namespace |
+
+---
+
+## Event Timeline
+
+Cluster events visualized in chronological order with time-window grouping and severity indicators.
+
+![Web UI Event Timeline](../images/web_ui_event_timeline.png)
+
+| Feature | Description |
+|---------|-------------|
+| **Time-Window Grouping** | Events grouped by time windows with counts |
+| **Severity Indicators** | Warning/Normal event classification |
+| **Resource Filtering** | Filter events by namespace or resource type |
+| **Drill-Down** | Click events to view details and affected resources |
+
+---
+
+## Network Policy Map
+
+Visualize network policies and connectivity rules across your cluster.
+
+![Web UI Network Policy Map](../images/web_ui_network_policy_map.png)
+
+| Feature | Description |
+|---------|-------------|
+| **Policy Visualization** | Ingress/egress rule visualization per policy |
+| **Pod Selectors** | See which pods are affected by each policy |
+| **Rule Details** | View allowed ports, protocols, and CIDR blocks |
+| **Namespace Scoping** | Filter policies by namespace |
+
+---
+
+## Resource Templates
+
+Pre-built templates for quickly deploying common Kubernetes resources.
+
+![Web UI Resource Templates](../images/web_ui_resource_template.png)
+
+| Feature | Description |
+|---------|-------------|
+| **Template Library** | Common patterns (Nginx, Redis, PostgreSQL, etc.) |
+| **Customizable** | Edit templates before deploying |
+| **One-Click Deploy** | Deploy resources directly from template |
+
+---
+
+## Validate View
+
+Cross-resource validation with severity-based findings.
+
+| Feature | Description |
+|---------|-------------|
+| **Severity Levels** | Critical, Warning, Info classifications |
+| **Actionable Suggestions** | Specific fix recommendations per finding |
+| **Cross-view Links** | Navigate to Reports for full analysis |
+| **Namespace Scoping** | Validate per namespace or cluster-wide |
+
+---
+
+## Helm Manager
+
+Full Helm release lifecycle management.
+
+| Feature | Description |
+|---------|-------------|
+| **Release List** | View all Helm releases with status |
+| **Release Details** | Values, manifest, notes per release |
+| **History** | View revision history with rollback support |
+| **Rollback** | One-click rollback to previous revision |
+| **Uninstall** | Remove releases with confirmation |
 
 ---
 
@@ -109,7 +217,7 @@ When AI requests a write/dangerous operation:
 
 ## Reports
 
-Generate comprehensive cluster analysis reports.
+Generate comprehensive cluster analysis reports with selectable sections.
 
 ### Report Index
 
@@ -127,6 +235,27 @@ Available report types with generated report history.
 | **Security Audit** | RBAC analysis, network policies, vulnerabilities |
 | **Resource Optimization** | Over-provisioned resources, cost analysis |
 | **AI Analysis** | AI-powered insights and recommendations |
+
+### Section Selection
+
+When generating a report, you can select which sections to include:
+
+| Section | Description |
+|---------|-------------|
+| **Nodes** | Node health, capacity, and conditions |
+| **Namespaces** | Namespace resource usage summary |
+| **Workloads** | Deployments, StatefulSets, DaemonSets status |
+| **Events** | Recent cluster events and warnings |
+| **Security** | Basic security audit (RBAC, pod security) |
+| **Security Full** | Extended security scan with Trivy vulnerability analysis |
+| **FinOps** | Cost analysis, resource efficiency, optimization suggestions |
+| **Metrics** | CPU/Memory utilization metrics |
+
+By default, all standard sections are enabled except **Security Full** (which requires Trivy and can be slow).
+
+### Report Preview
+
+![Web UI Cluster Report Preview](../images/web_ui_cluster_report_preview.png)
 
 ### Security Assessment Report
 
@@ -160,9 +289,23 @@ Cost optimization insights:
 
 ---
 
+## Custom Resource Detail View
+
+Custom Resources (CRDs) display a rich detail modal with the same quality as built-in resources.
+
+| Feature | Description |
+|---------|-------------|
+| **Overview Tab** | Auto-generated overview with status badge, metadata, key fields from printer columns, spec/status summary, conditions table, labels, and annotations |
+| **YAML Tab** | Full YAML manifest of the Custom Resource |
+| **Events Tab** | Related Kubernetes events for the resource |
+| **Status Detection** | Automatic status extraction from conditions, phase, or state fields |
+| **Printer Columns** | CRD-defined `additionalPrinterColumns` resolved via JSONPath |
+
+---
+
 ## Metrics & Monitoring
 
-Real-time metrics visualization with Chart.js.
+Real-time and historical metrics visualization with Chart.js.
 
 ### Metrics Dashboard
 
@@ -170,10 +313,19 @@ Real-time metrics visualization with Chart.js.
 
 | Metric | Description |
 |--------|-------------|
-| **CPU Usage** | Real-time CPU consumption per pod/node |
-| **Memory Usage** | Memory utilization with limits |
-| **Network I/O** | Ingress/egress traffic |
-| **Storage** | PV usage and capacity |
+| **CPU Usage** | Real-time and historical CPU consumption |
+| **Memory Usage** | Real-time and historical memory utilization |
+| **Pod Count** | Running pod count over time |
+| **Node Health** | Ready node count over time |
+
+### Historical Data
+
+Metrics are collected every minute and stored in SQLite for historical analysis:
+
+- **Time Ranges**: 5m, 15m, 30m, 1h, 6h, 24h
+- **Default Range**: 30 minutes
+- **Collect Now**: Trigger immediate metrics collection via the Collect button
+- **Fallback Charts**: When metrics-server is unavailable, Pod Count and Node Count charts are shown instead of CPU/Memory
 
 ---
 
@@ -265,6 +417,20 @@ Create and manage user accounts:
 | **Edit User** | Modify user settings |
 | **Delete User** | Remove user account |
 | **Role Assignment** | Assign roles (admin, user, viewer) |
+
+### Theme / Skin Selector
+
+Choose from 5 color themes in Settings > General:
+
+| Theme | Description |
+|-------|-------------|
+| **Tokyo Night** | Default dark theme with blue accents |
+| **Production** | Red-accented dark theme (warns you're in production) |
+| **Staging** | Yellow-accented dark theme |
+| **Development** | Green-accented dark theme |
+| **Light** | Clean light theme with professional colors |
+
+Theme selection persists in localStorage and auto-detects system preference.
 
 ### Authentication Control
 

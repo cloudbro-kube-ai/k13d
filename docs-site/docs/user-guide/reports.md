@@ -70,11 +70,22 @@ AI-powered insights:
 
 1. Navigate to **Reports** section
 2. Select report type
-3. Configure options:
+3. **Choose sections** to include in the report:
+   - **Nodes** - Node health, capacity, and conditions
+   - **Namespaces** - Namespace resource usage summary
+   - **Workloads** - Deployments, StatefulSets, DaemonSets status
+   - **Events** - Recent cluster events and warnings
+   - **Security** - Basic security audit (RBAC, pod security)
+   - **Security Full** - Extended Trivy vulnerability scan (slower)
+   - **FinOps** - Cost analysis and optimization suggestions
+   - **Metrics** - CPU/Memory utilization metrics
+4. Configure additional options:
    - Namespace filter
-   - Time range
    - Output format
-4. Click **Generate**
+5. Click **Generate**
+
+!!! tip
+    All standard sections are enabled by default except **Security Full**, which requires Trivy and can take longer to complete.
 
 ### CLI Mode
 

@@ -66,7 +66,9 @@ type TimeSeriesPoint struct {
 	CompTokens   int64     `json:"completion_tokens"`
 }
 
-// InitLLMUsageTable creates the llm_usage table if it doesn't exist
+// InitLLMUsageTable creates the llm_usage table if it doesn't exist.
+// TODO: DDL uses SQLite-only syntax (INTEGER PRIMARY KEY AUTOINCREMENT, datetime()).
+// Add multi-DB DDL variants (like audit_logs in db.go) when supporting Postgres/MySQL.
 func InitLLMUsageTable() error {
 	if DB == nil {
 		return fmt.Errorf("database not initialized")
@@ -323,6 +325,8 @@ func GetLLMUsageStats(ctx context.Context, filter LLMUsageFilter) (*LLMUsageStat
 	}
 
 	// Get hourly time series (last 24 hours)
+	// TODO: strftime and datetime are SQLite-specific functions.
+	// Add multi-DB variants (DATE_TRUNC for Postgres, DATE_FORMAT for MySQL) when needed.
 	timeSeriesQuery := fmt.Sprintf(`
 	SELECT
 		strftime('%%Y-%%m-%%d %%H:00:00', timestamp) as hour,

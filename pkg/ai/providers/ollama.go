@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// OllamaProvider implements the Provider interface for Ollama (local LLM)
+// OllamaProvider implements the Provider and ToolProvider interfaces for Ollama (local LLM)
 type OllamaProvider struct {
 	config     *ProviderConfig
 	httpClient *http.Client
@@ -19,14 +19,16 @@ type OllamaProvider struct {
 }
 
 type ollamaChatRequest struct {
-	Model    string        `json:"model"`
-	Messages []ChatMessage `json:"messages"`
-	Stream   bool          `json:"stream"`
+	Model    string           `json:"model"`
+	Messages []ChatMessage    `json:"messages"`
+	Stream   bool             `json:"stream"`
+	Tools    []ToolDefinition `json:"tools,omitempty"`
 }
 
 type ollamaChatResponse struct {
 	Message struct {
-		Content string `json:"content"`
+		Content   string     `json:"content"`
+		ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 	} `json:"message"`
 	Done bool `json:"done"`
 }
@@ -36,6 +38,8 @@ type ollamaModelsResponse struct {
 		Name string `json:"name"`
 	} `json:"models"`
 }
+
+const ollamaSystemPrompt = "You are a helpful Kubernetes assistant. Help users manage Kubernetes clusters using natural language. When users ask to create resources, generate the appropriate kubectl commands."
 
 // NewOllamaProvider creates a new Ollama provider
 func NewOllamaProvider(cfg *ProviderConfig) (Provider, error) {
@@ -80,7 +84,7 @@ func (p *OllamaProvider) Ask(ctx context.Context, prompt string, callback func(s
 	reqBody := ollamaChatRequest{
 		Model: p.config.Model,
 		Messages: []ChatMessage{
-			{Role: "system", Content: "You are a helpful Kubernetes assistant. Help users manage Kubernetes clusters using natural language. When users ask to create resources, generate the appropriate kubectl commands."},
+			{Role: "system", Content: ollamaSystemPrompt},
 			{Role: "user", Content: prompt},
 		},
 		Stream: true,
@@ -105,7 +109,7 @@ func (p *OllamaProvider) Ask(ctx context.Context, prompt string, callback func(s
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
@@ -142,7 +146,7 @@ func (p *OllamaProvider) AskNonStreaming(ctx context.Context, prompt string) (st
 	reqBody := ollamaChatRequest{
 		Model: p.config.Model,
 		Messages: []ChatMessage{
-			{Role: "system", Content: "You are a helpful Kubernetes assistant."},
+			{Role: "system", Content: ollamaSystemPrompt},
 			{Role: "user", Content: prompt},
 		},
 		Stream: false,
@@ -167,13 +171,17 @@ func (p *OllamaProvider) AskNonStreaming(ctx context.Context, prompt string) (st
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return "", fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
 	var chatResp ollamaChatResponse
 	if err := json.NewDecoder(resp.Body).Decode(&chatResp); err != nil {
 		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if chatResp.Message.Content == "" {
+		return "", fmt.Errorf("empty response from Ollama API")
 	}
 
 	return chatResp.Message.Content, nil
@@ -207,4 +215,104 @@ func (p *OllamaProvider) ListModels(ctx context.Context) ([]string, error) {
 		models[i] = m.Name
 	}
 	return models, nil
+}
+
+// AskWithTools implements ToolProvider for Ollama using the /api/chat endpoint with tools.
+// Ollama supports OpenAI-compatible tool calling since v0.3.0.
+func (p *OllamaProvider) AskWithTools(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
+	endpoint := p.endpoint + "/api/chat"
+
+	messages := []ChatMessage{
+		{Role: "system", Content: `You are a Kubernetes expert assistant with DIRECT ACCESS to kubectl and bash tools.
+ALWAYS USE TOOLS to execute commands - NEVER just suggest commands.
+When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`},
+		{Role: "user", Content: prompt},
+	}
+
+	maxIterations := 10
+	for i := 0; i < maxIterations; i++ {
+		reqBody := ollamaChatRequest{
+			Model:    p.config.Model,
+			Messages: messages,
+			Stream:   false,
+			Tools:    tools,
+		}
+
+		jsonBody, err := json.Marshal(reqBody)
+		if err != nil {
+			return fmt.Errorf("failed to marshal request: %w", err)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewBuffer(jsonBody))
+		if err != nil {
+			return fmt.Errorf("failed to create request: %w", err)
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := p.httpClient.Do(req)
+		if err != nil {
+			return fmt.Errorf("request failed: %w", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+			resp.Body.Close()
+			return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
+		}
+
+		var chatResp ollamaChatResponse
+		if err := json.NewDecoder(resp.Body).Decode(&chatResp); err != nil {
+			resp.Body.Close()
+			return fmt.Errorf("failed to decode response: %w", err)
+		}
+		resp.Body.Close()
+
+		content := chatResp.Message.Content
+		toolCalls := chatResp.Message.ToolCalls
+
+		// No tool calls - return the final response
+		if len(toolCalls) == 0 {
+			if callback != nil && content != "" {
+				callback(content)
+			}
+			return nil
+		}
+
+		// Add assistant message with tool calls to history
+		messages = append(messages, ChatMessage{
+			Role:      "assistant",
+			Content:   content,
+			ToolCalls: toolCalls,
+		})
+
+		// Execute each tool call and add results
+		for _, tc := range toolCalls {
+			if callback != nil {
+				callback(fmt.Sprintf("\n\n🔧 Executing: %s\n", tc.Function.Name))
+			}
+
+			result := toolCallback(tc)
+
+			messages = append(messages, ChatMessage{
+				Role:       "tool",
+				Content:    result.Content,
+				ToolCallID: tc.ID,
+			})
+
+			if callback != nil {
+				if result.IsError {
+					callback(fmt.Sprintf("❌ Error: %s\n", result.Content))
+				} else {
+					output := result.Content
+					if len(output) > 1000 {
+						output = output[:1000] + "\n... (truncated)"
+					}
+					callback(fmt.Sprintf("```\n%s\n```\n", output))
+				}
+			}
+		}
+	}
+
+	return fmt.Errorf("exceeded maximum tool call iterations")
 }

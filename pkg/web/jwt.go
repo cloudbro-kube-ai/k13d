@@ -33,7 +33,11 @@ type JWTManager struct {
 	config JWTConfig
 }
 
-// NewJWTManager creates a new JWT manager
+// NewJWTManager creates a new JWT manager.
+// NOTE: If no secret is provided, a random secret is generated on each server start.
+// This means all JWT tokens are invalidated on server restart, which is the intended
+// behavior for short-lived tokens. For persistent JWT validation across restarts,
+// provide a stable secret via JWTConfig.Secret.
 func NewJWTManager(cfg JWTConfig) *JWTManager {
 	if len(cfg.Secret) == 0 {
 		// Generate a random 256-bit secret

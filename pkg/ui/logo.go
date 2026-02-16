@@ -20,15 +20,12 @@ const (
  ██║  ██╗ ██║██████╔╝██████╔╝
  ╚═╝  ╚═╝ ╚═╝╚═════╝ ╚═════╝ `
 
-	// LogoSmall for header
-	LogoSmall = `k13d`
-
 	// Tagline
 	Tagline = "Kubernetes AI Dashboard"
-
-	// Version (should be set at build time)
-	Version = "v0.1.0"
 )
+
+// Version is set at build time via main.go; defaults to dev.
+var Version = "dev"
 
 // LogoColors returns the logo with gradient colors
 func LogoColors() string {
@@ -110,12 +107,18 @@ func (s *SplashScreen) SetReady() {
 	s.progress.SetText("[green]Ready! Press any key to continue...[-]")
 }
 
-// AnimatedLogo creates an animated logo effect
-func AnimatedLogo(app *tview.Application, view *tview.TextView, duration time.Duration) {
+// AnimatedLogo creates an animated logo effect.
+// Pass a done channel (or nil) to allow early cancellation.
+func AnimatedLogo(app *tview.Application, view *tview.TextView, duration time.Duration, done ...chan struct{}) {
 	lines := strings.Split(Logo, "\n")
 	totalLines := len(lines)
 	if totalLines == 0 {
 		return
+	}
+
+	var doneCh chan struct{}
+	if len(done) > 0 {
+		doneCh = done[0]
 	}
 
 	// Calculate delay per line
@@ -123,6 +126,14 @@ func AnimatedLogo(app *tview.Application, view *tview.TextView, duration time.Du
 
 	// Animate line by line
 	for i := 0; i <= totalLines; i++ {
+		// Check for cancellation
+		if doneCh != nil {
+			select {
+			case <-doneCh:
+				return
+			default:
+			}
+		}
 		currentLines := i
 		app.QueueUpdateDraw(func() {
 			var result strings.Builder
@@ -139,7 +150,15 @@ func AnimatedLogo(app *tview.Application, view *tview.TextView, duration time.Du
 			}
 			view.SetText(result.String())
 		})
-		time.Sleep(lineDelay)
+		if doneCh != nil {
+			select {
+			case <-doneCh:
+				return
+			case <-time.After(lineDelay):
+			}
+		} else {
+			time.Sleep(lineDelay)
+		}
 	}
 }
 
@@ -226,21 +245,6 @@ Inspired by k9s with integrated AI assistance
 		SetBorderColor(tcell.ColorDarkCyan)
 
 	return modal
-}
-
-// BannerText returns a simple banner text
-func BannerText() string {
-	return fmt.Sprintf("[#00FFFF::b]k13d[-::-] [gray]- %s %s[-]", Tagline, Version)
-}
-
-// ShortcutHint returns a formatted shortcut hint
-func ShortcutHint(key, action string) string {
-	return fmt.Sprintf("[yellow]<%s>[gray]%s[-]", key, action)
-}
-
-// StatusLine returns formatted status bar text
-func StatusLine(shortcuts ...string) string {
-	return strings.Join(shortcuts, " ")
 }
 
 // ResourceIcon returns an icon for a resource type

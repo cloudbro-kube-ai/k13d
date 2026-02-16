@@ -162,10 +162,14 @@ func (ps *PageStack) CanGoBack() bool {
 }
 
 // GoBack pops the top view and returns to the previous one.
+// Performs check-and-pop atomically under a single lock.
 func (ps *PageStack) GoBack() bool {
-	if !ps.CanGoBack() {
+	ps.mx.Lock()
+	if len(ps.stack) <= 1 {
+		ps.mx.Unlock()
 		return false
 	}
+	ps.mx.Unlock()
 	ps.Pop()
 	return true
 }

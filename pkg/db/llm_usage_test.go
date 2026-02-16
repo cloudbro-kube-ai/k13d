@@ -2,15 +2,13 @@ package db
 
 import (
 	"context"
-	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
 func TestLLMUsageRecording(t *testing.T) {
-	dbPath := "test_llm_usage.db"
-	defer os.Remove(dbPath)
-
+	dbPath := filepath.Join(t.TempDir(), "test_llm_usage.db")
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
@@ -55,9 +53,7 @@ func TestLLMUsageRecording(t *testing.T) {
 }
 
 func TestGetLLMUsage(t *testing.T) {
-	dbPath := "test_llm_usage_get.db"
-	defer os.Remove(dbPath)
-
+	dbPath := filepath.Join(t.TempDir(), "test_llm_usage_get.db")
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
@@ -131,9 +127,7 @@ func TestGetLLMUsage(t *testing.T) {
 }
 
 func TestGetLLMUsageStats(t *testing.T) {
-	dbPath := "test_llm_usage_stats.db"
-	defer os.Remove(dbPath)
-
+	dbPath := filepath.Join(t.TempDir(), "test_llm_usage_stats.db")
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
@@ -186,9 +180,7 @@ func TestGetLLMUsageStats(t *testing.T) {
 }
 
 func TestLLMUsageWithEmptyDB(t *testing.T) {
-	dbPath := "test_llm_usage_empty.db"
-	defer os.Remove(dbPath)
-
+	dbPath := filepath.Join(t.TempDir(), "test_llm_usage_empty.db")
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}

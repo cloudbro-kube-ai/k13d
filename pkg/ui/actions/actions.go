@@ -204,6 +204,14 @@ func (ka *KeyActions) Len() int {
 	return len(ka.actions)
 }
 
+// Run safely executes the action handler, returning nil if the handler is not set.
+func (ka *KeyAction) Run(ctx context.Context) error {
+	if ka.Action == nil {
+		return nil
+	}
+	return ka.Action(ctx)
+}
+
 // KeyDescriptor returns a human-readable string for a key action.
 func (ka *KeyAction) KeyDescriptor() string {
 	var s string

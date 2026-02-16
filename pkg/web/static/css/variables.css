@@ -1,18 +1,23 @@
 /**
  * k13d CSS Variables
- * Tokyo Night theme inspired color palette
+ * Dark theme: Tokyo Night inspired
+ * Light theme: Clean, professional
+ *
+ * Theme is controlled by [data-theme="light"] on <html>.
+ * Default (no attribute) = dark theme.
+ * System preference respected via prefers-color-scheme.
  */
 
 :root {
     /* Typography */
-    --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-mono: 'IBM Plex Mono', 'SF Mono', 'Monaco', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'SF Mono', 'Monaco', 'Consolas', 'Liberation Mono', monospace;
     --font-weight-normal: 400;
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
 
-    /* Colors - Tokyo Night Theme */
+    /* Colors - Dark Theme (Tokyo Night, default) */
     --bg-primary: #1a1b26;
     --bg-secondary: #24283b;
     --bg-tertiary: #414868;
@@ -24,6 +29,8 @@
     --accent-yellow: #e0af68;
     --accent-purple: #bb9af7;
     --accent-cyan: #7dcfff;
+    --bg-hover: rgba(122, 162, 247, 0.1);
+    --text-muted: #565f89;
     --border-color: #414868;
 
     /* Spacing */
@@ -58,4 +65,110 @@
     --z-modal: 1000;
     --z-toast: 2000;
     --z-tooltip: 3000;
+}
+
+/* Light Theme */
+[data-theme="light"] {
+    --bg-primary: #f8f9fa;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #e9ecef;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --accent-blue: #2563eb;
+    --accent-green: #16a34a;
+    --accent-red: #dc2626;
+    --accent-yellow: #d97706;
+    --accent-purple: #7c3aed;
+    --accent-cyan: #0891b2;
+    --bg-hover: rgba(37, 99, 235, 0.08);
+    --text-muted: #adb5bd;
+    --border-color: #dee2e6;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    --shadow-glow-blue: 0 0 20px rgba(37, 99, 235, 0.15);
+    --shadow-glow-purple: 0 0 20px rgba(124, 58, 237, 0.15);
+    --shadow-glow-green: 0 0 20px rgba(22, 163, 74, 0.15);
+}
+
+/* Production Theme (Red accent - warns you're in production) */
+[data-theme="production"] {
+    --bg-primary: #1c1517;
+    --bg-secondary: #2a1f22;
+    --bg-tertiary: #4a3035;
+    --text-primary: #e8d0d4;
+    --text-secondary: #b89a9f;
+    --accent-blue: #7aa2f7;
+    --accent-green: #9ece6a;
+    --accent-red: #ff6b81;
+    --accent-yellow: #e0af68;
+    --accent-purple: #bb9af7;
+    --accent-cyan: #7dcfff;
+    --bg-hover: rgba(255, 107, 129, 0.1);
+    --text-muted: #8a6a6f;
+    --border-color: #5a3a40;
+}
+
+/* Staging Theme (Yellow accent) */
+[data-theme="staging"] {
+    --bg-primary: #1c1b17;
+    --bg-secondary: #2a2820;
+    --bg-tertiary: #4a4530;
+    --text-primary: #e8e0d0;
+    --text-secondary: #b8b09a;
+    --accent-blue: #7aa2f7;
+    --accent-green: #9ece6a;
+    --accent-red: #f7768e;
+    --accent-yellow: #ffb86c;
+    --accent-purple: #bb9af7;
+    --accent-cyan: #7dcfff;
+    --bg-hover: rgba(255, 184, 108, 0.1);
+    --text-muted: #8a8060;
+    --border-color: #5a5230;
+}
+
+/* Development Theme (Green accent) */
+[data-theme="dev"] {
+    --bg-primary: #171c17;
+    --bg-secondary: #202a20;
+    --bg-tertiary: #304a30;
+    --text-primary: #d0e8d0;
+    --text-secondary: #9ab89a;
+    --accent-blue: #7aa2f7;
+    --accent-green: #73daca;
+    --accent-red: #f7768e;
+    --accent-yellow: #e0af68;
+    --accent-purple: #bb9af7;
+    --accent-cyan: #7dcfff;
+    --bg-hover: rgba(115, 218, 202, 0.1);
+    --text-muted: #6a8a6a;
+    --border-color: #3a5a3a;
+}
+
+/* Auto-detect system preference when no explicit theme is set */
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+        --bg-primary: #f8f9fa;
+        --bg-secondary: #ffffff;
+        --bg-tertiary: #e9ecef;
+        --text-primary: #212529;
+        --text-secondary: #6c757d;
+        --accent-blue: #2563eb;
+        --accent-green: #16a34a;
+        --accent-red: #dc2626;
+        --accent-yellow: #d97706;
+        --accent-purple: #7c3aed;
+        --accent-cyan: #0891b2;
+        --bg-hover: rgba(37, 99, 235, 0.08);
+        --text-muted: #adb5bd;
+        --border-color: #dee2e6;
+
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+        --shadow-glow-blue: 0 0 20px rgba(37, 99, 235, 0.15);
+        --shadow-glow-purple: 0 0 20px rgba(124, 58, 237, 0.15);
+        --shadow-glow-green: 0 0 20px rgba(22, 163, 74, 0.15);
+    }
 }

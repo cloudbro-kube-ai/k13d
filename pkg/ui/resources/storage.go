@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
 )
 
 func GetPersistentVolumesView(ctx context.Context, client *k8s.Client, filter string) (ResourceView, error) {

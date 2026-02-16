@@ -4,7 +4,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/cloudbro-kube-ai/k13d
+  repository: fjvbn2003/k13d
   pullPolicy: IfNotPresent
   tag: ""  # Defaults to Chart appVersion
 
@@ -135,7 +135,7 @@ rbac:
   # ClusterRole rules for k13d to access Kubernetes resources
   rules:
     - apiGroups: [""]
-      resources: ["pods", "pods/log", "services", "configmaps", "secrets", "namespaces", "nodes", "persistentvolumeclaims", "events"]
+      resources: ["pods", "pods/log", "services", "configmaps", "secrets", "namespaces", "nodes", "persistentvolumeclaims", "events", "serviceaccounts"]
       verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
     - apiGroups: ["apps"]
       resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
@@ -149,3 +149,12 @@ rbac:
     - apiGroups: ["metrics.k8s.io"]
       resources: ["pods", "nodes"]
       verbs: ["get", "list"]
+    - apiGroups: ["authentication.k8s.io"]
+      resources: ["tokenreviews"]
+      verbs: ["create"]
+    - apiGroups: ["authorization.k8s.io"]
+      resources: ["subjectaccessreviews"]
+      verbs: ["create"]
+    - apiGroups: ["rbac.authorization.k8s.io"]
+      resources: ["clusterroles", "clusterrolebindings", "roles", "rolebindings"]
+      verbs: ["get", "list", "watch"]

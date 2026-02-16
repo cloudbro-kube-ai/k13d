@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 )
 
 // ==========================================
@@ -52,8 +52,17 @@ func (s *Server) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 
 	logs, err := db.GetAuditLogsFiltered(filter)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": err.Error(),
+			"logs":  []interface{}{},
+		})
 		return
+	}
+
+	if logs == nil {
+		logs = []map[string]interface{}{}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -68,12 +77,16 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
+		// Load timezone from SQLite (web-only setting)
+		timezone := db.GetWebSettingWithDefault("general.timezone", "auto")
+
 		// Return current settings (without sensitive data)
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"language":      s.cfg.Language,
 			"beginner_mode": s.cfg.BeginnerMode,
 			"enable_audit":  s.cfg.EnableAudit,
 			"log_level":     s.cfg.LogLevel,
+			"timezone":      timezone,
 			"llm": map[string]interface{}{
 				"provider":         s.cfg.LLM.Provider,
 				"model":            s.cfg.LLM.Model,
@@ -88,6 +101,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			BeginnerMode bool   `json:"beginner_mode"`
 			EnableAudit  bool   `json:"enable_audit"`
 			LogLevel     string `json:"log_level"`
+			Timezone     string `json:"timezone"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&newSettings); err != nil {
@@ -95,16 +109,30 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Update settings
+		// Update settings (protected by mutex for concurrent access)
+		s.aiMu.Lock()
 		s.cfg.Language = newSettings.Language
 		s.cfg.BeginnerMode = newSettings.BeginnerMode
 		s.cfg.EnableAudit = newSettings.EnableAudit
 		s.cfg.LogLevel = newSettings.LogLevel
+		s.aiMu.Unlock()
 
-		// Save to disk
+		// Save to YAML
 		if err := s.cfg.Save(); err != nil {
 			http.Error(w, "Failed to save settings", http.StatusInternalServerError)
 			return
+		}
+
+		// Also persist to SQLite for web UI settings
+		dbSettings := map[string]string{
+			"general.language":  newSettings.Language,
+			"general.log_level": newSettings.LogLevel,
+		}
+		if newSettings.Timezone != "" {
+			dbSettings["general.timezone"] = newSettings.Timezone
+		}
+		if err := db.SaveWebSettings(dbSettings); err != nil {
+			fmt.Printf("Warning: failed to save settings to SQLite: %v\n", err)
 		}
 
 		// Record audit
@@ -113,7 +141,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			User:     username,
 			Action:   "update_settings",
 			Resource: "settings",
-			Details:  "Settings updated",
+			Details:  fmt.Sprintf("Settings updated (timezone: %s)", newSettings.Timezone),
 		})
 
 		json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
@@ -242,7 +270,9 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		s.aiMu.Lock()
 		if !s.cfg.SetActiveModel(req.Name) {
+			s.aiMu.Unlock()
 			http.Error(w, "Model not found", http.StatusNotFound)
 			return
 		}
@@ -250,10 +280,12 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 		// Recreate AI client with new model
 		newClient, err := ai.NewClient(&s.cfg.LLM)
 		if err != nil {
+			s.aiMu.Unlock()
 			http.Error(w, fmt.Sprintf("Failed to create AI client: %v", err), http.StatusInternalServerError)
 			return
 		}
 		s.aiClient = newClient
+		s.aiMu.Unlock()
 
 		// Re-register MCP tools
 		for _, serverName := range s.mcpClient.GetConnectedServers() {

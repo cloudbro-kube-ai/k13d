@@ -1,349 +1,191 @@
-# k13d
-
-```
- ██╗  ██╗ ██╗██████╗ ██████╗
- ██║ ██╔╝███║╚════██╗██╔══██╗
- █████╔╝ ╚██║ █████╔╝██║  ██║
- ██╔═██╗  ██║ ╚═══██╗██║  ██║
- ██║  ██╗ ██║██████╔╝██████╔╝
- ╚═╝  ╚═╝ ╚═╝╚═════╝ ╚═════╝
-
-    Kubernetes + AI Dashboard
-```
+<h1 align="center">k13d</h1>
 
 <p align="center">
-  <strong>k</strong>ube<strong>a</strong>i<strong>d</strong>ashboard = <strong>k</strong> + 13 letters + <strong>d</strong> = <strong>k13d</strong>
+  <strong>The all-in-one Kubernetes dashboard — Terminal & Web UI with AI built in.</strong>
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#build">Build</a> •
-  <a href="#features">Features</a> •
-  <a href="#documentation">Documentation</a> •
-  <a href="#license">License</a>
+  <code><b>k</b>ubeaidashboar<b>d</b></code>  = <code><b>k</b></code>+ <code>13 letters</code> + <code><b>d</b></code> = <code><b>k13d</b></code>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go" alt="Go Version">
-  <img src="https://img.shields.io/badge/Kubernetes-1.29+-326CE5?style=flat&logo=kubernetes" alt="Kubernetes">
-  <img src="https://img.shields.io/badge/License-MIT-green?style=flat" alt="License">
-  <img src="https://img.shields.io/badge/AI-OpenAI%20%7C%20Ollama%20%7C%20Embedded-orange?style=flat" alt="AI Support">
+  Download a single binary, run one command, and get a full-featured Kubernetes dashboard<br>
+  with an AI assistant that actually executes commands for you.
+</p>
+
+<p align="center">
+  <a href="https://github.com/cloudbro-kube-ai/k13d/releases"><img src="https://img.shields.io/github/v/release/cloudbro-kube-ai/k13d?style=flat-square&color=blue" alt="Release"></a>
+  <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat-square&logo=go" alt="Go">
+  <img src="https://img.shields.io/badge/Kubernetes-1.29+-326CE5?style=flat-square&logo=kubernetes" alt="K8s">
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License">
+  <img src="https://img.shields.io/badge/AI-OpenAI%20·%20Ollama%20·%20Anthropic%20·%20Gemini-orange?style=flat-square" alt="AI">
+</p>
+
+<p align="center">
+  <a href="https://cloudbro-kube-ai.github.io/k13d"><strong>Documentation</strong></a> ·
+  <a href="https://github.com/cloudbro-kube-ai/k13d/releases"><strong>Download</strong></a> ·
+  <a href="https://cloudbro-kube-ai.github.io/k13d/latest/features/web-ui/"><strong>Web UI Guide</strong></a> ·
+  <a href="https://cloudbro-kube-ai.github.io/k13d/latest/features/tui/"><strong>TUI Guide</strong></a> ·
+  <a href="https://cloudbro-kube-ai.github.io/k13d/latest/ko/"><strong>한국어</strong></a>
 </p>
 
 ---
 
-## What is k13d?
+## Web UI
 
-**k13d** is a comprehensive Kubernetes management tool combining:
+<p align="center">
+  <img src="docs-site/docs/images/webui-full-screen.png" alt="Web UI Dashboard" width="100%">
+</p>
 
-- 🖥️ **k9s-style TUI** - Fast terminal dashboard with Vim keybindings
-- 🤖 **Agentic AI** - AI that *executes* kubectl commands (not just suggests)
-- 🌐 **Modern Web UI** - Browser-based dashboard with real-time streaming
-- 🔐 **Enterprise Security** - RBAC, JWT, Audit logging, LDAP/SSO
+## TUI
+
+<p align="center">
+  <img src="docs-site/docs/images/tui_auto_complete.png" alt="TUI Dashboard" width="100%">
+</p>
 
 ---
 
-## Quick Start
+## Get Started in 30 Seconds
 
-### macOS Gatekeeper
-
-macOS may block the binary with *"Apple could not verify k13d is free of malware"*. To fix:
+**1. Download** from [Releases](https://github.com/cloudbro-kube-ai/k13d/releases) — single binary, no dependencies.
 
 ```bash
-# Option 1: Remove quarantine attribute
-xattr -d com.apple.quarantine ./k13d
-xattr -d com.apple.provenance ./k13d
-
-# Option 2: Allow in System Settings
-# Go to System Settings > Privacy & Security > click "Allow Anyway"
+tar xzf k13d_*.tar.gz && chmod +x k13d
 ```
 
-### TUI Mode (Default)
+> macOS: if blocked, run `xattr -d com.apple.quarantine ./k13d`
+
+**2. Run.**
 
 ```bash
+# Web UI
+./k13d -web -auth-mode local
+# Open http://localhost:8080 (admin / admin)
+
+# TUI
 ./k13d
 ```
 
-### Web Mode
+That's it. Your kubeconfig is auto-detected.
+
+---
+
+## Why k13d?
+
+|                          |  k13d   | k9s | Lens | kubectl |
+| ------------------------ | :-----: | :-: | :--: | :-----: |
+| Terminal UI              | **Yes** | Yes |  -   |    -    |
+| Web UI                   | **Yes** |  -  | Yes  |    -    |
+| AI Assistant             | **Yes** |  -  |  -   |    -    |
+| Single binary, zero deps | **Yes** | Yes |  -   |   Yes   |
+| Free & open source       | **Yes** | Yes | Paid |   Yes   |
+
+### Web UI — Everything in the browser
+
+- **Dashboard** — Pods, Deployments, Services, all resources with real-time status
+- **AI Assistant** — Ask questions, AI executes kubectl with your approval
+- **Topology** — Graph & tree visualization of resource relationships
+- **Reports** — Cluster health, security audit, FinOps cost analysis
+- **Metrics** — Historical CPU/Memory/Pods/Nodes charts (SQLite-backed)
+- **Helm** — Release management, history, rollback
+- **Terminal** — Full xterm.js shell into any pod
+- **Logs** — Real-time streaming with ANSI colors, search, download
+- **RBAC Viewer** — Subject-to-role relationship map
+- **Network Policy Map** — Ingress/egress rule visualization
+- **Event Timeline** — Cluster events grouped by time windows
+- **Resource Templates** — One-click deploy (Nginx, Redis, PostgreSQL, etc.)
+- **Notifications** — Slack, Discord, Teams, Email alerts
+- **5 Themes** — Tokyo Night, Production, Staging, Development, Light
+
+### TUI — k9s on steroids
+
+- **Vim navigation** — `j/k`, `g/G`, `/` filter, `:` commands
+- **AI panel** — `Tab` to chat, AI executes commands for you
+- **Sort** — `Shift+N` name, `Shift+A` age, `Shift+T` status, `:sort` picker
+- **Autocomplete** — Dropdown suggestions as you type
+- **Aliases** — Custom shortcuts (`pp` -> `pods`)
+- **Plugins** — External tool integration via `plugins.yaml`
+- **i18n** — English, Korean, Chinese, Japanese
+
+---
+
+## AI Setup (Optional)
+
+Configure in **Settings > AI** in the Web UI, or via environment:
 
 ```bash
-./k13d -web -port 8080
+# OpenAI
+export OPENAI_API_KEY=sk-...
+./k13d -web -auth-mode local
+
+# Ollama (local, free, no API key)
+ollama pull qwen2.5:3b && ollama serve
+./k13d -web -auth-mode local
+# Set Provider: "ollama" in Settings > AI
 ```
 
-Open http://localhost:8080
+The AI assistant can:
 
-### With Authentication
+- Diagnose pod crashes and suggest fixes
+- Execute kubectl commands with your approval
+- Scale deployments, restart rollouts
+- Analyze YAML, events, and logs in context
 
-```bash
-./k13d -web -port 8080 --auth-mode local --admin-user admin --admin-password secret
-```
+---
 
-### With Ollama (Local LLM)
-
-```bash
-# Start Ollama with a model
-ollama pull qwen2.5:3b
-ollama serve
-
-# Run k13d
-./k13d -web -port 8080
-# Configure LLM in Settings > AI > Provider: Ollama
-```
-
-### With Embedded LLM (No API Key Needed)
+## CLI Reference
 
 ```bash
-# Download model (one-time)
-./k13d --download-model
-
-# Run with embedded LLM
-./k13d --embedded-llm -web -port 8080
+./k13d                              # TUI mode
+./k13d -web                         # Web UI (port 8080)
+./k13d -web -port 3000              # Custom port
+./k13d -web -auth-mode local        # With authentication
+./k13d -web --no-auth               # No auth (dev only)
+./k13d --kubeconfig ~/.kube/prod    # Custom kubeconfig
+./k13d --context prod-cluster       # Specific context
+./k13d --debug                      # Debug logging
 ```
 
 ---
 
-## Build
-
-### Prerequisites
-
-- Go 1.25+
-- Access to Kubernetes cluster (kubeconfig)
-
-### Build Binary
+## Docker
 
 ```bash
-# Clone repository
-git clone https://github.com/cloudbro-kube-ai/k13d.git
-cd k13d
-
-# Build
-make build
-# or
-go build -o k13d ./cmd/kube-ai-dashboard-cli/main.go
-
-# Cross-platform builds
-make build-all      # All platforms
-make build-linux    # Linux (amd64, arm64)
-make build-darwin   # macOS (Intel, Apple Silicon)
-make build-windows  # Windows
-```
-
-### Docker
-
-```bash
-# Quick start
 docker run -d -p 8080:8080 \
   -v ~/.kube/config:/home/k13d/.kube/config:ro \
-  -e K13D_USERNAME=admin \
-  -e K13D_PASSWORD=changeme \
-  cloudbro-kube-ai/k13d:latest
-
-# Docker Compose
-docker-compose up -d
+  cloudbro/k13d:latest \
+  -web -auth-mode local
 ```
 
-### Kubernetes
+---
+
+## Build from Source
 
 ```bash
-kubectl apply -f deploy/kubernetes/deployment.yaml
-kubectl port-forward -n k13d svc/k13d 8080:80
+git clone https://github.com/cloudbro-kube-ai/k13d.git && cd k13d
+make build
 ```
-
----
-
-## Features
-
-| Feature | TUI | Web | Description |
-|---------|:---:|:---:|-------------|
-| Dashboard | ✅ | ✅ | Real-time resource overview |
-| AI Assistant | ✅ | ✅ | Agentic AI with tool execution |
-| Resource Browsing | ✅ | ✅ | Pods, Deployments, Services, etc. |
-| Topology View | ❌ | ✅ | Interactive resource relationship graph |
-| YAML Viewer | ✅ | ✅ | View/Edit manifests |
-| Log Viewer | ✅ | ✅ | Real-time streaming with ANSI colors |
-| Terminal/Shell | ✅ | ✅ | Pod shell access (xterm.js) |
-| Port Forward | ✅ | ✅ | Forward container ports |
-| Metrics Charts | ❌ | ✅ | CPU/Memory visualization |
-| Reports | ❌ | ✅ | PDF/CSV cluster reports |
-| Settings UI | ❌ | ✅ | Graphical configuration |
-| Multi-user Auth | ❌ | ✅ | RBAC, JWT, LDAP/SSO |
-| Audit Logging | ✅ | ✅ | Track all operations |
-| i18n | ✅ | ✅ | English, 한국어, 中文, 日本語 |
-
----
-
-## Configuration
-
-### Config Files
-
-```
-~/.config/k13d/
-├── config.yaml       # Main configuration (LLM, language, model profiles)
-├── hotkeys.yaml      # Custom hotkey bindings
-├── plugins.yaml      # External plugins
-├── aliases.yaml      # Resource command aliases (e.g., pp → pods)
-└── views.yaml        # Per-resource sort defaults
-```
-
-`config.yaml`:
-
-```yaml
-llm:
-  provider: openai      # openai, ollama, gemini, anthropic, bedrock, solar
-  model: gpt-4
-  api_key: ${OPENAI_API_KEY}
-
-language: en            # en, ko, zh, ja
-beginner_mode: false
-enable_audit: true
-```
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `KUBECONFIG` | Kubeconfig path | `~/.kube/config` |
-| `OPENAI_API_KEY` | OpenAI API key | - |
-| `K13D_AUTH_MODE` | Auth mode | `local` |
-| `K13D_LLM_PROVIDER` | LLM provider | `openai` |
-| `K13D_LLM_MODEL` | LLM model | `gpt-4` |
-| `K13D_LLM_ENDPOINT` | Custom LLM endpoint | - |
-| `K13D_PORT` | Web server port | `8080` |
-
-### CLI Flags
-
-| Flag | Description |
-|------|-------------|
-| `-web` | Enable web mode |
-| `-port` | HTTP server port |
-| `--auth-mode` | Authentication mode (local, token, ldap) |
-| `--no-auth` | Disable authentication (dev only) |
-| `--embedded-llm` | Use embedded LLM |
-| `--mcp` | Run as MCP server |
-| `--debug` | Enable debug logging |
-| `--kubeconfig` | Kubeconfig path |
-| `--context` | Kubernetes context |
-
----
-
-## Key Bindings (TUI)
-
-| Key | Action | Key | Action |
-|-----|--------|-----|--------|
-| `j/k` | Navigate | `d` | Describe |
-| `g/G` | Top/Bottom | `y` | View YAML |
-| `Enter` | Drill down | `l` | View logs |
-| `Esc` | Go back | `s` | Shell |
-| `/` | Filter | `S` | Scale |
-| `Tab` | AI panel | `R` | Restart |
-| `?` | Help | `q` | Quit |
-
-### Management Commands
-
-| Command | Action |
-|---------|--------|
-| `:alias` | View resource aliases |
-| `:model` | Switch AI model profile |
-| `:plugins` | View available plugins |
-
----
-
-## Development
-
-```bash
-# Run tests
-make test
-go test -v -race ./...
-
-# Run linter
-make lint
-golangci-lint run
-
-# Format code
-gofmt -s -w .
-go vet ./...
-
-# Build all platforms
-make build-all
-
-# Run benchmarks
-go build -o k13d-bench ./cmd/bench/
-./k13d-bench run --task-dir benchmarks/tasks --llm-provider openai
-```
-
----
-
-## API Reference (Quick)
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/health` | GET | Health check |
-| `/api/auth/login` | POST | Login |
-| `/api/k8s/pods` | GET | List pods |
-| `/api/k8s/deployments` | GET | List deployments |
-| `/api/chat/stream` | POST | AI chat (SSE) |
-| `/api/audit` | GET | Audit logs |
-| `/api/reports` | GET | Generate reports |
 
 ---
 
 ## Documentation
 
-📚 **Full documentation: [https://cloudbro-kube-ai.github.io/k13d](https://cloudbro-kube-ai.github.io/k13d)**
+**Full documentation: [https://cloudbro-kube-ai.github.io/k13d](https://cloudbro-kube-ai.github.io/k13d)**
 
-| Topic | Link |
-|-------|------|
-| Installation | [Getting Started](https://cloudbro-kube-ai.github.io/k13d/getting-started/installation/) |
-| Features | [All Features](https://cloudbro-kube-ai.github.io/k13d/features/) |
-| Web UI Features | [Web UI Guide](https://cloudbro-kube-ai.github.io/k13d/features/web-ui/) |
-| TUI Features | [TUI Guide](https://cloudbro-kube-ai.github.io/k13d/features/tui/) |
-| AI Assistant | [AI Guide](https://cloudbro-kube-ai.github.io/k13d/features/ai-assistant/) |
-| Configuration | [Full Config](https://cloudbro-kube-ai.github.io/k13d/getting-started/configuration/) |
-| Docker | [Docker Guide](https://cloudbro-kube-ai.github.io/k13d/deployment/docker/) |
-| Kubernetes | [K8s Guide](https://cloudbro-kube-ai.github.io/k13d/deployment/kubernetes/) |
-| MCP Integration | [MCP Guide](https://cloudbro-kube-ai.github.io/k13d/concepts/mcp-integration/) |
-| API Reference | [REST API](https://cloudbro-kube-ai.github.io/k13d/reference/api/) |
-| CLI Reference | [CLI Options](https://cloudbro-kube-ai.github.io/k13d/reference/cli/) |
-
-### Run Docs Locally
-
-```bash
-pip install mkdocs-material mkdocs-minify-plugin
-cd docs-site
-mkdocs serve
-# Open http://127.0.0.1:8000
-```
-
----
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-```bash
-git clone https://github.com/YOUR-USERNAME/k13d.git
-cd k13d
-make test && make lint
-# Create PR
-```
-
----
-
-## Security
-
-See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
+- [Installation Guide](https://cloudbro-kube-ai.github.io/k13d/latest/getting-started/installation/)
+- [Web UI Features](https://cloudbro-kube-ai.github.io/k13d/latest/features/web-ui/)
+- [TUI Features](https://cloudbro-kube-ai.github.io/k13d/latest/features/tui/)
+- [AI Assistant](https://cloudbro-kube-ai.github.io/k13d/latest/features/ai-assistant/)
+- [Configuration](https://cloudbro-kube-ai.github.io/k13d/latest/getting-started/configuration/)
+- [Docker Deployment](https://cloudbro-kube-ai.github.io/k13d/latest/deployment/docker/)
+- [Kubernetes Deployment](https://cloudbro-kube-ai.github.io/k13d/latest/deployment/kubernetes/)
+- [한국어 가이드](https://cloudbro-kube-ai.github.io/k13d/latest/ko/)
 
 ---
 
 ## License
 
 MIT License - see [LICENSE](LICENSE).
-
----
-
-<p align="center">
-  <sub>Built with ❤️ for the Kubernetes Community</sub>
-</p>
 
 <p align="center">
   <a href="https://github.com/cloudbro-kube-ai/k13d">

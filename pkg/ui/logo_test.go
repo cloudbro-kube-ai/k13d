@@ -103,10 +103,6 @@ func TestVersion(t *testing.T) {
 	if Version == "" {
 		t.Error("Version should not be empty")
 	}
-
-	if !strings.HasPrefix(Version, "v") {
-		t.Error("Version should start with 'v'")
-	}
 }
 
 func TestResourceIcon(t *testing.T) {
@@ -231,39 +227,6 @@ func TestColoredSpinner(t *testing.T) {
 	}
 	if !strings.Contains(result, "[-]") {
 		t.Error("ColoredSpinner should contain closing tag")
-	}
-}
-
-func TestShortcutHint(t *testing.T) {
-	result := ShortcutHint("l", "Logs")
-	if !strings.Contains(result, "l") {
-		t.Error("ShortcutHint should contain key")
-	}
-	if !strings.Contains(result, "Logs") {
-		t.Error("ShortcutHint should contain action")
-	}
-	if !strings.Contains(result, "[yellow]") {
-		t.Error("ShortcutHint should contain color code")
-	}
-}
-
-func TestStatusLine(t *testing.T) {
-	result := StatusLine("foo", "bar", "baz")
-	if result != "foo bar baz" {
-		t.Errorf("StatusLine() = %q, want 'foo bar baz'", result)
-	}
-}
-
-func TestBannerText(t *testing.T) {
-	result := BannerText()
-	if !strings.Contains(result, "k13d") {
-		t.Error("BannerText should contain k13d")
-	}
-	if !strings.Contains(result, Tagline) {
-		t.Error("BannerText should contain tagline")
-	}
-	if !strings.Contains(result, Version) {
-		t.Error("BannerText should contain version")
 	}
 }
 

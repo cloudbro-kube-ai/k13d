@@ -45,10 +45,10 @@ func (a *App) drillDown() {
 	switch resource {
 	case "nodes", "namespaces", "persistentvolumes", "storageclasses",
 		"clusterroles", "clusterrolebindings", "customresourcedefinitions":
-		selectedName = a.table.GetCell(row, 0).Text
+		selectedName = a.getTableCellText(row, 0)
 	default:
-		selectedNs = a.table.GetCell(row, 0).Text
-		selectedName = a.table.GetCell(row, 1).Text
+		selectedNs = a.getTableCellText(row, 0)
+		selectedName = a.getTableCellText(row, 1)
 	}
 
 	// Determine drill-down behavior based on resource type
@@ -304,6 +304,21 @@ func (a *App) handleCommand(cmd string) {
 		// Direct model switch: :model gpt-4o
 		modelName := strings.TrimPrefix(cmd, "model ")
 		a.switchModel(strings.TrimSpace(modelName))
+	case cmd == "pulse" || cmd == "pulses" || cmd == "pu":
+		a.showPulse()
+	case strings.HasPrefix(cmd, "xray ") || strings.HasPrefix(cmd, "xr "):
+		parts := strings.Fields(cmd)
+		resourceType := ""
+		if len(parts) >= 2 {
+			resourceType = parts[1]
+		}
+		a.showXRay(resourceType)
+	case cmd == "xray" || cmd == "xr":
+		a.showXRay("")
+	case cmd == "app" || cmd == "apps" || cmd == "applications":
+		a.showApplications()
+	case cmd == "sort":
+		a.showSortPicker()
 	case cmd == "q" || cmd == "quit" || cmd == "exit":
 		a.Stop()
 	}
@@ -370,7 +385,7 @@ func (a *App) navigateTo(resource, namespace, filter string) {
 	a.requestSync()
 
 	// Always run UI updates in goroutine after releasing lock
-	go func() {
+	a.safeGo("navigateTo-refresh", func() {
 		a.updateHeader()
 		a.updateStatusBar()
 		a.refresh()
@@ -391,7 +406,7 @@ func (a *App) navigateTo(resource, namespace, filter string) {
 				})
 			}
 		}
-	}()
+	})
 }
 
 // sortByColumnName finds and sorts by column name (k9s Shift+N/A/S/R style)
@@ -410,7 +425,7 @@ func (a *App) sortByColumnName(colName string) {
 	}
 
 	// Column not found, show message
-	a.flashMsg(fmt.Sprintf("Column '%s' not found", colName), true)
+	a.flashMsg(fmt.Sprintf("Column '%s' not found in current view. Check available columns in the table header.", colName), true)
 }
 
 // sortByColumn sorts the table by the specified column (k9s Shift+N/A/S/R style)

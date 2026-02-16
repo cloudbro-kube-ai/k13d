@@ -1,5 +1,5 @@
- k13d Kubernetes AI Dashboard v0.1.0                                        AI
-● Offline ◉ Live
+ k13d Kubernetes AI Dashboard dev                                        AI ●
+Offline ◉ Live
  ⎈ Context: docker-desktop  Cluster: docker-desktop  NS: default  Resource: pods
  Namespaces: 0:all 1:default 2:kube-system 3:kube-public
 
@@ -22,4 +22,4 @@
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
             lLogs sShell dDescribe nNS 0All /Filter :Cmd ?Help qQuit
- /                        Type to filter (use /regex/ for regex), Enter to
+ /                        Filter: text | /regex/ | -f fuzzy | -l label=value |

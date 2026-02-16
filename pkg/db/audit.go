@@ -88,6 +88,7 @@ var (
 // InitAuditFile initializes the file-based audit log
 func InitAuditFile(path string) error {
 	if path == "" {
+		// TODO: Use xdg.ConfigHome instead of hardcoded ~/.config for cross-platform support.
 		home, _ := os.UserHomeDir()
 		path = filepath.Join(home, ".config", "k13d", "audit.log")
 	}
@@ -99,7 +100,7 @@ func InitAuditFile(path string) error {
 		return err
 	}
 
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -119,7 +120,9 @@ func CloseAuditFile() {
 
 // SetAuditConfig updates audit configuration
 func SetAuditConfig(cfg AuditConfig) {
+	auditFileMu.Lock()
 	auditConfig = cfg
+	auditFileMu.Unlock()
 }
 
 // RecordAudit records an audit entry to both database and file

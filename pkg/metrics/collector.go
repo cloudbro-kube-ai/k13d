@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/log"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
+	"github.com/cloudbro-kube-ai/k13d/pkg/log"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -38,6 +38,7 @@ func DefaultConfig() *CollectorConfig {
 type Collector struct {
 	k8sClient *k8s.Client
 	store     *db.MetricsStore
+	cache     *MetricsCache
 	config    *CollectorConfig
 	stopCh    chan struct{}
 	running   bool
@@ -58,6 +59,7 @@ func NewCollector(k8sClient *k8s.Client, config *CollectorConfig) (*Collector, e
 	return &Collector{
 		k8sClient: k8sClient,
 		store:     store,
+		cache:     NewMetricsCache(DefaultRingCapacity),
 		config:    config,
 		stopCh:    make(chan struct{}),
 	}, nil
@@ -110,6 +112,11 @@ func (c *Collector) IsRunning() bool {
 // GetStore returns the metrics store for querying
 func (c *Collector) GetStore() *db.MetricsStore {
 	return c.store
+}
+
+// GetCache returns the in-memory metrics cache for fast reads.
+func (c *Collector) GetCache() *MetricsCache {
+	return c.cache
 }
 
 // CollectNow triggers an immediate metrics collection
@@ -166,8 +173,11 @@ func (c *Collector) collectOnce() error {
 	clusterMetrics, err := c.collectClusterMetrics(ctx, contextName, timestamp)
 	if err != nil {
 		log.Warnf("Failed to collect cluster metrics: %v", err)
-	} else if err := c.store.SaveClusterMetrics(ctx, clusterMetrics); err != nil {
-		log.Warnf("Failed to save cluster metrics: %v", err)
+	} else {
+		c.cache.PushCluster(*clusterMetrics)
+		if err := c.store.SaveClusterMetrics(ctx, clusterMetrics); err != nil {
+			log.Warnf("Failed to save cluster metrics: %v", err)
+		}
 	}
 
 	// Collect node metrics
@@ -230,7 +240,9 @@ func (c *Collector) collectClusterMetrics(ctx context.Context, contextName strin
 
 	// Get resource usage from metrics-server
 	nodeMetrics, err := c.k8sClient.GetNodeMetrics(ctx)
-	if err == nil {
+	if err != nil {
+		log.Warnf("Metrics-server unavailable (cluster CPU/Memory will be 0): %v", err)
+	} else {
 		for _, usage := range nodeMetrics {
 			metrics.UsedCPUMillis += usage[0]
 			metrics.UsedMemoryMB += usage[1]
@@ -258,7 +270,10 @@ func (c *Collector) collectNodeMetrics(ctx context.Context, contextName string, 
 	}
 
 	// Get metrics from metrics-server
-	nodeMetricsMap, _ := c.k8sClient.GetNodeMetrics(ctx)
+	nodeMetricsMap, err := c.k8sClient.GetNodeMetrics(ctx)
+	if err != nil {
+		log.Warnf("Metrics-server unavailable (node CPU/Memory will be 0): %v", err)
+	}
 
 	// Count pods per node
 	pods, _ := c.k8sClient.ListPods(ctx, "")
@@ -269,15 +284,16 @@ func (c *Collector) collectNodeMetrics(ctx context.Context, contextName string, 
 		}
 	}
 
+	// Collect all node metrics into a batch
+	batch := make([]db.NodeMetrics, 0, len(nodes))
 	for _, node := range nodes {
-		nm := &db.NodeMetrics{
+		nm := db.NodeMetrics{
 			Timestamp: timestamp,
 			Context:   contextName,
 			NodeName:  node.Name,
 			PodCount:  podCountByNode[node.Name],
 		}
 
-		// Check readiness
 		for _, cond := range node.Status.Conditions {
 			if cond.Type == corev1.NodeReady {
 				nm.IsReady = cond.Status == corev1.ConditionTrue
@@ -286,7 +302,6 @@ func (c *Collector) collectNodeMetrics(ctx context.Context, contextName string, 
 		}
 		nm.IsSchedulable = !node.Spec.Unschedulable
 
-		// Get capacity
 		if cpu := node.Status.Capacity.Cpu(); cpu != nil {
 			nm.CPUCapacity = cpu.MilliValue()
 		}
@@ -294,15 +309,20 @@ func (c *Collector) collectNodeMetrics(ctx context.Context, contextName string, 
 			nm.MemCapacity = mem.Value() / 1024 / 1024
 		}
 
-		// Get usage from metrics-server
 		if usage, ok := nodeMetricsMap[node.Name]; ok {
 			nm.CPUMillis = usage[0]
 			nm.MemoryMB = usage[1]
 		}
 
-		if err := c.store.SaveNodeMetrics(ctx, nm); err != nil {
-			log.Warnf("Failed to save node metrics for %s: %v", node.Name, err)
-		}
+		batch = append(batch, nm)
+	}
+
+	// Push to ring buffer (fast, in-memory)
+	c.cache.PushNodes(batch)
+
+	// Batch save to SQLite (single transaction)
+	if err := c.store.SaveNodeMetricsBatch(ctx, batch); err != nil {
+		log.Warnf("Failed to batch save node metrics: %v", err)
 	}
 
 	return nil
@@ -315,16 +335,19 @@ func (c *Collector) collectPodMetrics(ctx context.Context, contextName string, t
 	}
 
 	// Get metrics from metrics-server
-	podMetricsMap, _ := c.k8sClient.GetPodMetrics(ctx, c.config.Namespace)
+	podMetricsMap, err := c.k8sClient.GetPodMetrics(ctx, c.config.Namespace)
+	if err != nil {
+		log.Warnf("Metrics-server unavailable (pod CPU/Memory will be 0): %v", err)
+	}
 
-	// Only store metrics for pods with non-zero usage (to reduce storage)
+	// Collect all pod metrics into a batch
+	batch := make([]db.PodMetrics, 0, len(pods))
 	for _, pod := range pods {
-		// Skip terminated pods
 		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
 			continue
 		}
 
-		pm := &db.PodMetrics{
+		pm := db.PodMetrics{
 			Timestamp: timestamp,
 			Context:   contextName,
 			Namespace: pod.Namespace,
@@ -332,23 +355,26 @@ func (c *Collector) collectPodMetrics(ctx context.Context, contextName string, t
 			Status:    string(pod.Status.Phase),
 		}
 
-		// Count restarts
 		for _, cs := range pod.Status.ContainerStatuses {
 			pm.Restarts += int(cs.RestartCount)
 		}
 
-		// Get usage from metrics-server
 		if usage, ok := podMetricsMap[pod.Name]; ok {
 			pm.CPUMillis = usage[0]
 			pm.MemoryMB = usage[1]
 		}
 
-		// Only save if there's actual usage or it's a running pod
 		if pm.CPUMillis > 0 || pm.MemoryMB > 0 || pod.Status.Phase == corev1.PodRunning {
-			if err := c.store.SavePodMetrics(ctx, pm); err != nil {
-				log.Warnf("Failed to save pod metrics for %s/%s: %v", pod.Namespace, pod.Name, err)
-			}
+			batch = append(batch, pm)
 		}
+	}
+
+	// Push to ring buffer (fast, in-memory)
+	c.cache.PushPods(batch)
+
+	// Batch save to SQLite (single transaction)
+	if err := c.store.SavePodMetricsBatch(ctx, batch); err != nil {
+		log.Warnf("Failed to batch save pod metrics: %v", err)
 	}
 
 	return nil

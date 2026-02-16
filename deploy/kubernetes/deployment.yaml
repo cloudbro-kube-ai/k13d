@@ -174,9 +174,16 @@ spec:
         app: k13d
     spec:
       serviceAccountName: k13d
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: k13d
-          image: youngjukim/k13d:latest
+          image: fjvbn2003/k13d:latest
           imagePullPolicy: Always
           ports:
             - name: http
@@ -219,18 +226,27 @@ spec:
                   name: k13d-llm-config
                   key: api-key
                   optional: true
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            failureThreshold: 6
           livenessProbe:
             httpGet:
               path: /api/health
               port: http
-            initialDelaySeconds: 5
             periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /api/health
               port: http
-            initialDelaySeconds: 3
             periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
           resources:
             requests:
               cpu: 100m
@@ -285,6 +301,12 @@ metadata:
   annotations:
     # Adjust based on your ingress controller
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    # WebSocket support for terminal and streaming endpoints
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: "k13d"
+    # Pass real client IP to the application
+    nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
 spec:
   rules:
     - host: k13d.example.com  # Change to your domain

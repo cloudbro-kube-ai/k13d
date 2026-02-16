@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 )
 
 func TestNewClient(t *testing.T) {
@@ -385,6 +385,14 @@ func TestClient_GetEndpoint(t *testing.T) {
 				APIKey:   "key",
 			},
 			expected: "https://api.anthropic.com",
+		},
+		{
+			name: "upstage default (alias for solar)",
+			cfg: &config.LLMConfig{
+				Provider: "upstage",
+				APIKey:   "key",
+			},
+			expected: "https://api.upstage.ai/v1",
 		},
 	}
 

@@ -115,27 +115,33 @@ func TestScreenManagerQueueUpdateDraw(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	// Concurrent updates
-	var wg sync.WaitGroup
+	// Concurrent updates with timeout to prevent deadlocks
 	updateCount := int32(0)
 
 	for i := 0; i < 20; i++ {
-		wg.Add(1)
-		go func(n int) {
-			defer wg.Done()
+		go func() {
 			sm.QueueUpdateDraw(func() {
 				atomic.AddInt32(&updateCount, 1)
 			})
-		}(i)
+		}()
 	}
 
-	wg.Wait()
-	time.Sleep(100 * time.Millisecond)
+	// Wait for updates to be processed with timeout
+	deadline := time.After(5 * time.Second)
+	for {
+		count := atomic.LoadInt32(&updateCount)
+		if count >= 20 {
+			break
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("Timed out waiting for updates, only %d/20 processed", count)
+		default:
+			time.Sleep(50 * time.Millisecond)
+		}
+	}
 
 	count := atomic.LoadInt32(&updateCount)
-	if count == 0 {
-		t.Error("Updates should have been processed")
-	}
 	t.Logf("Processed %d updates", count)
 }
 

@@ -2,15 +2,18 @@ package k8s
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/log"
-	"gopkg.in/yaml.v2"
+	"github.com/cloudbro-kube-ai/k13d/pkg/log"
+	"gopkg.in/yaml.v2" // TODO: Migrate to yaml.v3 for consistency with pkg/config (uses v3)
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
@@ -35,6 +38,7 @@ import (
 )
 
 type Client struct {
+	mu        sync.RWMutex
 	Clientset kubernetes.Interface
 	Dynamic   dynamic.Interface
 	Config    *rest.Config
@@ -99,13 +103,22 @@ func (c *Client) SwitchContext(contextName string) error {
 		return err
 	}
 
+	metricsClient, err := metricsv1beta1.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+
+	c.mu.Lock()
 	c.Clientset = clientset
 	c.Dynamic = dynamicClient
+	c.Config = config
+	c.Metrics = metricsClient
+	c.mu.Unlock()
 	return nil
 }
 
 func (c *Client) ListPods(ctx context.Context, namespace string) ([]corev1.Pod, error) {
-	log.Infof("ListPods: ENTER (namespace: %s)", namespace)
+	log.Debugf("ListPods: ENTER (namespace: %s)", namespace)
 
 	// Create a context with timeout if not already set
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -179,7 +192,7 @@ func (c *Client) ListIngresses(ctx context.Context, namespace string) ([]network
 }
 
 func (c *Client) ListNamespaces(ctx context.Context) ([]corev1.Namespace, error) {
-	log.Infof("ListNamespaces: ENTER")
+	log.Debugf("ListNamespaces: ENTER")
 
 	// Create a context with timeout if not already set
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -392,16 +405,38 @@ func (c *Client) ListContexts() ([]string, string, error) {
 
 func (c *Client) ScaleResource(ctx context.Context, gvr schema.GroupVersionResource, namespace, name string, replicas int32) error {
 	// For deployments, statefulsets, etc.
-	payload := []byte(fmt.Sprintf(`{"spec":{"replicas":%d}}`, replicas))
-	_, err := c.Dynamic.Resource(gvr).Namespace(namespace).Patch(ctx, name, types.MergePatchType, payload, metav1.PatchOptions{})
+	patch := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"replicas": replicas,
+		},
+	}
+	payload, err := json.Marshal(patch)
+	if err != nil {
+		return fmt.Errorf("failed to marshal scale patch: %w", err)
+	}
+	_, err = c.Dynamic.Resource(gvr).Namespace(namespace).Patch(ctx, name, types.MergePatchType, payload, metav1.PatchOptions{})
 	return err
 }
 
 func (c *Client) RolloutRestart(ctx context.Context, gvr schema.GroupVersionResource, namespace, name string) error {
 	// Trigger restart by updating annotation
 	timestamp := time.Now().Format(time.RFC3339)
-	payload := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, timestamp))
-	_, err := c.Dynamic.Resource(gvr).Namespace(namespace).Patch(ctx, name, types.MergePatchType, payload, metav1.PatchOptions{})
+	patch := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"template": map[string]interface{}{
+				"metadata": map[string]interface{}{
+					"annotations": map[string]interface{}{
+						"kubectl.kubernetes.io/restartedAt": timestamp,
+					},
+				},
+			},
+		},
+	}
+	payload, err := json.Marshal(patch)
+	if err != nil {
+		return fmt.Errorf("failed to marshal restart patch: %w", err)
+	}
+	_, err = c.Dynamic.Resource(gvr).Namespace(namespace).Patch(ctx, name, types.MergePatchType, payload, metav1.PatchOptions{})
 	return err
 }
 
@@ -412,7 +447,15 @@ func (c *Client) PortForward(ctx context.Context, namespace, podName string, loc
 	}
 
 	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward", namespace, podName)
-	hostIP := strings.TrimLeft(c.Config.Host, "htps:/")
+	// Use url.Parse to correctly extract the host, rather than TrimLeft which strips a character set
+	parsedURL, parseErr := url.Parse(c.Config.Host)
+	var hostIP string
+	if parseErr == nil && parsedURL.Host != "" {
+		hostIP = parsedURL.Host
+	} else {
+		// Fallback: strip common prefixes
+		hostIP = strings.TrimPrefix(strings.TrimPrefix(c.Config.Host, "https://"), "http://")
+	}
 	serverURL := url.URL{Scheme: "https", Path: path, Host: hostIP}
 
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: roundTripper}, http.MethodPost, &serverURL)
@@ -743,6 +786,8 @@ func (c *Client) RollbackDeployment(ctx context.Context, namespace, name string,
 	}
 
 	// Find the ReplicaSet with the target revision
+	// NOTE: Revision parsing uses Sscanf which silently ignores malformed values (rev stays 0).
+	// This is acceptable since Kubernetes guarantees the annotation format is a decimal integer.
 	var targetRS *appsv1.ReplicaSet
 	for i := range rsList.Items {
 		rs := &rsList.Items[i]
@@ -1048,15 +1093,24 @@ func (c *Client) ListCRDs(ctx context.Context) ([]apiextv1.CustomResourceDefinit
 	return crds, nil
 }
 
+// PrinterColumn represents an additionalPrinterColumn from a CRD spec.
+type PrinterColumn struct {
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	JSONPath string `json:"jsonPath"`
+	Priority int    `json:"priority"`
+}
+
 // CRDInfo contains information about a Custom Resource Definition
 type CRDInfo struct {
-	Name       string   `json:"name"`
-	Group      string   `json:"group"`
-	Version    string   `json:"version"`
-	Kind       string   `json:"kind"`
-	Plural     string   `json:"plural"`
-	Namespaced bool     `json:"namespaced"`
-	ShortNames []string `json:"shortNames"`
+	Name           string          `json:"name"`
+	Group          string          `json:"group"`
+	Version        string          `json:"version"`
+	Kind           string          `json:"kind"`
+	Plural         string          `json:"plural"`
+	Namespaced     bool            `json:"namespaced"`
+	ShortNames     []string        `json:"shortNames"`
+	PrinterColumns []PrinterColumn `json:"printerColumns,omitempty"`
 }
 
 // GetCRDInfo returns detailed information about a CRD by name
@@ -1094,12 +1148,14 @@ func (c *Client) GetCRDInfo(ctx context.Context, crdName string) (*CRDInfo, erro
 	// Extract versions and find the served/storage version
 	versions, _, _ := unstructured.NestedSlice(obj.Object, "spec", "versions")
 	var version string
+	var printerColumns []PrinterColumn
 	for _, v := range versions {
 		if vMap, ok := v.(map[string]interface{}); ok {
 			served, _ := vMap["served"].(bool)
 			storage, _ := vMap["storage"].(bool)
 			if served && storage {
 				version, _ = vMap["name"].(string)
+				printerColumns = extractPrinterColumns(vMap)
 				break
 			}
 		}
@@ -1108,17 +1164,21 @@ func (c *Client) GetCRDInfo(ctx context.Context, crdName string) (*CRDInfo, erro
 	if version == "" && len(versions) > 0 {
 		if vMap, ok := versions[0].(map[string]interface{}); ok {
 			version, _ = vMap["name"].(string)
+			if len(printerColumns) == 0 {
+				printerColumns = extractPrinterColumns(vMap)
+			}
 		}
 	}
 
 	return &CRDInfo{
-		Name:       crdName,
-		Group:      group,
-		Version:    version,
-		Kind:       kind,
-		Plural:     plural,
-		Namespaced: namespaced,
-		ShortNames: shortNames,
+		Name:           crdName,
+		Group:          group,
+		Version:        version,
+		Kind:           kind,
+		Plural:         plural,
+		Namespaced:     namespaced,
+		ShortNames:     shortNames,
+		PrinterColumns: printerColumns,
 	}, nil
 }
 
@@ -1165,12 +1225,14 @@ func (c *Client) parseCRDItem(obj *unstructured.Unstructured) (*CRDInfo, error) 
 
 	versions, _, _ := unstructured.NestedSlice(obj.Object, "spec", "versions")
 	var version string
+	var printerColumns []PrinterColumn
 	for _, v := range versions {
 		if vMap, ok := v.(map[string]interface{}); ok {
 			served, _ := vMap["served"].(bool)
 			storage, _ := vMap["storage"].(bool)
 			if served && storage {
 				version, _ = vMap["name"].(string)
+				printerColumns = extractPrinterColumns(vMap)
 				break
 			}
 		}
@@ -1178,18 +1240,161 @@ func (c *Client) parseCRDItem(obj *unstructured.Unstructured) (*CRDInfo, error) 
 	if version == "" && len(versions) > 0 {
 		if vMap, ok := versions[0].(map[string]interface{}); ok {
 			version, _ = vMap["name"].(string)
+			if len(printerColumns) == 0 {
+				printerColumns = extractPrinterColumns(vMap)
+			}
 		}
 	}
 
 	return &CRDInfo{
-		Name:       obj.GetName(),
-		Group:      group,
-		Version:    version,
-		Kind:       kind,
-		Plural:     plural,
-		Namespaced: namespaced,
-		ShortNames: shortNames,
+		Name:           obj.GetName(),
+		Group:          group,
+		Version:        version,
+		Kind:           kind,
+		Plural:         plural,
+		Namespaced:     namespaced,
+		ShortNames:     shortNames,
+		PrinterColumns: printerColumns,
 	}, nil
+}
+
+// extractPrinterColumns parses additionalPrinterColumns from a CRD version map.
+func extractPrinterColumns(versionMap map[string]interface{}) []PrinterColumn {
+	cols, ok := versionMap["additionalPrinterColumns"].([]interface{})
+	if !ok || len(cols) == 0 {
+		return nil
+	}
+	var result []PrinterColumn
+	for _, col := range cols {
+		colMap, ok := col.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		name, _ := colMap["name"].(string)
+		colType, _ := colMap["type"].(string)
+		jsonPath, _ := colMap["jsonPath"].(string)
+		priority, _ := colMap["priority"].(int64)
+		if name != "" && jsonPath != "" {
+			result = append(result, PrinterColumn{
+				Name:     name,
+				Type:     colType,
+				JSONPath: jsonPath,
+				Priority: int(priority),
+			})
+		}
+	}
+	return result
+}
+
+// ResolveJSONPath extracts a value from an unstructured map using a simplified JSONPath.
+// Supports: .field.subfield, .field[index], .field[?(@.key=="value")].resultField
+func ResolveJSONPath(obj map[string]interface{}, jsonPath string) string {
+	path := strings.TrimPrefix(jsonPath, ".")
+	if path == "" {
+		return ""
+	}
+	val := resolvePathRecursive(obj, path)
+	if val == nil {
+		return ""
+	}
+	switch v := val.(type) {
+	case string:
+		return v
+	case bool:
+		if v {
+			return "True"
+		}
+		return "False"
+	case float64:
+		if v == float64(int64(v)) {
+			return fmt.Sprintf("%d", int64(v))
+		}
+		return fmt.Sprintf("%.2f", v)
+	case int64:
+		return fmt.Sprintf("%d", v)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+func resolvePathRecursive(current interface{}, path string) interface{} {
+	if path == "" || current == nil {
+		return current
+	}
+	m, ok := current.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	// Check for array bracket in current segment
+	dotIdx := strings.Index(path, ".")
+	bracketIdx := strings.Index(path, "[")
+
+	// Simple field (no dot, no bracket)
+	if dotIdx < 0 && bracketIdx < 0 {
+		return m[path]
+	}
+
+	// Array bracket comes before dot (or no dot)
+	if bracketIdx >= 0 && (dotIdx < 0 || bracketIdx < dotIdx) {
+		fieldName := path[:bracketIdx]
+		rest := path[bracketIdx:]
+
+		arr, ok := m[fieldName].([]interface{})
+		if !ok {
+			return nil
+		}
+
+		bracketEnd := strings.Index(rest, "]")
+		if bracketEnd < 0 {
+			return nil
+		}
+
+		bracketContent := rest[1:bracketEnd]
+		remaining := ""
+		if bracketEnd+1 < len(rest) {
+			remaining = strings.TrimPrefix(rest[bracketEnd+1:], ".")
+		}
+
+		// Array filter: ?(@.key=="value")
+		if strings.HasPrefix(bracketContent, "?(@.") {
+			expr := strings.TrimPrefix(bracketContent, "?(@.")
+			expr = strings.TrimSuffix(expr, ")")
+			parts := strings.SplitN(expr, "==", 2)
+			if len(parts) == 2 {
+				key := parts[0]
+				value := strings.Trim(parts[1], "\"'")
+				for _, elem := range arr {
+					elemMap, ok := elem.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					if fmt.Sprintf("%v", elemMap[key]) == value {
+						if remaining == "" {
+							return elem
+						}
+						return resolvePathRecursive(elem, remaining)
+					}
+				}
+			}
+			return nil
+		}
+
+		// Numeric index
+		idx, err := strconv.Atoi(bracketContent)
+		if err == nil && idx >= 0 && idx < len(arr) {
+			if remaining == "" {
+				return arr[idx]
+			}
+			return resolvePathRecursive(arr[idx], remaining)
+		}
+		return nil
+	}
+
+	// Dot-separated path
+	fieldName := path[:dotIdx]
+	rest := path[dotIdx+1:]
+	return resolvePathRecursive(m[fieldName], rest)
 }
 
 // ListCustomResources lists instances of a custom resource
@@ -1407,32 +1612,20 @@ func (c *Client) DescribeResource(ctx context.Context, resource, namespace, name
 	return result.String(), nil
 }
 
-// getGVRForResource maps resource names to GroupVersionResource
+// getGVRForResource maps resource names to GroupVersionResource.
+// Delegates to GetGVR to avoid duplicate GVR lookup tables.
 func (c *Client) getGVRForResource(resource string) (schema.GroupVersionResource, error) {
-	resourceMap := map[string]schema.GroupVersionResource{
-		"configmaps":                {Group: "", Version: "v1", Resource: "configmaps"},
-		"secrets":                   {Group: "", Version: "v1", Resource: "secrets"},
-		"persistentvolumes":         {Group: "", Version: "v1", Resource: "persistentvolumes"},
-		"persistentvolumeclaims":    {Group: "", Version: "v1", Resource: "persistentvolumeclaims"},
-		"storageclasses":            {Group: "storage.k8s.io", Version: "v1", Resource: "storageclasses"},
-		"replicasets":               {Group: "apps", Version: "v1", Resource: "replicasets"},
-		"daemonsets":                {Group: "apps", Version: "v1", Resource: "daemonsets"},
-		"statefulsets":              {Group: "apps", Version: "v1", Resource: "statefulsets"},
-		"jobs":                      {Group: "batch", Version: "v1", Resource: "jobs"},
-		"cronjobs":                  {Group: "batch", Version: "v1", Resource: "cronjobs"},
-		"ingresses":                 {Group: "networking.k8s.io", Version: "v1", Resource: "ingresses"},
-		"networkpolicies":           {Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies"},
-		"serviceaccounts":           {Group: "", Version: "v1", Resource: "serviceaccounts"},
-		"roles":                     {Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "roles"},
-		"rolebindings":              {Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "rolebindings"},
-		"clusterroles":              {Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "clusterroles"},
-		"clusterrolebindings":       {Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "clusterrolebindings"},
-		"poddisruptionbudgets":      {Group: "policy", Version: "v1", Resource: "poddisruptionbudgets"},
-		"horizontalpodautoscalers":  {Group: "autoscaling", Version: "v2", Resource: "horizontalpodautoscalers"},
-		"customresourcedefinitions": {Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"},
+	gvr, ok := c.GetGVR(resource)
+	if ok {
+		return gvr, nil
 	}
 
-	if gvr, ok := resourceMap[resource]; ok {
+	// Additional resources not in the main GetGVR map
+	extra := map[string]schema.GroupVersionResource{
+		"poddisruptionbudgets":      {Group: "policy", Version: "v1", Resource: "poddisruptionbudgets"},
+		"customresourcedefinitions": {Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions"},
+	}
+	if gvr, ok := extra[resource]; ok {
 		return gvr, nil
 	}
 	return schema.GroupVersionResource{}, fmt.Errorf("unknown resource: %s", resource)
@@ -1786,8 +1979,18 @@ func (c *Client) getGVRForKind(apiVersion, kind string) (schema.GroupVersionReso
 
 	resource, ok := resourceMap[kind]
 	if !ok {
-		// Fall back to lowercase plural (most common pattern)
-		resource = strings.ToLower(kind) + "s"
+		// Handle common irregular plurals before falling back to simple "s" suffix
+		lowerKind := strings.ToLower(kind)
+		irregularPlurals := map[string]string{
+			"ingress":       "ingresses",
+			"networkpolicy": "networkpolicies",
+			"endpoints":     "endpoints",
+		}
+		if plural, found := irregularPlurals[lowerKind]; found {
+			resource = plural
+		} else {
+			resource = lowerKind + "s"
+		}
 	}
 
 	return schema.GroupVersionResource{

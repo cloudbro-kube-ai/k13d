@@ -8,6 +8,8 @@ before:
   hooks:
     - go mod tidy
     - go generate ./...
+    - bash scripts/download-trivy.sh
+    - bash scripts/package-helm.sh {{ .Version }}
 
 builds:
   - id: k13d
@@ -20,8 +22,6 @@ builds:
     goarch:
       - amd64
       - arm64
-    goarm:
-      - "7"
     ignore:
       - goos: windows
         goarch: arm64
@@ -34,22 +34,92 @@ builds:
       - -X main.date={{.Date}}
       - -X main.builtBy=goreleaser
 
+  # kubectl plugin build
+  - id: kubectl-k13d
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/kubectl-k13d/main.go
+    binary: kubectl-k13d
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+
+  # Separate build for Trivy-bundled archive (linux/darwin only)
+  - id: k13d-trivy
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/kube-ai-dashboard-cli/main.go
+    binary: k13d
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+
 archives:
   - id: k13d-archive
-    builds:
+    ids:
       - k13d
-    format: tar.gz
+    formats:
+      - tar.gz
     # k9s-style naming: k13d_v0.1.0_darwin_amd64.tar.gz, k13d_v0.1.0_darwin_arm64.tar.gz
     name_template: >-
       {{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
     files:
       - README.md
       - LICENSE
       - docs/*
     # Wrap in directory for easier extraction
+    wrap_in_directory: true
+
+  # kubectl plugin archive (linux/darwin only, for Krew)
+  - id: k13d-plugin
+    ids:
+      - kubectl-k13d
+    formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}-plugin_v{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+      - README.md
+      - LICENSE
+    wrap_in_directory: false
+
+  # Trivy-bundled archive (linux/darwin only)
+  - id: k13d-with-trivy
+    ids:
+      - k13d-trivy
+    formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}-with-trivy_v{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+      - README.md
+      - LICENSE
+      - docs/*
+      - src: .trivy-cache/{{ .Os }}_{{ .Arch }}/trivy
+        dst: bin
+        strip_parent: true
     wrap_in_directory: true
 
 checksum:
@@ -92,54 +162,12 @@ release:
   prerelease: auto
   mode: replace
   header: |
-    ## k13d {{ .Tag }}
-
-    Kubernetes AI Dashboard CLI - A comprehensive Kubernetes management tool with AI assistant.
-
-    ### Installation
-
-    **Homebrew (macOS/Linux):**
-    ```bash
-    brew install cloudbro-kube-ai/tap/k13d
-    ```
-
-    **Direct Download:**
-    Download the appropriate archive for your OS/architecture below.
+    Kubernetes AI Dashboard CLI
   footer: |
-    ---
-
-    ### Embedded LLM Bundle (Optional)
-
-    For offline or air-gapped environments, you can use the embedded LLM feature with manually downloaded files.
-
-    **Required Downloads:**
-
-    | File | Size | Link |
-    |------|------|------|
-    | Model (Qwen2.5-0.5B-Instruct Q4_K_M) | ~350MB | [Download from HuggingFace](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf) |
-    | llama-server (macOS ARM64) | ~5MB | [llama-b4547-bin-macos-arm64.zip](https://github.com/ggerganov/llama.cpp/releases/download/b4547/llama-b4547-bin-macos-arm64.zip) |
-    | llama-server (macOS x64) | ~5MB | [llama-b4547-bin-macos-x64.zip](https://github.com/ggerganov/llama.cpp/releases/download/b4547/llama-b4547-bin-macos-x64.zip) |
-    | llama-server (Linux x64) | ~5MB | [llama-b4547-bin-ubuntu-x64.zip](https://github.com/ggerganov/llama.cpp/releases/download/b4547/llama-b4547-bin-ubuntu-x64.zip) |
-    | llama-server (Linux ARM64) | ~5MB | [llama-b4547-bin-ubuntu-arm64.zip](https://github.com/ggerganov/llama.cpp/releases/download/b4547/llama-b4547-bin-ubuntu-arm64.zip) |
-
-    **Air-Gapped Installation:**
-    ```bash
-    # Place files in these locations:
-    mkdir -p ~/.local/share/k13d/llm/{models,bin}
-    cp qwen2.5-0.5b-instruct-q4_k_m.gguf ~/.local/share/k13d/llm/models/
-    unzip llama-b4547-bin-*.zip -d /tmp/llama
-    cp /tmp/llama/build/bin/llama-server ~/.local/share/k13d/llm/bin/
-    chmod +x ~/.local/share/k13d/llm/bin/llama-server
-
-    # Verify and run
-    k13d --embedded-llm-status
-    k13d --embedded-llm -web
-    ```
-
-    See [README - Air-Gapped Installation](https://github.com/cloudbro-kube-ai/k13d#air-gapped--offline-installation) for detailed instructions.
-
     **Full Changelog**: https://github.com/cloudbro-kube-ai/k13d/compare/{{ .PreviousTag }}...{{ .Tag }}
   name_template: "v{{.Version}}"
+  extra_files:
+    - glob: .helm-out/k13d-*.tgz
 
 # Source code archive
 source:

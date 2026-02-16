@@ -16,11 +16,40 @@ type Config struct {
 	Storage       StorageConfig       `yaml:"storage" json:"storage"`             // Data storage configuration
 	Prometheus    PrometheusConfig    `yaml:"prometheus" json:"prometheus"`       // Prometheus integration configuration
 	Authorization AuthorizationConfig `yaml:"authorization" json:"authorization"` // RBAC authorization (Teleport-inspired)
+	Anonymization AnonymizationConfig `yaml:"anonymization" json:"anonymization"` // Data anonymization before LLM calls
+	Notifications NotificationsConfig `yaml:"notifications" json:"notifications"` // Event notification dispatch
 	ReportPath    string              `yaml:"report_path" json:"report_path"`
 	EnableAudit   bool                `yaml:"enable_audit" json:"enable_audit"`
 	Language      string              `yaml:"language" json:"language"`
 	BeginnerMode  bool                `yaml:"beginner_mode" json:"beginner_mode"`
 	LogLevel      string              `yaml:"log_level" json:"log_level"`
+}
+
+// AnonymizationConfig holds settings for data anonymization before LLM calls
+type AnonymizationConfig struct {
+	Enabled bool `yaml:"enabled" json:"enabled"` // Default: false
+}
+
+// NotificationsConfig holds event notification dispatch settings
+type NotificationsConfig struct {
+	Enabled      bool       `yaml:"enabled" json:"enabled"`
+	Provider     string     `yaml:"provider" json:"provider"` // slack, discord, teams, email, custom
+	WebhookURL   string     `yaml:"webhook_url" json:"webhook_url"`
+	Channel      string     `yaml:"channel" json:"channel,omitempty"`
+	Events       []string   `yaml:"events" json:"events"`
+	PollInterval int        `yaml:"poll_interval" json:"poll_interval"` // seconds, default 30
+	SMTP         SMTPConfig `yaml:"smtp" json:"smtp,omitempty"`
+}
+
+// SMTPConfig holds email notification settings
+type SMTPConfig struct {
+	Host     string   `yaml:"host" json:"host"`
+	Port     int      `yaml:"port" json:"port"`
+	Username string   `yaml:"username" json:"username"`
+	Password string   `yaml:"password" json:"-"` // never expose in JSON
+	From     string   `yaml:"from" json:"from"`
+	To       []string `yaml:"to" json:"to"`
+	UseTLS   bool     `yaml:"use_tls" json:"use_tls"`
 }
 
 // AuthorizationConfig holds RBAC authorization settings (Teleport-inspired)
@@ -111,7 +140,7 @@ type PrometheusConfig struct {
 	// Username for basic auth to external Prometheus
 	Username string `yaml:"username" json:"username"`
 	// Password for basic auth to external Prometheus
-	Password string `yaml:"password" json:"password"`
+	Password string `yaml:"password" json:"-"`
 	// CollectK8sMetrics enables Kubernetes metrics collection
 	CollectK8sMetrics bool `yaml:"collect_k8s_metrics" json:"collect_k8s_metrics"`
 	// CollectionInterval in seconds (default: 60)
@@ -127,7 +156,7 @@ type StorageConfig struct {
 	DBPort     int    `yaml:"db_port" json:"db_port"`         // Database port
 	DBName     string `yaml:"db_name" json:"db_name"`         // Database name
 	DBUser     string `yaml:"db_user" json:"db_user"`         // Database username
-	DBPassword string `yaml:"db_password" json:"db_password"` // Database password
+	DBPassword string `yaml:"db_password" json:"-"`           // Database password
 	DBSSLMode  string `yaml:"db_ssl_mode" json:"db_ssl_mode"` // SSL mode (for postgres)
 
 	// Data persistence options
@@ -151,7 +180,7 @@ type LLMConfig struct {
 	Provider        string  `yaml:"provider" json:"provider"`
 	Model           string  `yaml:"model" json:"model"`
 	Endpoint        string  `yaml:"endpoint" json:"endpoint"`
-	APIKey          string  `yaml:"api_key" json:"api_key"`
+	APIKey          string  `yaml:"api_key" json:"-"`
 	Region          string  `yaml:"region" json:"region"`                     // For AWS Bedrock
 	AzureDeployment string  `yaml:"azure_deployment" json:"azure_deployment"` // For Azure OpenAI
 	SkipTLSVerify   bool    `yaml:"skip_tls_verify" json:"skip_tls_verify"`
@@ -160,6 +189,9 @@ type LLMConfig struct {
 	MaxBackoff      float64 `yaml:"max_backoff" json:"max_backoff"`           // seconds
 	UseJSONMode     bool    `yaml:"use_json_mode" json:"use_json_mode"`       // Fallback for models without tool calling
 	ReasoningEffort string  `yaml:"reasoning_effort" json:"reasoning_effort"` // For Solar Pro2: "minimal" (default) or "high"
+	Temperature     float64 `yaml:"temperature" json:"temperature"`           // LLM temperature (0.0-2.0)
+	MaxTokens       int     `yaml:"max_tokens" json:"max_tokens"`             // Max output tokens
+	MaxIterations   int     `yaml:"max_iterations" json:"max_iterations"`     // Agent loop max iterations (1-30)
 }
 
 // ModelProfile represents a saved LLM model configuration
@@ -168,7 +200,7 @@ type ModelProfile struct {
 	Provider        string `yaml:"provider" json:"provider"`           // Provider type
 	Model           string `yaml:"model" json:"model"`                 // Model identifier
 	Endpoint        string `yaml:"endpoint" json:"endpoint,omitempty"` // Custom endpoint
-	APIKey          string `yaml:"api_key" json:"api_key,omitempty"`   // API key (masked in UI)
+	APIKey          string `yaml:"api_key" json:"-"`                   // API key (never exposed in JSON)
 	Region          string `yaml:"region" json:"region,omitempty"`     // For AWS Bedrock
 	AzureDeployment string `yaml:"azure_deployment" json:"azure_deployment,omitempty"`
 	Description     string `yaml:"description" json:"description,omitempty"` // User description
@@ -230,12 +262,15 @@ func DefaultSessionsPath() string {
 func NewDefaultConfig() *Config {
 	return &Config{
 		LLM: LLMConfig{
-			Provider:     "solar",
-			Model:        DefaultSolarModel,
-			Endpoint:     DefaultSolarEndpoint,
-			RetryEnabled: true,
-			MaxRetries:   5,
-			MaxBackoff:   10.0,
+			Provider:      "upstage",
+			Model:         DefaultSolarModel,
+			Endpoint:      DefaultSolarEndpoint,
+			RetryEnabled:  true,
+			MaxRetries:    5,
+			MaxBackoff:    10.0,
+			Temperature:   0.7,
+			MaxTokens:     4096,
+			MaxIterations: 10,
 		},
 		Storage: StorageConfig{
 			DBType:                "sqlite",
@@ -254,7 +289,7 @@ func NewDefaultConfig() *Config {
 		Models: []ModelProfile{
 			{
 				Name:        "solar-pro2",
-				Provider:    "solar",
+				Provider:    "upstage",
 				Model:       DefaultSolarModel,
 				Endpoint:    DefaultSolarEndpoint,
 				Description: "Upstage Solar Pro2 (Recommended - Best quality/cost balance)",
@@ -307,6 +342,14 @@ func NewDefaultConfig() *Config {
 				RefreshWindow: "15m",
 			},
 			ToolApproval: DefaultToolApprovalPolicy(),
+		},
+		Anonymization: AnonymizationConfig{Enabled: false},
+		Notifications: NotificationsConfig{
+			Enabled:      false,
+			Provider:     "slack",
+			Events:       []string{},
+			PollInterval: 30,
+			SMTP:         SMTPConfig{Port: 587, UseTLS: true},
 		},
 		Language:     "ko",
 		BeginnerMode: true,
@@ -460,6 +503,8 @@ func LoadConfig() (*Config, error) {
 
 	cfg := NewDefaultConfig()
 	if err := yaml.Unmarshal(data, cfg); err != nil {
+		// TODO: Log warning when config file exists but fails to parse.
+		// Currently silently falls back to defaults which can be confusing.
 		cfg = NewDefaultConfig()
 	}
 
@@ -503,5 +548,5 @@ func (c *Config) Save() error {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600)
 }

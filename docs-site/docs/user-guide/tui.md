@@ -126,14 +126,23 @@ When typing a command, k13d provides smart autocomplete:
 
 Define custom command shortcuts in `~/.config/k13d/aliases.yaml`:
 
-```yaml
+```yaml title="~/.config/k13d/aliases.yaml"
 aliases:
   pp: pods
   dep: deployments
+  svc: services
   sec: secrets
+  cm: configmaps
+  ds: daemonsets
+  sts: statefulsets
 ```
 
-Type `:pp` to navigate to Pods. Use `:alias` to see all aliases.
+### Usage
+
+- Type `:pp` to navigate to Pods (alias resolves automatically)
+- Type `:alias` to see all active aliases (built-in + custom)
+- Custom aliases integrate with autocomplete — type `:p` and press ++tab++
+- If a custom alias conflicts with a built-in, the custom alias wins
 
 ## Resource Actions
 
@@ -255,24 +264,141 @@ The status bar shows:
 
 ## Plugins
 
-Extend k13d with external tools via `~/.config/k13d/plugins.yaml`.
+Extend k13d with external CLI tools via `~/.config/k13d/plugins.yaml`. Plugins bind keyboard shortcuts to commands that run with the selected resource's context.
 
-- Type `:plugins` to see all available plugins
-- Plugin shortcuts are active when viewing matching resource types
-- Foreground plugins suspend TUI; background plugins run silently
+### Quick Start
+
+Create `~/.config/k13d/plugins.yaml`:
+
+```yaml
+plugins:
+  dive:
+    shortCut: "Ctrl-I"
+    description: "Dive into container image layers"
+    scopes: [pods]
+    command: dive
+    args: [$IMAGE]
+```
+
+Then in the TUI:
+
+1. Navigate to Pods (`:pods`)
+2. Select a pod with `j`/`k`
+3. Press ++ctrl+i++ to launch `dive` with the pod's container image
+
+### Using Plugins
+
+| Action | How |
+|--------|-----|
+| View all plugins | Type `:plugins` |
+| Run a plugin | Press the plugin's shortcut while on a matching resource |
+| Confirm execution | Press `Execute` in the confirmation modal (if `confirm: true`) |
+
+### Example Plugins
+
+```yaml title="~/.config/k13d/plugins.yaml"
+plugins:
+  # Analyze container image layers
+  dive:
+    shortCut: "Ctrl-I"
+    description: "Dive into container image layers"
+    scopes: [pods]
+    command: dive
+    args: [$IMAGE]
+
+  # Debug pod with ephemeral container
+  debug:
+    shortCut: "Shift-D"
+    description: "Debug pod with ephemeral container"
+    scopes: [pods]
+    command: kubectl
+    args: [debug, -n, $NAMESPACE, $NAME, -it, --image=busybox]
+    confirm: true
+
+  # Background port-forward
+  port-forward:
+    shortCut: "Shift-F"
+    description: "Port-forward to localhost:8080"
+    scopes: [pods, services]
+    command: kubectl
+    args: [port-forward, -n, $NAMESPACE, $NAME, "8080:80"]
+    background: true
+    confirm: true
+
+  # Multi-pod log streaming
+  stern:
+    shortCut: "Shift-S"
+    description: "Stream logs with stern (by app label)"
+    scopes: [deployments]
+    command: stern
+    args: [-n, $NAMESPACE, $LABELS.app]
+
+  # Open in external tool (all resources)
+  lens:
+    shortCut: "Ctrl-O"
+    description: "Open in Lens"
+    scopes: ["*"]
+    command: lens
+    args: [--context, $CONTEXT]
+    background: true
+```
+
+!!! tip
+    Plugins with `background: true` run without suspending the TUI. Use this for port-forwarding or opening external applications.
+
+See [Configuration > Plugins](../getting-started/configuration.md#plugins-pluginsyaml) for the full reference including all available variables.
+
+## Custom Hotkeys
+
+Define custom keyboard shortcuts in `~/.config/k13d/hotkeys.yaml` to execute external commands:
+
+```yaml title="~/.config/k13d/hotkeys.yaml"
+hotkeys:
+  stern-logs:
+    shortCut: "Shift-L"
+    description: "Stern multi-pod logs"
+    scopes: [pods, deployments]
+    command: stern
+    args: ["-n", "$NAMESPACE", "$NAME"]
+
+  port-forward-8080:
+    shortCut: "Ctrl-P"
+    description: "Port forward to 8080"
+    scopes: [pods, services]
+    command: kubectl
+    args: [port-forward, -n, "$NAMESPACE", "$NAME", "8080:8080"]
+```
+
+Hotkeys support `$NAMESPACE`, `$NAME`, and `$CONTEXT` variable expansion. Set `dangerous: true` to require confirmation before execution.
 
 ## Per-Resource Sort Defaults
 
 Configure default sort in `~/.config/k13d/views.yaml`:
 
-```yaml
+```yaml title="~/.config/k13d/views.yaml"
 views:
   pods:
     sortColumn: AGE
-    sortAscending: false
+    sortAscending: false       # Newest first
+  deployments:
+    sortColumn: NAME
+    sortAscending: true        # Alphabetical
+  services:
+    sortColumn: TYPE
+    sortAscending: true
 ```
 
-Applied automatically when navigating to the resource.
+Sort preferences are applied automatically when navigating to each resource. k13d detects column types (numeric, age, ready format, string) for proper sorting.
+
+## Context Switching
+
+Switch between Kubernetes clusters:
+
+1. Type `:context` or `:ctx`
+2. Select from available contexts (current marked with `*`)
+3. Press ++enter++ to switch
+
+On switch, k13d reconnects to the new cluster, reloads namespaces, and refreshes all resource data.
 
 ## Customization
 

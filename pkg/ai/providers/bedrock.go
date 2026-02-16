@@ -132,7 +132,7 @@ func (p *BedrockProvider) AskNonStreaming(ctx context.Context, prompt string) (s
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return "", fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
@@ -267,7 +267,7 @@ func (p *BedrockProvider) AskWithTools(ctx context.Context, prompt string, tools
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 			resp.Body.Close()
 			return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 		}

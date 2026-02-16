@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
 	"github.com/gdamore/tcell/v2"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
 )
 
 // ColorCyan is a helper constant for cyan color

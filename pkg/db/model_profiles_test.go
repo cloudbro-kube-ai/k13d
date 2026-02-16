@@ -3,14 +3,12 @@ package db
 import (
 	"context"
 	"fmt"
-	"os"
+	"path/filepath"
 	"testing"
 )
 
 func TestModelProfilesCRUD(t *testing.T) {
-	dbPath := "test_model_profiles.db"
-	defer os.Remove(dbPath)
-
+	dbPath := filepath.Join(t.TempDir(), "test_model_profiles.db")
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init db: %v", err)
 	}
@@ -89,9 +87,7 @@ func TestModelProfilesCRUD(t *testing.T) {
 }
 
 func TestSetActiveModelProfile(t *testing.T) {
-	dbPath := "test_model_profiles_active.db"
-	defer os.Remove(dbPath)
-
+	dbPath := filepath.Join(t.TempDir(), "test_model_profiles_active.db")
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init db: %v", err)
 	}
@@ -139,9 +135,7 @@ func TestSetActiveModelProfile(t *testing.T) {
 }
 
 func TestModelProfileWithStats(t *testing.T) {
-	dbPath := "test_model_profiles_stats.db"
-	defer os.Remove(dbPath)
-
+	dbPath := filepath.Join(t.TempDir(), "test_model_profiles_stats.db")
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init db: %v", err)
 	}
@@ -195,7 +189,7 @@ func TestModelProfileWithStats(t *testing.T) {
 	}
 }
 
-func TestHashAPIKey(t *testing.T) {
+func TestMaskAPIKey(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected string
@@ -206,7 +200,7 @@ func TestHashAPIKey(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := hashAPIKey(test.input)
+		result := maskAPIKey(test.input)
 		if result != test.expected {
 			t.Errorf("hashAPIKey(%q) = %q, expected %q", test.input, result, test.expected)
 		}

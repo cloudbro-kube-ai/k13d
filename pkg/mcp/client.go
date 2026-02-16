@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 )
 
 // Client manages MCP server connections
@@ -176,12 +176,16 @@ func (c *Client) startServer(ctx context.Context, serverCfg config.MCPServer) (*
 		return nil, fmt.Errorf("failed to start command: %w", err)
 	}
 
+	scanner := bufio.NewScanner(stdout)
+	// Set scanner buffer to 10MB to handle large MCP responses
+	scanner.Buffer(make([]byte, 0, 10*1024*1024), 10*1024*1024)
+
 	conn := &ServerConnection{
 		config:  serverCfg,
 		cmd:     cmd,
 		stdin:   stdin,
 		stdout:  stdout,
-		scanner: bufio.NewScanner(stdout),
+		scanner: scanner,
 		tools:   make([]Tool, 0),
 	}
 
@@ -290,6 +294,13 @@ func (conn *ServerConnection) sendRequest(ctx context.Context, method string, pa
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 
+	// Ensure context has a timeout to prevent goroutine leaks
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+	}
+
 	reqID := conn.reqID.Add(1)
 	req := JSONRPCRequest{
 		JSONRPC: "2.0",
@@ -308,7 +319,8 @@ func (conn *ServerConnection) sendRequest(ctx context.Context, method string, pa
 		return nil, fmt.Errorf("failed to write request: %w", err)
 	}
 
-	// Read response with timeout
+	// Read response — goroutine will eventually unblock when connection closes.
+	// Channels are buffered so the goroutine can write and exit even if select returns first.
 	responseChan := make(chan *JSONRPCResponse, 1)
 	errChan := make(chan error, 1)
 
@@ -339,8 +351,6 @@ func (conn *ServerConnection) sendRequest(ctx context.Context, method string, pa
 			return nil, fmt.Errorf("RPC error %d: %s", resp.Error.Code, resp.Error.Message)
 		}
 		return resp, nil
-	case <-time.After(30 * time.Second):
-		return nil, fmt.Errorf("request timeout")
 	}
 }
 
@@ -365,20 +375,23 @@ func (conn *ServerConnection) initialize(ctx context.Context) error {
 		return fmt.Errorf("failed to parse initialize result: %w", err)
 	}
 
-	// Send initialized notification
+	// Send initialized notification (acquire lock since sendRequest released it)
+	conn.mu.Lock()
 	notif := JSONRPCRequest{
 		JSONRPC: "2.0",
 		Method:  "notifications/initialized",
 	}
 	notifBytes, err := json.Marshal(notif)
 	if err != nil {
+		conn.mu.Unlock()
 		return fmt.Errorf("failed to marshal notification: %w", err)
 	}
 	if _, err := conn.stdin.Write(append(notifBytes, '\n')); err != nil {
+		conn.mu.Unlock()
 		return fmt.Errorf("failed to send initialized notification: %w", err)
 	}
-
 	conn.ready = true
+	conn.mu.Unlock()
 	return nil
 }
 

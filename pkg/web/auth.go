@@ -7,13 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 
 	authv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,7 +63,13 @@ type AuthManager struct {
 	ldapProvider   *LDAPProvider
 	tokenValidator *K8sTokenValidator
 	oidcProvider   *OIDCProvider
-	jwtManager     *JWTManager // JWT token manager (Teleport-inspired)
+	jwtManager     *JWTManager       // JWT token manager (Teleport-inspired)
+	roleValidator  func(string) bool // Optional: validates custom role names
+}
+
+// SetRoleValidator sets a function that validates custom role names
+func (am *AuthManager) SetRoleValidator(fn func(string) bool) {
+	am.roleValidator = fn
 }
 
 // AuthConfig holds authentication configuration
@@ -277,8 +284,9 @@ func NewAuthManager(cfg *AuthConfig) *AuthManager {
 		if adminPass == "" {
 			// Generate a secure random password instead of hardcoded default
 			adminPass = generateSecurePassword(16)
-			fmt.Printf("  WARNING: Generated random admin password: %s\n", adminPass)
-			fmt.Printf("  Please change this password immediately after first login!\n")
+			// Print password to stderr to avoid capture in structured log output
+			fmt.Fprintf(os.Stderr, "  Admin password: %s\n", adminPass)
+			fmt.Printf("  WARNING: Random admin password generated (see stderr). Change after first login.\n")
 		}
 		am.createLocalUser(adminUser, adminPass, "admin")
 	}
@@ -339,6 +347,10 @@ func (am *AuthManager) CreateUser(username, password, role string) error {
 
 	if _, exists := am.users[username]; exists {
 		return fmt.Errorf("user already exists: %s", username)
+	}
+
+	if len(password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters")
 	}
 
 	am.users[username] = &User{
@@ -506,8 +518,8 @@ func (am *AuthManager) GetLDAPConfig() *LDAPConfig {
 
 // ValidateSession checks if a session is valid
 func (am *AuthManager) ValidateSession(sessionID string) (*Session, error) {
-	am.mu.RLock()
-	defer am.mu.RUnlock()
+	am.mu.Lock()
+	defer am.mu.Unlock()
 
 	session, exists := am.sessions[sessionID]
 	if !exists {
@@ -580,7 +592,7 @@ func (am *AuthManager) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// Check for session cookie or Authorization header
+		// Check for session cookie, Authorization header, or query parameter
 		sessionID := ""
 		token := ""
 
@@ -594,6 +606,13 @@ func (am *AuthManager) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			auth := r.Header.Get("Authorization")
 			if strings.HasPrefix(auth, "Bearer ") {
 				token = strings.TrimPrefix(auth, "Bearer ")
+			}
+		}
+
+		// Try query parameter (for WebSocket connections that cannot set headers)
+		if sessionID == "" && token == "" {
+			if qToken := r.URL.Query().Get("token"); qToken != "" {
+				token = qToken
 			}
 		}
 
@@ -991,9 +1010,10 @@ func (am *AuthManager) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 		req.Role = "user"
 	}
 
-	// Validate role
-	if req.Role != "admin" && req.Role != "user" && req.Role != "viewer" {
-		http.Error(w, "Invalid role. Must be admin, user, or viewer", http.StatusBadRequest)
+	// Validate role: accept built-in roles; custom roles validated via roleValidator if set
+	validBuiltIn := req.Role == "admin" || req.Role == "user" || req.Role == "viewer"
+	if !validBuiltIn && (am.roleValidator == nil || !am.roleValidator(req.Role)) {
+		http.Error(w, "Invalid role. Must be admin, user, viewer, or a valid custom role", http.StatusBadRequest)
 		return
 	}
 
@@ -1056,7 +1076,8 @@ func (am *AuthManager) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 
 	// Update fields
 	if req.Role != "" {
-		if req.Role != "admin" && req.Role != "user" && req.Role != "viewer" {
+		validBuiltIn := req.Role == "admin" || req.Role == "user" || req.Role == "viewer"
+		if !validBuiltIn && (am.roleValidator == nil || !am.roleValidator(req.Role)) {
 			http.Error(w, "Invalid role", http.StatusBadRequest)
 			return
 		}
@@ -1536,7 +1557,11 @@ func (am *AuthManager) CSRFMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Skip CSRF check for API endpoints that use Bearer token auth
+		// Skip CSRF check for API endpoints that use Bearer token auth.
+		// This is intentional: Bearer token authentication is not vulnerable to CSRF
+		// because browsers do not automatically attach Authorization headers to
+		// cross-origin requests (unlike cookies). API clients using Bearer tokens
+		// are therefore exempt from CSRF validation.
 		if authHeader := r.Header.Get("Authorization"); strings.HasPrefix(authHeader, "Bearer ") {
 			next.ServeHTTP(w, r)
 			return

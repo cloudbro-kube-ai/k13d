@@ -100,8 +100,6 @@ The AI uses Abstract Syntax Tree parsing to detect:
 
 ### TUI Approval
 
-![TUI Approval Dialog](../images/tui-decision-required.png)
-
 | Key | Action |
 |-----|--------|
 | `Y` | Approve this command |
@@ -144,13 +142,11 @@ AI responds with specific diagnosis.
 
 ### TUI AI Interaction
 
-![TUI AI Conversation](../images/tui-ask-answer-test.png)
+The TUI AI assistant supports the same capabilities as the Web UI:
 
-Example showing:
-
-- Natural language question
-- AI analysis and response
-- Tool execution results
+- Natural language question input
+- AI analysis with streaming responses
+- Tool execution with approval workflow
 
 ---
 

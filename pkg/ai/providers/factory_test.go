@@ -3,6 +3,7 @@ package providers
 import (
 	"context"
 	"errors"
+	"net/http"
 	"os"
 	"testing"
 )
@@ -101,13 +102,13 @@ func TestRetryProviderAskWithTools(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "provider with tool error is retried",
+			name: "provider with tool error is not retried (side effects)",
 			provider: &mockToolProvider{
 				mockProvider: mockProvider{name: "mock-tools", ready: true},
 				toolsErr:     errors.New("status 503: service unavailable"),
 			},
 			wantErr:     true,
-			errContains: "max retries exceeded",
+			errContains: "service unavailable",
 		},
 	}
 
@@ -625,8 +626,40 @@ func TestGeminiProviderDefaultModel(t *testing.T) {
 		t.Fatalf("Failed to create provider: %v", err)
 	}
 
-	if provider.GetModel() != "gemini-1.5-flash" {
-		t.Errorf("Expected default model 'gemini-1.5-flash', got %q", provider.GetModel())
+	if provider.GetModel() != "gemini-2.5-flash" {
+		t.Errorf("Expected default model 'gemini-2.5-flash', got %q", provider.GetModel())
+	}
+}
+
+func TestGeminiModelValidation(t *testing.T) {
+	tests := []struct {
+		model   string
+		wantErr bool
+	}{
+		{"gemini-2.5-flash", false},
+		{"gemini-2.5-pro", false},
+		{"gemini-2.0-flash", false},
+		{"gemini-1.5-pro", false},
+		{"gemini-1.5-flash", false},
+		{"gemini-pro", false},
+		{"gemini-3-pro-preview", false},
+		{"gemini-flash", true}, // missing version
+		{"gpt-4", true},        // wrong prefix
+		{"gemini", true},       // incomplete
+		{"flash", true},        // no gemini prefix
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			_, err := NewGeminiProvider(&ProviderConfig{
+				Provider: "gemini",
+				APIKey:   "test-key",
+				Model:    tt.model,
+			})
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewGeminiProvider(model=%q) error = %v, wantErr %v", tt.model, err, tt.wantErr)
+			}
+		})
 	}
 }
 
@@ -689,9 +722,13 @@ func TestProviderNames(t *testing.T) {
 
 func mustCreateProvider(t *testing.T, name string) Provider {
 	t.Helper()
+	model := "test-model"
+	if name == "gemini" {
+		model = "gemini-2.5-flash"
+	}
 	provider, err := GetFactory().Create(&ProviderConfig{
 		Provider: name,
-		Model:    "test-model",
+		Model:    model,
 		APIKey:   "test-key",
 		Region:   "us-east-1",
 	})
@@ -870,11 +907,88 @@ func TestFactoryCreateSolarProvider(t *testing.T) {
 	}
 }
 
+// Compile-time checks: Ollama and Gemini must implement ToolProvider
+var _ ToolProvider = (*OllamaProvider)(nil)
+var _ ToolProvider = (*GeminiProvider)(nil)
+var _ ToolProvider = (*OpenAIProvider)(nil)
+var _ ToolProvider = (*EmbeddedProvider)(nil)
+
+func TestOllamaToolProviderInterface(t *testing.T) {
+	provider, err := NewOllamaProvider(&ProviderConfig{
+		Provider: "ollama",
+		Model:    "llama3.2",
+		Endpoint: "http://localhost:11434",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create Ollama provider: %v", err)
+	}
+
+	// Verify it implements ToolProvider
+	if _, ok := provider.(ToolProvider); !ok {
+		t.Error("OllamaProvider should implement ToolProvider")
+	}
+
+	// Verify retryProvider wrapping preserves tool support
+	retryProv := CreateWithRetry(provider, DefaultRetryConfig())
+	rp := retryProv.(*retryProvider)
+	if !rp.SupportsTools() {
+		t.Error("retryProvider wrapping OllamaProvider should report SupportsTools() = true")
+	}
+}
+
+func TestGeminiToolProviderInterface(t *testing.T) {
+	provider, err := NewGeminiProvider(&ProviderConfig{
+		Provider: "gemini",
+		Model:    "gemini-1.5-flash",
+		APIKey:   "test-key",
+	})
+	if err != nil {
+		t.Fatalf("Failed to create Gemini provider: %v", err)
+	}
+
+	// Verify it implements ToolProvider
+	if _, ok := provider.(ToolProvider); !ok {
+		t.Error("GeminiProvider should implement ToolProvider")
+	}
+
+	// Verify retryProvider wrapping preserves tool support
+	retryProv := CreateWithRetry(provider, DefaultRetryConfig())
+	rp := retryProv.(*retryProvider)
+	if !rp.SupportsTools() {
+		t.Error("retryProvider wrapping GeminiProvider should report SupportsTools() = true")
+	}
+}
+
+func TestTLSSkipVerifyEnabled(t *testing.T) {
+	client := newHTTPClient(true)
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Expected *http.Transport")
+	}
+	if transport.TLSClientConfig == nil {
+		t.Fatal("TLSClientConfig should not be nil when skipTLS is true")
+	}
+	if !transport.TLSClientConfig.InsecureSkipVerify {
+		t.Error("InsecureSkipVerify should be true when skipTLS is true")
+	}
+}
+
+func TestTLSSkipVerifyDisabled(t *testing.T) {
+	client := newHTTPClient(false)
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Expected *http.Transport")
+	}
+	if transport.TLSClientConfig != nil {
+		t.Error("TLSClientConfig should be nil when skipTLS is false")
+	}
+}
+
 // Test that all expected providers are registered
 func TestFactoryAllProvidersRegistered(t *testing.T) {
 	factory := GetFactory()
 
-	expectedProviders := []string{"solar", "openai", "ollama", "gemini", "bedrock", "azopenai", "azure"}
+	expectedProviders := []string{"solar", "upstage", "openai", "ollama", "gemini", "bedrock", "azopenai", "azure"}
 
 	for _, name := range expectedProviders {
 		t.Run(name, func(t *testing.T) {

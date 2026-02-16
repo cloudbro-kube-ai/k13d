@@ -10,6 +10,8 @@ import (
 )
 
 // FormatAge formats a duration into a human-readable age string.
+// This is the duration-based variant used by resource table views.
+// For the time-based variant that computes duration from a timestamp, see render.FormatAge.
 // Examples: "5d", "12h", "30m", "45s"
 func FormatAge(dur time.Duration) string {
 	if dur < 0 {

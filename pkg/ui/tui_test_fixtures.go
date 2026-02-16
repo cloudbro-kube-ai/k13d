@@ -1,13 +1,14 @@
 package ui
 
 import (
+	"io"
 	"log/slog"
 	"os"
 	"sync"
 
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
 	"github.com/gdamore/tcell/v2"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
 	"github.com/rivo/tview"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -86,6 +87,7 @@ func NewTestApp(cfg TestAppConfig) *App {
 		cancelLock:          sync.Mutex{},
 		watchMu:             sync.Mutex{},
 		skipBriefing:        cfg.SkipBriefing, // Disable briefing to prevent pulse animation blocking
+		styles:              config.DefaultStyles(),
 	}
 
 	app.setupUI()
@@ -471,5 +473,6 @@ func CreateMinimalTestApp() *App {
 		cancelLock:          sync.Mutex{},
 		watchMu:             sync.Mutex{},
 		pendingToolApproval: make(chan bool, 1),
+		logger:              slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 }

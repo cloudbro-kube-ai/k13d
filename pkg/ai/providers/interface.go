@@ -4,7 +4,11 @@ import (
 	"context"
 )
 
-// Provider defines the interface for LLM providers
+// Provider defines the interface for LLM providers.
+//
+// NOTE: There is no dedicated Anthropic provider. Anthropic Claude models are accessed
+// via the Bedrock provider (AWS Bedrock), which uses the Anthropic Messages API.
+// For direct Anthropic API access, use the OpenAI-compatible endpoint configuration.
 type Provider interface {
 	// Name returns the provider name (e.g., "openai", "gemini", "ollama")
 	Name() string

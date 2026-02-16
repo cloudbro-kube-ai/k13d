@@ -74,7 +74,7 @@ func NewEmbeddedProvider(cfg *ProviderConfig) (Provider, error) {
 			Model:    model,
 			Endpoint: endpoint,
 		},
-		httpClient: &http.Client{},
+		httpClient: newHTTPClient(cfg.SkipTLSVerify),
 		endpoint:   endpoint,
 	}, nil
 }
@@ -135,7 +135,7 @@ func (p *EmbeddedProvider) Ask(ctx context.Context, prompt string, callback func
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
@@ -213,7 +213,7 @@ func (p *EmbeddedProvider) AskNonStreaming(ctx context.Context, prompt string) (
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return "", fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
 	}
 
@@ -285,7 +285,7 @@ func (p *EmbeddedProvider) AskWithTools(ctx context.Context, prompt string, tool
 			return fmt.Errorf("request failed: %w", err)
 		}
 
-		body, err := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {

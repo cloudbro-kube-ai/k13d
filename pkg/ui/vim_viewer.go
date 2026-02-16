@@ -1,8 +1,11 @@
 package ui
 
 import (
+	"encoding/base64"
+	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -13,6 +16,7 @@ type VimViewer struct {
 	*tview.TextView
 	app           *App
 	pageName      string
+	mu            sync.RWMutex // Protects mutable state below
 	searchPattern string
 	searchRegex   *regexp.Regexp
 	searchMatches []int // Line numbers with matches
@@ -24,6 +28,16 @@ type VimViewer struct {
 	totalLines    int      // Total line count
 	visibleLines  int      // Lines visible on screen
 	currentLine   int      // Current scroll position (top line)
+
+	// Secret decode toggle
+	isSecretView  bool   // True when viewing a Secret resource
+	secretDecoded bool   // True when base64 values are decoded
+	rawYAML       string // Original YAML content for secret toggle
+
+	// Log viewer enhancements
+	isLogView  bool // True when viewing logs
+	autoScroll bool // Toggle with 's'
+	textWrap   bool // Toggle with 'w'
 }
 
 // NewVimViewer creates a new viewer with Vim-style keybindings
@@ -50,9 +64,11 @@ func NewVimViewer(app *App, pageName, title string) *VimViewer {
 
 // SetContent sets the viewer content and prepares search indexes
 func (v *VimViewer) SetContent(content string) {
+	v.mu.Lock()
 	v.content = content
 	v.lines = strings.Split(content, "\n")
 	v.totalLines = len(v.lines)
+	v.mu.Unlock()
 	v.TextView.Clear()
 	v.TextView.SetText(content)
 }
@@ -141,6 +157,52 @@ func (v *VimViewer) setupInputCapture() {
 					v.ScrollTo(row-1, col)
 				}
 				return nil
+
+			case 'x':
+				// Toggle secret base64 decode
+				if v.isSecretView {
+					v.toggleSecretDecode()
+					return nil
+				}
+
+			case 's':
+				// Toggle auto-scroll for log view
+				if v.isLogView {
+					v.autoScroll = !v.autoScroll
+					v.updateTitle()
+					if v.autoScroll {
+						v.ScrollToEnd()
+					}
+					return nil
+				}
+
+			case 't':
+				// Timestamp filter hint for log view
+				if v.isLogView {
+					if v.app != nil {
+						v.app.flashMsg("Use /pattern to search timestamps in logs", false)
+					}
+					return nil
+				}
+
+			case 'w':
+				// Toggle text wrap for log view
+				if v.isLogView {
+					v.textWrap = !v.textWrap
+					v.SetWrap(v.textWrap)
+					v.updateTitle()
+					return nil
+				}
+
+			case 'm':
+				// Insert visual separator mark in log view
+				if v.isLogView {
+					current := v.TextView.GetText(false)
+					separator := "\n────────── mark ──────────\n"
+					v.SetContent(current + separator)
+					v.ScrollToEnd()
+					return nil
+				}
 			}
 		}
 
@@ -152,6 +214,72 @@ func (v *VimViewer) setupInputCapture() {
 func (v *VimViewer) close() {
 	v.app.closeModal(v.pageName)
 	v.app.SetFocus(v.app.table)
+}
+
+// toggleSecretDecode switches between encoded/decoded Secret values
+func (v *VimViewer) toggleSecretDecode() {
+	v.secretDecoded = !v.secretDecoded
+	if v.secretDecoded {
+		v.SetContent(decodeSecretYAML(v.rawYAML))
+	} else {
+		v.SetContent(v.rawYAML)
+	}
+	v.updateTitle()
+}
+
+// decodeSecretYAML finds base64-encoded values in the data: section and decodes them
+func decodeSecretYAML(yamlContent string) string {
+	lines := strings.Split(yamlContent, "\n")
+	var result []string
+	inDataSection := false
+	dataIndent := 0
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// Detect entering the "data:" section
+		if trimmed == "data:" {
+			inDataSection = true
+			dataIndent = len(line) - len(strings.TrimLeft(line, " "))
+			result = append(result, line)
+			continue
+		}
+
+		// Detect leaving data section (new top-level key at same or lesser indent)
+		if inDataSection && trimmed != "" && !strings.HasPrefix(trimmed, "#") {
+			lineIndent := len(line) - len(strings.TrimLeft(line, " "))
+			if lineIndent <= dataIndent && strings.Contains(trimmed, ":") {
+				inDataSection = false
+			}
+		}
+
+		// Skip stringData section - don't decode those
+		if trimmed == "stringData:" {
+			inDataSection = false
+			result = append(result, line)
+			continue
+		}
+
+		if inDataSection && strings.Contains(line, ":") {
+			// Parse key: value pairs inside data section
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				value := strings.TrimSpace(parts[1])
+				if value != "" && value != "|" && value != ">" {
+					decoded, err := base64.StdEncoding.DecodeString(value)
+					if err == nil {
+						// Replace with decoded value, mark it
+						result = append(result, fmt.Sprintf("%s: %s", parts[0], string(decoded)))
+						continue
+					}
+				}
+			}
+		}
+
+		result = append(result, line)
+	}
+
+	return strings.Join(result, "\n")
 }
 
 // scrollHalfPageDown scrolls down by half the visible lines
@@ -357,54 +485,68 @@ func (v *VimViewer) jumpToMatch(lineNum int) {
 	v.ScrollTo(targetRow, 0)
 }
 
-// updateTitle updates the viewer title to show search state
+// updateTitle updates the viewer title to show search state and mode flags
 func (v *VimViewer) updateTitle() {
-	baseTitle := v.GetTitle()
-	// Remove any existing search info from title
-	if idx := strings.Index(baseTitle, " [/"); idx > 0 {
-		baseTitle = baseTitle[:idx]
+	baseTitle := v.getBaseTitle()
+
+	suffix := ""
+
+	// Secret decode indicator
+	if v.isSecretView {
+		if v.secretDecoded {
+			suffix += " [green][decoded][white]"
+		}
+		suffix += " [gray](x:toggle decode)[white]"
 	}
-	if idx := strings.Index(baseTitle, " ("); idx > 0 {
-		baseTitle = baseTitle[:idx]
+
+	// Log viewer flags
+	if v.isLogView {
+		var flags []string
+		if v.autoScroll {
+			flags = append(flags, "auto")
+		}
+		if v.textWrap {
+			flags = append(flags, "wrap")
+		}
+		if len(flags) > 0 {
+			suffix += " [yellow][" + strings.Join(flags, ",") + "][white]"
+		}
 	}
 
 	if v.searchMode {
-		// Show search input
-		v.SetTitle(baseTitle + " [yellow]/" + v.searchInput + "_[white]")
+		v.SetTitle(baseTitle + suffix + " [yellow]/" + v.searchInput + "_[white]")
 	} else if v.searchPattern != "" {
-		// Show match count
 		matchInfo := ""
 		if len(v.searchMatches) > 0 {
-			matchInfo = " [green]" + v.searchPattern + "[white] (" +
-				string(rune('0'+v.currentMatch+1)) + "/" +
-				string(rune('0'+len(v.searchMatches))) + ")"
-			if len(v.searchMatches) > 9 || v.currentMatch+1 > 9 {
-				// Use proper formatting for larger numbers
-				matchInfo = " [green]" + v.searchPattern + "[white] (" +
-					strings.TrimLeft(string([]byte{byte('0' + (v.currentMatch+1)/10), byte('0' + (v.currentMatch+1)%10)}), "0") + "/" +
-					strings.TrimLeft(string([]byte{byte('0' + len(v.searchMatches)/10), byte('0' + len(v.searchMatches)%10)}), "0") + ")"
-			}
+			matchInfo = fmt.Sprintf(" [green]%s[white] (%d/%d)",
+				v.searchPattern, v.currentMatch+1, len(v.searchMatches))
 		} else {
 			matchInfo = " [red]" + v.searchPattern + "[white] (no matches)"
 		}
-		v.SetTitle(baseTitle + matchInfo)
+		v.SetTitle(baseTitle + suffix + matchInfo)
 	} else {
-		v.SetTitle(baseTitle)
+		v.SetTitle(baseTitle + suffix)
 	}
 }
 
-// GetTitle returns the base title without search info
-func (v *VimViewer) GetTitle() string {
+// getBaseTitle returns the base title without search info or mode flags
+func (v *VimViewer) getBaseTitle() string {
 	title := v.TextView.GetTitle()
-	// Remove search info
-	if idx := strings.Index(title, " [/"); idx > 0 {
-		return title[:idx]
+	// Remove mode flags and search info (find earliest marker)
+	markers := []string{" [/", " [green]", " [red]", " [gray](x:", " [yellow]["}
+	minIdx := len(title)
+	for _, m := range markers {
+		if idx := strings.Index(title, m); idx > 0 && idx < minIdx {
+			minIdx = idx
+		}
 	}
-	if idx := strings.Index(title, " [green]"); idx > 0 {
-		return title[:idx]
-	}
-	if idx := strings.Index(title, " [red]"); idx > 0 {
-		return title[:idx]
+	if minIdx < len(title) {
+		return title[:minIdx]
 	}
 	return title
+}
+
+// GetTitle returns the base title without search info (kept for compatibility)
+func (v *VimViewer) GetTitle() string {
+	return v.getBaseTitle()
 }

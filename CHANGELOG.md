@@ -5,6 +5,139 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.5] - 2026-02-16
+
+### Added
+- **TUI: Sort Picker (`:sort`)**: Interactive column picker modal for sorting resources — dynamically lists current table columns with active sort indicator
+- **TUI: Help Modal Sorting Section**: Help screen (`?`) now documents all sorting shortcuts (Shift+N/A/T/P/C/D) and `:sort` command
+- **Web UI: Report Section Selection**: Choose which sections (Nodes, Namespaces, Workloads, Events, Security, FinOps, Metrics) to include when generating reports
+- **Web UI: Rich Custom Resource Detail**: CRDs now display Overview/YAML/Events tabs with auto-generated status badge, metadata, printer columns, conditions table, and spec/status summary
+- **Web UI: Historical Metrics Charts**: CPU, Memory, Pod Count, and Node Count charts with configurable time ranges (5m–24h) backed by SQLite storage
+- **Web UI: Collect Now Button**: Trigger immediate metrics collection from the Metrics modal
+- **AI Provider: Upstage/Solar**: Added Upstage (Solar) as a supported LLM provider with default endpoint
+
+### Fixed
+- **Web UI: Metrics Array Sync**: Fixed metricsHistory arrays going out of sync during live updates
+- **Web UI: Chart Cleanup**: Charts are now properly destroyed and history reset when closing Metrics modal
+- **Web UI: Context Switch Stale Data**: Switching cluster context now reloads namespaces and resource data
+
+### Removed
+- **Web UI: Healing View**: Removed auto-remediation rules UI
+
+### Documentation
+- Added 8 new screenshots to mkdocs (TUI autocomplete/help/LLM settings, Web UI applications/report preview/event timeline/network policy map/resource templates)
+- Added Event Timeline, Network Policy Map, Resource Templates sections to web-ui docs
+- Updated changelog, reports docs, and help references
+
+## [0.8.4] - 2026-02-16
+
+### Added
+- **Helm Chart Release**: Helm chart (.tgz) now included as extra file in goreleaser releases
+- **Validation Resource Counts**: Validation view now shows scanned resource counts (Pods, Services, Deployments, etc.)
+
+### Fixed
+- **Web UI: Report AI Check**: Report generation now shows error if AI is not connected instead of silently failing
+- **Web UI: Ollama CSP Violation**: Ollama status check now uses backend proxy instead of direct browser fetch blocked by Content Security Policy
+- **Web UI: Validation View**: Shows placeholder message when no namespace is selected instead of blank page
+- **Web UI: Template Deployment**: Fixed `showNotification` undefined error and silent failure — now uses `showToast` with proper error/success feedback
+- **Web UI: Template Category Filter**: Fixed case mismatch between backend categories and frontend dropdown values
+- **Web UI: Audit Logs**: Fixed "Failed to load audit logs" caused by double DB initialization and non-JSON error responses
+- **Web UI: Context Switch**: Context switch now properly reloads namespaces and data
+- **Web UI: Log Download**: Log download filename now includes pod name and timestamp
+- **Web UI: Namespace Indicator**: Shows available namespaces instead of empty list
+- **Release: goreleaser**: Moved Helm chart output from dist/ to .helm-out/ to avoid "dist is not empty" error
+- **Database**: Fixed double initialization — NewServer() no longer overwrites DB connection already set up by main
+
+### Removed
+- **Helm View**: Removed from sidebar (requires Helm releases installed)
+- **GitOps View**: Removed from sidebar (requires ArgoCD or Flux installed)
+
+### Documentation
+- **MkDocs Expansion**: Detailed plugin, hotkey, alias, views, and TUI feature documentation
+
+## [0.8.3] - 2026-02-14
+
+### Added
+- **Notification System**: Dispatch K8s cluster events (pod crash, OOM, node not ready, deploy fail, image pull fail) to Slack, Discord, Teams, Email (SMTP), and custom webhooks
+- **NotificationManager**: Background event watcher with SHA256 dedup (5-min cooldown), provider-specific payloads, in-memory history (100 entries)
+- **Email (SMTP) Provider**: Full SMTP/TLS support with config fields in UI (host, port, username, password, from, to)
+- **Notification History**: View recent dispatch results in Settings → Notifications
+- **Metrics Collector**: Auto-start on server boot — collects cluster/node/pod metrics every 1 min, stores in SQLite (7-day retention) with ring buffer cache
+- **Historical Charts**: Now populated with real data from the metrics collector (previously empty due to uninitialized collector)
+
+### Fixed
+- **API Rate Limit**: Increased from 100 to 600 req/min — fixes 429 Too Many Requests on Validate and other dashboard views
+- **Reports**: Metrics history now included in generated reports (was empty when collector was nil)
+
+### Removed
+- **Backups (Velero)**: Removed from sidebar, HTML, JS, and CSS
+- **Light Mode**: Removed theme toggle — dark mode only
+- **Diagnose Button**: Removed from assistant panel header
+
+### Improved
+- **Settings Tabs**: Horizontal scroll for overflow on smaller screens
+
+## [0.8.2] - 2026-02-14
+
+### Fixed
+- **WebSocket Terminal**: Fixed connection failure caused by `responseWriter` not implementing `http.Hijacker`, preventing gorilla/websocket from upgrading connections
+- **Server Timeouts**: Replaced `ReadTimeout`/`WriteTimeout` with `ReadHeaderTimeout` to prevent server-level timeouts from killing WebSocket and SSE streams
+- **Overview Events**: Fixed `loadRecentEvents()` using non-existent `/api/resources/events` — corrected to `/api/k8s/events`
+- **Overview Data**: Fixed `apiFetch` → `fetchWithAuth` (undefined function) in overview panel
+
+## [0.8.1] - 2026-02-14
+
+### Added
+- **Gemini Model Validation**: Validate Gemini model names against known versioned prefixes (gemini-2.5-*, gemini-2.0-*, etc.)
+- **Fetch Available Models**: New `/api/llm/available-models` endpoint with "Fetch Models" button for Gemini and Ollama providers
+- **Model Autocomplete**: `<datalist>` suggestions populated from provider's model list
+- **SSRF Protection**: Webhook URL validation - HTTPS-only, DNS resolution check, blocks private/loopback/link-local IPs
+- **AuthzMiddleware**: Added authorization checks to context switch and notification endpoints
+- **Backend Filters**: `warnings_only` for events timeline, `subject_kind` for RBAC visualization
+- **Release Review Report**: Comprehensive `docs/RELEASE_REVIEW_REPORT.md` with findings from 6 review teams
+
+### Fixed
+- **Web UI Test Connection**: Fixed `response_time` vs `response_time_ms` field mismatch causing "undefinedms" display
+- **Settings Save Error Handling**: `saveSettings()` now checks response status and shows error toasts instead of silently failing
+- **XSS Prevention**: Replaced inline `onclick` handlers with `data-` attributes and event delegation for cluster context switching
+- **Variable Shadowing**: Fixed terminal modal crash caused by Go variable shadowing in web handlers
+- **Velero Type Assertion**: Fixed unsafe type assertion `first, _ := ns[0].(string)` with proper `ok` check
+- **CSS Theme Variables**: Added missing `--bg-hover` and `--text-muted` to all 6 theme variants
+
+### Changed
+- Default Gemini model updated from `gemini-1.5-flash` to `gemini-2.5-flash`
+- `showToast()` now supports `error` type (red background, 5s duration)
+
+## [0.7.7] - 2026-02-14
+
+### Added
+- **Audit Logs Modal**: Audit logs now open as a modal overlay, preserving the center resource table
+- **Reports Modal**: Cluster reports open as a modal overlay instead of replacing the resource table
+- **Overview Page**: Dedicated Overview page with cluster health cards, quick actions, and recent events (AI panel hidden on Overview for clean look)
+- **Trivy-Bundled Release**: goreleaser now produces `k13d-with-trivy` archives for linux/darwin with pre-bundled Trivy binary
+
+### Changed
+- AI Assistant panel auto-hides on Overview and restores on other views
+- Audit Logs filter controls integrated into modal header
+
+## [0.7.6] - 2026-02-14
+
+### Added
+- **Web UI: Metrics Dashboard**: Real-time cluster health cards with CPU/Memory bars, pod/deployment/node status, and recent events (backed by `/api/pulse`)
+- **Web UI: Topology Tree View**: Hierarchical resource ownership visualization with collapsible tree nodes (backed by `/api/xray`)
+- **Web UI: Applications View**: App-centric grouped view by `app.kubernetes.io/name` labels with health status badges
+- **Web UI: Validate View**: Cross-resource validation with severity levels (critical/warning/info) and actionable suggestions
+- **Web UI: Healing View**: Auto-remediation rules CRUD interface with event history tracking
+- **Web UI: Helm Manager**: Full Helm release management with details, values, history, rollback, and uninstall
+- **Web UI: Theme/Skin Selector**: 5 color themes in Settings - Tokyo Night (default), Production (red), Staging (yellow), Development (green), Light
+- **Cross-view Navigation**: Related views linked together (Metrics↔Charts, Topology Graph↔Tree, Validate↔Reports)
+- **Overview Quick Actions**: New buttons for Metrics, Topology Tree, Applications, Validate, and Helm
+
+### Changed
+- Sidebar reorganized: Visualization (Topology, Applications), Operations (Validate, Healing, Helm), Monitoring (Metrics, Audit Logs, Reports)
+- XRay renamed to "Topology Tree" for consistency with existing Topology graph view
+- Pulse renamed to "Metrics" for consistency with existing metrics charts
+
 ## [Unreleased]
 
 ### Added

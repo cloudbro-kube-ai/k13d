@@ -320,7 +320,7 @@ All AI commands pass through safety analysis:
 
 ### TUI Safety Prompt
 
-![TUI Decision Required](../images/tui-decision-required.png)
+When a dangerous command is detected, the TUI shows an approval dialog with `Y`/`N`/`A` options before execution.
 
 ### AST Parsing
 

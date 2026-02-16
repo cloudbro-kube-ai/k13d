@@ -1,3 +1,6 @@
+// TODO: This file duplicates significant logic from cmd/kubectl-k13d/main.go.
+// Extract shared startup logic (flag parsing, DB init, embedded LLM, web/TUI runner)
+// into an internal/cli package and keep both main.go files as thin entry points.
 package main
 
 import (
@@ -10,13 +13,13 @@ import (
 	"runtime/debug"
 	"syscall"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/llm/embedded"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/log"
-	mcpserver "github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/mcp/server"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ui"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/web"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/llm/embedded"
+	"github.com/cloudbro-kube-ai/k13d/pkg/log"
+	mcpserver "github.com/cloudbro-kube-ai/k13d/pkg/mcp/server"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ui"
+	"github.com/cloudbro-kube-ai/k13d/pkg/web"
 )
 
 // Version info (set by ldflags)
@@ -329,6 +332,7 @@ func runTUI(cfg *config.Config, initialNamespace string, embeddedServer *embedde
 		}
 	}()
 
+	ui.Version = Version
 	app := ui.NewAppWithNamespace(initialNamespace)
 	if err := app.Run(); err != nil {
 		log.Errorf("Application exited with error: %v", err)
@@ -653,6 +657,6 @@ func showEmbeddedLLMStatus() {
 
 	if _, err := os.Stat(server.ServerBinaryPath()); err != nil {
 		fmt.Println("\nNote: The llama-server binary is bundled with k13d-llm releases.")
-		fmt.Println("Download from: https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/releases")
+		fmt.Println("Download from: https://github.com/cloudbro-kube-ai/k13d/releases")
 	}
 }

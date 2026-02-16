@@ -228,6 +228,119 @@ func TestCostOptimization_Priorities(t *testing.T) {
 	}
 }
 
+func TestParseSections(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantNil  bool
+		checkFn  func(*ReportSections) bool
+		checkMsg string
+	}{
+		{
+			name:    "empty string returns nil (all sections)",
+			input:   "",
+			wantNil: true,
+		},
+		{
+			name:     "single section - nodes",
+			input:    "nodes",
+			checkFn:  func(s *ReportSections) bool { return s.Nodes && !s.Workloads && !s.FinOps },
+			checkMsg: "only Nodes should be true",
+		},
+		{
+			name:     "multiple sections",
+			input:    "nodes,workloads,finops",
+			checkFn:  func(s *ReportSections) bool { return s.Nodes && s.Workloads && s.FinOps && !s.SecurityBasic },
+			checkMsg: "Nodes, Workloads, FinOps should be true; SecurityBasic should be false",
+		},
+		{
+			name:     "security enables SecurityBasic",
+			input:    "security",
+			checkFn:  func(s *ReportSections) bool { return s.SecurityBasic && !s.SecurityFull },
+			checkMsg: "SecurityBasic should be true, SecurityFull should be false",
+		},
+		{
+			name:     "security_full enables both SecurityBasic and SecurityFull",
+			input:    "security_full",
+			checkFn:  func(s *ReportSections) bool { return s.SecurityBasic && s.SecurityFull },
+			checkMsg: "both SecurityBasic and SecurityFull should be true",
+		},
+		{
+			name:     "events and metrics",
+			input:    "events,metrics",
+			checkFn:  func(s *ReportSections) bool { return s.Events && s.Metrics && !s.Nodes },
+			checkMsg: "Events and Metrics should be true",
+		},
+		{
+			name:     "namespaces section",
+			input:    "namespaces",
+			checkFn:  func(s *ReportSections) bool { return s.Namespaces && !s.Nodes },
+			checkMsg: "Namespaces should be true, Nodes should be false",
+		},
+		{
+			name:  "all sections combined",
+			input: "nodes,namespaces,workloads,events,security_full,finops,metrics",
+			checkFn: func(s *ReportSections) bool {
+				return s.Nodes && s.Namespaces && s.Workloads && s.Events && s.SecurityBasic && s.SecurityFull && s.FinOps && s.Metrics
+			},
+			checkMsg: "all sections should be true",
+		},
+		{
+			name:  "unknown sections are ignored",
+			input: "nodes,unknown,invalid",
+			checkFn: func(s *ReportSections) bool {
+				return s.Nodes && !s.Workloads && !s.FinOps && !s.SecurityBasic
+			},
+			checkMsg: "only Nodes should be true, unknown sections ignored",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseSections(tt.input)
+			if tt.wantNil {
+				if result != nil {
+					t.Errorf("ParseSections(%q) should return nil, got %+v", tt.input, result)
+				}
+				return
+			}
+			if result == nil {
+				t.Fatalf("ParseSections(%q) returned nil, expected non-nil", tt.input)
+			}
+			if !tt.checkFn(result) {
+				t.Errorf("ParseSections(%q): %s, got %+v", tt.input, tt.checkMsg, result)
+			}
+		})
+	}
+}
+
+func TestAllSections(t *testing.T) {
+	s := AllSections()
+	if s == nil {
+		t.Fatal("AllSections() returned nil")
+	}
+	if !s.Nodes || !s.Namespaces || !s.Workloads || !s.Events || !s.SecurityBasic || !s.FinOps || !s.Metrics {
+		t.Errorf("AllSections() should have all standard sections enabled, got %+v", s)
+	}
+	// SecurityFull should NOT be enabled by default (it's slow with Trivy)
+	if s.SecurityFull {
+		t.Error("AllSections() should not enable SecurityFull by default")
+	}
+}
+
+func TestReportSections_SecurityFullImpliesBasic(t *testing.T) {
+	s := ParseSections("security_full")
+	if s == nil {
+		t.Fatal("ParseSections returned nil")
+	}
+	if !s.SecurityBasic {
+		t.Error("security_full should also enable SecurityBasic")
+	}
+	if !s.SecurityFull {
+		t.Error("security_full should enable SecurityFull")
+	}
+}
+
 func TestNamespaceCost_CostPercentage(t *testing.T) {
 	costs := []NamespaceCost{
 		{Namespace: "ns1", EstimatedCost: 100.0, CostPercentage: 50.0},

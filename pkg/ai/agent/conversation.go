@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/providers"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/safety"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/tools"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/providers"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/tools"
 )
 
 // systemPrompt is the default system prompt for the agent
@@ -116,6 +115,12 @@ func (a *Agent) AskWithContext(ctx context.Context, question string, resourceCon
 	fullQuestion := question
 	if resourceContext != "" {
 		fullQuestion = fmt.Sprintf("%s\n\nContext:\n%s", question, resourceContext)
+
+		// Run pre-analysis on the resource context
+		preAnalysis := a.runPreAnalysis(ctx, resourceContext)
+		if preAnalysis != "" {
+			fullQuestion += preAnalysis
+		}
 	}
 	return a.Ask(ctx, fullQuestion)
 }
@@ -141,24 +146,35 @@ func (a *Agent) handleUserMessage(content string) error {
 
 // callLLM calls the LLM provider and handles the response
 func (a *Agent) callLLM() error {
-	if a.provider == nil {
+	// Snapshot config under read lock to avoid races with SetProvider/SetToolRegistry
+	a.configMu.RLock()
+	provider := a.provider
+	toolProvider := a.toolProvider
+	toolRegistry := a.toolRegistry
+	a.configMu.RUnlock()
+
+	if provider == nil {
 		return fmt.Errorf("no LLM provider configured")
 	}
 
 	// Build prompt with conversation history
 	prompt := a.buildPromptWithHistory()
 
+	// Anonymize prompt before sending to LLM
+	anonymizedPrompt := a.anonymizer.Anonymize(prompt)
+
 	// Collect response for session history
 	var responseBuilder strings.Builder
 
-	// Streaming callback - collect response and emit
+	// Streaming callback - collect response, deanonymize, and emit
 	streamCallback := func(chunk string) {
-		responseBuilder.WriteString(chunk)
-		a.emitStreamChunk(chunk)
+		deanonymized := a.anonymizer.Deanonymize(chunk)
+		responseBuilder.WriteString(deanonymized)
+		a.emitStreamChunk(deanonymized)
 	}
 
 	// Check if we have tool support
-	if a.toolProvider != nil && a.toolRegistry != nil {
+	if toolProvider != nil && toolRegistry != nil {
 		// Use tool-enabled asking
 		toolDefs := a.buildToolDefinitions()
 
@@ -166,13 +182,13 @@ func (a *Agent) callLLM() error {
 			return a.handleToolCall(call)
 		}
 
-		err := a.toolProvider.AskWithTools(a.ctx, prompt, toolDefs, streamCallback, toolCallback)
+		err := toolProvider.AskWithTools(a.ctx, anonymizedPrompt, toolDefs, streamCallback, toolCallback)
 		if err != nil {
 			return err
 		}
 	} else {
 		// Basic asking without tools
-		err := a.provider.Ask(a.ctx, prompt, streamCallback)
+		err := provider.Ask(a.ctx, anonymizedPrompt, streamCallback)
 		if err != nil {
 			return err
 		}
@@ -199,8 +215,11 @@ func (a *Agent) buildPromptWithHistory() string {
 	sb.WriteString("\n\n")
 
 	// Language instruction
-	if a.language != "" && a.language != "en" {
-		langInstruction := getLanguageInstruction(a.language)
+	a.configMu.RLock()
+	lang := a.language
+	a.configMu.RUnlock()
+	if lang != "" && lang != "en" {
+		langInstruction := getLanguageInstruction(lang)
 		if langInstruction != "" {
 			sb.WriteString(langInstruction)
 			sb.WriteString("\n\n")
@@ -307,6 +326,9 @@ func (a *Agent) handleToolCall(call providers.ToolCall) providers.ToolResult {
 
 	result := a.toolRegistry.Execute(a.ctx, registryCall)
 	executionDuration := time.Since(startTime)
+
+	// Anonymize tool result before sending back to LLM
+	result.Content = a.anonymizer.Anonymize(result.Content)
 
 	// Store result in tool call info
 	toolCall.Result = result.Content
@@ -447,18 +469,6 @@ func (a *Agent) cancelPendingTools() {
 	a.pendingToolCalls = a.pendingToolCalls[:0]
 }
 
-// isReadOnlyCommand checks if a command is read-only using safety analyzer
-func (a *Agent) isReadOnlyCommand(cmd string) bool {
-	isReadOnly, _ := safety.QuickCheck(cmd)
-	return isReadOnly
-}
-
-// isDangerousCommand checks if a command is dangerous using safety analyzer
-func (a *Agent) isDangerousCommand(cmd string) bool {
-	_, isDangerous := safety.QuickCheck(cmd)
-	return isDangerous
-}
-
 // getLanguageInstruction returns the language instruction for the given language code
 func getLanguageInstruction(lang string) string {
 	switch lang {
@@ -473,7 +483,9 @@ func getLanguageInstruction(lang string) string {
 	}
 }
 
-// SetLanguage sets the display language for the agent
+// SetLanguage sets the display language for the agent (thread-safe)
 func (a *Agent) SetLanguage(lang string) {
+	a.configMu.Lock()
+	defer a.configMu.Unlock()
 	a.language = lang
 }

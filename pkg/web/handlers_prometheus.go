@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 )
 
 // handlePrometheusMetrics exposes metrics in Prometheus format
@@ -34,65 +34,70 @@ func (s *Server) handlePrometheusMetrics(w http.ResponseWriter, r *http.Request)
 	sb.WriteString("# TYPE k13d_info gauge\n")
 	sb.WriteString(fmt.Sprintf("k13d_info{version=\"%s\",context=\"%s\"} 1\n", version, contextName))
 
-	// Cluster metrics from collector
+	// Cluster metrics from collector (cache-first, SQLite fallback)
 	if s.metricsCollector != nil {
-		store := s.metricsCollector.GetStore()
-		if store != nil {
-			metrics, err := store.GetLatestClusterMetrics(ctx, contextName)
-			if err == nil && metrics != nil {
-				// Node metrics
-				sb.WriteString("\n# HELP k13d_cluster_nodes_total Total number of nodes\n")
-				sb.WriteString("# TYPE k13d_cluster_nodes_total gauge\n")
-				sb.WriteString(fmt.Sprintf("k13d_cluster_nodes_total{context=\"%s\"} %d\n", contextName, metrics.TotalNodes))
-
-				sb.WriteString("\n# HELP k13d_cluster_nodes_ready Number of ready nodes\n")
-				sb.WriteString("# TYPE k13d_cluster_nodes_ready gauge\n")
-				sb.WriteString(fmt.Sprintf("k13d_cluster_nodes_ready{context=\"%s\"} %d\n", contextName, metrics.ReadyNodes))
-
-				// Pod metrics
-				sb.WriteString("\n# HELP k13d_cluster_pods_total Total number of pods\n")
-				sb.WriteString("# TYPE k13d_cluster_pods_total gauge\n")
-				sb.WriteString(fmt.Sprintf("k13d_cluster_pods_total{context=\"%s\"} %d\n", contextName, metrics.TotalPods))
-
-				sb.WriteString("\n# HELP k13d_cluster_pods_running Number of running pods\n")
-				sb.WriteString("# TYPE k13d_cluster_pods_running gauge\n")
-				sb.WriteString(fmt.Sprintf("k13d_cluster_pods_running{context=\"%s\"} %d\n", contextName, metrics.RunningPods))
-
-				sb.WriteString("\n# HELP k13d_cluster_pods_pending Number of pending pods\n")
-				sb.WriteString("# TYPE k13d_cluster_pods_pending gauge\n")
-				sb.WriteString(fmt.Sprintf("k13d_cluster_pods_pending{context=\"%s\"} %d\n", contextName, metrics.PendingPods))
-
-				sb.WriteString("\n# HELP k13d_cluster_pods_failed Number of failed pods\n")
-				sb.WriteString("# TYPE k13d_cluster_pods_failed gauge\n")
-				sb.WriteString(fmt.Sprintf("k13d_cluster_pods_failed{context=\"%s\"} %d\n", contextName, metrics.FailedPods))
-
-				// CPU metrics
-				sb.WriteString("\n# HELP k13d_cluster_cpu_capacity_millicores Total CPU capacity in millicores\n")
-				sb.WriteString("# TYPE k13d_cluster_cpu_capacity_millicores gauge\n")
-				sb.WriteString(fmt.Sprintf("k13d_cluster_cpu_capacity_millicores{context=\"%s\"} %d\n", contextName, metrics.TotalCPUMillis))
-
-				sb.WriteString("\n# HELP k13d_cluster_cpu_used_millicores Used CPU in millicores\n")
-				sb.WriteString("# TYPE k13d_cluster_cpu_used_millicores gauge\n")
-				sb.WriteString(fmt.Sprintf("k13d_cluster_cpu_used_millicores{context=\"%s\"} %d\n", contextName, metrics.UsedCPUMillis))
-
-				// Memory metrics
-				sb.WriteString("\n# HELP k13d_cluster_memory_capacity_mb Total memory capacity in MB\n")
-				sb.WriteString("# TYPE k13d_cluster_memory_capacity_mb gauge\n")
-				sb.WriteString(fmt.Sprintf("k13d_cluster_memory_capacity_mb{context=\"%s\"} %d\n", contextName, metrics.TotalMemoryMB))
-
-				sb.WriteString("\n# HELP k13d_cluster_memory_used_mb Used memory in MB\n")
-				sb.WriteString("# TYPE k13d_cluster_memory_used_mb gauge\n")
-				sb.WriteString(fmt.Sprintf("k13d_cluster_memory_used_mb{context=\"%s\"} %d\n", contextName, metrics.UsedMemoryMB))
-
-				// Deployment metrics
-				sb.WriteString("\n# HELP k13d_cluster_deployments_total Total number of deployments\n")
-				sb.WriteString("# TYPE k13d_cluster_deployments_total gauge\n")
-				sb.WriteString(fmt.Sprintf("k13d_cluster_deployments_total{context=\"%s\"} %d\n", contextName, metrics.TotalDeployments))
-
-				sb.WriteString("\n# HELP k13d_cluster_deployments_ready Number of ready deployments\n")
-				sb.WriteString("# TYPE k13d_cluster_deployments_ready gauge\n")
-				sb.WriteString(fmt.Sprintf("k13d_cluster_deployments_ready{context=\"%s\"} %d\n", contextName, metrics.ReadyDeployments))
+		var metrics *db.ClusterMetrics
+		if cache := s.metricsCollector.GetCache(); cache != nil {
+			metrics = cache.GetLatestClusterMetrics(contextName)
+		}
+		if metrics == nil {
+			if store := s.metricsCollector.GetStore(); store != nil {
+				metrics, _ = store.GetLatestClusterMetrics(ctx, contextName)
 			}
+		}
+		if metrics != nil {
+			// Node metrics
+			sb.WriteString("\n# HELP k13d_cluster_nodes_total Total number of nodes\n")
+			sb.WriteString("# TYPE k13d_cluster_nodes_total gauge\n")
+			sb.WriteString(fmt.Sprintf("k13d_cluster_nodes_total{context=\"%s\"} %d\n", contextName, metrics.TotalNodes))
+
+			sb.WriteString("\n# HELP k13d_cluster_nodes_ready Number of ready nodes\n")
+			sb.WriteString("# TYPE k13d_cluster_nodes_ready gauge\n")
+			sb.WriteString(fmt.Sprintf("k13d_cluster_nodes_ready{context=\"%s\"} %d\n", contextName, metrics.ReadyNodes))
+
+			// Pod metrics
+			sb.WriteString("\n# HELP k13d_cluster_pods_total Total number of pods\n")
+			sb.WriteString("# TYPE k13d_cluster_pods_total gauge\n")
+			sb.WriteString(fmt.Sprintf("k13d_cluster_pods_total{context=\"%s\"} %d\n", contextName, metrics.TotalPods))
+
+			sb.WriteString("\n# HELP k13d_cluster_pods_running Number of running pods\n")
+			sb.WriteString("# TYPE k13d_cluster_pods_running gauge\n")
+			sb.WriteString(fmt.Sprintf("k13d_cluster_pods_running{context=\"%s\"} %d\n", contextName, metrics.RunningPods))
+
+			sb.WriteString("\n# HELP k13d_cluster_pods_pending Number of pending pods\n")
+			sb.WriteString("# TYPE k13d_cluster_pods_pending gauge\n")
+			sb.WriteString(fmt.Sprintf("k13d_cluster_pods_pending{context=\"%s\"} %d\n", contextName, metrics.PendingPods))
+
+			sb.WriteString("\n# HELP k13d_cluster_pods_failed Number of failed pods\n")
+			sb.WriteString("# TYPE k13d_cluster_pods_failed gauge\n")
+			sb.WriteString(fmt.Sprintf("k13d_cluster_pods_failed{context=\"%s\"} %d\n", contextName, metrics.FailedPods))
+
+			// CPU metrics
+			sb.WriteString("\n# HELP k13d_cluster_cpu_capacity_millicores Total CPU capacity in millicores\n")
+			sb.WriteString("# TYPE k13d_cluster_cpu_capacity_millicores gauge\n")
+			sb.WriteString(fmt.Sprintf("k13d_cluster_cpu_capacity_millicores{context=\"%s\"} %d\n", contextName, metrics.TotalCPUMillis))
+
+			sb.WriteString("\n# HELP k13d_cluster_cpu_used_millicores Used CPU in millicores\n")
+			sb.WriteString("# TYPE k13d_cluster_cpu_used_millicores gauge\n")
+			sb.WriteString(fmt.Sprintf("k13d_cluster_cpu_used_millicores{context=\"%s\"} %d\n", contextName, metrics.UsedCPUMillis))
+
+			// Memory metrics
+			sb.WriteString("\n# HELP k13d_cluster_memory_capacity_mb Total memory capacity in MB\n")
+			sb.WriteString("# TYPE k13d_cluster_memory_capacity_mb gauge\n")
+			sb.WriteString(fmt.Sprintf("k13d_cluster_memory_capacity_mb{context=\"%s\"} %d\n", contextName, metrics.TotalMemoryMB))
+
+			sb.WriteString("\n# HELP k13d_cluster_memory_used_mb Used memory in MB\n")
+			sb.WriteString("# TYPE k13d_cluster_memory_used_mb gauge\n")
+			sb.WriteString(fmt.Sprintf("k13d_cluster_memory_used_mb{context=\"%s\"} %d\n", contextName, metrics.UsedMemoryMB))
+
+			// Deployment metrics
+			sb.WriteString("\n# HELP k13d_cluster_deployments_total Total number of deployments\n")
+			sb.WriteString("# TYPE k13d_cluster_deployments_total gauge\n")
+			sb.WriteString(fmt.Sprintf("k13d_cluster_deployments_total{context=\"%s\"} %d\n", contextName, metrics.TotalDeployments))
+
+			sb.WriteString("\n# HELP k13d_cluster_deployments_ready Number of ready deployments\n")
+			sb.WriteString("# TYPE k13d_cluster_deployments_ready gauge\n")
+			sb.WriteString(fmt.Sprintf("k13d_cluster_deployments_ready{context=\"%s\"} %d\n", contextName, metrics.ReadyDeployments))
 		}
 	}
 

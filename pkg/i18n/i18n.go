@@ -2,6 +2,7 @@ package i18n
 
 import (
 	"strings"
+	"sync"
 )
 
 type Language string
@@ -13,9 +14,14 @@ const (
 	JA Language = "ja"
 )
 
-var currentLang Language = EN
+var (
+	currentLang   Language = EN
+	currentLangMu sync.RWMutex
+)
 
 func SetLanguage(lang string) {
+	currentLangMu.Lock()
+	defer currentLangMu.Unlock()
 	switch strings.ToLower(lang) {
 	case "ko", "korean":
 		currentLang = KO
@@ -29,9 +35,14 @@ func SetLanguage(lang string) {
 }
 
 func GetLanguage() Language {
+	currentLangMu.RLock()
+	defer currentLangMu.RUnlock()
 	return currentLang
 }
 
+// translations holds all UI strings keyed by language.
+// NOTE: These are hardcoded in-memory maps. For a larger translation set,
+// consider loading from embedded JSON/YAML files or using a proper i18n library.
 var translations = map[Language]map[string]string{
 	EN: {
 		"app_title":          "k13d - K8s AI Explorer",
@@ -248,7 +259,11 @@ var translations = map[Language]map[string]string{
 }
 
 func T(key string) string {
-	if langMap, ok := translations[currentLang]; ok {
+	currentLangMu.RLock()
+	lang := currentLang
+	currentLangMu.RUnlock()
+
+	if langMap, ok := translations[lang]; ok {
 		if val, ok := langMap[key]; ok {
 			return val
 		}

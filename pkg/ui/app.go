@@ -16,12 +16,12 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/i18n"
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
 	"github.com/gdamore/tcell/v2"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/ai/safety"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/config"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/i18n"
-	"github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/pkg/k8s"
 	"github.com/rivo/tview"
 )
 
@@ -94,6 +94,9 @@ var commands = []struct {
 	{"model", "models", "Switch AI model", "action"},
 	{"alias", "aliases", "Show command aliases", "action"},
 	{"plugins", "plugin", "Show plugins", "action"},
+	{"pulse", "pu", "Cluster health pulse", "action"},
+	{"xray", "xr", "XRay resource hierarchy", "action"},
+	{"applications", "app", "Application-centric view", "action"},
 }
 
 // App is the main TUI application with k9s-style stability patterns
@@ -155,8 +158,13 @@ type App struct {
 	needsSync   int32 // 1 when a full terminal sync is needed (namespace/resource switch)
 	lastAIDraw  int64 // Unix nanos of last AI streaming draw (throttle rapid updates)
 	lastSync    int64 // Unix nanos of last screen.Sync() (for periodic safety sync)
-	cancelFn    context.CancelFunc
-	cancelLock  sync.Mutex
+	flashSeq    int64 // Monotonic sequence for flash messages (prevents stale clears)
+
+	// Context management (k9s pattern for graceful shutdown)
+	appCtx     context.Context    // Root application context
+	appCancel  context.CancelFunc // Cancels all operations on Stop()
+	cancelFn   context.CancelFunc // Refresh-specific cancellation
+	cancelLock sync.Mutex         // Protects cancelFn updates
 
 	// AI tool approval state (protected by aiMx)
 	aiMx                sync.RWMutex
@@ -183,15 +191,38 @@ type App struct {
 	customAliases *config.AliasConfig // User-defined resource aliases
 	viewsConfig   *config.ViewConfig  // Per-resource view settings (sort defaults)
 	plugins       *config.PluginsFile // Plugin definitions
+	styles        *config.StyleConfig // Per-context skin/theme
 
 	// RBAC authorization (Teleport-inspired)
-	tuiRole    string // TUI user role (default: "admin" for backward compatibility)
-	authorizer TUIAuthorizer
+	tuiRole      string // TUI user role (default: "admin" for backward compatibility)
+	authorizer   TUIAuthorizer
+	warnedNoRBAC bool // True after first "no RBAC" warning has been shown
 }
 
 // TUIAuthorizer interface for RBAC authorization in TUI (decoupled from web package)
 type TUIAuthorizer interface {
 	IsAllowed(role, resource string, action string, namespace string) (bool, string)
+}
+
+// safeGo wraps goroutines with panic recovery (k9s RunE pattern)
+func (a *App) safeGo(name string, fn func()) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				a.logger.Error("goroutine panic recovered", "name", name, "error", r, "stack", string(debug.Stack()))
+				a.flashMsg(fmt.Sprintf("Internal error in %s. The operation has been recovered. Please try again or check logs for details.", name), true)
+			}
+		}()
+		fn()
+	}()
+}
+
+// getAppContext returns the root app context, falling back to Background if nil (test safety)
+func (a *App) getAppContext() context.Context {
+	if a.appCtx != nil {
+		return a.appCtx
+	}
+	return context.Background()
 }
 
 // NewApp creates a new TUI application with default (all) namespace
@@ -233,6 +264,9 @@ func NewAppWithNamespace(initialNamespace string) *App {
 		initialNamespace = ""
 	}
 
+	// Create root application context (k9s pattern for graceful shutdown)
+	appCtx, appCancel := context.WithCancel(context.Background())
+
 	app := &App{
 		Application:         tview.NewApplication(),
 		config:              cfg,
@@ -250,6 +284,8 @@ func NewAppWithNamespace(initialNamespace string) *App {
 		cmdHistoryIdx:       -1, // Not browsing history
 		pendingToolApproval: make(chan bool, 1),
 		logger:              logger,
+		appCtx:              appCtx,
+		appCancel:           appCancel,
 	}
 
 	// Load extensibility configs (k9s pattern: aliases, views, plugins)
@@ -263,14 +299,26 @@ func NewAppWithNamespace(initialNamespace string) *App {
 		app.plugins = plugins
 	}
 
+	// Load per-context skin (k9s pattern: different themes per cluster context)
+	if k8sClient != nil {
+		if ctxName, err := k8sClient.GetCurrentContext(); err == nil && ctxName != "" {
+			if styles, err := config.LoadStylesForContext(ctxName); err == nil {
+				app.styles = styles
+			}
+		}
+	}
+	if app.styles == nil {
+		app.styles = config.DefaultStyles()
+	}
+
 	app.setupUI()
 	app.setupKeybindings()
 
 	// Load API resources in background (for autocomplete)
-	go app.loadAPIResources()
+	app.safeGo("loadAPIResources", app.loadAPIResources)
 
 	// Load namespaces in background (for header preview)
-	go app.loadNamespaces()
+	app.safeGo("loadNamespaces", app.loadNamespaces)
 
 	return app
 }
@@ -281,7 +329,7 @@ func (a *App) loadAPIResources() {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(a.getAppContext(), 10*time.Second)
 	defer cancel()
 
 	resources, err := a.k8s.GetAPIResources(ctx)
@@ -304,7 +352,7 @@ func (a *App) loadNamespaces() {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(a.getAppContext(), 10*time.Second)
 	defer cancel()
 
 	nss, err := a.k8s.ListNamespaces(ctx)
@@ -338,12 +386,13 @@ func (a *App) loadNamespaces() {
 
 // setupUI initializes all UI components
 func (a *App) setupUI() {
-	// Color scheme (Tokyo Night inspired - matching WebUI)
-	headerBg := tcell.NewRGBColor(36, 40, 59)       // #24283b
-	tableBorder := tcell.NewRGBColor(122, 162, 247) // #7aa2f7 (accent blue)
-	tableSelect := tcell.NewRGBColor(65, 72, 104)   // #414868
-	aiBorder := tcell.NewRGBColor(187, 154, 247)    // #bb9af7 (accent purple)
-	statusBg := tcell.NewRGBColor(158, 206, 106)    // #9ece6a (accent green)
+	// Color scheme: use per-context skin if loaded, otherwise Tokyo Night defaults
+	s := a.styles
+	headerBg := s.K13s.Body.BgColor.ToTcellColor()
+	tableBorder := s.K13s.Frame.FocusBorderColor.ToTcellColor()
+	tableSelect := s.K13s.Views.Table.RowSelected.BgColor.ToTcellColor()
+	aiBorder := tcell.NewRGBColor(187, 154, 247) // #bb9af7 (accent purple, no skin equivalent)
+	statusBg := s.K13s.StatusBar.BgColor.ToTcellColor()
 
 	// Header with gradient-like appearance
 	a.header = tview.NewTextView().
@@ -486,7 +535,9 @@ func (a *App) setupAIInput() {
 			question := a.aiInput.GetText()
 			if question != "" {
 				a.aiInput.SetText("")
-				go a.askAI(question)
+				a.safeGo("askAI", func() {
+					a.askAI(question)
+				})
 			}
 		}
 	})
@@ -551,7 +602,7 @@ func (a *App) askAI(question string) {
 	}
 
 	// Build context for AI
-	ctx := context.Background()
+	ctx := a.getAppContext()
 	prompt := fmt.Sprintf(`User is viewing Kubernetes %s`, resource)
 	if ns != "" {
 		prompt += fmt.Sprintf(` in namespace "%s"`, ns)
@@ -566,7 +617,10 @@ User question: %s
 Please provide a concise, helpful answer. If you suggest kubectl commands, wrap them in code blocks.`, question)
 
 	// Call AI
-	if a.aiClient == nil || !a.aiClient.IsReady() {
+	a.aiMx.RLock()
+	client := a.aiClient
+	a.aiMx.RUnlock()
+	if client == nil || !client.IsReady() {
 		a.QueueUpdateDraw(func() {
 			a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[red]AI is not available.[white]\n\nConfigure LLM in config file:\n[gray]~/.kube-ai-dashboard/config.yaml", question))
 		})
@@ -577,13 +631,13 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 	var fullResponse strings.Builder
 	var err error
 
-	if a.aiClient.SupportsTools() {
+	if client.SupportsTools() {
 		// Use agentic mode with tool calling
 		a.QueueUpdateDraw(func() {
 			a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[cyan]🤖 Agentic Mode[white] - AI can execute kubectl commands\n\n[gray]Thinking...", question))
 		})
 
-		err = a.aiClient.AskWithTools(ctx, prompt, func(chunk string) {
+		err = client.AskWithTools(ctx, prompt, func(chunk string) {
 			fullResponse.WriteString(chunk)
 			// Throttle streaming draws to reduce ghosting (50ms minimum interval)
 			now := time.Now().UnixNano()
@@ -697,7 +751,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 		})
 	} else {
 		// Fallback to regular streaming
-		err = a.aiClient.Ask(ctx, prompt, func(chunk string) {
+		err = client.Ask(ctx, prompt, func(chunk string) {
 			fullResponse.WriteString(chunk)
 			// Throttle streaming draws to reduce ghosting (50ms minimum interval)
 			now := time.Now().UnixNano()
@@ -719,7 +773,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 		if finalResponse != "" {
 			a.QueueUpdateDraw(func() {
 				prefix := "[cyan]🤖 Agentic Mode[white]\n\n"
-				if !a.aiClient.SupportsTools() {
+				if !client.SupportsTools() {
 					prefix = ""
 				}
 				a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n%s[green]A:[white] %s", question, prefix, finalResponse))
@@ -735,7 +789,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 	}
 
 	// After response complete, analyze for commands that need approval (fallback mode)
-	if !a.aiClient.SupportsTools() {
+	if !client.SupportsTools() {
 		finalResponse := fullResponse.String()
 		a.analyzeAndShowDecisions(question, finalResponse)
 	}
@@ -890,7 +944,7 @@ func (a *App) executeDecision(idx int) {
 	})
 
 	// Refresh if it was a modifying command
-	go a.refresh()
+	a.safeGo("refresh-after-execute", a.refresh)
 }
 
 // executeAllDecisions executes all pending decisions
@@ -918,13 +972,13 @@ func (a *App) executeAllDecisions() {
 			SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 				a.closeModal("confirm-all")
 				if buttonLabel == "Execute All" {
-					go a.doExecuteAll()
+					a.safeGo("doExecuteAll", a.doExecuteAll)
 				}
 			})
 		modal.SetBackgroundColor(tcell.ColorDarkRed)
 		a.showModal("confirm-all", modal, true)
 	} else {
-		go a.doExecuteAll()
+		a.safeGo("doExecuteAll", a.doExecuteAll)
 	}
 }
 
@@ -959,7 +1013,7 @@ func (a *App) doExecuteAll() {
 	})
 
 	a.flashMsg(fmt.Sprintf("Executed %d commands", len(decisions)), false)
-	go a.refresh()
+	a.safeGo("refresh-after-batch", a.refresh)
 }
 
 // setupAutocomplete configures the command input with autocomplete
@@ -1383,31 +1437,14 @@ func (a *App) requestSync() {
 
 // switchToAllNamespaces switches to all namespaces (k9s style: 0 key)
 func (a *App) switchToAllNamespaces() {
-	a.mx.Lock()
-	a.currentNamespace = ""
-	// Clear filter when switching namespace to avoid stale highlighting
-	a.filterText = ""
-	a.filterRegex = false
+	a.mx.RLock()
 	resource := a.currentResource
-	a.mx.Unlock()
-
-	// Force full terminal sync to prevent ghosting during namespace switch
-	a.requestSync()
-
-	// Clear table immediately to prevent visual artifacts
-	a.QueueUpdateDraw(func() {
-		a.table.Clear()
-		a.table.SetTitle(fmt.Sprintf(" %s - Loading... ", resource))
-		a.table.SetCell(0, 0, tview.NewTableCell("Loading...").SetTextColor(tcell.ColorYellow))
-	})
+	a.mx.RUnlock()
 
 	a.flashMsg("Switched to: all namespaces", false)
 
-	// Run async to prevent UI blocking
-	go func() {
-		a.updateHeader()
-		a.refresh()
-	}()
+	// navigateTo() handles stop-watch, state mutation, refresh, and start-watch safely
+	a.navigateTo(resource, "", "")
 }
 
 // selectNamespaceByNumber selects namespace by number (for command mode)
@@ -1416,15 +1453,11 @@ func (a *App) selectNamespaceByNumber(num int) {
 
 	if num >= len(a.namespaces) {
 		a.mx.Unlock()
-		a.flashMsg(fmt.Sprintf("Namespace %d not available (max: %d)", num, len(a.namespaces)-1), true)
+		a.flashMsg(fmt.Sprintf("Namespace #%d not found. Available namespace indices: 0-%d", num, len(a.namespaces)-1), true)
 		return
 	}
 
 	selectedNs := a.namespaces[num]
-	a.currentNamespace = selectedNs
-	// Clear filter when switching namespace to avoid stale highlighting
-	a.filterText = ""
-	a.filterRegex = false
 	nsName := selectedNs
 	if nsName == "" {
 		nsName = "all"
@@ -1437,23 +1470,10 @@ func (a *App) selectNamespaceByNumber(num int) {
 	resource := a.currentResource
 	a.mx.Unlock()
 
-	// Force full terminal sync to prevent ghosting during namespace switch
-	a.requestSync()
-
-	// Clear table immediately to prevent visual artifacts
-	a.QueueUpdateDraw(func() {
-		a.table.Clear()
-		a.table.SetTitle(fmt.Sprintf(" %s - Loading... ", resource))
-		a.table.SetCell(0, 0, tview.NewTableCell("Loading...").SetTextColor(tcell.ColorYellow))
-	})
-
 	a.flashMsg(fmt.Sprintf("Switched to namespace: %s", nsName), false)
 
-	// Run async to prevent UI blocking
-	go func() {
-		a.updateHeader()
-		a.refresh()
-	}()
+	// navigateTo() handles stop-watch, state mutation, refresh, and start-watch safely
+	a.navigateTo(resource, selectedNs, "")
 }
 
 // addRecentNamespace adds a namespace to the recent list (must be called with lock held)
@@ -1539,7 +1559,7 @@ func (a *App) reorderNamespacesByRecent() []string {
 // startFilter activates filter mode
 func (a *App) startFilter() {
 	a.cmdInput.SetLabel(" / ")
-	a.cmdHint.SetText("[gray]Type to filter (use /regex/ for regex), Enter to confirm, Esc to clear")
+	a.cmdHint.SetText("[gray]Filter: text | /regex/ | -f fuzzy | -l label=value | Esc to clear")
 	a.cmdInput.SetText(a.filterText)
 	a.SetFocus(a.cmdInput)
 
@@ -1605,7 +1625,40 @@ func (a *App) startFilter() {
 	})
 }
 
-// applyFilterText filters the table based on the given text with regex support (k9s style)
+// filterMode indicates the active filter type.
+type filterMode int
+
+const (
+	filterModeText  filterMode = iota // Default substring/regex filter
+	filterModeFuzzy                   // Fuzzy find (-f prefix)
+	filterModeLabel                   // Label filter (-l prefix)
+)
+
+// detectFilterMode parses a filter string and returns the mode and the actual pattern.
+func detectFilterMode(filter string) (filterMode, string) {
+	if strings.HasPrefix(filter, "-f ") {
+		return filterModeFuzzy, strings.TrimPrefix(filter, "-f ")
+	}
+	if strings.HasPrefix(filter, "-l ") {
+		return filterModeLabel, strings.TrimPrefix(filter, "-l ")
+	}
+	return filterModeText, filter
+}
+
+// nameColumnIndex returns the index of the name column for fuzzy matching.
+// For cluster-scoped resources, name is column 0; for namespaced, column 1.
+func nameColumnIndex(resource string) int {
+	switch resource {
+	case "nodes", "no", "namespaces", "ns", "persistentvolumes", "pv",
+		"storageclasses", "sc", "clusterroles", "cr",
+		"clusterrolebindings", "crb", "customresourcedefinitions", "crd":
+		return 0
+	default:
+		return 1
+	}
+}
+
+// applyFilterText filters the table based on the given text with regex, fuzzy, and label support (k9s style)
 func (a *App) applyFilterText(filter string) {
 	// Read all needed state upfront to avoid lock inside QueueUpdateDraw
 	a.mx.RLock()
@@ -1620,12 +1673,17 @@ func (a *App) applyFilterText(filter string) {
 		return
 	}
 
-	// Check for regex pattern /pattern/
+	// Detect filter mode
+	mode, pattern := detectFilterMode(filter)
+
+	// For text mode, check for regex pattern /pattern/
 	isRegex := false
-	filterPattern := filter
-	if strings.HasPrefix(filter, "/") && strings.HasSuffix(filter, "/") && len(filter) > 2 {
-		filterPattern = filter[1 : len(filter)-1]
-		isRegex = true
+	filterPattern := pattern
+	if mode == filterModeText {
+		if strings.HasPrefix(pattern, "/") && strings.HasSuffix(pattern, "/") && len(pattern) > 2 {
+			filterPattern = pattern[1 : len(pattern)-1]
+			isRegex = true
+		}
 	}
 
 	// Compile regex if needed
@@ -1636,8 +1694,28 @@ func (a *App) applyFilterText(filter string) {
 		if err != nil {
 			// Invalid regex, treat as plain text
 			isRegex = false
-			filterPattern = filter
+			filterPattern = pattern
 		}
+	}
+
+	// Pre-filter rows for fuzzy and label modes
+	var filteredRows [][]string
+	switch mode {
+	case filterModeFuzzy:
+		if pattern != "" {
+			nameCol := nameColumnIndex(resource)
+			filteredRows = FuzzyFilter(rows, pattern, nameCol)
+		} else {
+			filteredRows = rows
+		}
+	case filterModeLabel:
+		if pattern != "" {
+			filteredRows = LabelFilter(rows, pattern)
+		} else {
+			filteredRows = rows
+		}
+	default:
+		filteredRows = nil // Will use inline filtering below
 	}
 
 	filterLower := strings.ToLower(filterPattern)
@@ -1666,10 +1744,17 @@ func (a *App) applyFilterText(filter string) {
 			a.table.SetCell(0, i, cell)
 		}
 
+		// Determine which rows to render
+		renderRows := filteredRows
+		if mode == filterModeText {
+			renderRows = rows // Text mode uses inline filtering
+		}
+
 		// Filter and set rows
 		rowIdx := 1
-		for _, row := range rows {
-			if filterPattern != "" {
+		for _, row := range renderRows {
+			// Text mode inline filtering (regex or substring)
+			if mode == filterModeText && filterPattern != "" {
 				match := false
 				for _, cell := range row {
 					if isRegex && re != nil {
@@ -1689,6 +1774,7 @@ func (a *App) applyFilterText(filter string) {
 				}
 			}
 
+			nameCol := nameColumnIndex(resource)
 			for c, text := range row {
 				color := tcell.ColorWhite
 				if c == 2 { // Usually status column
@@ -1696,11 +1782,20 @@ func (a *App) applyFilterText(filter string) {
 				}
 				// Highlight matching text
 				displayText := text
-				if filterPattern != "" {
-					if isRegex && re != nil {
-						displayText = a.highlightRegexMatch(text, re)
-					} else if strings.Contains(strings.ToLower(text), filterLower) {
-						displayText = a.highlightMatch(text, filterLower)
+				switch mode {
+				case filterModeFuzzy:
+					if pattern != "" && c == nameCol {
+						displayText = highlightFuzzyMatch(text, pattern)
+					}
+				case filterModeLabel:
+					// No highlighting for label mode
+				default:
+					if filterPattern != "" {
+						if isRegex && re != nil {
+							displayText = a.highlightRegexMatch(text, re)
+						} else if strings.Contains(strings.ToLower(text), filterLower) {
+							displayText = a.highlightMatch(text, filterLower)
+						}
 					}
 				}
 				cell := tview.NewTableCell(displayText).
@@ -1714,10 +1809,17 @@ func (a *App) applyFilterText(filter string) {
 		// Note: resource was read upfront before QueueUpdateDraw to avoid deadlock
 		filterInfo := ""
 		if filter != "" {
-			if isRegex {
-				filterInfo = fmt.Sprintf(" [regex: %s]", filterPattern)
-			} else {
-				filterInfo = fmt.Sprintf(" [filter: %s]", filter)
+			switch mode {
+			case filterModeFuzzy:
+				filterInfo = fmt.Sprintf(" [fuzzy: %s]", pattern)
+			case filterModeLabel:
+				filterInfo = fmt.Sprintf(" [label: %s]", pattern)
+			default:
+				if isRegex {
+					filterInfo = fmt.Sprintf(" [regex: %s]", filterPattern)
+				} else {
+					filterInfo = fmt.Sprintf(" [filter: %s]", filter)
+				}
 			}
 		}
 		a.table.SetTitle(fmt.Sprintf(" %s (%d/%d)%s ", resource, rowIdx-1, len(rows), filterInfo))
@@ -1795,21 +1897,23 @@ func (a *App) setupKeybindings() {
 				return nil
 			case 'r':
 				a.stopWatch()
-				go func() {
+				a.safeGo("refresh-and-watch", func() {
 					a.refresh()
 					a.startWatch()
-				}()
+				})
 				return nil
 			case 'n':
 				a.cycleNamespace()
 				return nil
 			// k9s style: 0 = all namespaces, 1-9 = select namespace by number
 			case '0':
-				go a.switchToAllNamespaces()
+				a.safeGo("switchToAllNamespaces", a.switchToAllNamespaces)
 				return nil
 			case '1', '2', '3', '4', '5', '6', '7', '8', '9':
 				num := int(event.Rune() - '0')
-				go a.selectNamespaceByNumber(num)
+				a.safeGo("selectNamespaceByNumber", func() {
+					a.selectNamespaceByNumber(num)
+				})
 				return nil
 			case 'l':
 				a.showLogs()
@@ -1963,7 +2067,7 @@ func (a *App) setupKeybindings() {
 
 			for name, plugin := range a.plugins.GetPluginsForScope(resource) {
 				if matchPluginShortcut(event, plugin.ShortCut) {
-					go a.executePlugin(name, plugin)
+					a.safeGo("executePlugin-"+name, func() { a.executePlugin(name, plugin) })
 					return nil
 				}
 			}
@@ -2016,11 +2120,11 @@ func (a *App) setupKeybindings() {
 				case '1', '2', '3', '4', '5', '6', '7', '8', '9':
 					idx := int(event.Rune() - '1')
 					if idx < numDecisions {
-						go a.executeDecision(idx)
+						a.safeGo("executeDecision", func() { a.executeDecision(idx) })
 					}
 					return nil
 				case 'a', 'A':
-					go a.executeAllDecisions()
+					a.safeGo("executeAllDecisions", func() { a.executeAllDecisions() })
 					return nil
 				}
 			}
@@ -2035,19 +2139,22 @@ func (a *App) flashMsg(msg string, isError bool) {
 	if isError {
 		color = "[red]"
 	}
+	seq := atomic.AddInt64(&a.flashSeq, 1)
 	a.QueueUpdateDraw(func() {
 		// Clear before setting to prevent ghosting
 		a.flash.Clear()
 		a.flash.SetText(color + msg + "[white]")
 	})
 
-	// Clear after 3 seconds
-	go func() {
+	// Clear after 3 seconds, but only if no newer flash message was shown
+	a.safeGo("flashMsg-clear", func() {
 		time.Sleep(3 * time.Second)
-		a.QueueUpdateDraw(func() {
-			a.flash.Clear()
-		})
-	}()
+		if atomic.LoadInt64(&a.flashSeq) == seq {
+			a.QueueUpdateDraw(func() {
+				a.flash.Clear()
+			})
+		}
+	})
 }
 
 // updateHeader updates the header text (thread-safe)
@@ -2063,23 +2170,8 @@ func (a *App) updateHeader() {
 		}
 	}
 
-	a.mx.RLock()
-	ns := a.currentNamespace
-	resource := a.currentResource
-	namespaces := a.namespaces
-	a.mx.RUnlock()
-
-	currentNsDisplay := "[#9ece6a]all[-]"
-	if ns != "" {
-		currentNsDisplay = "[#9ece6a]" + ns + "[-]"
-	}
-
-	aiStatus := "[#f7768e]● Offline[-]"
-	if a.aiClient != nil && a.aiClient.IsReady() {
-		aiStatus = "[#9ece6a]● Online[-]"
-	}
-
-	// Watch state indicator
+	// Read watch state FIRST (before mx) to prevent lock ordering deadlock
+	// with startWatch() which acquires watchMu → mx
 	watchStatus := ""
 	a.watchMu.Lock()
 	if a.watcher != nil {
@@ -2091,6 +2183,25 @@ func (a *App) updateHeader() {
 		}
 	}
 	a.watchMu.Unlock()
+
+	a.mx.RLock()
+	ns := a.currentNamespace
+	resource := a.currentResource
+	namespaces := a.namespaces
+	a.mx.RUnlock()
+
+	currentNsDisplay := "[#9ece6a]all[-]"
+	if ns != "" {
+		currentNsDisplay = "[#9ece6a]" + ns + "[-]"
+	}
+
+	a.aiMx.RLock()
+	headerAIClient := a.aiClient
+	a.aiMx.RUnlock()
+	aiStatus := "[#f7768e]● Offline[-]"
+	if headerAIClient != nil && headerAIClient.IsReady() {
+		aiStatus = "[#9ece6a]● Online[-]"
+	}
 
 	// Build namespace quick-select preview (show first 9 namespaces with numbers)
 	nsPreview := ""
@@ -2182,7 +2293,15 @@ func (a *App) updateStatusBar() {
 		indicators = append(indicators, fmt.Sprintf("[#1a1b26]Sort:%s%s[-]", headers[sortCol], dir))
 	}
 	if filter != "" {
-		indicators = append(indicators, fmt.Sprintf("[#1a1b26]Filter:%s[-]", filter))
+		mode, pattern := detectFilterMode(filter)
+		switch mode {
+		case filterModeFuzzy:
+			indicators = append(indicators, fmt.Sprintf("[#1a1b26]Fuzzy:%s[-]", pattern))
+		case filterModeLabel:
+			indicators = append(indicators, fmt.Sprintf("[#1a1b26]Label:%s[-]", pattern))
+		default:
+			indicators = append(indicators, fmt.Sprintf("[#1a1b26]Filter:%s[-]", filter))
+		}
 	}
 	if len(indicators) > 0 {
 		shortcuts += " │ " + strings.Join(indicators, " ")
@@ -2202,7 +2321,13 @@ func (a *App) prepareContext() context.Context {
 		a.cancelFn() // Cancel previous operation
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	// Derive from root app context so Stop() cancels all operations (k9s pattern)
+	// Fallback to Background if appCtx is nil (e.g., in tests)
+	parentCtx := a.appCtx
+	if parentCtx == nil {
+		parentCtx = context.Background()
+	}
+	ctx, cancel := context.WithCancel(parentCtx)
 	a.cancelFn = cancel
 	return ctx
 }
@@ -2267,7 +2392,7 @@ func (a *App) refresh() {
 			return
 		}
 		a.logger.Error("Fetch failed after retries", "error", err, "resource", resource)
-		a.flashMsg(fmt.Sprintf("Error: %v", err), true)
+		a.flashMsg(fmt.Sprintf("Failed to load %s: %v. Check cluster connectivity and permissions.", resource, err), true)
 		a.queueUpdateDrawDirect(func() {
 			a.table.Clear()
 			a.table.SetTitle(fmt.Sprintf(" %s - Error ", resource))
@@ -2331,7 +2456,7 @@ func (a *App) refresh() {
 
 	// Update briefing panel if visible
 	if a.briefing != nil && a.briefing.IsVisible() {
-		go a.briefing.Update(ctx)
+		a.safeGo("briefing-update", func() { a.briefing.Update(ctx) })
 	}
 
 	a.logger.Info("Refresh completed", "resource", resource, "count", len(rows))
@@ -2354,12 +2479,17 @@ func (a *App) startWatch() {
 	namespace := a.currentNamespace
 	a.mx.RUnlock()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	// Derive from root app context with fallback (k9s pattern)
+	parentCtx := a.appCtx
+	if parentCtx == nil {
+		parentCtx = context.Background()
+	}
+	ctx, cancel := context.WithCancel(parentCtx)
 	a.watchCancel = cancel
 
 	onChange := func() {
 		// Trigger a refresh through the existing mechanism
-		go a.refresh()
+		a.safeGo("watch-refresh", func() { a.refresh() })
 	}
 
 	cfg := k8s.DefaultWatcherConfig()
@@ -2440,6 +2570,18 @@ func (a *App) Stop() {
 	// Set stopping flag immediately to prevent new QueueUpdateDraw calls
 	atomic.StoreInt32(&a.stopping, 1)
 
+	// Cancel root context - this cascades to ALL operations (k9s pattern)
+	if a.appCancel != nil {
+		a.appCancel()
+	}
+
+	// Cancel in-flight refresh operations (prevents backoff delays during shutdown)
+	a.cancelLock.Lock()
+	if a.cancelFn != nil {
+		a.cancelFn()
+	}
+	a.cancelLock.Unlock()
+
 	// Stop resource watcher
 	a.stopWatch()
 
@@ -2488,8 +2630,8 @@ func (a *App) Run() error {
 		if atomic.CompareAndSwapInt32(&a.needsSync, 1, 0) {
 			screen.Sync()
 			atomic.StoreInt64(&a.lastSync, now)
-		} else if now-atomic.LoadInt64(&a.lastSync) > 500_000_000 {
-			// Safety net: periodic sync every 500ms during rapid updates
+		} else if now-atomic.LoadInt64(&a.lastSync) > 2_000_000_000 {
+			// Safety net: periodic sync every 2s to catch stale artifacts
 			screen.Sync()
 			atomic.StoreInt64(&a.lastSync, now)
 		}
