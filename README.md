@@ -24,9 +24,9 @@
 <p align="center">
   <a href="https://cloudbro-kube-ai.github.io/k13d"><strong>Documentation</strong></a> ·
   <a href="https://github.com/cloudbro-kube-ai/k13d/releases"><strong>Download</strong></a> ·
-  <a href="https://cloudbro-kube-ai.github.io/k13d/features/web-ui/"><strong>Web UI Guide</strong></a> ·
-  <a href="https://cloudbro-kube-ai.github.io/k13d/features/tui/"><strong>TUI Guide</strong></a> ·
-  <a href="https://cloudbro-kube-ai.github.io/k13d/ko/"><strong>한국어</strong></a>
+  <a href="https://cloudbro-kube-ai.github.io/k13d/latest/features/web-ui/"><strong>Web UI Guide</strong></a> ·
+  <a href="https://cloudbro-kube-ai.github.io/k13d/latest/features/tui/"><strong>TUI Guide</strong></a> ·
+  <a href="https://cloudbro-kube-ai.github.io/k13d/latest/ko/"><strong>한국어</strong></a>
 </p>
 
 ---
@@ -241,14 +241,14 @@ make build
 
 **Full documentation: [https://cloudbro-kube-ai.github.io/k13d](https://cloudbro-kube-ai.github.io/k13d)**
 
-- [Installation Guide](https://cloudbro-kube-ai.github.io/k13d/getting-started/installation/)
-- [Web UI Features](https://cloudbro-kube-ai.github.io/k13d/features/web-ui/)
-- [TUI Features](https://cloudbro-kube-ai.github.io/k13d/features/tui/)
-- [AI Assistant](https://cloudbro-kube-ai.github.io/k13d/features/ai-assistant/)
-- [Configuration](https://cloudbro-kube-ai.github.io/k13d/getting-started/configuration/)
-- [Docker Deployment](https://cloudbro-kube-ai.github.io/k13d/deployment/docker/)
-- [Kubernetes Deployment](https://cloudbro-kube-ai.github.io/k13d/deployment/kubernetes/)
-- [한국어 가이드](https://cloudbro-kube-ai.github.io/k13d/ko/)
+- [Installation Guide](https://cloudbro-kube-ai.github.io/k13d/latest/getting-started/installation/)
+- [Web UI Features](https://cloudbro-kube-ai.github.io/k13d/latest/features/web-ui/)
+- [TUI Features](https://cloudbro-kube-ai.github.io/k13d/latest/features/tui/)
+- [AI Assistant](https://cloudbro-kube-ai.github.io/k13d/latest/features/ai-assistant/)
+- [Configuration](https://cloudbro-kube-ai.github.io/k13d/latest/getting-started/configuration/)
+- [Docker Deployment](https://cloudbro-kube-ai.github.io/k13d/latest/deployment/docker/)
+- [Kubernetes Deployment](https://cloudbro-kube-ai.github.io/k13d/latest/deployment/kubernetes/)
+- [한국어 가이드](https://cloudbro-kube-ai.github.io/k13d/latest/ko/)
 
 ---
 
