@@ -57,14 +57,44 @@ tar xzf k13d_*.tar.gz && chmod +x k13d
 
 **2. Run.**
 
-```bash
-# Web UI
-./k13d -web -auth-mode local
-# Open http://localhost:8080 (admin / admin)
+#### TUI mode — terminal dashboard with Vim navigation + AI panel
 
-# TUI
+```bash
 ./k13d
 ```
+
+Opens a full-featured terminal dashboard. Use `j/k` to navigate, `Tab` to open the AI panel, `:` for commands.
+
+#### Web UI mode — browser dashboard
+
+```bash
+./k13d -web -auth-mode local
+# Open http://localhost:8080 — Default login: admin / admin
+```
+
+Starts an HTTP server with the web dashboard. Add `-port 3000` to change the port.
+
+#### Both modes — Web UI + TUI simultaneously
+
+```bash
+./k13d -web -auth-mode local &   # Web UI in background
+./k13d                            # TUI in foreground
+```
+
+Run the Web UI as a background process, then launch the TUI in the foreground. Both share the same kubeconfig.
+
+#### Flags
+
+| Flag | Description |
+|------|-------------|
+| `-web` | Start Web UI server (default port 8080) |
+| `-port <N>` | Custom port for Web UI |
+| `-auth-mode local` | Enable local username/password auth |
+| `--no-auth` | Disable auth (dev only) |
+| `--embedded-llm` | Use built-in LLM (no API key needed) |
+| `--kubeconfig <path>` | Custom kubeconfig path |
+| `--context <name>` | Use specific cluster context |
+| `--debug` | Enable debug logging |
 
 That's it. Your kubeconfig is auto-detected.
 
@@ -95,7 +125,7 @@ That's it. Your kubeconfig is auto-detected.
 - **Event Timeline** — Cluster events grouped by time windows
 - **Resource Templates** — One-click deploy (Nginx, Redis, PostgreSQL, etc.)
 - **Notifications** — Slack, Discord, Teams, Email alerts
-- **5 Themes** — Tokyo Night, Production, Staging, Development, Light
+- **5 Themes** — Light (default), Tokyo Night, Production, Staging, Development
 
 ### TUI — k9s on steroids
 
