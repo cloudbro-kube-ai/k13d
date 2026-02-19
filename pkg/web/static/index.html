@@ -759,11 +759,15 @@
                             </div>
                         </div>
                     </div>
-                    <div class="ai-input-container">
+                    <div class="ai-input-container" id="ai-input-container">
                         <textarea class="ai-input" id="ai-input" placeholder="Ask me anything about Kubernetes..." rows="2"></textarea>
                         <div class="ai-actions">
-                            <span class="ai-hint">Press Enter to send</span>
-                            <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
+                            <span class="ai-hint">Enter send · Shift+Enter newline · ↑↓ history</span>
+                            <div class="ai-actions-buttons">
+                                <button class="ai-clear-btn" id="ai-clear-btn" onclick="clearAiInput()" title="Clear input">&#x2715;</button>
+                                <button class="ai-expand-btn" id="ai-expand-btn" onclick="toggleAiExpand()" title="Expand input area">&#x26F6;</button>
+                                <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -877,7 +881,8 @@
                                 <div class="settings-description">Change the dashboard color scheme</div>
                             </div>
                             <select id="setting-theme" onchange="applyTheme(this.value)">
-                                <option value="tokyo-night">Tokyo Night (Default)</option>
+                                <option value="light">Light (Default)</option>
+                                <option value="tokyo-night">Tokyo Night</option>
                                 <option value="production">Production (Red)</option>
                                 <option value="staging">Staging (Yellow)</option>
                                 <option value="dev">Development (Green)</option>

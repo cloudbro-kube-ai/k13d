@@ -857,26 +857,32 @@
         // Theme toggle (dark/light)
         function initTheme() {
             const saved = localStorage.getItem('k13d_theme');
-            if (saved) {
+            if (saved && saved !== 'light') {
                 document.documentElement.setAttribute('data-theme', saved);
+            } else {
+                document.documentElement.removeAttribute('data-theme');
             }
             updateThemeIcon();
         }
 
         function toggleTheme() {
             const current = document.documentElement.getAttribute('data-theme');
-            const next = current === 'light' ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', next);
-            localStorage.setItem('k13d_theme', next);
-            updateThemeIcon();
+            if (!current || current === 'light') {
+                // Switch to Tokyo Night
+                applyTheme('tokyo-night');
+            } else {
+                // Switch to Light
+                applyTheme('light');
+            }
         }
 
         function updateThemeIcon() {
             const btn = document.getElementById('theme-toggle');
             if (!btn) return;
             const theme = document.documentElement.getAttribute('data-theme');
-            btn.textContent = theme === 'light' ? '☀️' : '🌙';
-            btn.title = theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
+            const isLight = !theme || theme === 'light';
+            btn.textContent = isLight ? '☀️' : '🌙';
+            btn.title = isLight ? 'Switch to dark theme' : 'Switch to light theme';
         }
 
         // Apply theme immediately (before DOM ready)
@@ -2513,6 +2519,9 @@
             isLoading = true;
             document.getElementById('send-btn').disabled = true;
             document.getElementById('ai-input').value = '';
+            saveQueryToHistory(message);
+            aiHistoryIndex = -1;
+            aiCurrentDraft = '';
 
             // Save user message to chat history
             saveCurrentChatMessage(message, true);
@@ -2966,10 +2975,80 @@ ${escapeHtml(execInfo.result)}</div>
             if (loading) loading.remove();
         }
 
+        // AI input query history
+        let aiQueryHistory = JSON.parse(localStorage.getItem('k13d_query_history') || '[]');
+        let aiHistoryIndex = -1;
+        let aiCurrentDraft = '';
+
+        function saveQueryToHistory(query) {
+            if (!query.trim()) return;
+            // Avoid duplicates at the end
+            if (aiQueryHistory.length > 0 && aiQueryHistory[aiQueryHistory.length - 1] === query) return;
+            aiQueryHistory.push(query);
+            // Keep last 50 entries
+            if (aiQueryHistory.length > 50) aiQueryHistory = aiQueryHistory.slice(-50);
+            localStorage.setItem('k13d_query_history', JSON.stringify(aiQueryHistory));
+        }
+
+        function clearAiInput() {
+            const input = document.getElementById('ai-input');
+            input.value = '';
+            aiHistoryIndex = -1;
+            aiCurrentDraft = '';
+            input.focus();
+        }
+
+        function toggleAiExpand() {
+            const container = document.getElementById('ai-input-container');
+            const btn = document.getElementById('ai-expand-btn');
+            const input = document.getElementById('ai-input');
+            container.classList.toggle('expanded');
+            if (container.classList.contains('expanded')) {
+                btn.innerHTML = '&#x2716;'; // X to close
+                btn.title = 'Exit fullscreen';
+                input.rows = 20;
+            } else {
+                btn.innerHTML = '&#x26F6;'; // expand icon
+                btn.title = 'Expand input area';
+                input.rows = 2;
+            }
+            input.focus();
+        }
+
         document.getElementById('ai-input').addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
+            } else if (e.key === 'Escape') {
+                const container = document.getElementById('ai-input-container');
+                if (container.classList.contains('expanded')) {
+                    toggleAiExpand();
+                }
+            } else if (e.key === 'ArrowUp' && !e.shiftKey) {
+                const input = e.target;
+                // Only navigate history if cursor is at the start or input is single-line
+                if (input.selectionStart === 0 && aiQueryHistory.length > 0) {
+                    e.preventDefault();
+                    if (aiHistoryIndex === -1) {
+                        aiCurrentDraft = input.value;
+                        aiHistoryIndex = aiQueryHistory.length - 1;
+                    } else if (aiHistoryIndex > 0) {
+                        aiHistoryIndex--;
+                    }
+                    input.value = aiQueryHistory[aiHistoryIndex];
+                }
+            } else if (e.key === 'ArrowDown' && !e.shiftKey) {
+                const input = e.target;
+                if (aiHistoryIndex !== -1) {
+                    e.preventDefault();
+                    if (aiHistoryIndex < aiQueryHistory.length - 1) {
+                        aiHistoryIndex++;
+                        input.value = aiQueryHistory[aiHistoryIndex];
+                    } else {
+                        aiHistoryIndex = -1;
+                        input.value = aiCurrentDraft;
+                    }
+                }
             }
         });
 
@@ -3079,19 +3158,21 @@ ${escapeHtml(execInfo.result)}</div>
         function applyTheme(theme) {
             const html = document.documentElement;
             if (theme === 'light') {
-                html.setAttribute('data-theme', 'light');
-            } else if (theme === 'tokyo-night') {
                 html.removeAttribute('data-theme');
             } else {
                 html.setAttribute('data-theme', theme);
             }
             localStorage.setItem('k13d_theme', theme);
+            updateThemeIcon();
+            // Sync settings dropdown
+            const sel = document.getElementById('setting-theme');
+            if (sel) sel.value = theme;
         }
 
         // Apply saved theme on load
-        (function initTheme() {
+        (function initSettingsTheme() {
             const saved = localStorage.getItem('k13d_theme');
-            if (saved && saved !== 'tokyo-night') {
+            if (saved && saved !== 'light') {
                 applyTheme(saved);
             }
         })();

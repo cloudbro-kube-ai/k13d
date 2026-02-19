@@ -615,3 +615,125 @@
 .refresh-btn.spinning svg {
     animation: spin 1s linear infinite;
 }
+
+/* ==========================================
+ * Light Theme Overrides
+ * Override hardcoded dark backgrounds for light mode
+ * ========================================== */
+
+:root:not([data-theme]),
+[data-theme="light"] {
+    /* App container */
+    & .app-container {
+        background: linear-gradient(180deg, var(--bg-primary) 0%, #edf0f5 100%);
+    }
+
+    /* Top bar */
+    & .top-bar {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.98) 100%);
+        border-bottom: 1px solid var(--border-color);
+    }
+    & .top-bar::before {
+        background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.2), rgba(124, 58, 237, 0.2), transparent);
+    }
+
+    /* Logo */
+    & .logo {
+        text-shadow: none;
+    }
+
+    /* Sidebar */
+    & .sidebar {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 249, 250, 0.95) 100%);
+        border-right: 1px solid var(--border-color);
+    }
+    & .sidebar::-webkit-scrollbar-thumb {
+        background: rgba(37, 99, 235, 0.2);
+    }
+    & .sidebar::-webkit-scrollbar-thumb:hover {
+        background: rgba(37, 99, 235, 0.4);
+    }
+    & .nav-item:hover {
+        background: rgba(37, 99, 235, 0.06);
+        border-color: rgba(37, 99, 235, 0.1);
+    }
+    & .nav-item::before {
+        background: linear-gradient(90deg, rgba(37, 99, 235, 0.1), transparent);
+    }
+    & .nav-item.active {
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(124, 58, 237, 0.08) 100%);
+        border-color: rgba(37, 99, 235, 0.2);
+    }
+    & .nav-item .count {
+        background: rgba(233, 236, 239, 0.8);
+    }
+    & .nav-item:hover .count {
+        background: rgba(37, 99, 235, 0.1);
+    }
+    & .nav-item.active .count {
+        background: rgba(37, 99, 235, 0.15);
+    }
+
+    /* Main panel */
+    & .main-panel {
+        background: linear-gradient(180deg, rgba(248, 249, 250, 0.5) 0%, rgba(241, 243, 245, 0.8) 100%);
+    }
+
+    /* Resize handle */
+    & .resize-handle {
+        background: linear-gradient(180deg, rgba(37, 99, 235, 0.08), rgba(124, 58, 237, 0.08));
+    }
+    & .resize-handle::before {
+        background: rgba(37, 99, 235, 0.2);
+    }
+    & .resize-handle:hover {
+        background: linear-gradient(180deg, rgba(37, 99, 235, 0.15), rgba(124, 58, 237, 0.15));
+    }
+
+    /* AI Panel */
+    & .ai-panel {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.98) 100%);
+        border-left: 1px solid var(--border-color);
+    }
+    & .ai-panel::before {
+        background: linear-gradient(180deg, rgba(124, 58, 237, 0.15), transparent, rgba(37, 99, 235, 0.15));
+    }
+    & .ai-header {
+        border-bottom: 1px solid var(--border-color);
+        background: linear-gradient(90deg, rgba(124, 58, 237, 0.04) 0%, rgba(37, 99, 235, 0.03) 100%);
+    }
+    & .ai-messages::-webkit-scrollbar-thumb {
+        background: rgba(124, 58, 237, 0.2);
+    }
+    & .message.assistant .message-content {
+        background: rgba(233, 236, 239, 0.8);
+        border: 1px solid rgba(124, 58, 237, 0.1);
+    }
+    & .message-content pre {
+        background: rgba(248, 249, 250, 0.9);
+        border: 1px solid var(--border-color);
+    }
+
+    /* AI Input */
+    & .ai-input-container {
+        border-top: 1px solid var(--border-color);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(248, 249, 250, 0.8) 100%);
+    }
+    & .ai-input {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(124, 58, 237, 0.2);
+    }
+    & .ai-input:focus {
+        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.08), 0 0 20px rgba(124, 58, 237, 0.05);
+        background: rgba(255, 255, 255, 1);
+    }
+
+    /* Panel header */
+    & .panel-header {
+        border-bottom: 1px solid var(--border-color);
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 249, 250, 0.95) 100%);
+    }
+    & .resource-summary .summary-item {
+        background: rgba(248, 249, 250, 0.8);
+    }
+}

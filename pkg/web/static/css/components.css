@@ -163,6 +163,61 @@
     box-shadow: none;
 }
 
+/* AI Input Action Buttons */
+.ai-actions-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-clear-btn,
+.ai-expand-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.ai-clear-btn:hover,
+.ai-expand-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--accent-blue);
+}
+
+/* AI Input Expanded State */
+.ai-input-container.expanded {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-modal);
+    padding: 40px;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+}
+
+.ai-input-container.expanded .ai-input {
+    flex: 1;
+    resize: vertical;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.ai-input-container.expanded .ai-actions {
+    margin-top: 16px;
+}
+
 /* ==========================================
  * Tables
  * ========================================== */
