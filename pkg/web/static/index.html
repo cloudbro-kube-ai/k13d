@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -89,8 +89,8 @@
                         </div>
                     </div>
                 </div>
-                <textarea id="login-token" class="token-input" placeholder="eyJhbGciOiJSUzI1NiIs..." onkeydown="handleTokenKeydown(event)" aria-label="Kubernetes service account token"></textarea>
-                <button class="login-btn" onclick="loginWithToken()" aria-label="Sign in with token">Sign In with Token</button>
+                <textarea id="login-token" class="token-input" placeholder="eyJhbGciOiJSUzI1NiIs..." onkeydown="handleTokenKeydown(event)"></textarea>
+                <button class="login-btn" onclick="loginWithToken()">🚀 Sign In with Token</button>
             </div>
 
             <!-- Password Login Form (for local mode) -->
@@ -99,9 +99,9 @@
                     <div style="margin-bottom: 8px;">👤 로컬 계정으로 로그인하세요</div>
                     <div style="font-size: 11px; color: var(--text-muted);">관리자에게 계정 정보를 문의하세요</div>
                 </div>
-                <input type="text" id="login-username" placeholder="Username" onkeydown="handlePasswordKeydown(event)" aria-label="Username">
-                <input type="password" id="login-password" placeholder="Password" onkeydown="handlePasswordKeydown(event)" aria-label="Password">
-                <button class="login-btn" onclick="login()" aria-label="Sign in">Sign In</button>
+                <input type="text" id="login-username" placeholder="Username" onkeydown="handlePasswordKeydown(event)">
+                <input type="password" id="login-password" placeholder="Password" onkeydown="handlePasswordKeydown(event)">
+                <button class="login-btn" onclick="login()">🚀 Sign In</button>
             </div>
 
             <!-- Footer with branding -->
@@ -129,9 +129,9 @@
     <!-- Main App -->
     <div class="app-container" id="app">
         <!-- Top Bar -->
-        <div class="top-bar" role="banner">
+        <div class="top-bar">
             <div style="display: flex; align-items: center;">
-                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Toggle Sidebar (B)" aria-label="Toggle sidebar" aria-expanded="true">
+                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Toggle Sidebar (B)">
                     <span></span>
                     <span></span>
                     <span></span>
@@ -144,7 +144,7 @@
             </div>
             <div class="search-container">
                 <span class="search-icon">🔍</span>
-                <input type="text" class="global-search" id="global-search" placeholder="Search all resources..." oninput="handleGlobalSearchInput(event)" onkeydown="handleGlobalSearchKeydown(event)" onfocus="showSearchResults()" autocomplete="off" aria-label="Search all resources">
+                <input type="text" class="global-search" id="global-search" placeholder="Search all resources..." oninput="handleGlobalSearchInput(event)" onkeydown="handleGlobalSearchKeydown(event)" onfocus="showSearchResults()" autocomplete="off">
                 <span class="search-shortcut">⌘K</span>
                 <div class="search-results" id="search-results"></div>
             </div>
@@ -185,16 +185,16 @@
             </div>
             <div class="user-info">
                 <span class="user-badge" id="user-badge">admin</span>
-                <button class="logout-btn" onclick="showShortcuts()" aria-label="Keyboard shortcuts">?</button>
-                <button class="logout-btn" onclick="showSettings()" aria-label="Open settings">Settings</button>
-                <button class="logout-btn" id="logout-btn" onclick="logout()" aria-label="Log out">Logout</button>
+                <button class="logout-btn" onclick="showShortcuts()">?</button>
+                <button class="logout-btn" onclick="showSettings()">Settings</button>
+                <button class="logout-btn" id="logout-btn" onclick="logout()">Logout</button>
             </div>
         </div>
 
         <!-- Main Content -->
         <div class="main-container">
             <!-- Sidebar -->
-            <div class="sidebar sidebar-transition" id="sidebar" role="navigation" aria-label="Resource navigation">
+            <div class="sidebar sidebar-transition" id="sidebar">
                 <div class="nav-section">
                     <div class="nav-item" data-resource="overview" onclick="showOverviewPanel()" style="font-weight: 600; margin-bottom: 8px;">
                         <span>Overview</span>
@@ -366,7 +366,7 @@
             </div>
 
             <!-- Content Wrapper -->
-            <div class="content-wrapper" role="main">
+            <div class="content-wrapper">
                 <!-- Main Panel -->
                 <div class="main-panel" id="main-panel">
                     <div class="panel-header">
@@ -382,7 +382,7 @@
                     </div>
                     <div class="filter-bar">
                         <span style="font-size: 12px; color: var(--text-secondary);">Filter:</span>
-                        <input type="text" class="filter-input" id="filter-input" placeholder="Type to filter..." onkeyup="handleFilter(event)" aria-label="Filter resources">
+                        <input type="text" class="filter-input" id="filter-input" placeholder="Type to filter..." onkeyup="handleFilter(event)">
                         <button class="filter-toggle-btn" id="column-filter-toggle" onclick="toggleColumnFilters()" title="Toggle column filters (Ctrl+F)">
                             <span>⊞</span> Columns
                         </button>
@@ -696,7 +696,7 @@
                 <div class="resize-handle" id="resize-handle"></div>
 
                 <!-- AI Panel -->
-                <div class="ai-panel" id="ai-panel" role="complementary" aria-label="AI Assistant">
+                <div class="ai-panel" id="ai-panel">
                     <!-- Chat History Sidebar -->
                     <div class="chat-history-sidebar" id="chat-history-sidebar">
                         <div class="chat-history-header">
@@ -760,13 +760,13 @@
                         </div>
                     </div>
                     <div class="ai-input-container" id="ai-input-container">
-                        <textarea class="ai-input" id="ai-input" placeholder="Ask me anything about Kubernetes..." rows="2" aria-label="AI chat input"></textarea>
+                        <textarea class="ai-input" id="ai-input" placeholder="Ask me anything about Kubernetes..." rows="2"></textarea>
                         <div class="ai-actions">
                             <span class="ai-hint">Enter send · Shift+Enter newline · ↑↓ history</span>
                             <div class="ai-actions-buttons">
                                 <button class="ai-clear-btn" id="ai-clear-btn" onclick="clearAiInput()" title="Clear input">&#x2715;</button>
                                 <button class="ai-expand-btn" id="ai-expand-btn" onclick="toggleAiExpand()" title="Expand input area">&#x26F6;</button>
-                                <button class="send-btn" id="send-btn" onclick="sendMessage()" aria-label="Send message">Send</button>
+                                <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
                             </div>
                         </div>
                     </div>
