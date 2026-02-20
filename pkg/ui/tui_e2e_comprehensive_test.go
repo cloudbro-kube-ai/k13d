@@ -977,11 +977,12 @@ func TestE2EScreenContentHeader(t *testing.T) {
 	var sb strings.Builder
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
-			mainc, _, _, _ := screen.GetContent(x, y)
-			if mainc == 0 {
-				mainc = ' '
+			str, _, _ := screen.Get(x, y)
+			if len(str) == 0 {
+				sb.WriteRune(' ')
+			} else {
+				sb.WriteString(str)
 			}
-			sb.WriteRune(mainc)
 		}
 		sb.WriteRune('\n')
 	}
@@ -1031,11 +1032,12 @@ func TestE2EScreenContentResourceTable(t *testing.T) {
 	var sb strings.Builder
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
-			mainc, _, _, _ := screen.GetContent(x, y)
-			if mainc == 0 {
-				mainc = ' '
+			str, _, _ := screen.Get(x, y)
+			if len(str) == 0 {
+				sb.WriteRune(' ')
+			} else {
+				sb.WriteString(str)
 			}
-			sb.WriteRune(mainc)
 		}
 		sb.WriteRune('\n')
 	}

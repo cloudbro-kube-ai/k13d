@@ -283,8 +283,8 @@ func (conn *ServerConnection) Close() error {
 		conn.stdout.Close()
 	}
 	if conn.cmd != nil && conn.cmd.Process != nil {
-		conn.cmd.Process.Kill()
-		conn.cmd.Wait()
+		_ = conn.cmd.Process.Kill()
+		_ = conn.cmd.Wait()
 	}
 	return nil
 }

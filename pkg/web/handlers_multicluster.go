@@ -47,7 +47,7 @@ func (s *Server) handleContexts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(ContextsResponse{
+	_ = json.NewEncoder(w).Encode(ContextsResponse{
 		Contexts:       contexts,
 		CurrentContext: config.CurrentContext,
 	})
@@ -90,7 +90,7 @@ func (s *Server) handleContextSwitch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"context": req.Context,
 		"message": "Switched to context: " + req.Context,

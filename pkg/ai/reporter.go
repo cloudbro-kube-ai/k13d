@@ -28,7 +28,7 @@ func NewReporter(outputPath string) *Reporter {
 		home, _ := os.UserHomeDir()
 		outputPath = filepath.Join(home, ".local", "state", "k13d", "reports")
 	}
-	os.MkdirAll(outputPath, 0755)
+	_ = os.MkdirAll(outputPath, 0755)
 	return &Reporter{
 		OutputPath: outputPath,
 	}
@@ -36,7 +36,7 @@ func NewReporter(outputPath string) *Reporter {
 
 func (r *Reporter) Record(action Action) {
 	r.Actions = append(r.Actions, action)
-	r.SaveHTML() // Auto-save for now
+	_ = r.SaveHTML() // Auto-save for now
 }
 
 func (r *Reporter) SaveHTML() error {

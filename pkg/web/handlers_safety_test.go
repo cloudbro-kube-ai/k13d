@@ -295,7 +295,7 @@ func TestSafetyAnalysisHandler(t *testing.T) {
 		}
 
 		response := analyzeK8sSafety(req)
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response)
 	})
 
 	tests := []struct {

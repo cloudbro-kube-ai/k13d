@@ -14,7 +14,7 @@ func TestAuditLogging(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	entry := AuditEntry{
 		User:    "Tester",
@@ -54,7 +54,7 @@ func TestAuditEntryFields(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	entry := AuditEntry{
 		User:       "admin",
@@ -112,7 +112,7 @@ func TestAuditLLMFields(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	entry := AuditEntry{
 		User:        "user1",
@@ -159,7 +159,7 @@ func TestAuditFilteredQueries(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	// Create various audit entries
 	entries := []AuditEntry{
@@ -242,7 +242,7 @@ func TestAuditSkipViewActions(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	// Set config to not include views
 	SetAuditConfig(AuditConfig{IncludeViews: false})
@@ -301,7 +301,7 @@ func TestAuditLogsJSON(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	entry := AuditEntry{
 		User:       "user1",
@@ -460,7 +460,7 @@ func TestAuditFileOperations(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	entry := AuditEntry{
 		User:       "file-user",
@@ -492,7 +492,7 @@ func TestSecurityScanRecord(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	record := SecurityScanRecord{
 		ScanTime:           time.Now(),
@@ -548,7 +548,7 @@ func TestSecurityScanFilters(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	// Create multiple scan records
 	records := []SecurityScanRecord{
@@ -623,7 +623,7 @@ func TestSecurityScanByID(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	record := SecurityScanRecord{
 		ScanTime:     time.Now(),
@@ -666,7 +666,7 @@ func TestSecurityScanStats(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	// Create multiple scan records
 	for i := 0; i < 5; i++ {

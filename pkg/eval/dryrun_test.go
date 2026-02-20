@@ -3,6 +3,7 @@
 package eval
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -217,7 +218,7 @@ func TestMockToolExecutor_Execute(t *testing.T) {
 			args := map[string]interface{}{
 				"command": tt.command,
 			}
-			result, err := executor.Execute(nil, "kubectl", args)
+			result, err := executor.Execute(context.TODO(), "kubectl", args)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Execute() error = %v, wantErr %v", err, tt.wantErr)

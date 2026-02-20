@@ -140,17 +140,6 @@ func (a *App) pageDown() {
 	a.table.Select(newRow, col)
 }
 
-// setResource changes the current resource type (thread-safe, deadlock-safe)
-func (a *App) setResource(resource string) {
-	// Read current namespace to preserve it
-	a.mx.RLock()
-	ns := a.currentNamespace
-	a.mx.RUnlock()
-
-	// Use navigateTo for consistent state transition (clears filter)
-	a.navigateTo(resource, ns, "")
-}
-
 // cycleNamespace cycles through namespaces (thread-safe, deadlock-safe)
 func (a *App) cycleNamespace() {
 	// Read all needed state under one lock
@@ -529,7 +518,7 @@ func (a *App) sortByColumn(columnIdx int) {
 func parseNumber(s string) int {
 	s = strings.TrimSpace(s)
 	num := 0
-	fmt.Sscanf(s, "%d", &num)
+	_, _ = fmt.Sscanf(s, "%d", &num)
 	return num
 }
 

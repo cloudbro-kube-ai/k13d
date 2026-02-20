@@ -288,7 +288,9 @@ func NewAuthManager(cfg *AuthConfig) *AuthManager {
 			fmt.Fprintf(os.Stderr, "  Admin password: %s\n", adminPass)
 			fmt.Printf("  WARNING: Random admin password generated (see stderr). Change after first login.\n")
 		}
-		am.createLocalUser(adminUser, adminPass, "admin")
+		if err := am.createLocalUser(adminUser, adminPass, "admin"); err != nil {
+			fmt.Printf("  Warning: failed to create admin user: %v\n", err)
+		}
 	}
 
 	return am
@@ -336,7 +338,7 @@ func checkPassword(password, hash string) bool {
 // generateSessionID creates a random session ID
 func generateSessionID() string {
 	b := make([]byte, 32)
-	rand.Read(b)
+	_, _ = rand.Read(b)
 	return base64.URLEncoding.EncodeToString(b)
 }
 
@@ -781,7 +783,7 @@ func (am *AuthManager) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{
+			_ = json.NewEncoder(w).Encode(map[string]string{
 				"error": "Invalid K8s token: " + err.Error(),
 			})
 			return
@@ -822,7 +824,7 @@ func (am *AuthManager) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(LoginResponse{
+	_ = json.NewEncoder(w).Encode(LoginResponse{
 		Token:     session.ID,
 		JWTToken:  jwtToken,
 		Username:  session.Username,
@@ -865,14 +867,14 @@ func (am *AuthManager) HandleLogout(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "logged out"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "logged out"})
 }
 
 // HandleCurrentUser returns the current user info
 func (am *AuthManager) HandleCurrentUser(w http.ResponseWriter, r *http.Request) {
 	if !am.config.Enabled {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"username":     "anonymous",
 			"role":         "admin",
 			"auth_enabled": false,
@@ -886,7 +888,7 @@ func (am *AuthManager) HandleCurrentUser(w http.ResponseWriter, r *http.Request)
 	role := r.Header.Get("X-User-Role")
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"username":        username,
 		"role":            role,
 		"auth_enabled":    true,
@@ -901,14 +903,14 @@ func (am *AuthManager) HandleLDAPStatus(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 
 	if !am.IsLDAPEnabled() {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"enabled": false,
 		})
 		return
 	}
 
 	ldapConfig := am.GetLDAPConfig()
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"enabled":      true,
 		"host":         ldapConfig.Host,
 		"port":         ldapConfig.Port,
@@ -925,14 +927,14 @@ func (am *AuthManager) HandleLDAPTest(w http.ResponseWriter, r *http.Request) {
 
 	if err := am.TestLDAPConnection(); err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status": "error",
 			"error":  err.Error(),
 		})
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "ok",
 	})
 }
@@ -982,7 +984,7 @@ func (am *AuthManager) HandleListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"users": safeUsers,
 		"total": len(safeUsers),
 	})
@@ -1033,7 +1035,7 @@ func (am *AuthManager) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":   "created",
 		"username": req.Username,
 	})
@@ -1093,7 +1095,7 @@ func (am *AuthManager) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":   "updated",
 		"username": username,
 	})
@@ -1126,7 +1128,7 @@ func (am *AuthManager) HandleDeleteUser(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":   "deleted",
 		"username": username,
 	})
@@ -1170,7 +1172,7 @@ func (am *AuthManager) HandleResetPassword(w http.ResponseWriter, r *http.Reques
 	user.PasswordHash = hashPassword(req.NewPassword)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":   "password_reset",
 		"username": req.Username,
 	})
@@ -1188,7 +1190,7 @@ func (am *AuthManager) HandleAuthStatus(w http.ResponseWriter, r *http.Request) 
 		kubeconfigUser = am.tokenValidator.GetKubeconfigUser()
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"auth_enabled":     am.config.Enabled,
 		"auth_mode":        am.config.AuthMode,
 		"ldap_enabled":     am.IsLDAPEnabled(),
@@ -1214,7 +1216,7 @@ func (am *AuthManager) HandleKubeconfigLogin(w http.ResponseWriter, r *http.Requ
 	if am.tokenValidator == nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"error": "Kubernetes client not available",
 		})
 		return
@@ -1223,7 +1225,7 @@ func (am *AuthManager) HandleKubeconfigLogin(w http.ResponseWriter, r *http.Requ
 	if am.tokenValidator.GetEnvironment() != RuntimeLocal {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"error": "Kubeconfig login is only available when running locally",
 		})
 		return
@@ -1234,7 +1236,7 @@ func (am *AuthManager) HandleKubeconfigLogin(w http.ResponseWriter, r *http.Requ
 	if kubeconfigUser == "" {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"error": "Could not determine kubeconfig user",
 		})
 		return
@@ -1267,7 +1269,7 @@ func (am *AuthManager) HandleKubeconfigLogin(w http.ResponseWriter, r *http.Requ
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(LoginResponse{
+	_ = json.NewEncoder(w).Encode(LoginResponse{
 		Token:     session.ID,
 		Username:  session.Username,
 		Role:      session.Role,
@@ -1322,7 +1324,7 @@ func (am *AuthManager) LockUser(username, lockedBy string) error {
 	}
 
 	// Record audit event
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:       lockedBy,
 		Action:     "lock_user",
 		Resource:   "user/" + username,
@@ -1351,11 +1353,11 @@ func (am *AuthManager) UnlockUser(username string) error {
 
 	// Remove from database
 	if db.DB != nil {
-		db.DB.Exec("DELETE FROM user_locks WHERE username = ?", username)
+		_, _ = db.DB.Exec("DELETE FROM user_locks WHERE username = ?", username)
 	}
 
 	// Record audit event
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:       username,
 		Action:     "unlock_user",
 		Resource:   "user/" + username,
@@ -1452,7 +1454,7 @@ func (am *AuthManager) HandleLockUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":   "locked",
 		"username": req.Username,
 	})
@@ -1484,7 +1486,7 @@ func (am *AuthManager) HandleUnlockUser(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status":   "unlocked",
 		"username": req.Username,
 	})
@@ -1591,5 +1593,5 @@ func (am *AuthManager) HandleCSRFToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"csrf_token": token})
+	_ = json.NewEncoder(w).Encode(map[string]string{"csrf_token": token})
 }

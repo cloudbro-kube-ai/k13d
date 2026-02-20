@@ -466,7 +466,7 @@ func recoveryMiddleware(next http.Handler) http.Handler {
 					if username == "" {
 						username = "anonymous"
 					}
-					db.RecordAudit(db.AuditEntry{
+					_ = db.RecordAudit(db.AuditEntry{
 						User:       username,
 						Action:     "http_panic",
 						Resource:   r.URL.Path,
@@ -499,7 +499,7 @@ func withRecovery(handler http.HandlerFunc) http.HandlerFunc {
 					if username == "" {
 						username = "anonymous"
 					}
-					db.RecordAudit(db.AuditEntry{
+					_ = db.RecordAudit(db.AuditEntry{
 						User:       username,
 						Action:     "http_panic",
 						Resource:   r.URL.Path,
@@ -1039,7 +1039,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status)
+	_ = json.NewEncoder(w).Encode(status)
 }
 
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
@@ -1063,7 +1063,7 @@ func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(info)
+	_ = json.NewEncoder(w).Encode(info)
 }
 
 // parseIntSafe parses a string to int, returning defaultVal on error.

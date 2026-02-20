@@ -42,7 +42,7 @@ func (l *SSEAgentListener) sendEvent(eventType string, data interface{}) {
 
 	// Format: event: <type>\ndata: <json>\n\n
 	msg := fmt.Sprintf("event: %s\ndata: %s", eventType, string(jsonData))
-	l.writer.Write(msg)
+	_ = l.writer.Write(msg)
 }
 
 // AgentTextReceived handles text events

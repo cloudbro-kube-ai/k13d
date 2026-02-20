@@ -32,7 +32,6 @@ type Scanner struct {
 	k8sClient          *k8s.Client
 	trivyPath          string
 	kubeBenchAvailable bool
-	mu                 sync.RWMutex
 }
 
 // ScanResult contains overall security scan results

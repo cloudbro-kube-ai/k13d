@@ -42,7 +42,7 @@ func setupAPITestServer(t *testing.T) *Server {
 	authManager := NewAuthManager(authConfig)
 
 	// Create fake k8s client
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 		&corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pod", Namespace: "default"},
@@ -381,11 +381,9 @@ func TestMethodNotAllowed(t *testing.T) {
 
 			mux.ServeHTTP(w, req)
 
-			// Should return 405 Method Not Allowed
-			if w.Code != http.StatusMethodNotAllowed {
-				// Some handlers may accept any method gracefully
-				// This is OK as long as they don't crash
-			}
+			// Should return 405 Method Not Allowed, but some handlers may
+			// accept any method gracefully - this is OK as long as they don't crash.
+			_ = w.Code
 		})
 	}
 }

@@ -57,7 +57,7 @@ func setupK8sTestServer(t *testing.T) (*Server, http.Handler) {
 	allowExpand := true
 	reclaimPolicy := corev1.PersistentVolumeReclaimDelete
 
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
 		// Namespaces
 		&corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Name: "default"},
@@ -1570,7 +1570,7 @@ func TestK8sResourceResponseTimestamp(t *testing.T) {
 // TestHandleGlobalSearch tests the global search endpoint
 func TestHandleGlobalSearch(t *testing.T) {
 	server, mux := setupK8sTestServer(t)
-	defer server.Stop()
+	defer func() { _ = server.Stop() }()
 
 	tests := []struct {
 		name           string
@@ -1644,7 +1644,7 @@ func TestHandleGlobalSearch(t *testing.T) {
 // TestHandleGlobalSearch_MethodNotAllowed tests that non-GET requests are rejected
 func TestHandleGlobalSearch_MethodNotAllowed(t *testing.T) {
 	server, mux := setupK8sTestServer(t)
-	defer server.Stop()
+	defer func() { _ = server.Stop() }()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/search?q=test", nil)
 	w := httptest.NewRecorder()

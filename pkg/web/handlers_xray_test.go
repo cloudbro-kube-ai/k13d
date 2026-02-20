@@ -26,7 +26,7 @@ func setupXRayTestServer(t *testing.T) *Server {
 	replicas := int32(2)
 	completions := int32(1)
 
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
 		// Deployment
 		&appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -333,7 +333,9 @@ func TestHandleXRayDaemonSets(t *testing.T) {
 	}
 
 	var resp XRayResponse
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if resp.Type != "ds" {
 		t.Errorf("Expected type 'ds', got %q", resp.Type)
@@ -369,7 +371,9 @@ func TestHandleXRayJobs(t *testing.T) {
 	}
 
 	var resp XRayResponse
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if resp.Type != "job" {
 		t.Errorf("Expected type 'job', got %q", resp.Type)
@@ -417,7 +421,9 @@ func TestHandleXRayCronJobs(t *testing.T) {
 	}
 
 	var resp XRayResponse
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if resp.Type != "cj" {
 		t.Errorf("Expected type 'cj', got %q", resp.Type)
@@ -467,7 +473,9 @@ func TestHandleXRayDefaultType(t *testing.T) {
 	}
 
 	var resp XRayResponse
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if resp.Type != "deploy" {
 		t.Errorf("Expected default type 'deploy', got %q", resp.Type)
@@ -494,7 +502,9 @@ func TestHandleXRayNamespaceFilter(t *testing.T) {
 	}
 
 	var resp XRayResponse
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if resp.Namespace != "nonexistent" {
 		t.Errorf("Expected namespace 'nonexistent', got %q", resp.Namespace)

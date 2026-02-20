@@ -15,7 +15,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -186,57 +185,3 @@ func bundleFiles(files []string, outputPath string, commentStart, commentEnd str
 	return nil
 }
 
-// extractFromIndex extracts CSS and JS from index.html into separate files
-// This is a helper for initial extraction (run once)
-func extractFromIndex(indexPath string) error {
-	content, err := os.ReadFile(indexPath)
-	if err != nil {
-		return err
-	}
-
-	// Find <style> content
-	styleStart := bytes.Index(content, []byte("<style>"))
-	styleEnd := bytes.Index(content, []byte("</style>"))
-	if styleStart != -1 && styleEnd != -1 {
-		css := content[styleStart+7 : styleEnd]
-		// For now, write all CSS to one file
-		if err := os.WriteFile(filepath.Join(cssDir, "all.css"), css, 0644); err != nil {
-			return err
-		}
-		fmt.Println("Extracted CSS to css/all.css")
-	}
-
-	// Find <script> content (the main inline script)
-	// Look for the last large script block
-	scriptStart := bytes.LastIndex(content, []byte("<script>"))
-	scriptEnd := bytes.LastIndex(content, []byte("</script>"))
-	if scriptStart != -1 && scriptEnd != -1 && scriptEnd > scriptStart {
-		js := content[scriptStart+8 : scriptEnd]
-		if len(js) > 1000 { // Only if it's a substantial script
-			if err := os.WriteFile(filepath.Join(jsDir, "all.js"), js, 0644); err != nil {
-				return err
-			}
-			fmt.Println("Extracted JS to js/all.js")
-		}
-	}
-
-	return nil
-}
-
-// copyFile copies a file from src to dst
-func copyFile(src, dst string) error {
-	source, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer source.Close()
-
-	destination, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer destination.Close()
-
-	_, err = io.Copy(destination, source)
-	return err
-}

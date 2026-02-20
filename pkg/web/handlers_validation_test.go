@@ -18,18 +18,6 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-// newTestAuthConfig returns a standard auth config for tests.
-func newTestAuthConfig() *AuthConfig {
-	return &AuthConfig{
-		Enabled:         false,
-		SessionDuration: time.Hour,
-		AuthMode:        "local",
-		DefaultAdmin:    "admin",
-		DefaultPassword: "admin123",
-		Quiet:           true,
-	}
-}
-
 // TestExtractPodRefs tests extracting ConfigMap/Secret refs from a Pod spec.
 func TestExtractPodRefs(t *testing.T) {
 	tests := []struct {
@@ -234,7 +222,7 @@ func TestHandleValidate(t *testing.T) {
 
 	// Create fake K8s objects: a pod referencing a missing ConfigMap
 	replicas := int32(1)
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
 		&corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "web-pod", Namespace: "default", Labels: map[string]string{"app": "web"}},
 			Spec: corev1.PodSpec{

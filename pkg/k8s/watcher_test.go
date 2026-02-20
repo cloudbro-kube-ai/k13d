@@ -21,7 +21,7 @@ func testLogger() *slog.Logger {
 }
 
 func TestResourceWatcher_StartStop(t *testing.T) {
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	var called int32
@@ -72,7 +72,7 @@ func TestResourceWatcher_StartStop(t *testing.T) {
 }
 
 func TestResourceWatcher_WatchEventCallback(t *testing.T) {
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	var callCount int32
@@ -126,7 +126,7 @@ func TestResourceWatcher_WatchEventCallback(t *testing.T) {
 }
 
 func TestResourceWatcher_Debounce(t *testing.T) {
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	var callCount int32
@@ -187,7 +187,7 @@ func TestResourceWatcher_Debounce(t *testing.T) {
 }
 
 func TestResourceWatcher_Relist(t *testing.T) {
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	var callCount int32
@@ -218,7 +218,7 @@ func TestResourceWatcher_Relist(t *testing.T) {
 }
 
 func TestResourceWatcher_FallbackOnError(t *testing.T) {
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	var callCount int32
@@ -265,7 +265,7 @@ func TestResourceWatcher_FallbackOnError(t *testing.T) {
 }
 
 func TestResourceWatcher_ContextCancel(t *testing.T) {
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	onChange := func() {}
@@ -309,7 +309,7 @@ func TestResourceWatcher_ContextCancel(t *testing.T) {
 }
 
 func TestWatchResource_SupportedTypes(t *testing.T) {
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	ctx := context.Background()
@@ -345,7 +345,7 @@ func TestWatchResource_SupportedTypes(t *testing.T) {
 }
 
 func TestWatchResource_UnsupportedType(t *testing.T) {
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	ctx := context.Background()

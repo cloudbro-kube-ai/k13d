@@ -235,7 +235,7 @@ func (c *Client) AskWithToolsAndExecution(ctx context.Context, prompt string, ca
 	toolCallback := func(call providers.ToolCall) providers.ToolResult {
 		// Extract command from arguments
 		var args map[string]interface{}
-		json.Unmarshal([]byte(call.Function.Arguments), &args)
+		_ = json.Unmarshal([]byte(call.Function.Arguments), &args)
 		command := ""
 		if cmd, ok := args["command"].(string); ok {
 			command = cmd

@@ -119,7 +119,7 @@ func main() {
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
 func handleModels(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +132,7 @@ func handleModels(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func handleChatCompletions(w http.ResponseWriter, r *http.Request) {
@@ -255,7 +255,7 @@ func handleToolCallResponse(w http.ResponseWriter, req ChatRequest) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func generateKubectlCommand(req ChatRequest) string {
@@ -353,7 +353,7 @@ func handleNonStreamingResponse(w http.ResponseWriter, req ChatRequest) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 func generateResponse(req ChatRequest) string {

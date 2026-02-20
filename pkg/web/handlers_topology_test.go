@@ -36,7 +36,7 @@ func TestHandleTopology(t *testing.T) {
 	pathType := networkingv1.PathTypePrefix
 	minReplicas := int32(1)
 
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
 		&appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "web-deploy", Namespace: "default",
@@ -270,7 +270,7 @@ func TestBuildTopology(t *testing.T) {
 	deployUID := types.UID("deploy-uid-1")
 	rsUID := types.UID("rs-uid-1")
 
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
 		// Deployment -> ReplicaSet -> Pod chain
 		&appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -464,7 +464,7 @@ func TestBuildTopology_EmptyNamespace(t *testing.T) {
 	}
 	defer db.Close()
 
-	fakeClientset := fake.NewSimpleClientset()
+	fakeClientset := fake.NewSimpleClientset() //nolint:staticcheck
 	server := &Server{
 		cfg:              &config.Config{Language: "en"},
 		k8sClient:        &k8s.Client{Clientset: fakeClientset},

@@ -157,7 +157,7 @@ func (t *TerminalSession) SendError(err error) {
 	if marshalErr != nil {
 		return
 	}
-	t.conn.WriteMessage(websocket.TextMessage, data)
+	_ = t.conn.WriteMessage(websocket.TextMessage, data)
 }
 
 // TerminalHandler handles WebSocket terminal connections

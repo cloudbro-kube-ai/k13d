@@ -82,12 +82,12 @@ func (b *BriefingPanel) Toggle() {
 		go func() {
 			defer func() {
 				if r := recover(); r != nil {
-					// Silently recover - briefing update failure is non-critical
+					_ = r // Silently recover - briefing update failure is non-critical
 				}
 			}()
 			ctx, cancel := context.WithTimeout(b.app.getAppContext(), 10*time.Second)
 			defer cancel()
-			b.Update(ctx)
+			_ = b.Update(ctx)
 		}()
 	} else {
 		b.stopPulseAnimation()
@@ -499,7 +499,7 @@ func (b *BriefingPanel) startPulse() {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				// Silently recover - pulse animation failure is non-critical
+				_ = r // Silently recover - pulse animation failure is non-critical
 			}
 		}()
 		ticker := time.NewTicker(400 * time.Millisecond)

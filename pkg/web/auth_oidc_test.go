@@ -23,7 +23,7 @@ func mockOIDCServer() *httptest.Server {
 			"scopes_supported":       []string{"openid", "email", "profile"},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(discovery)
+		_ = json.NewEncoder(w).Encode(discovery)
 	})
 
 	// Token endpoint
@@ -40,7 +40,7 @@ func mockOIDCServer() *httptest.Server {
 			IDToken:     "mock-id-token",
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(tokenResp)
+		_ = json.NewEncoder(w).Encode(tokenResp)
 	})
 
 	// Userinfo endpoint
@@ -59,7 +59,7 @@ func mockOIDCServer() *httptest.Server {
 			Groups:        []string{"developers", "k8s-admins"},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(userInfo)
+		_ = json.NewEncoder(w).Encode(userInfo)
 	})
 
 	return httptest.NewServer(mux)

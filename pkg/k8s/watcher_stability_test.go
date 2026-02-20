@@ -18,7 +18,7 @@ import (
 // TestWatcherStability_StopPreventsOnChange tests that onChange is not called after Stop()
 func TestWatcherStability_StopPreventsOnChange(t *testing.T) {
 	t.Parallel()
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	var callCount int32
@@ -72,7 +72,7 @@ func TestWatcherStability_StopPreventsOnChange(t *testing.T) {
 // TestWatcherStability_RapidStartStop tests rapid Start/Stop cycles
 func TestWatcherStability_RapidStartStop(t *testing.T) {
 	t.Parallel()
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	onChange := func() {}
@@ -106,7 +106,7 @@ func TestWatcherStability_RapidStartStop(t *testing.T) {
 // TestWatcherStability_ConcurrentStopCalls tests concurrent Stop() calls are safe
 func TestWatcherStability_ConcurrentStopCalls(t *testing.T) {
 	t.Parallel()
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	onChange := func() {}
@@ -167,7 +167,7 @@ func TestWatcherStability_ConcurrentStopCalls(t *testing.T) {
 // TestWatcherStability_ContextCancelStopsWatcher tests context cancellation stops watcher cleanly
 func TestWatcherStability_ContextCancelStopsWatcher(t *testing.T) {
 	t.Parallel()
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	onChange := func() {}
@@ -212,7 +212,7 @@ func TestWatcherStability_ContextCancelStopsWatcher(t *testing.T) {
 // TestWatcherStability_WatchToFallbackTransition tests transition from Watch to Fallback mode
 func TestWatcherStability_WatchToFallbackTransition(t *testing.T) {
 	t.Parallel()
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	onChange := func() {}
@@ -252,7 +252,7 @@ func TestWatcherStability_WatchToFallbackTransition(t *testing.T) {
 // TestWatcherStability_FallbackModePolling tests that fallback mode continues polling
 func TestWatcherStability_FallbackModePolling(t *testing.T) {
 	t.Parallel()
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	var callCount int32
@@ -297,7 +297,7 @@ func TestWatcherStability_FallbackModePolling(t *testing.T) {
 // TestWatcherStability_StopDuringDebounce tests stopping during debounce window
 func TestWatcherStability_StopDuringDebounce(t *testing.T) {
 	t.Parallel()
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	var callCount int32
@@ -347,7 +347,7 @@ func TestWatcherStability_StopDuringDebounce(t *testing.T) {
 // TestWatcherStability_RelistCycle tests periodic relist functionality
 func TestWatcherStability_RelistCycle(t *testing.T) {
 	t.Parallel()
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	var callCount int32
@@ -391,7 +391,7 @@ func TestWatcherStability_RelistCycle(t *testing.T) {
 // TestWatcherStability_StateThreadSafety tests concurrent State() reads are safe
 func TestWatcherStability_StateThreadSafety(t *testing.T) {
 	t.Parallel()
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	onChange := func() {}
@@ -437,7 +437,7 @@ func TestWatcherStability_StateThreadSafety(t *testing.T) {
 // TestWatcherStability_ConcurrentStateChanges tests concurrent state changes
 func TestWatcherStability_ConcurrentStateChanges(t *testing.T) {
 	t.Parallel()
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	onChange := func() {}
@@ -495,7 +495,7 @@ func TestWatcherStability_ConcurrentStateChanges(t *testing.T) {
 // TestWatcherStability_OnChangeNotCalledAfterContextCancel tests onChange is not called after context cancel
 func TestWatcherStability_OnChangeNotCalledAfterContextCancel(t *testing.T) {
 	t.Parallel()
-	fakeClient := fake.NewSimpleClientset()
+	fakeClient := fake.NewSimpleClientset() //nolint:staticcheck
 	client := &Client{Clientset: fakeClient}
 
 	var callCount int32

@@ -129,7 +129,7 @@ func (s *Server) handleEventTimeline(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(EventTimelineResponse{
+	_ = json.NewEncoder(w).Encode(EventTimelineResponse{
 		Windows:      windows,
 		TotalNormal:  totalNormal,
 		TotalWarning: totalWarning,

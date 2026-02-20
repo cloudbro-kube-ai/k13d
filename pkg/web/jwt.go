@@ -42,7 +42,7 @@ func NewJWTManager(cfg JWTConfig) *JWTManager {
 	if len(cfg.Secret) == 0 {
 		// Generate a random 256-bit secret
 		secret := make([]byte, 32)
-		rand.Read(secret)
+		_, _ = rand.Read(secret)
 		cfg.Secret = secret
 	}
 

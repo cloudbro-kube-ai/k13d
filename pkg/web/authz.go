@@ -260,7 +260,7 @@ func (az *Authorizer) FeatureMiddleware(feature Feature) func(http.HandlerFunc) 
 
 			if !az.IsFeatureAllowed(role, feature) {
 				username := r.Header.Get("X-Username")
-				db.RecordAudit(db.AuditEntry{
+				_ = db.RecordAudit(db.AuditEntry{
 					User:       username,
 					Action:     "feature_denied",
 					Resource:   string(feature),
@@ -392,7 +392,7 @@ func (az *Authorizer) AuthzMiddleware(resource string, action Action) func(http.
 			allowed, reason := az.IsAllowed(role, resource, action, namespace)
 			if !allowed {
 				// Record authorization denial in audit log
-				db.RecordAudit(db.AuditEntry{
+				_ = db.RecordAudit(db.AuditEntry{
 					User:            username,
 					Action:          "authz_denied",
 					Resource:        resource,

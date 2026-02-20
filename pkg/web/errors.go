@@ -138,7 +138,7 @@ func getStatusCodeForError(code string) int {
 func WriteError(w http.ResponseWriter, err *APIError) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(err.StatusCode)
-	json.NewEncoder(w).Encode(err)
+	_ = json.NewEncoder(w).Encode(err)
 }
 
 // WriteErrorSimple writes a simple error message (backward compatibility)

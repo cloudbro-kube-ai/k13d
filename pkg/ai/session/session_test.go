@@ -136,7 +136,9 @@ func TestStore_List(t *testing.T) {
 
 	// Add message to session1 to update its timestamp
 	time.Sleep(10 * time.Millisecond)
-	store.AddMessage(session1.ID, Message{Role: "user", Content: "Test message"})
+	if err := store.AddMessage(session1.ID, Message{Role: "user", Content: "Test message"}); err != nil {
+		t.Fatalf("Failed to add message: %v", err)
+	}
 
 	summaries, err := store.List()
 	if err != nil {
@@ -193,9 +195,15 @@ func TestStore_Clear(t *testing.T) {
 	}
 
 	// Create multiple sessions
-	store.Create("openai", "gpt-4")
-	store.Create("ollama", "llama2")
-	store.Create("gemini", "gemini-pro")
+	if _, err := store.Create("openai", "gpt-4"); err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
+	if _, err := store.Create("ollama", "llama2"); err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
+	if _, err := store.Create("gemini", "gemini-pro"); err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
 
 	err = store.Clear()
 	if err != nil {
@@ -239,10 +247,12 @@ func TestStore_GetMessages(t *testing.T) {
 
 	// Add multiple messages
 	for i := 0; i < 10; i++ {
-		store.AddMessage(session.ID, Message{
+		if err := store.AddMessage(session.ID, Message{
 			Role:    "user",
 			Content: "Message " + string(rune('0'+i)),
-		})
+		}); err != nil {
+			t.Fatalf("Failed to add message %d: %v", i, err)
+		}
 	}
 
 	// Test pagination
@@ -291,7 +301,9 @@ func TestStore_GetRecentSessions(t *testing.T) {
 
 	// Create multiple sessions
 	for i := 0; i < 5; i++ {
-		store.Create("openai", "gpt-4")
+		if _, err := store.Create("openai", "gpt-4"); err != nil {
+			t.Fatalf("Failed to create session %d: %v", i, err)
+		}
 		time.Sleep(5 * time.Millisecond)
 	}
 
@@ -314,9 +326,15 @@ func TestStore_ExportImport(t *testing.T) {
 
 	// Create and populate a session
 	session, _ := store.Create("openai", "gpt-4")
-	store.AddMessage(session.ID, Message{Role: "user", Content: "Hello"})
-	store.AddMessage(session.ID, Message{Role: "assistant", Content: "Hi there!"})
-	store.UpdateTitle(session.ID, "Test Export")
+	if err := store.AddMessage(session.ID, Message{Role: "user", Content: "Hello"}); err != nil {
+		t.Fatalf("Failed to add message: %v", err)
+	}
+	if err := store.AddMessage(session.ID, Message{Role: "assistant", Content: "Hi there!"}); err != nil {
+		t.Fatalf("Failed to add message: %v", err)
+	}
+	if err := store.UpdateTitle(session.ID, "Test Export"); err != nil {
+		t.Fatalf("Failed to update title: %v", err)
+	}
 
 	// Export
 	data, err := store.Export(session.ID)
@@ -356,10 +374,12 @@ func TestStore_GetContextMessages(t *testing.T) {
 
 	// Add 10 messages
 	for i := 0; i < 10; i++ {
-		store.AddMessage(session.ID, Message{
+		if err := store.AddMessage(session.ID, Message{
 			Role:    "user",
 			Content: "Message " + string(rune('A'+i)),
-		})
+		}); err != nil {
+			t.Fatalf("Failed to add message %d: %v", i, err)
+		}
 	}
 
 	// Get last 5 messages for context
@@ -412,10 +432,12 @@ func TestStore_ConcurrentAccess(t *testing.T) {
 	done := make(chan bool)
 	for i := 0; i < 10; i++ {
 		go func(idx int) {
-			store.AddMessage(session.ID, Message{
+			if err := store.AddMessage(session.ID, Message{
 				Role:    "user",
 				Content: "Concurrent message " + string(rune('0'+idx)),
-			})
+			}); err != nil {
+				t.Errorf("AddMessage failed: %v", err)
+			}
 			done <- true
 		}(i)
 	}
@@ -564,9 +586,15 @@ func TestStore_Count(t *testing.T) {
 	}
 
 	// Create some sessions
-	store.Create("openai", "gpt-4")
-	store.Create("ollama", "llama2")
-	store.Create("gemini", "gemini-pro")
+	if _, err := store.Create("openai", "gpt-4"); err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
+	if _, err := store.Create("ollama", "llama2"); err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
+	if _, err := store.Create("gemini", "gemini-pro"); err != nil {
+		t.Fatalf("Failed to create session: %v", err)
+	}
 
 	count, err = store.Count()
 	if err != nil {

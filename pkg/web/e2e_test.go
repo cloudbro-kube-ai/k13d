@@ -47,7 +47,7 @@ func setupTestServer(t *testing.T) (*Server, *AuthManager) {
 	authManager := NewAuthManager(authConfig)
 
 	// Create fake k8s client
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 		&corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -492,9 +492,9 @@ func TestE2E_AgenticChatRequiresToolSupport(t *testing.T) {
 		flusher, _ := w.(http.Flusher)
 
 		resp := `{"id":"test","choices":[{"delta":{"content":"AI Response"},"finish_reason":"stop"}]}`
-		w.Write([]byte("data: " + resp + "\n\n"))
+		_, _ = w.Write([]byte("data: " + resp + "\n\n"))
 		flusher.Flush()
-		w.Write([]byte("data: [DONE]\n\n"))
+		_, _ = w.Write([]byte("data: [DONE]\n\n"))
 		flusher.Flush()
 	}))
 	defer mockAIServer.Close()
@@ -1097,7 +1097,7 @@ func TestE2E_FullMiddlewareChain(t *testing.T) {
 	mux.HandleFunc("/api/test", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
 
 	handler := securityHeadersMiddleware(corsMiddleware(authManager.CSRFMiddleware(mux)))

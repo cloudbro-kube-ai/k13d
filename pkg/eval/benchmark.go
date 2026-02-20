@@ -233,7 +233,7 @@ func checkSimpleExpectation(output string, exp SimpleExpectation) bool {
 		sentences := strings.Count(output, ".") + strings.Count(output, "。")
 		// Parse max from value (assuming it's a small number)
 		var max int
-		fmt.Sscanf(exp.Value, "%d", &max)
+		_, _ = fmt.Sscanf(exp.Value, "%d", &max)
 		return sentences <= max+1 // Allow some margin
 
 	case "sentiment":

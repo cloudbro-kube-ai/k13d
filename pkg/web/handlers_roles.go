@@ -25,7 +25,7 @@ func (s *Server) handleListRoles(w http.ResponseWriter, r *http.Request) {
 	roles := s.authorizer.ListRoles()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"roles": roles,
 		"total": len(roles),
 	})
@@ -86,7 +86,7 @@ func (s *Server) handleCreateRole(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status": "created",
 		"name":   req.Name,
 	})
@@ -121,7 +121,7 @@ func (s *Server) handleGetRole(w http.ResponseWriter, _ *http.Request, name stri
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(role)
+	_ = json.NewEncoder(w).Encode(role)
 }
 
 // handleUpdateRole updates a custom role (built-in roles cannot be modified)
@@ -160,7 +160,7 @@ func (s *Server) handleUpdateRole(w http.ResponseWriter, r *http.Request, name s
 	s.authorizer.RegisterRole(role)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status": "updated",
 		"name":   name,
 	})
@@ -184,7 +184,7 @@ func (s *Server) handleDeleteRole(w http.ResponseWriter, _ *http.Request, name s
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status": "deleted",
 		"name":   name,
 	})
@@ -211,7 +211,7 @@ func (s *Server) handleUserPermissions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"role":     role,
 		"features": featureMap,
 	})

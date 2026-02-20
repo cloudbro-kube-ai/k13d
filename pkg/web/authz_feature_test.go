@@ -357,7 +357,9 @@ func TestHandleRoles_ListReturnsDefaultRoles(t *testing.T) {
 	}
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	roles, ok := body["roles"].([]interface{})
 	if !ok {
@@ -388,7 +390,9 @@ func TestHandleRoles_CreateCustomRole(t *testing.T) {
 	}
 
 	var body map[string]string
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 	if body["status"] != "created" {
 		t.Errorf("expected status=created, got %v", body["status"])
 	}
@@ -470,7 +474,9 @@ func TestHandleRoleByName_GetRole(t *testing.T) {
 	}
 
 	var role RoleDefinition
-	json.Unmarshal(w.Body.Bytes(), &role)
+	if err := json.Unmarshal(w.Body.Bytes(), &role); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 	if role.Name != "admin" {
 		t.Errorf("expected name=admin, got %s", role.Name)
 	}
@@ -494,7 +500,9 @@ func TestHandleRoleByName_DeleteCustomRole(t *testing.T) {
 
 	// First create a custom role
 	s.authorizer.RegisterRole(&RoleDefinition{Name: "temp", IsCustom: true})
-	db.SaveCustomRole("temp", `{"name":"temp"}`)
+	if err := db.SaveCustomRole("temp", `{"name":"temp"}`); err != nil {
+		t.Fatalf("SaveCustomRole failed: %v", err)
+	}
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/roles/temp", nil)
 	w := httptest.NewRecorder()
@@ -529,7 +537,9 @@ func TestHandleRoleByName_UpdateCustomRole(t *testing.T) {
 
 	// Create a custom role first
 	s.authorizer.RegisterRole(&RoleDefinition{Name: "devops", IsCustom: true})
-	db.SaveCustomRole("devops", `{"name":"devops"}`)
+	if err := db.SaveCustomRole("devops", `{"name":"devops"}`); err != nil {
+		t.Fatalf("SaveCustomRole failed: %v", err)
+	}
 
 	updateJSON := `{
 		"description": "Updated DevOps role",
@@ -610,7 +620,9 @@ func TestHandleUserPermissions_ViewerRole(t *testing.T) {
 	}
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["role"] != "viewer" {
 		t.Errorf("expected role=viewer, got %v", body["role"])
@@ -639,7 +651,9 @@ func TestHandleUserPermissions_DefaultsToViewer(t *testing.T) {
 	s.handleUserPermissions(w, req)
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["role"] != "viewer" {
 		t.Errorf("expected default role=viewer, got %v", body["role"])
@@ -835,7 +849,9 @@ func TestHandleAgentSettings_Get(t *testing.T) {
 	}
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["max_iterations"] == nil {
 		t.Error("expected max_iterations in response")
@@ -976,7 +992,9 @@ func TestHandleAgentSettings_InvalidBody(t *testing.T) {
 	s.handleAgentSettings(w, req)
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["code"] != ErrCodeBadRequest {
 		t.Errorf("expected error code %s, got %v", ErrCodeBadRequest, body["code"])

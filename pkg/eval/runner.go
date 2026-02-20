@@ -31,7 +31,6 @@ type Runner struct {
 	config   RunnerConfig
 	agentBin string
 	tasks    map[string]BenchmarkTask
-	mu       sync.Mutex
 }
 
 // NewRunner creates a new benchmark runner
@@ -197,7 +196,7 @@ func (r *Runner) runTask(ctx context.Context, taskID string, task BenchmarkTask,
 	// Cleanup on exit
 	defer func() {
 		if task.Cleanup != "" {
-			r.runScript(context.Background(), taskDir, task.Cleanup)
+			_ = r.runScript(context.Background(), taskDir, task.Cleanup)
 		}
 	}()
 

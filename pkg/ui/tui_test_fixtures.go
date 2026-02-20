@@ -105,7 +105,7 @@ func NewTestApp(cfg TestAppConfig) *App {
 // CreateFakeClientset creates a fake Kubernetes clientset populated with test data.
 // This provides a realistic set of resources for TUI testing.
 func CreateFakeClientset() *fake.Clientset {
-	return fake.NewSimpleClientset(
+	return fake.NewSimpleClientset( //nolint:staticcheck
 		// Namespaces
 		&corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Name: "default"},

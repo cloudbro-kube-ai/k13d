@@ -82,7 +82,7 @@ func (s *Server) handleDeploymentScale(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Record audit log
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "scale",
 		Resource: fmt.Sprintf("deployment/%s", req.Name),
@@ -90,7 +90,7 @@ func (s *Server) handleDeploymentScale(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":     true,
 		"message":     fmt.Sprintf("Deployment %s scaled to %d replicas", req.Name, req.Replicas),
 		"oldReplicas": oldReplicas,
@@ -136,7 +136,7 @@ func (s *Server) handleDeploymentRestart(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Record audit log
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "restart",
 		Resource: fmt.Sprintf("deployment/%s", req.Name),
@@ -144,7 +144,7 @@ func (s *Server) handleDeploymentRestart(w http.ResponseWriter, r *http.Request)
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": fmt.Sprintf("Deployment %s restart initiated", req.Name),
 	})
@@ -188,7 +188,7 @@ func (s *Server) handleDeploymentPause(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Record audit log
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "pause",
 		Resource: fmt.Sprintf("deployment/%s", req.Name),
@@ -196,7 +196,7 @@ func (s *Server) handleDeploymentPause(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": fmt.Sprintf("Deployment %s paused", req.Name),
 	})
@@ -240,7 +240,7 @@ func (s *Server) handleDeploymentResume(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Record audit log
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "resume",
 		Resource: fmt.Sprintf("deployment/%s", req.Name),
@@ -248,7 +248,7 @@ func (s *Server) handleDeploymentResume(w http.ResponseWriter, r *http.Request) 
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": fmt.Sprintf("Deployment %s resumed", req.Name),
 	})
@@ -357,7 +357,7 @@ func (s *Server) handleDeploymentRollback(w http.ResponseWriter, r *http.Request
 	targetRevision := getRevision(targetRS)
 
 	// Record audit log
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "rollback",
 		Resource: fmt.Sprintf("deployment/%s", req.Name),
@@ -365,7 +365,7 @@ func (s *Server) handleDeploymentRollback(w http.ResponseWriter, r *http.Request
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":  true,
 		"message":  fmt.Sprintf("Deployment %s rolled back to revision %d", req.Name, targetRevision),
 		"revision": targetRevision,
@@ -382,7 +382,7 @@ func getRevision(rs *appsv1.ReplicaSet) int64 {
 		return 0
 	}
 	var revision int64
-	fmt.Sscanf(revisionStr, "%d", &revision)
+	_, _ = fmt.Sscanf(revisionStr, "%d", &revision)
 	return revision
 }
 
@@ -452,7 +452,7 @@ func (s *Server) handleDeploymentHistory(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"deployment": name,
 		"namespace":  namespace,
 		"history":    history,
@@ -531,7 +531,7 @@ func (s *Server) handleCronJobTrigger(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Record audit log
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "trigger",
 		Resource: fmt.Sprintf("cronjob/%s", req.Name),
@@ -539,7 +539,7 @@ func (s *Server) handleCronJobTrigger(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": fmt.Sprintf("CronJob %s triggered, created Job %s", req.Name, jobName),
 		"jobName": createdJob.Name,
@@ -590,7 +590,7 @@ func (s *Server) handleCronJobSuspend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Record audit log
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   action,
 		Resource: fmt.Sprintf("cronjob/%s", req.Name),
@@ -598,7 +598,7 @@ func (s *Server) handleCronJobSuspend(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": fmt.Sprintf("CronJob %s %s", req.Name, action),
 	})
@@ -658,7 +658,7 @@ func (s *Server) handleNodeCordon(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Record audit log
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   action,
 		Resource: fmt.Sprintf("node/%s", req.Name),
@@ -666,7 +666,7 @@ func (s *Server) handleNodeCordon(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": fmt.Sprintf("Node %s %s", req.Name, action),
 	})
@@ -759,7 +759,7 @@ func (s *Server) handleNodeDrain(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("[drain] Failed to drain node %s: %v\n", req.Name, err)
 		}
 
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:     username,
 			Action:   "drain",
 			Resource: fmt.Sprintf("node/%s", req.Name),
@@ -769,7 +769,7 @@ func (s *Server) handleNodeDrain(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": fmt.Sprintf("Node %s drain initiated (running in background)", req.Name),
 	})
@@ -822,7 +822,7 @@ func (s *Server) handleNodePods(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"node":  nodeName,
 		"pods":  pods,
 		"count": len(pods),
@@ -884,7 +884,7 @@ func (s *Server) handleStatefulSetScale(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Record audit log
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "scale",
 		Resource: fmt.Sprintf("statefulset/%s", req.Name),
@@ -892,7 +892,7 @@ func (s *Server) handleStatefulSetScale(w http.ResponseWriter, r *http.Request) 
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":     true,
 		"message":     fmt.Sprintf("StatefulSet %s scaled to %d replicas", req.Name, req.Replicas),
 		"oldReplicas": oldReplicas,
@@ -938,7 +938,7 @@ func (s *Server) handleStatefulSetRestart(w http.ResponseWriter, r *http.Request
 	}
 
 	// Record audit log
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "restart",
 		Resource: fmt.Sprintf("statefulset/%s", req.Name),
@@ -946,7 +946,7 @@ func (s *Server) handleStatefulSetRestart(w http.ResponseWriter, r *http.Request
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": fmt.Sprintf("StatefulSet %s restart initiated", req.Name),
 	})
@@ -994,7 +994,7 @@ func (s *Server) handleDaemonSetRestart(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Record audit log
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "restart",
 		Resource: fmt.Sprintf("daemonset/%s", req.Name),
@@ -1002,7 +1002,7 @@ func (s *Server) handleDaemonSetRestart(w http.ResponseWriter, r *http.Request) 
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": fmt.Sprintf("DaemonSet %s restart initiated", req.Name),
 	})

@@ -163,11 +163,6 @@ func (p *BedrockProvider) ListModels(ctx context.Context) ([]string, error) {
 	}, nil
 }
 
-// BedrockToolConfig represents tool configuration for Bedrock Claude
-type bedrockToolConfig struct {
-	Tools []bedrockTool `json:"tools,omitempty"`
-}
-
 type bedrockTool struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`

@@ -20,7 +20,7 @@ func setupApplicationsTestServer(t *testing.T) *Server {
 
 	one := int32(1)
 
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
 		// Labeled deployment
 		&appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -162,7 +162,7 @@ func TestHandleApplications_MethodNotAllowed(t *testing.T) {
 
 func TestHandleApplications_EmptyNamespace(t *testing.T) {
 	one := int32(1)
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
 		&appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "app1",
@@ -218,7 +218,7 @@ func TestHandleApplications_EmptyNamespace(t *testing.T) {
 }
 
 func TestHandleApplications_UngroupedResources(t *testing.T) {
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
 		&corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "orphan-cm",

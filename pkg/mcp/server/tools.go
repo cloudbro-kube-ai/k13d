@@ -442,35 +442,3 @@ func runCommand(ctx context.Context, cmdStr string, timeout time.Duration) (stri
 	return output, nil
 }
 
-// runCommandWithInput executes a command with stdin input
-func runCommandWithInput(ctx context.Context, cmdStr, input string, timeout time.Duration) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "/bin/bash", "-c", cmdStr)
-	cmd.Stdin = strings.NewReader(input)
-
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-
-	output := stdout.String()
-	if stderr.Len() > 0 {
-		if output != "" {
-			output += "\n"
-		}
-		output += stderr.String()
-	}
-
-	if ctx.Err() == context.DeadlineExceeded {
-		return output, fmt.Errorf("command timed out after %v", timeout)
-	}
-
-	if err != nil && output == "" {
-		return "", err
-	}
-
-	return output, nil
-}

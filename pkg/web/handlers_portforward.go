@@ -85,7 +85,7 @@ func (s *Server) handlePortForwardStart(w http.ResponseWriter, r *http.Request) 
 
 	// Record audit
 	username := r.Header.Get("X-Username")
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "port_forward_start",
 		Resource: "pod",
@@ -93,7 +93,7 @@ func (s *Server) handlePortForwardStart(w http.ResponseWriter, r *http.Request) 
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(session)
+	_ = json.NewEncoder(w).Encode(session)
 }
 
 func (s *Server) handlePortForwardList(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +110,7 @@ func (s *Server) handlePortForwardList(w http.ResponseWriter, r *http.Request) {
 	s.pfMutex.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"items": sessions,
 	})
 }
@@ -140,7 +140,7 @@ func (s *Server) handlePortForwardStop(w http.ResponseWriter, r *http.Request) {
 
 	// Record audit
 	username := r.Header.Get("X-Username")
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "port_forward_stop",
 		Resource: "pod",
@@ -148,5 +148,5 @@ func (s *Server) handlePortForwardStop(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "stopped"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "stopped"})
 }

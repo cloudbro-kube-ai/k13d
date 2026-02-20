@@ -266,7 +266,7 @@ func (s *Server) handleNetworkPolicyVisualization(w http.ResponseWriter, r *http
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(NetPolVisualizationResponse{
+	_ = json.NewEncoder(w).Encode(NetPolVisualizationResponse{
 		Nodes:       nodes,
 		Edges:       edges,
 		Policies:    policySummaries,

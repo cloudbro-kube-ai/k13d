@@ -17,7 +17,7 @@ func TestInitCustomRolesTable(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	if err := InitCustomRolesTable(); err != nil {
 		t.Fatalf("InitCustomRolesTable() error = %v", err)
@@ -53,7 +53,7 @@ func TestCustomRoles_SaveAndLoad(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	if err := InitCustomRolesTable(); err != nil {
 		t.Fatalf("InitCustomRolesTable() error = %v", err)
@@ -108,7 +108,7 @@ func TestCustomRoles_SaveUpsert(t *testing.T) {
 	if err := Init(filepath.Join(tmpDir, "upsert.db")); err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	if err := InitCustomRolesTable(); err != nil {
 		t.Fatalf("InitCustomRolesTable() error = %v", err)
@@ -149,7 +149,7 @@ func TestCustomRoles_GetNotFound(t *testing.T) {
 	if err := Init(filepath.Join(tmpDir, "notfound.db")); err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	if err := InitCustomRolesTable(); err != nil {
 		t.Fatalf("InitCustomRolesTable() error = %v", err)
@@ -171,7 +171,7 @@ func TestCustomRoles_DeleteNotFound(t *testing.T) {
 	if err := Init(filepath.Join(tmpDir, "delnf.db")); err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	if err := InitCustomRolesTable(); err != nil {
 		t.Fatalf("InitCustomRolesTable() error = %v", err)
@@ -196,7 +196,7 @@ func TestCustomRoles_ListEmpty(t *testing.T) {
 	if err := Init(filepath.Join(tmpDir, "empty.db")); err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	if err := InitCustomRolesTable(); err != nil {
 		t.Fatalf("InitCustomRolesTable() error = %v", err)
@@ -207,7 +207,7 @@ func TestCustomRoles_ListEmpty(t *testing.T) {
 		t.Fatalf("ListCustomRoles failed: %v", err)
 	}
 	// Empty table returns nil slice, not empty slice
-	if roles != nil && len(roles) != 0 {
+	if len(roles) != 0 {
 		t.Errorf("expected nil or empty roles, got %d", len(roles))
 	}
 }
@@ -222,7 +222,7 @@ func TestCustomRoles_MultipleRoles(t *testing.T) {
 	if err := Init(filepath.Join(tmpDir, "multi.db")); err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	if err := InitCustomRolesTable(); err != nil {
 		t.Fatalf("InitCustomRolesTable() error = %v", err)

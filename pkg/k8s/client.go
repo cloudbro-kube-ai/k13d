@@ -794,7 +794,9 @@ func (c *Client) RollbackDeployment(ctx context.Context, namespace, name string,
 		if rs.Annotations != nil {
 			if revStr, ok := rs.Annotations["deployment.kubernetes.io/revision"]; ok {
 				var rev int64
-				fmt.Sscanf(revStr, "%d", &rev)
+				if _, err := fmt.Sscanf(revStr, "%d", &rev); err != nil {
+					continue
+				}
 				if rev == revision {
 					targetRS = rs
 					break
@@ -993,7 +995,7 @@ func (c *Client) ListReplicationControllers(ctx context.Context, namespace strin
 	return list.Items, nil
 }
 
-func (c *Client) ListEndpoints(ctx context.Context, namespace string) ([]corev1.Endpoints, error) {
+func (c *Client) ListEndpoints(ctx context.Context, namespace string) ([]corev1.Endpoints, error) { //nolint:staticcheck
 	opts := metav1.ListOptions{}
 	if namespace == "" {
 		list, err := c.Clientset.CoreV1().Endpoints("").List(ctx, opts)
@@ -1474,7 +1476,7 @@ func (c *Client) DescribeResource(ctx context.Context, resource, namespace, name
 		for _, c := range pod.Spec.Containers {
 			result.WriteString(fmt.Sprintf("  %s:\n", c.Name))
 			result.WriteString(fmt.Sprintf("    Image:   %s\n", c.Image))
-			result.WriteString(fmt.Sprintf("    Ports:   "))
+			result.WriteString("    Ports:   ")
 			var ports []string
 			for _, p := range c.Ports {
 				ports = append(ports, fmt.Sprintf("%d/%s", p.ContainerPort, p.Protocol))
@@ -1855,8 +1857,6 @@ func (c *Client) ApplyYAML(ctx context.Context, yamlContent string, defaultNames
 	// Determine if resource is namespaced
 	namespaced := isNamespacedResource(kind)
 
-	var result *unstructured.Unstructured
-
 	// Set dry-run options
 	createOpts := metav1.CreateOptions{}
 	updateOpts := metav1.UpdateOptions{}
@@ -1877,7 +1877,7 @@ func (c *Client) ApplyYAML(ctx context.Context, yamlContent string, defaultNames
 	if err == nil {
 		// Resource exists - update it
 		unstructuredObj.SetResourceVersion(existing.GetResourceVersion())
-		result, err = resourceClient.Update(ctx, unstructuredObj, updateOpts)
+		_, err = resourceClient.Update(ctx, unstructuredObj, updateOpts)
 		if err != nil {
 			return "", fmt.Errorf("failed to update %s/%s: %w", kind, name, err)
 		}
@@ -1889,7 +1889,7 @@ func (c *Client) ApplyYAML(ctx context.Context, yamlContent string, defaultNames
 	}
 
 	// Resource doesn't exist - create it
-	result, err = resourceClient.Create(ctx, unstructuredObj, createOpts)
+	_, err = resourceClient.Create(ctx, unstructuredObj, createOpts)
 	if err != nil {
 		return "", fmt.Errorf("failed to create %s/%s: %w", kind, name, err)
 	}
@@ -1898,7 +1898,6 @@ func (c *Client) ApplyYAML(ctx context.Context, yamlContent string, defaultNames
 	if dryRun {
 		action = "validated (dry-run)"
 	}
-	_ = result // suppress unused variable warning
 	return fmt.Sprintf("%s/%s %s", strings.ToLower(kind), name, action), nil
 }
 

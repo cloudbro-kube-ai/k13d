@@ -43,7 +43,7 @@ func setupOperationsTestServer(t *testing.T) (*Server, *AuthManager) {
 	authManager := NewAuthManager(authConfig)
 
 	replicas := int32(3)
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
 		// Namespace
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "production"}},
@@ -897,7 +897,9 @@ func TestE2E_NodeMaintenanceFlow(t *testing.T) {
 		}
 
 		var resp map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("Failed to parse response: %v", err)
+		}
 		t.Logf("Pods on node before maintenance: %v", resp["pods"])
 	})
 

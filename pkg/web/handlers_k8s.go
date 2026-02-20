@@ -41,7 +41,7 @@ func (s *Server) handleK8sResource(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Record audit log (view actions are skipped by default)
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:       username,
 		Action:     "view",
 		ActionType: db.ActionTypeView, // Will be skipped unless config.IncludeViews is true
@@ -531,7 +531,7 @@ func (s *Server) handleK8sResource(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(K8sResourceResponse{
+		_ = json.NewEncoder(w).Encode(K8sResourceResponse{
 			Kind:      resource,
 			Items:     []map[string]interface{}{},
 			Error:     fmt.Sprintf("Unknown resource type: %s", resource),
@@ -541,7 +541,7 @@ func (s *Server) handleK8sResource(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		json.NewEncoder(w).Encode(K8sResourceResponse{
+		_ = json.NewEncoder(w).Encode(K8sResourceResponse{
 			Kind:      resource,
 			Error:     err.Error(),
 			Timestamp: time.Now(),
@@ -549,7 +549,7 @@ func (s *Server) handleK8sResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(K8sResourceResponse{
+	_ = json.NewEncoder(w).Encode(K8sResourceResponse{
 		Kind:      resource,
 		Items:     items,
 		Timestamp: time.Now(),
@@ -572,7 +572,7 @@ func (s *Server) handleResourceYAML(w http.ResponseWriter, r *http.Request, reso
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write([]byte(yaml))
+	_, _ = w.Write([]byte(yaml))
 }
 
 // handleCustomResources handles Custom Resource API endpoints
@@ -603,7 +603,7 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 	if path == "" || path == "/" {
 		crds, err := s.k8sClient.ListCRDsDetailed(r.Context())
 		if err != nil {
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error": err.Error(),
 				"items": []interface{}{},
 			})
@@ -625,7 +625,7 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"kind":  "CustomResourceDefinitionList",
 			"items": items,
 		})
@@ -642,7 +642,7 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"name":           crdInfo.Name,
 			"group":          crdInfo.Group,
 			"version":        crdInfo.Version,
@@ -674,7 +674,7 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-				w.Write([]byte(yamlStr))
+				_, _ = w.Write([]byte(yamlStr))
 				return
 			}
 
@@ -684,14 +684,14 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			json.NewEncoder(w).Encode(cr.Object)
+			_ = json.NewEncoder(w).Encode(cr.Object)
 			return
 		}
 
 		// List all instances
 		instances, err := s.k8sClient.ListCustomResources(r.Context(), crdInfo, namespace)
 		if err != nil {
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error": err.Error(),
 				"items": []interface{}{},
 			})
@@ -750,7 +750,7 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"kind":           crdInfo.Kind + "List",
 			"crd":            crdInfo.Name,
 			"namespaced":     crdInfo.Namespaced,
@@ -846,8 +846,8 @@ func (s *Server) handlePodLogs(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		scanner := bufio.NewScanner(stream)
 		for scanner.Scan() {
-			w.Write(scanner.Bytes())
-			w.Write([]byte("\n"))
+			_, _ = w.Write(scanner.Bytes())
+			_, _ = w.Write([]byte("\n"))
 		}
 	}
 }
@@ -938,7 +938,7 @@ func (s *Server) handleWorkloadPods(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"workload":  name,
 		"kind":      kind,
 		"namespace": namespace,
@@ -1009,7 +1009,7 @@ func (s *Server) handleClusterOverview(w http.ResponseWriter, r *http.Request) {
 	contextName, _ := s.k8sClient.GetCurrentContext()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"context": contextName,
 		"nodes": map[string]interface{}{
 			"total": nodeCount,
@@ -1265,7 +1265,7 @@ func (s *Server) handleGlobalSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"results": results,
 		"total":   len(results),
 		"query":   query,
@@ -1289,7 +1289,7 @@ func (s *Server) handleYamlApply(w http.ResponseWriter, r *http.Request) {
 	var req YamlApplyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": "Invalid request body: " + err.Error(),
 		})
 		return
@@ -1297,7 +1297,7 @@ func (s *Server) handleYamlApply(w http.ResponseWriter, r *http.Request) {
 
 	if req.YAML == "" {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": "YAML content is required",
 		})
 		return
@@ -1316,7 +1316,7 @@ func (s *Server) handleYamlApply(w http.ResponseWriter, r *http.Request) {
 	if req.DryRun {
 		actionType = db.ActionTypeView
 	}
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:       username,
 		Action:     "apply",
 		ActionType: actionType,
@@ -1327,14 +1327,14 @@ func (s *Server) handleYamlApply(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error":  err.Error(),
 			"dryRun": req.DryRun,
 		})
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": result,
 		"dryRun":  req.DryRun,

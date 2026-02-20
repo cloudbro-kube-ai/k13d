@@ -41,24 +41,24 @@ func Init(appName string) error {
 
 func Infof(format string, v ...any) {
 	if logger != nil {
-		logger.Output(2, fmt.Sprintf("[INFO] "+format, v...))
+		_ = logger.Output(2, fmt.Sprintf("[INFO] "+format, v...))
 	}
 }
 
 func Errorf(format string, v ...any) {
 	if logger != nil {
-		logger.Output(2, fmt.Sprintf("[ERROR] "+format, v...))
+		_ = logger.Output(2, fmt.Sprintf("[ERROR] "+format, v...))
 	}
 }
 
 func Debugf(format string, v ...any) {
 	if logger != nil {
-		logger.Output(2, fmt.Sprintf("[DEBUG] "+format, v...))
+		_ = logger.Output(2, fmt.Sprintf("[DEBUG] "+format, v...))
 	}
 }
 
 func Warnf(format string, v ...any) {
 	if logger != nil {
-		logger.Output(2, fmt.Sprintf("[WARN] "+format, v...))
+		_ = logger.Output(2, fmt.Sprintf("[WARN] "+format, v...))
 	}
 }

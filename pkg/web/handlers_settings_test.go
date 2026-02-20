@@ -82,7 +82,7 @@ func setupSettingsTestServer(t *testing.T) *Server {
 	}
 	authManager := NewAuthManager(authConfig)
 
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 	)
 
@@ -619,7 +619,7 @@ func TestAuditLogs_GET_WithDB(t *testing.T) {
 	defer db.Close()
 
 	// Record some audit entries
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     "admin",
 		Action:   "test_action",
 		Resource: "test_resource",

@@ -166,7 +166,7 @@ func (cv *CrossValidator) checkIngressServiceRefs(resources []*ResourceInfo) []F
 					Title:    fmt.Sprintf("Ingress '%s' references Service '%s' which does not exist", r.Name, svcName),
 					Details:  fmt.Sprintf("Ingress backend references Service '%s', but no Service with that name was found in namespace '%s'.", svcName, r.Namespace),
 					Suggestions: []string{
-						fmt.Sprintf("Create the missing Service or update the Ingress backend"),
+						"Create the missing Service or update the Ingress backend",
 						"Check for typos in the Service name",
 						fmt.Sprintf("Run: kubectl get services -n %s", r.Namespace),
 					},

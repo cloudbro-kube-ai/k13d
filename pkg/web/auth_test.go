@@ -425,7 +425,9 @@ func TestAuthManager_DeleteUser(t *testing.T) {
 	})
 
 	// Create a user to delete
-	am.CreateUser("testuser", "testpass", "user")
+	if err := am.CreateUser("testuser", "testpass", "user"); err != nil {
+		t.Fatalf("CreateUser() error = %v", err)
+	}
 
 	// Delete user
 	err := am.DeleteUser("testuser")
@@ -455,8 +457,12 @@ func TestAuthManager_GetUsers(t *testing.T) {
 	})
 
 	// Create additional users
-	am.CreateUser("user1", "password1", "user")
-	am.CreateUser("user2", "password2", "viewer")
+	if err := am.CreateUser("user1", "password1", "user"); err != nil {
+		t.Fatalf("CreateUser() error = %v", err)
+	}
+	if err := am.CreateUser("user2", "password2", "viewer"); err != nil {
+		t.Fatalf("CreateUser() error = %v", err)
+	}
 
 	users := am.GetUsers()
 	if len(users) != 3 { // admin + user1 + user2

@@ -10,13 +10,11 @@ import (
 
 // mockProvider implements Provider for testing
 type mockProvider struct {
-	name          string
-	model         string
-	ready         bool
-	askErr        error
-	askContent    string
-	supportsTools bool
-	toolsErr      error
+	name       string
+	model      string
+	ready      bool
+	askErr     error
+	askContent string
 }
 
 func (m *mockProvider) Name() string                                     { return m.name }

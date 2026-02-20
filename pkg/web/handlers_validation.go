@@ -175,7 +175,7 @@ func (s *Server) handleValidate(w http.ResponseWriter, r *http.Request) {
 	findings := registry.ValidateCross(ctx, resources)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"namespace":         namespace,
 		"findings":          findings,
 		"total":             len(findings),

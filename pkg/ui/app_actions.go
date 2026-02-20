@@ -52,7 +52,7 @@ func (a *App) checkTUIPermission(resource, action string) bool {
 		a.flashMsg(fmt.Sprintf("Permission denied: %s", reason), true)
 
 		// Record denial in audit log
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:            a.getTUIUser(),
 			Action:          "authz_denied",
 			Resource:        resource,
@@ -107,7 +107,7 @@ func (a *App) recordTUIAudit(action, resource, details string, success bool, err
 	entry.Namespace = a.currentNamespace
 	a.mx.RUnlock()
 
-	db.RecordAudit(entry)
+	_ = db.RecordAudit(entry)
 }
 
 // showModal adds a modal page with a full terminal sync to prevent ghosting
@@ -178,68 +178,6 @@ func (a *App) showLogs() {
 				logView.ScrollToEnd()
 			}
 		})
-	})
-}
-
-// describeResource shows YAML for selected resource
-func (a *App) describeResource() {
-	row, _ := a.table.GetSelection()
-	if row <= 0 {
-		return
-	}
-
-	a.mx.RLock()
-	resource := a.currentResource
-	a.mx.RUnlock()
-
-	var ns, name string
-	switch resource {
-	case "nodes", "no", "namespaces", "ns":
-		name = a.getTableCellText(row, 0)
-	default:
-		ns = a.getTableCellText(row, 0)
-		name = a.getTableCellText(row, 1)
-	}
-
-	descView := tview.NewTextView().
-		SetDynamicColors(true).
-		SetScrollable(true)
-	descView.SetBorder(true).
-		SetTitle(fmt.Sprintf(" %s: %s (Press Esc to close) ", resource, name))
-
-	a.showModal("describe", descView, true)
-	a.SetFocus(descView)
-
-	// Fetch YAML
-	a.safeGo("showYAML-fetch", func() {
-		ctx, cancel := context.WithTimeout(a.getAppContext(), 10*time.Second)
-		defer cancel()
-
-		gvr, ok := a.k8s.GetGVR(resource)
-		if !ok {
-			a.QueueUpdateDraw(func() {
-				descView.SetText(fmt.Sprintf("[red]Unknown resource type: %s", resource))
-			})
-			return
-		}
-
-		yaml, err := a.k8s.GetResourceYAML(ctx, ns, name, gvr)
-		a.QueueUpdateDraw(func() {
-			if err != nil {
-				descView.SetText(fmt.Sprintf("[red]Error: %v", err))
-			} else {
-				descView.SetText(yaml)
-			}
-		})
-	})
-
-	descView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEsc {
-			a.closeModal("describe")
-			a.SetFocus(a.table)
-			return nil
-		}
-		return event
 	})
 }
 
@@ -437,7 +375,7 @@ func (a *App) runShellForPod(ns, name string) {
 			cmd2.Stderr = os.Stderr
 			if err2 := cmd2.Run(); err2 != nil {
 				fmt.Fprintf(os.Stderr, "\nShell failed: %v\nPress Enter to return...\n", err2)
-				bufio.NewReader(os.Stdin).ReadString('\n')
+				_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
 			}
 		}
 	})
@@ -654,7 +592,7 @@ func (a *App) startPortForward(ns, name, resource, localPort, remotePort string)
 
 	// Wait for process to exit in background and clean up
 	a.safeGo("portforward-cleanup", func() {
-		cmd.Wait()
+		_ = cmd.Wait()
 		a.pfMx.Lock()
 		for i, p := range a.portForwards {
 			if p == pf {
@@ -702,7 +640,7 @@ func (a *App) showPortForwards() {
 		if idx < len(a.portForwards) {
 			pf := a.portForwards[idx]
 			if pf.Cmd.Process != nil {
-				pf.Cmd.Process.Kill()
+				_ = pf.Cmd.Process.Kill()
 				a.flashMsg(fmt.Sprintf("Stopped port-forward localhost:%s", pf.LocalPort), false)
 			}
 		}
@@ -730,7 +668,7 @@ func (a *App) cleanupPortForwards() {
 	defer a.pfMx.Unlock()
 	for _, pf := range a.portForwards {
 		if pf.Cmd.Process != nil {
-			pf.Cmd.Process.Kill()
+			_ = pf.Cmd.Process.Kill()
 		}
 	}
 	a.portForwards = nil
@@ -825,7 +763,7 @@ func (a *App) showHealth() {
 		if err != nil {
 			sb.WriteString(" [red]✗[white] Kubernetes: Not connected\n")
 		} else {
-			sb.WriteString(fmt.Sprintf(" [green]✓[white] Kubernetes: Connected\n"))
+			sb.WriteString(" [green]✓[white] Kubernetes: Connected\n")
 			sb.WriteString(fmt.Sprintf("   Context: %s\n", ctxName))
 			sb.WriteString(fmt.Sprintf("   Cluster: %s\n", cluster))
 		}
@@ -1191,7 +1129,7 @@ func (a *App) editResource() {
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
 			fmt.Fprintf(os.Stderr, "\nEdit failed: %v\nPress Enter to return...\n", err)
-			bufio.NewReader(os.Stdin).ReadString('\n')
+			_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
 		}
 	})
 
@@ -1229,7 +1167,7 @@ func (a *App) attachContainer() {
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
 			fmt.Fprintf(os.Stderr, "\nAttach failed: %v\nPress Enter to return...\n", err)
-			bufio.NewReader(os.Stdin).ReadString('\n')
+			_, _ = bufio.NewReader(os.Stdin).ReadString('\n')
 		}
 	})
 }
@@ -1513,7 +1451,7 @@ func (a *App) scaleResource() {
 			return
 		}
 		var replicaCount int
-		fmt.Sscanf(replicas, "%d", &replicaCount)
+		_, _ = fmt.Sscanf(replicas, "%d", &replicaCount)
 		if replicaCount < 0 || replicaCount > 999 {
 			a.flashMsg("Replica count must be between 0 and 999. Please enter a valid number.", true)
 			return
@@ -1751,58 +1689,6 @@ func (a *App) clearSelections() {
 	for row := 1; row < rowCount; row++ {
 		a.updateRowSelection(row)
 	}
-}
-
-// getSelectedResources returns names of selected resources (or current if none selected)
-func (a *App) getSelectedResources() []string {
-	a.mx.RLock()
-	selectedCount := len(a.selectedRows)
-	a.mx.RUnlock()
-
-	if selectedCount == 0 {
-		// No selection, return current row
-		row, _ := a.table.GetSelection()
-		if row > 0 {
-			cell := a.table.GetCell(row, 0)
-			if cell != nil {
-				name := strings.TrimSpace(tview.TranslateANSI(cell.Text))
-				// Handle namespace/name format
-				parts := strings.Fields(name)
-				if len(parts) > 0 {
-					return []string{parts[len(parts)-1]}
-				}
-			}
-		}
-		return nil
-	}
-
-	// Return all selected resources
-	a.mx.RLock()
-	defer a.mx.RUnlock()
-
-	var resources []string
-	for row := range a.selectedRows {
-		cell := a.table.GetCell(row, 0)
-		if cell != nil {
-			// For namespaced resources, column 0 might be namespace, column 1 is name
-			name := strings.TrimSpace(tview.TranslateANSI(cell.Text))
-			// Check if there's a second column with name
-			if a.table.GetColumnCount() > 1 {
-				nameCell := a.table.GetCell(row, 1)
-				if nameCell != nil {
-					possibleName := strings.TrimSpace(tview.TranslateANSI(nameCell.Text))
-					// If first column looks like a namespace, use second column
-					if possibleName != "" && !strings.Contains(name, "-") {
-						name = possibleName
-					}
-				}
-			}
-			if name != "" {
-				resources = append(resources, name)
-			}
-		}
-	}
-	return resources
 }
 
 // toggleBriefing toggles the briefing panel visibility (Shift+B)

@@ -87,9 +87,9 @@ func (p *LDAPProvider) connect() (*ldap.Conn, error) {
 		tlsConfig := &tls.Config{
 			InsecureSkipVerify: p.config.InsecureSkipTLS,
 		}
-		conn, err = ldap.DialTLS("tcp", address, tlsConfig)
+		conn, err = ldap.DialURL(fmt.Sprintf("ldaps://%s", address), ldap.DialWithTLSConfig(tlsConfig))
 	} else {
-		conn, err = ldap.Dial("tcp", address)
+		conn, err = ldap.DialURL(fmt.Sprintf("ldap://%s", address))
 	}
 
 	if err != nil {

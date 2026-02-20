@@ -1305,7 +1305,7 @@ func (a *App) showNamespaceHint() {
 	var hints []string
 	for i, ns := range namespaces {
 		if i == 0 {
-			hints = append(hints, fmt.Sprintf("[gray]0[darkgray]:all"))
+			hints = append(hints, "[gray]0[darkgray]:all")
 		} else if i <= 9 {
 			hints = append(hints, fmt.Sprintf("[gray]%d[darkgray]:%s", i, ns))
 		}
@@ -1402,13 +1402,12 @@ func matchPluginShortcut(event *tcell.EventKey, shortcut string) bool {
 			}
 		} else if hasCtrl {
 			// Ctrl+key: tcell uses KeyCtrlA = 1, etc.
-			ctrlKey := tcell.Key(targetRune - 'A' + 1)
 			if strings.ToLower(key) == strings.ToUpper(key) {
 				// Non-letter, just match rune
 				return event.Rune() == targetRune
 			}
 			lowerRune := rune(strings.ToLower(key)[0])
-			ctrlKey = tcell.Key(lowerRune - 'a' + 1)
+			ctrlKey := tcell.Key(lowerRune - 'a' + 1)
 			return event.Key() == ctrlKey
 		} else {
 			return event.Rune() == targetRune
@@ -2456,7 +2455,7 @@ func (a *App) refresh() {
 
 	// Update briefing panel if visible
 	if a.briefing != nil && a.briefing.IsVisible() {
-		a.safeGo("briefing-update", func() { a.briefing.Update(ctx) })
+		a.safeGo("briefing-update", func() { _ = a.briefing.Update(ctx) })
 	}
 
 	a.logger.Info("Refresh completed", "resource", resource, "count", len(rows))

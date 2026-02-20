@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"context"
 	"testing"
 )
 
@@ -56,7 +57,7 @@ func TestClientDisconnectAll(t *testing.T) {
 
 func TestClientCallToolNotFound(t *testing.T) {
 	client := NewClient()
-	_, err := client.CallTool(nil, "nonexistent", nil)
+	_, err := client.CallTool(context.TODO(), "nonexistent", nil)
 	if err == nil {
 		t.Error("expected error for nonexistent tool")
 	}

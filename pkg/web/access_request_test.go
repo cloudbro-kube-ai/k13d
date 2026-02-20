@@ -109,7 +109,9 @@ func TestAccessRequest_IsApproved(t *testing.T) {
 	}
 
 	id, _ := m.CreateRequest("alice", ActionScale, "deployments", "production", "Scale nginx")
-	m.ApproveRequest(id, "bob", "OK")
+	if err := m.ApproveRequest(id, "bob", "OK"); err != nil {
+		t.Fatalf("ApproveRequest failed: %v", err)
+	}
 
 	// Should be approved now
 	if !m.IsApproved("alice", "deployments", ActionScale, "production") {
@@ -130,8 +132,12 @@ func TestAccessRequest_IsApproved(t *testing.T) {
 func TestAccessRequest_PendingList(t *testing.T) {
 	m := NewAccessRequestManager(30 * time.Minute)
 
-	m.CreateRequest("alice", ActionScale, "deployments", "default", "Scale 1")
-	m.CreateRequest("bob", ActionDelete, "pods", "default", "Delete old")
+	if _, err := m.CreateRequest("alice", ActionScale, "deployments", "default", "Scale 1"); err != nil {
+		t.Fatalf("CreateRequest failed: %v", err)
+	}
+	if _, err := m.CreateRequest("bob", ActionDelete, "pods", "default", "Delete old"); err != nil {
+		t.Fatalf("CreateRequest failed: %v", err)
+	}
 	id3, _ := m.CreateRequest("charlie", ActionRestart, "deployments", "default", "Restart")
 
 	// All should be pending
@@ -141,7 +147,9 @@ func TestAccessRequest_PendingList(t *testing.T) {
 	}
 
 	// Approve one
-	m.ApproveRequest(id3, "admin", "OK")
+	if err := m.ApproveRequest(id3, "admin", "OK"); err != nil {
+		t.Fatalf("ApproveRequest failed: %v", err)
+	}
 
 	pending = m.GetPendingRequests()
 	if len(pending) != 2 {
@@ -153,7 +161,9 @@ func TestAccessRequest_DoubleApproval(t *testing.T) {
 	m := NewAccessRequestManager(30 * time.Minute)
 
 	id, _ := m.CreateRequest("alice", ActionScale, "deployments", "default", "Scale")
-	m.ApproveRequest(id, "bob", "OK")
+	if err := m.ApproveRequest(id, "bob", "OK"); err != nil {
+		t.Fatalf("ApproveRequest failed: %v", err)
+	}
 
 	// Second approval should fail
 	err := m.ApproveRequest(id, "charlie", "Also OK")

@@ -105,7 +105,7 @@ func TestReaderContract(t *testing.T) {
 		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-1", Namespace: "default"}},
 	}
 
-	client := &Client{Clientset: fake.NewSimpleClientset(objects...)}
+	client := &Client{Clientset: fake.NewSimpleClientset(objects...)} //nolint:staticcheck // SA1019: migrating to NewClientset requires generated apply configurations
 	ctx := context.Background()
 
 	// Use Reader interface - this is what consumers should depend on
@@ -157,7 +157,7 @@ func TestReaderContract(t *testing.T) {
 
 // TestReaderEmptyResults validates behavior when no resources exist.
 func TestReaderEmptyResults(t *testing.T) {
-	client := &Client{Clientset: fake.NewSimpleClientset()}
+	client := &Client{Clientset: fake.NewSimpleClientset()} //nolint:staticcheck // SA1019: migrating to NewClientset requires generated apply configurations
 	ctx := context.Background()
 	var reader Reader = client
 
@@ -180,7 +180,7 @@ func TestReaderNamespaceIsolation(t *testing.T) {
 		fix.pod("pod-default", "default"),
 		fix.pod("pod-kube", "kube-system"),
 	}
-	client := &Client{Clientset: fake.NewSimpleClientset(objects...)}
+	client := &Client{Clientset: fake.NewSimpleClientset(objects...)} //nolint:staticcheck
 	ctx := context.Background()
 	var reader Reader = client
 

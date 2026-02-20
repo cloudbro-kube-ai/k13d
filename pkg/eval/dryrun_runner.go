@@ -22,7 +22,6 @@ type DryRunRunner struct {
 	tasks        map[string]DryRunBenchmarkTask
 	validator    *DryRunValidator
 	mockExecutor *MockToolExecutor
-	mu           sync.Mutex
 }
 
 // DryRunRunnerConfig holds configuration for the dry-run runner

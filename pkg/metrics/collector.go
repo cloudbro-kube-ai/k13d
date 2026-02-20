@@ -79,7 +79,11 @@ func (c *Collector) Start() {
 	log.Infof("Starting metrics collector (interval: %s, retention: %s)", c.config.Interval, c.config.Retention)
 
 	// Initial collection
-	go c.collectOnce()
+	go func() {
+		if err := c.collectOnce(); err != nil {
+			log.Warnf("Initial metrics collection failed: %v", err)
+		}
+	}()
 
 	// Start periodic collection
 	go c.runCollector()

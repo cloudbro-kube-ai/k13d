@@ -28,7 +28,7 @@ func setupNewFeaturesTestServer(t *testing.T) *Server {
 	proto := corev1.ProtocolTCP
 	port80 := intstr.FromInt32(80)
 
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
 		// RBAC: RoleBinding
 		&rbacv1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{

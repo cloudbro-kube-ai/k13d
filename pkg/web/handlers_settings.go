@@ -54,7 +54,7 @@ func (s *Server) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": err.Error(),
 			"logs":  []interface{}{},
 		})
@@ -66,7 +66,7 @@ func (s *Server) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"logs":      logs,
 		"timestamp": time.Now(),
 	})
@@ -81,7 +81,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		timezone := db.GetWebSettingWithDefault("general.timezone", "auto")
 
 		// Return current settings (without sensitive data)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"language":      s.cfg.Language,
 			"beginner_mode": s.cfg.BeginnerMode,
 			"enable_audit":  s.cfg.EnableAudit,
@@ -137,14 +137,14 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 		// Record audit
 		username := r.Header.Get("X-Username")
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:     username,
 			Action:   "update_settings",
 			Resource: "settings",
 			Details:  fmt.Sprintf("Settings updated (timezone: %s)", newSettings.Timezone),
 		})
 
-		json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -174,7 +174,7 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 				"is_active":   m.Name == s.cfg.ActiveModel,
 			}
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"models":       models,
 			"active_model": s.cfg.ActiveModel,
 		})
@@ -200,14 +200,14 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 
 		// Record audit
 		username := r.Header.Get("X-Username")
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:     username,
 			Action:   "add_model_profile",
 			Resource: "model",
 			Details:  fmt.Sprintf("Added model profile: %s (%s/%s)", profile.Name, profile.Provider, profile.Model),
 		})
 
-		json.NewEncoder(w).Encode(map[string]string{"status": "created", "name": profile.Name})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "created", "name": profile.Name})
 
 	case http.MethodDelete:
 		// Delete model profile
@@ -229,14 +229,14 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 
 		// Record audit
 		username := r.Header.Get("X-Username")
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:     username,
 			Action:   "delete_model_profile",
 			Resource: "model",
 			Details:  fmt.Sprintf("Deleted model profile: %s", name),
 		})
 
-		json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -254,7 +254,7 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "No active model", http.StatusNotFound)
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"name":        profile.Name,
 			"provider":    profile.Provider,
 			"model":       profile.Model,
@@ -299,14 +299,14 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 
 		// Record audit
 		username := r.Header.Get("X-Username")
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:     username,
 			Action:   "switch_model",
 			Resource: "model",
 			Details:  fmt.Sprintf("Switched to model: %s", req.Name),
 		})
 
-		json.NewEncoder(w).Encode(map[string]string{"status": "switched", "active_model": req.Name})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "switched", "active_model": req.Name})
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -335,7 +335,7 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 				"connected":   s.mcpClient.IsConnected(srv.Name),
 			}
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"servers":   servers,
 			"connected": s.mcpClient.GetConnectedServers(),
 		})
@@ -364,7 +364,7 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 			ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 			defer cancel()
 			if err := s.mcpClient.Connect(ctx, server); err != nil {
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
 					"status":  "created",
 					"name":    server.Name,
 					"warning": fmt.Sprintf("Server added but failed to connect: %v", err),
@@ -376,14 +376,14 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 
 		// Record audit
 		username := r.Header.Get("X-Username")
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:     username,
 			Action:   "add_mcp_server",
 			Resource: "mcp",
 			Details:  fmt.Sprintf("Added MCP server: %s (%s)", server.Name, server.Command),
 		})
 
-		json.NewEncoder(w).Encode(map[string]string{"status": "created", "name": server.Name})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "created", "name": server.Name})
 
 	case http.MethodPut:
 		// Toggle MCP server enabled/disabled or reconnect
@@ -408,11 +408,11 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 					ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 					if err := s.mcpClient.Connect(ctx, srv); err != nil {
 						cancel()
-						json.NewEncoder(w).Encode(map[string]interface{}{
+						_ = json.NewEncoder(w).Encode(map[string]interface{}{
 							"status":  "enabled",
 							"warning": fmt.Sprintf("Enabled but failed to connect: %v", err),
 						})
-						s.cfg.Save()
+						_ = s.cfg.Save()
 						return
 					}
 					cancel()
@@ -427,14 +427,14 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			// Disconnect and unregister tools
-			s.mcpClient.Disconnect(req.Name)
+			_ = s.mcpClient.Disconnect(req.Name)
 			if s.aiClient != nil {
 				s.aiClient.GetToolRegistry().UnregisterMCPTools(req.Name)
 			}
 
 		case "reconnect":
 			// Disconnect first
-			s.mcpClient.Disconnect(req.Name)
+			_ = s.mcpClient.Disconnect(req.Name)
 			if s.aiClient != nil {
 				s.aiClient.GetToolRegistry().UnregisterMCPTools(req.Name)
 			}
@@ -465,14 +465,14 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 
 		// Record audit
 		username := r.Header.Get("X-Username")
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:     username,
 			Action:   fmt.Sprintf("mcp_server_%s", req.Action),
 			Resource: "mcp",
 			Details:  fmt.Sprintf("MCP server %s: %s", req.Action, req.Name),
 		})
 
-		json.NewEncoder(w).Encode(map[string]string{"status": req.Action, "name": req.Name})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": req.Action, "name": req.Name})
 
 	case http.MethodDelete:
 		// Delete MCP server
@@ -483,7 +483,7 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Disconnect first
-		s.mcpClient.Disconnect(name)
+		_ = s.mcpClient.Disconnect(name)
 		if s.aiClient != nil {
 			s.aiClient.GetToolRegistry().UnregisterMCPTools(name)
 		}
@@ -500,14 +500,14 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 
 		// Record audit
 		username := r.Header.Get("X-Username")
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:     username,
 			Action:   "delete_mcp_server",
 			Resource: "mcp",
 			Details:  fmt.Sprintf("Deleted MCP server: %s", name),
 		})
 
-		json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -549,7 +549,7 @@ func (s *Server) handleMCPTools(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"mcp_tools":     tools,
 		"builtin_tools": builtinTools,
 	})

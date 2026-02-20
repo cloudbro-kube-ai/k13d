@@ -78,15 +78,17 @@ func (m *AccessRequestManager) CreateRequest(requestedBy string, action Action, 
 
 	// Persist to database
 	if db.DB != nil {
-		db.DB.Exec(
+		if _, err := db.DB.Exec(
 			`INSERT INTO access_requests (id, requested_by, action, resource, namespace, reason, state, created_at, expires_at)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			id, requestedBy, string(action), resource, namespace, reason,
-			string(AccessRequestPending), req.CreatedAt, req.ExpiresAt)
+			string(AccessRequestPending), req.CreatedAt, req.ExpiresAt); err != nil {
+			return "", fmt.Errorf("failed to persist access request: %w", err)
+		}
 	}
 
 	// Record audit event
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:            requestedBy,
 		Action:          "access_request_created",
 		Resource:        resource,
@@ -135,13 +137,15 @@ func (m *AccessRequestManager) ApproveRequest(id, reviewer, note string) error {
 
 	// Update database
 	if db.DB != nil {
-		db.DB.Exec(
+		if _, err := db.DB.Exec(
 			`UPDATE access_requests SET state = ?, reviewed_by = ?, review_note = ?, reviewed_at = ? WHERE id = ?`,
-			string(AccessRequestApproved), reviewer, note, req.ReviewedAt, id)
+			string(AccessRequestApproved), reviewer, note, req.ReviewedAt, id); err != nil {
+			return fmt.Errorf("failed to update access request: %w", err)
+		}
 	}
 
 	// Record audit event
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:            reviewer,
 		Action:          "access_request_approved",
 		Resource:        req.Resource,
@@ -181,13 +185,15 @@ func (m *AccessRequestManager) DenyRequest(id, reviewer, note string) error {
 
 	// Update database
 	if db.DB != nil {
-		db.DB.Exec(
+		if _, err := db.DB.Exec(
 			`UPDATE access_requests SET state = ?, reviewed_by = ?, review_note = ?, reviewed_at = ? WHERE id = ?`,
-			string(AccessRequestDenied), reviewer, note, req.ReviewedAt, id)
+			string(AccessRequestDenied), reviewer, note, req.ReviewedAt, id); err != nil {
+			return fmt.Errorf("failed to update access request: %w", err)
+		}
 	}
 
 	// Record audit event
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:            reviewer,
 		Action:          "access_request_denied",
 		Resource:        req.Resource,
@@ -268,7 +274,7 @@ func (m *AccessRequestManager) CleanupExpired() {
 			req.State = AccessRequestExpired
 			// Update database
 			if db.DB != nil {
-				db.DB.Exec("UPDATE access_requests SET state = ? WHERE id = ?",
+				_, _ = db.DB.Exec("UPDATE access_requests SET state = ? WHERE id = ?",
 					string(AccessRequestExpired), id)
 			}
 		}
@@ -314,7 +320,7 @@ func (m *AccessRequestManager) HandleCreateAccessRequest(w http.ResponseWriter, 
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"id":     id,
 		"status": "pending",
 	})
@@ -333,7 +339,7 @@ func (m *AccessRequestManager) HandleListAccessRequests(w http.ResponseWriter, r
 	pending := m.GetPendingRequests()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"requests": pending,
 		"total":    len(pending),
 	})
@@ -356,7 +362,10 @@ func (m *AccessRequestManager) HandleApproveAccessRequest(w http.ResponseWriter,
 	var req struct {
 		Note string `json:"note"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
 	reviewer := r.Header.Get("X-Username")
 	if err := m.ApproveRequest(id, reviewer, req.Note); err != nil {
@@ -369,7 +378,7 @@ func (m *AccessRequestManager) HandleApproveAccessRequest(w http.ResponseWriter,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status": "approved",
 		"id":     id,
 	})
@@ -392,7 +401,10 @@ func (m *AccessRequestManager) HandleDenyAccessRequest(w http.ResponseWriter, r 
 	var req struct {
 		Note string `json:"note"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
 	reviewer := r.Header.Get("X-Username")
 	if err := m.DenyRequest(id, reviewer, req.Note); err != nil {
@@ -405,7 +417,7 @@ func (m *AccessRequestManager) HandleDenyAccessRequest(w http.ResponseWriter, r 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status": "denied",
 		"id":     id,
 	})

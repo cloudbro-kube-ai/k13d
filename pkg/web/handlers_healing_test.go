@@ -113,7 +113,9 @@ func TestHealingStoreDeleteRule(t *testing.T) {
 	store := NewHealingStore()
 
 	r1, _ := store.AddRule(HealingRule{Name: "rule-1", Action: HealingAction{Type: "restart"}})
-	store.AddRule(HealingRule{Name: "rule-2", Action: HealingAction{Type: "notify"}})
+	if _, err := store.AddRule(HealingRule{Name: "rule-2", Action: HealingAction{Type: "notify"}}); err != nil {
+		t.Fatalf("AddRule() error = %v", err)
+	}
 
 	err := store.DeleteRule(r1.ID)
 	if err != nil {
@@ -204,7 +206,7 @@ func TestHealingStoreConcurrentAccess(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			store.AddRule(HealingRule{
+			_, _ = store.AddRule(HealingRule{
 				Name:   "concurrent-rule",
 				Action: HealingAction{Type: "restart"},
 			})
@@ -250,13 +252,15 @@ func TestHealingStoreConcurrentAccess(t *testing.T) {
 func TestHealingStoreNamespaceFiltering(t *testing.T) {
 	store := NewHealingStore()
 
-	store.AddRule(HealingRule{
+	if _, err := store.AddRule(HealingRule{
 		Name:       "ns-rule",
 		Enabled:    true,
 		Namespaces: []string{"production", "staging"},
 		Condition:  HealingCondition{Type: "crashloop"},
 		Action:     HealingAction{Type: "restart"},
-	})
+	}); err != nil {
+		t.Fatalf("AddRule() error = %v", err)
+	}
 
 	rules := store.GetRules()
 	if len(rules[0].Namespaces) != 2 {
@@ -269,12 +273,14 @@ func TestHealingStoreNamespaceFiltering(t *testing.T) {
 
 func TestHandleHealingRulesGET(t *testing.T) {
 	store := NewHealingStore()
-	store.AddRule(HealingRule{
+	if _, err := store.AddRule(HealingRule{
 		Name:      "test-rule",
 		Enabled:   true,
 		Condition: HealingCondition{Type: "crashloop"},
 		Action:    HealingAction{Type: "restart"},
-	})
+	}); err != nil {
+		t.Fatalf("AddRule() error = %v", err)
+	}
 
 	s := &Server{healingStore: store}
 
@@ -437,7 +443,9 @@ func TestHandleHealingEventsWithLimit(t *testing.T) {
 	s.handleHealingEvents(w, req)
 
 	var resp map[string][]HealingEvent
-	json.NewDecoder(w.Body).Decode(&resp)
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
 	if len(resp["events"]) != 3 {
 		t.Errorf("events count with limit=3: %d, want 3", len(resp["events"]))
 	}

@@ -349,7 +349,7 @@ func (s *Server) recordAuditWithK8sContext(r *http.Request, entry db.AuditEntry)
 		entry.SessionID = cookie.Value
 	}
 
-	db.RecordAudit(entry)
+	_ = db.RecordAudit(entry)
 }
 
 // getClientIP extracts client IP from request.

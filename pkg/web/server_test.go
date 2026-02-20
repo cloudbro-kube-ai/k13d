@@ -163,7 +163,7 @@ func TestSSEWriter_WriteEvent(t *testing.T) {
 		flusher: w,
 	}
 
-	sse.WriteEvent("approval", `{"id":"test123"}`)
+	_ = sse.WriteEvent("approval", `{"id":"test123"}`)
 
 	expected := "event: approval\ndata: {\"id\":\"test123\"}\n\n"
 	if w.Body.String() != expected {

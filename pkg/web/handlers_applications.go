@@ -46,7 +46,7 @@ func (s *Server) handleApplications(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(groups)
+	_ = json.NewEncoder(w).Encode(groups)
 }
 
 func (s *Server) buildApplicationGroups(ctx context.Context, namespace string) ([]ApplicationGroup, error) {

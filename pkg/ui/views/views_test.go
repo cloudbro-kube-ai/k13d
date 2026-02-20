@@ -309,7 +309,7 @@ func TestRegistrar(t *testing.T) {
 	}
 
 	// Lookup should work with full GVR
-	gvr, ok = r.Lookup(string(GVRPods))
+	_, ok = r.Lookup(string(GVRPods))
 	if !ok {
 		t.Error("Lookup(v1/pods) should return true")
 	}

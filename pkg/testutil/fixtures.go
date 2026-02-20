@@ -448,5 +448,5 @@ func (b *FakeClientBuilder) WithObject(obj runtime.Object) *FakeClientBuilder {
 
 // Build creates the fake clientset.
 func (b *FakeClientBuilder) Build() *fake.Clientset {
-	return fake.NewSimpleClientset(b.objects...)
+	return fake.NewSimpleClientset(b.objects...) //nolint:staticcheck // SA1019: migrating to NewClientset requires generated apply configurations
 }
