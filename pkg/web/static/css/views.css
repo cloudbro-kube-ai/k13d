@@ -15,7 +15,7 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+            background: linear-gradient(135deg, var(--bg-deep) 0%, var(--bg-primary) 50%, var(--bg-deep) 100%);
             position: relative;
             overflow-x: hidden;
             overflow-y: auto;
@@ -62,7 +62,7 @@
         }
 
         .login-box {
-            background: rgba(22, 27, 34, 0.9);
+            background: var(--surface-primary);
             backdrop-filter: blur(20px);
             padding: 48px 40px;
             border-radius: 20px;
@@ -132,7 +132,7 @@
             width: 100%;
             padding: 14px 16px;
             margin-bottom: 16px;
-            background: rgba(13, 17, 23, 0.8);
+            background: var(--surface-input);
             border: 1px solid rgba(122, 162, 247, 0.2);
             border-radius: 10px;
             color: var(--text-primary);
@@ -145,7 +145,7 @@
             outline: none;
             border-color: var(--accent-blue);
             box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.15), 0 0 20px rgba(122, 162, 247, 0.1);
-            background: rgba(13, 17, 23, 1);
+            background: var(--surface-input-solid);
         }
 
         .login-box input::placeholder {
@@ -223,7 +223,7 @@
         .login-tab {
             flex: 1;
             padding: 10px;
-            background: rgba(13, 17, 23, 0.5);
+            background: var(--surface-input);
             border: 1px solid rgba(122, 162, 247, 0.1);
             border-radius: 8px;
             color: var(--text-secondary);
@@ -299,7 +299,7 @@
 
         /* Token Help Box - Collapsible */
         .token-help-box {
-            background: rgba(13, 17, 23, 0.6);
+            background: var(--surface-input);
             border: 1px solid rgba(122, 162, 247, 0.15);
             border-radius: 10px;
             margin-top: 12px;
@@ -383,7 +383,7 @@
 
         .token-help-step code {
             display: block;
-            background: rgba(0, 0, 0, 0.3);
+            background: var(--surface-code);
             padding: 6px 10px;
             border-radius: 6px;
             margin-top: 4px;
@@ -449,7 +449,7 @@
             display: none;
             flex-direction: column;
             height: 100vh;
-            background: linear-gradient(180deg, var(--bg-primary) 0%, #12131a 100%);
+            background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-deep) 100%);
         }
 
         .app-container.active {
@@ -468,7 +468,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 10px 20px;
-            background: linear-gradient(135deg, rgba(36, 40, 59, 0.95) 0%, rgba(26, 27, 38, 0.98) 100%);
+            background: linear-gradient(135deg, var(--surface-primary) 0%, var(--surface-secondary) 100%);
             border-bottom: 1px solid rgba(122, 162, 247, 0.15);
             backdrop-filter: blur(10px);
             position: relative;
@@ -592,7 +592,7 @@
         .sidebar {
             width: 240px;
             min-width: 200px;
-            background: linear-gradient(180deg, rgba(36, 40, 59, 0.8) 0%, rgba(26, 27, 38, 0.9) 100%);
+            background: linear-gradient(180deg, var(--surface-primary) 0%, var(--surface-secondary) 100%);
             border-right: 1px solid rgba(122, 162, 247, 0.1);
             display: flex;
             flex-direction: column;
@@ -671,7 +671,7 @@
         }
 
         .nav-item:hover {
-            background: rgba(65, 72, 104, 0.5);
+            background: var(--bg-hover);
             border-color: rgba(122, 162, 247, 0.1);
             transform: translateX(4px);
         }
@@ -699,7 +699,7 @@
         }
 
         .nav-item .count {
-            background: rgba(65, 72, 104, 0.8);
+            background: var(--surface-elevated);
             padding: 3px 10px;
             border-radius: 12px;
             font-size: 11px;
@@ -733,7 +733,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            background: linear-gradient(180deg, rgba(26, 27, 38, 0.5) 0%, rgba(18, 19, 26, 0.8) 100%);
+            background: linear-gradient(180deg, var(--surface-secondary) 0%, var(--bg-deep) 100%);
         }
 
         .resize-handle {
@@ -771,7 +771,7 @@
             width: 400px;
             min-width: 300px;
             max-width: 600px;
-            background: linear-gradient(180deg, rgba(36, 40, 59, 0.95) 0%, rgba(26, 27, 38, 0.98) 100%);
+            background: linear-gradient(180deg, var(--surface-primary) 0%, var(--surface-secondary) 100%);
             display: flex;
             flex-direction: column;
             border-left: 1px solid rgba(187, 154, 247, 0.1);
@@ -795,7 +795,7 @@
             align-items: center;
             padding: 14px 20px;
             border-bottom: 1px solid rgba(122, 162, 247, 0.1);
-            background: linear-gradient(90deg, rgba(36, 40, 59, 0.8) 0%, rgba(26, 27, 38, 0.9) 100%);
+            background: linear-gradient(90deg, var(--surface-primary) 0%, var(--surface-secondary) 100%);
             backdrop-filter: blur(10px);
         }
 
@@ -822,7 +822,7 @@
             align-items: center;
             gap: 4px;
             padding: 2px 8px;
-            background: rgba(26, 27, 38, 0.6);
+            background: var(--surface-tertiary);
             border-radius: 4px;
         }
 
@@ -844,7 +844,7 @@
         }
 
         .namespace-select {
-            background: rgba(26, 27, 38, 0.8);
+            background: var(--surface-input);
             border: 1px solid rgba(122, 162, 247, 0.2);
             border-radius: 8px;
             padding: 8px 14px;
@@ -857,7 +857,7 @@
 
         .namespace-select:hover {
             border-color: rgba(122, 162, 247, 0.4);
-            background: rgba(26, 27, 38, 1);
+            background: var(--surface-input-solid);
         }
 
         .namespace-select:focus {
@@ -906,7 +906,7 @@
         }
 
         .table-container::-webkit-scrollbar-track {
-            background: rgba(26, 27, 38, 0.5);
+            background: var(--surface-tertiary);
             border-radius: 4px;
         }
 
@@ -925,14 +925,14 @@
             border-spacing: 0;
             font-size: 13px;
             font-feature-settings: 'tnum' 1;
-            background: rgba(36, 40, 59, 0.4);
+            background: var(--surface-tertiary);
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
         }
 
         th {
-            background: linear-gradient(180deg, rgba(65, 72, 104, 0.6) 0%, rgba(36, 40, 59, 0.8) 100%);
+            background: linear-gradient(180deg, var(--surface-tertiary) 0%, var(--surface-primary) 100%);
             padding: 14px 16px;
             text-align: left;
             font-weight: var(--font-weight-bold);
@@ -949,7 +949,7 @@
         }
 
         th:hover {
-            background: linear-gradient(180deg, rgba(122, 162, 247, 0.2) 0%, rgba(36, 40, 59, 0.9) 100%);
+            background: linear-gradient(180deg, rgba(122, 162, 247, 0.2) 0%, var(--surface-primary) 100%);
             color: var(--accent-blue);
         }
 
@@ -974,7 +974,7 @@
             align-items: center;
             justify-content: space-between;
             padding: 12px 20px;
-            background: linear-gradient(90deg, rgba(36, 40, 59, 0.8) 0%, rgba(26, 27, 38, 0.9) 100%);
+            background: linear-gradient(90deg, var(--surface-primary) 0%, var(--surface-secondary) 100%);
             border-top: 1px solid rgba(122, 162, 247, 0.1);
             font-size: 12px;
         }
@@ -992,7 +992,7 @@
 
         .pagination-btn {
             padding: 6px 14px;
-            background: rgba(65, 72, 104, 0.5);
+            background: var(--bg-hover);
             border: 1px solid rgba(122, 162, 247, 0.2);
             border-radius: 8px;
             color: var(--text-primary);
@@ -1017,7 +1017,7 @@
 
         .page-size-select {
             padding: 6px 12px;
-            background: rgba(26, 27, 38, 0.8);
+            background: var(--surface-input);
             border: 1px solid rgba(122, 162, 247, 0.2);
             border-radius: 8px;
             color: var(--text-primary);
@@ -1037,7 +1037,7 @@
 
         td {
             padding: 12px 16px;
-            border-bottom: 1px solid rgba(65, 72, 104, 0.3);
+            border-bottom: 1px solid var(--border-color);
             transition: all 0.15s ease;
         }
 
@@ -1138,7 +1138,7 @@
             flex: 1;
             overflow-y: auto;
             padding: 18px;
-            background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.1) 100%);
+            background: linear-gradient(180deg, transparent 0%, var(--surface-code) 100%);
         }
 
         .ai-messages::-webkit-scrollbar {
@@ -1191,14 +1191,14 @@
         }
 
         .message.assistant .message-content {
-            background: rgba(65, 72, 104, 0.6);
+            background: var(--surface-tertiary);
             border: 1px solid rgba(187, 154, 247, 0.1);
             border-bottom-left-radius: 4px;
             backdrop-filter: blur(5px);
         }
 
         .message-content pre {
-            background: rgba(26, 27, 38, 0.8);
+            background: var(--surface-input);
             padding: 12px;
             border-radius: 8px;
             margin-top: 10px;
@@ -1225,12 +1225,12 @@
         .ai-input-container {
             padding: 18px;
             border-top: 1px solid rgba(187, 154, 247, 0.15);
-            background: linear-gradient(180deg, rgba(36, 40, 59, 0.5) 0%, rgba(26, 27, 38, 0.8) 100%);
+            background: linear-gradient(180deg, var(--surface-primary) 0%, var(--surface-secondary) 100%);
         }
 
         .ai-input {
             width: 100%;
-            background: rgba(26, 27, 38, 0.8);
+            background: var(--surface-input);
             border: 1px solid rgba(187, 154, 247, 0.2);
             border-radius: 12px;
             padding: 14px 16px;
@@ -1245,7 +1245,7 @@
             outline: none;
             border-color: var(--accent-purple);
             box-shadow: 0 0 0 3px rgba(187, 154, 247, 0.1), 0 0 20px rgba(187, 154, 247, 0.1);
-            background: rgba(26, 27, 38, 1);
+            background: var(--surface-input-solid);
         }
 
         .ai-input::placeholder {
@@ -1300,7 +1300,7 @@
             display: flex;
             gap: 6px;
             padding: 12px 20px;
-            background: linear-gradient(90deg, rgba(36, 40, 59, 0.6) 0%, rgba(26, 27, 38, 0.8) 100%);
+            background: linear-gradient(90deg, var(--surface-primary) 0%, var(--surface-secondary) 100%);
             border-bottom: 1px solid rgba(122, 162, 247, 0.1);
         }
 
@@ -1353,7 +1353,7 @@
         }
 
         .modal {
-            background: linear-gradient(180deg, rgba(36, 40, 59, 0.95) 0%, rgba(26, 27, 38, 0.98) 100%);
+            background: linear-gradient(180deg, var(--surface-primary) 0%, var(--surface-secondary) 100%);
             border-radius: 16px;
             border: 1px solid rgba(122, 162, 247, 0.2);
             width: 100%;
@@ -1432,7 +1432,7 @@
         .form-group input, .form-group select {
             width: 100%;
             padding: 12px 14px;
-            background: rgba(26, 27, 38, 0.8);
+            background: var(--surface-input);
             border: 1px solid rgba(122, 162, 247, 0.2);
             border-radius: 10px;
             color: var(--text-primary);
@@ -1445,7 +1445,7 @@
             outline: none;
             border-color: var(--accent-blue);
             box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.1);
-            background: rgba(26, 27, 38, 1);
+            background: var(--surface-input-solid);
         }
 
         .modal-footer {
@@ -1844,13 +1844,13 @@
         .search-result-kind.pod { background: var(--accent-green); }
         .search-result-kind.deployment { background: var(--accent-blue); }
         .search-result-kind.service { background: var(--accent-purple); }
-        .search-result-kind.configmap { background: var(--accent-yellow); color: #1a1b26; }
+        .search-result-kind.configmap { background: var(--accent-yellow); color: var(--text-on-accent); }
         .search-result-kind.secret { background: var(--accent-red); }
-        .search-result-kind.node { background: var(--accent-cyan); color: #1a1b26; }
+        .search-result-kind.node { background: var(--accent-cyan); color: var(--text-on-accent); }
         .search-result-kind.namespace { background: var(--text-secondary); }
         .search-result-kind.statefulset { background: #f7768e; }
-        .search-result-kind.daemonset { background: #ff9e64; color: #1a1b26; }
-        .search-result-kind.ingress { background: #9ece6a; color: #1a1b26; }
+        .search-result-kind.daemonset { background: #ff9e64; color: var(--text-on-accent); }
+        .search-result-kind.ingress { background: #9ece6a; color: var(--text-on-accent); }
 
         .search-result-info {
             flex: 1;
@@ -2779,7 +2779,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .about-version-row:last-child {
@@ -2895,7 +2895,7 @@
         /* Settings select boxes - dark theme */
         .settings-row select,
         .settings-section select {
-            background: rgba(26, 27, 38, 0.9);
+            background: var(--surface-secondary);
             border: 1px solid rgba(122, 162, 247, 0.2);
             border-radius: 8px;
             padding: 8px 12px;
@@ -2910,7 +2910,7 @@
         .settings-row select:hover,
         .settings-section select:hover {
             border-color: rgba(122, 162, 247, 0.4);
-            background: rgba(26, 27, 38, 1);
+            background: var(--surface-input-solid);
         }
 
         .settings-row select:focus,
@@ -2992,7 +2992,7 @@
 
         .terminal-body {
             flex: 1;
-            background: #1a1b26;
+            background: var(--bg-primary);
             border: 1px solid var(--border-color);
             border-radius: 0 0 8px 8px;
             overflow: hidden;
@@ -3069,7 +3069,7 @@
 
         .log-body {
             flex: 1;
-            background: #0d1117;
+            background: var(--bg-deep);
             border: 1px solid var(--border-color);
             border-radius: 0 0 8px 8px;
             overflow: auto;
@@ -3084,7 +3084,7 @@
         .log-line {
             display: flex;
             padding: 4px 12px 4px 0;
-            border-bottom: 1px solid rgba(65, 72, 104, 0.3);
+            border-bottom: 1px solid var(--border-color);
             transition: background 0.15s ease;
             counter-increment: log-line-number;
         }
@@ -3094,7 +3094,7 @@
         }
 
         .log-line:nth-child(even) {
-            background: rgba(36, 40, 59, 0.3);
+            background: var(--surface-tertiary);
         }
 
         .log-line:nth-child(even):hover {
@@ -3108,7 +3108,7 @@
             text-align: right;
             color: rgba(169, 177, 214, 0.4);
             font-size: 11px;
-            border-right: 1px solid rgba(65, 72, 104, 0.4);
+            border-right: 1px solid var(--border-color);
             margin-right: 12px;
             user-select: none;
             flex-shrink: 0;
@@ -3919,7 +3919,7 @@
         .resource-action-btn.portforward:hover { background: var(--accent-purple); }
 
         .resource-action-btn.topo { border-color: var(--accent-yellow); }
-        .resource-action-btn.topo:hover { background: var(--accent-yellow); color: #1a1b26; }
+        .resource-action-btn.topo:hover { background: var(--accent-yellow); color: var(--text-on-accent); }
 
         /* ==========================================
          * AI Action Highlight
@@ -4899,72 +4899,7 @@
     opacity: 0.7;
 }
 
-/* ============================================
- * Light Theme Overrides
- * Override hardcoded dark colors for light mode
- * ============================================ */
-
-[data-theme="light"] .login-container {
-    background: linear-gradient(135deg, #e8edf5 0%, #f0f4f8 50%, #e8edf5 100%);
-}
-
-[data-theme="light"] .login-container::before {
-    background-image:
-        radial-gradient(circle at 20% 80%, rgba(37, 99, 235, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(124, 58, 237, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 40% 40%, rgba(14, 165, 233, 0.04) 0%, transparent 40%),
-        radial-gradient(circle at 60% 60%, rgba(22, 163, 74, 0.04) 0%, transparent 40%);
-}
-
-[data-theme="light"] .login-box {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-[data-theme="light"] .login-input {
-    background: var(--bg-primary);
-    border-color: var(--border-color);
-    color: var(--text-primary);
-}
-
-[data-theme="light"] .sidebar {
-    background: var(--bg-secondary);
-    border-right: 1px solid var(--border-color);
-}
-
-[data-theme="light"] .nav-item:hover {
-    background: var(--bg-tertiary);
-}
-
-[data-theme="light"] .modal-content {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-}
-
-[data-theme="light"] .resource-table th {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-}
-
-[data-theme="light"] .resource-table tr:hover {
-    background: rgba(37, 99, 235, 0.05);
-}
-
-[data-theme="light"] .ai-panel {
-    background: var(--bg-secondary);
-    border-left: 1px solid var(--border-color);
-}
-
-[data-theme="light"] .ai-message.assistant {
-    background: var(--bg-primary);
-}
-
-[data-theme="light"] .command-bar {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-}
+/* Light Theme Overrides removed - now using CSS variables */
 
 /* ============================
    Custom View Containers
@@ -5691,17 +5626,4 @@
 }
 .troubleshoot-btn:hover { background: var(--accent-yellow); color: var(--bg-primary); }
 
-@media (prefers-color-scheme: light) {
-    :root:not([data-theme]) .login-container {
-        background: linear-gradient(135deg, #e8edf5 0%, #f0f4f8 50%, #e8edf5 100%);
-    }
-    :root:not([data-theme]) .login-box {
-        background: rgba(255, 255, 255, 0.95);
-        border: 1px solid var(--border-color);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    }
-    :root:not([data-theme]) .sidebar {
-        background: var(--bg-secondary);
-        border-right: 1px solid var(--border-color);
-    }
-}
+/* System light preference overrides removed - now using CSS variables */

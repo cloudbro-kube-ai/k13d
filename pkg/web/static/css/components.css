@@ -234,7 +234,7 @@
 }
 
 .table-container::-webkit-scrollbar-track {
-    background: rgba(26, 27, 38, 0.5);
+    background: var(--bg-primary);
     border-radius: 4px;
 }
 
@@ -253,14 +253,14 @@ table {
     border-spacing: 0;
     font-size: 13px;
     font-feature-settings: 'tnum' 1;
-    background: rgba(36, 40, 59, 0.4);
+    background: var(--surface-tertiary);
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 th {
-    background: linear-gradient(180deg, rgba(65, 72, 104, 0.6) 0%, rgba(36, 40, 59, 0.8) 100%);
+    background: linear-gradient(180deg, var(--surface-tertiary) 0%, var(--surface-primary) 100%);
     padding: 14px 16px;
     text-align: left;
     font-weight: var(--font-weight-bold);
@@ -277,7 +277,7 @@ th {
 }
 
 th:hover {
-    background: linear-gradient(180deg, rgba(122, 162, 247, 0.2) 0%, rgba(36, 40, 59, 0.9) 100%);
+    background: linear-gradient(180deg, rgba(122, 162, 247, 0.2) 0%, var(--surface-primary) 100%);
     color: var(--accent-blue);
 }
 
@@ -298,7 +298,7 @@ th:not(.sort-asc):not(.sort-desc) .sort-icon::after { content: '⇅'; }
 
 td {
     padding: 12px 16px;
-    border-bottom: 1px solid rgba(65, 72, 104, 0.3);
+    border-bottom: 1px solid var(--border-color);
     transition: all 0.15s ease;
 }
 
@@ -336,7 +336,7 @@ tbody tr:hover {
     align-items: center;
     justify-content: space-between;
     padding: 12px 20px;
-    background: linear-gradient(90deg, rgba(36, 40, 59, 0.8) 0%, rgba(26, 27, 38, 0.9) 100%);
+    background: linear-gradient(90deg, var(--surface-primary) 0%, var(--surface-secondary) 100%);
     border-top: 1px solid rgba(122, 162, 247, 0.1);
     font-size: 12px;
 }
@@ -354,7 +354,7 @@ tbody tr:hover {
 
 .pagination-btn {
     padding: 6px 14px;
-    background: rgba(65, 72, 104, 0.5);
+    background: var(--bg-hover);
     border: 1px solid rgba(122, 162, 247, 0.2);
     border-radius: 8px;
     color: var(--text-primary);
@@ -379,7 +379,7 @@ tbody tr:hover {
 
 .page-size-select {
     padding: 6px 12px;
-    background: rgba(26, 27, 38, 0.8);
+    background: var(--surface-input);
     border: 1px solid rgba(122, 162, 247, 0.2);
     border-radius: 8px;
     color: var(--text-primary);
@@ -470,7 +470,7 @@ tbody tr:hover {
 }
 
 .modal {
-    background: linear-gradient(180deg, rgba(36, 40, 59, 0.95) 0%, rgba(26, 27, 38, 0.98) 100%);
+    background: linear-gradient(180deg, var(--surface-primary) 0%, var(--surface-secondary) 100%);
     border-radius: 16px;
     border: 1px solid rgba(122, 162, 247, 0.2);
     width: 100%;
@@ -540,7 +540,7 @@ tbody tr:hover {
     display: flex;
     gap: 6px;
     padding: 12px 20px;
-    background: linear-gradient(90deg, rgba(36, 40, 59, 0.6) 0%, rgba(26, 27, 38, 0.8) 100%);
+    background: linear-gradient(90deg, var(--surface-primary) 0%, var(--surface-secondary) 100%);
     border-bottom: 1px solid rgba(122, 162, 247, 0.1);
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -591,7 +591,7 @@ tbody tr:hover {
 .form-group input, .form-group select {
     width: 100%;
     padding: 12px 14px;
-    background: rgba(26, 27, 38, 0.8);
+    background: var(--surface-input);
     border: 1px solid rgba(122, 162, 247, 0.2);
     border-radius: 10px;
     color: var(--text-primary);
@@ -604,11 +604,11 @@ tbody tr:hover {
     outline: none;
     border-color: var(--accent-blue);
     box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.1);
-    background: rgba(26, 27, 38, 1);
+    background: var(--surface-input-solid);
 }
 
 .namespace-select {
-    background: rgba(26, 27, 38, 0.8);
+    background: var(--surface-input);
     border: 1px solid rgba(122, 162, 247, 0.2);
     border-radius: 8px;
     padding: 8px 14px;
@@ -621,7 +621,7 @@ tbody tr:hover {
 
 .namespace-select:hover {
     border-color: rgba(122, 162, 247, 0.4);
-    background: rgba(26, 27, 38, 1);
+    background: var(--surface-input-solid);
 }
 
 .namespace-select:focus {
@@ -991,13 +991,13 @@ tbody tr:hover {
 .search-result-kind.pod { background: var(--accent-green); }
 .search-result-kind.deployment { background: var(--accent-blue); }
 .search-result-kind.service { background: var(--accent-purple); }
-.search-result-kind.configmap { background: var(--accent-yellow); color: #1a1b26; }
+.search-result-kind.configmap { background: var(--accent-yellow); color: var(--text-on-accent); }
 .search-result-kind.secret { background: var(--accent-red); }
-.search-result-kind.node { background: var(--accent-cyan); color: #1a1b26; }
+.search-result-kind.node { background: var(--accent-cyan); color: var(--text-on-accent); }
 .search-result-kind.namespace { background: var(--text-secondary); }
 .search-result-kind.statefulset { background: #f7768e; }
-.search-result-kind.daemonset { background: #ff9e64; color: #1a1b26; }
-.search-result-kind.ingress { background: #9ece6a; color: #1a1b26; }
+.search-result-kind.daemonset { background: #ff9e64; color: var(--text-on-accent); }
+.search-result-kind.ingress { background: #9ece6a; color: var(--text-on-accent); }
 
 .search-result-info {
     flex: 1;
@@ -1352,7 +1352,7 @@ tbody tr:hover {
 .resource-action-btn.portforward:hover { background: var(--accent-purple); }
 
 .resource-action-btn.topo { border-color: var(--accent-yellow); }
-.resource-action-btn.topo:hover { background: var(--accent-yellow); color: #1a1b26; }
+.resource-action-btn.topo:hover { background: var(--accent-yellow); color: var(--text-on-accent); }
 
 /* ==========================================
  * AI Toast & Highlight

@@ -33,6 +33,17 @@
     --text-muted: #adb5bd;
     --border-color: #dee2e6;
 
+    /* Surface/Glass backgrounds */
+    --bg-deep: #edf0f5;
+    --surface-primary: rgba(255, 255, 255, 0.95);
+    --surface-secondary: rgba(248, 249, 250, 0.9);
+    --surface-tertiary: rgba(233, 236, 239, 0.6);
+    --surface-input: rgba(255, 255, 255, 0.8);
+    --surface-input-solid: #ffffff;
+    --surface-elevated: rgba(233, 236, 239, 0.8);
+    --surface-code: rgba(233, 236, 239, 0.5);
+    --text-on-accent: #ffffff;
+
     /* Spacing */
     --spacing-xs: 4px;
     --spacing-sm: 8px;
@@ -84,6 +95,16 @@
     --text-muted: #565f89;
     --border-color: #414868;
 
+    --bg-deep: #12131a;
+    --surface-primary: rgba(36, 40, 59, 0.95);
+    --surface-secondary: rgba(26, 27, 38, 0.9);
+    --surface-tertiary: rgba(65, 72, 104, 0.6);
+    --surface-input: rgba(26, 27, 38, 0.8);
+    --surface-input-solid: rgba(26, 27, 38, 1);
+    --surface-elevated: rgba(65, 72, 104, 0.8);
+    --surface-code: rgba(0, 0, 0, 0.3);
+    --text-on-accent: #1a1b26;
+
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
@@ -108,6 +129,16 @@
     --bg-hover: rgba(255, 107, 129, 0.1);
     --text-muted: #8a6a6f;
     --border-color: #5a3a40;
+
+    --bg-deep: #150f11;
+    --surface-primary: rgba(42, 31, 34, 0.95);
+    --surface-secondary: rgba(28, 21, 23, 0.9);
+    --surface-tertiary: rgba(74, 48, 53, 0.6);
+    --surface-input: rgba(28, 21, 23, 0.8);
+    --surface-input-solid: rgba(28, 21, 23, 1);
+    --surface-elevated: rgba(74, 48, 53, 0.8);
+    --surface-code: rgba(0, 0, 0, 0.3);
+    --text-on-accent: #1c1517;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
@@ -134,6 +165,16 @@
     --text-muted: #8a8060;
     --border-color: #5a5230;
 
+    --bg-deep: #151411;
+    --surface-primary: rgba(42, 40, 32, 0.95);
+    --surface-secondary: rgba(28, 27, 23, 0.9);
+    --surface-tertiary: rgba(74, 69, 48, 0.6);
+    --surface-input: rgba(28, 27, 23, 0.8);
+    --surface-input-solid: rgba(28, 27, 23, 1);
+    --surface-elevated: rgba(74, 69, 48, 0.8);
+    --surface-code: rgba(0, 0, 0, 0.3);
+    --text-on-accent: #1c1b17;
+
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
@@ -158,6 +199,16 @@
     --bg-hover: rgba(115, 218, 202, 0.1);
     --text-muted: #6a8a6a;
     --border-color: #3a5a3a;
+
+    --bg-deep: #111511;
+    --surface-primary: rgba(32, 42, 32, 0.95);
+    --surface-secondary: rgba(23, 28, 23, 0.9);
+    --surface-tertiary: rgba(48, 74, 48, 0.6);
+    --surface-input: rgba(23, 28, 23, 0.8);
+    --surface-input-solid: rgba(23, 28, 23, 1);
+    --surface-elevated: rgba(48, 74, 48, 0.8);
+    --surface-code: rgba(0, 0, 0, 0.3);
+    --text-on-accent: #171c17;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
@@ -184,6 +235,16 @@
         --bg-hover: rgba(122, 162, 247, 0.1);
         --text-muted: #565f89;
         --border-color: #414868;
+
+        --bg-deep: #12131a;
+        --surface-primary: rgba(36, 40, 59, 0.95);
+        --surface-secondary: rgba(26, 27, 38, 0.9);
+        --surface-tertiary: rgba(65, 72, 104, 0.6);
+        --surface-input: rgba(26, 27, 38, 0.8);
+        --surface-input-solid: rgba(26, 27, 38, 1);
+        --surface-elevated: rgba(65, 72, 104, 0.8);
+        --surface-code: rgba(0, 0, 0, 0.3);
+        --text-on-accent: #1a1b26;
 
         --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
         --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
