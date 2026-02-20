@@ -69,7 +69,7 @@ The agent should NOT do the following unless explicitly requested:
 - **MCP Integration:** JSON-RPC 2.0 stdio protocol for tool extensibility
 - **Kubernetes Client:** client-go v0.35.0, metrics v0.35.0
 - **Database:** CGO-free SQLite (modernc.org/sqlite) for audit logs and settings
-- **Authentication:** Session-based with SHA256 password hashing
+- **Authentication:** Session-based with bcrypt password hashing (SHA256 legacy fallback)
 
 ### Key Dependencies
 ```

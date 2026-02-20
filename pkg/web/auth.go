@@ -3,7 +3,9 @@ package web
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -329,10 +331,16 @@ func hashPassword(password string) string {
 	return string(hash)
 }
 
-// checkPassword verifies a password against its bcrypt hash
+// checkPassword verifies a password against its hash.
+// Supports bcrypt (preferred) and falls back to SHA256 for legacy hashes.
 func checkPassword(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
+	// Bcrypt hashes start with "$2a$", "$2b$", or "$2y$"
+	if strings.HasPrefix(hash, "$2") {
+		return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
+	}
+	// Legacy SHA256 fallback for existing users migrating from older versions
+	h := sha256.Sum256([]byte(password))
+	return hash == hex.EncodeToString(h[:])
 }
 
 // generateSessionID creates a random session ID
