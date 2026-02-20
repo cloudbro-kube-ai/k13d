@@ -65,8 +65,9 @@ type AuthManager struct {
 	ldapProvider   *LDAPProvider
 	tokenValidator *K8sTokenValidator
 	oidcProvider   *OIDCProvider
-	jwtManager     *JWTManager       // JWT token manager (Teleport-inspired)
-	roleValidator  func(string) bool // Optional: validates custom role names
+	jwtManager     *JWTManager          // JWT token manager (Teleport-inspired)
+	roleValidator  func(string) bool    // Optional: validates custom role names
+	bruteForce     *BruteForceProtector // IP-based brute-force protection
 }
 
 // SetRoleValidator sets a function that validates custom role names
@@ -233,6 +234,7 @@ func NewAuthManager(cfg *AuthConfig) *AuthManager {
 		csrfTokens:    make(map[string]time.Time),
 		config:        cfg,
 		jwtManager:    NewJWTManager(JWTConfig{}), // Auto-generates secret
+		bruteForce:    NewBruteForceProtector(),
 	}
 
 	// Set default auth mode to "token" if not specified
@@ -776,6 +778,18 @@ func (am *AuthManager) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	clientIP := ClientIP(r)
+
+	// Check if the IP is blocked by brute-force protection
+	if am.bruteForce.IsBlocked(clientIP) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"error": "Too many failed login attempts. Please try again later.",
+		})
+		return
+	}
+
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -804,10 +818,18 @@ func (am *AuthManager) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		// Handle username/password login (local or LDAP)
 		session, err = am.Authenticate(req.Username, req.Password)
 		if err != nil {
+			// Record failure and apply progressive delay
+			delay := am.bruteForce.RecordFailure(clientIP)
+			if delay > 0 {
+				time.Sleep(delay)
+			}
 			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 			return
 		}
 	}
+
+	// Login succeeded — clear failure counter for this IP
+	am.bruteForce.RecordSuccess(clientIP)
 
 	// Set session cookie with security flags
 	http.SetCookie(w, &http.Cookie{

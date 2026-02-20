@@ -914,6 +914,11 @@ func (s *Server) Stop() error {
 		s.authRateLimiter.Stop()
 	}
 
+	// Stop brute-force protector cleanup goroutine
+	if s.authManager != nil && s.authManager.bruteForce != nil {
+		s.authManager.bruteForce.Stop()
+	}
+
 	// Disconnect all MCP servers
 	if s.mcpClient != nil {
 		s.mcpClient.DisconnectAll()
