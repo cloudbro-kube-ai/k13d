@@ -220,3 +220,37 @@ a:hover {
 .slide-down {
     animation: slideDown var(--transition-normal);
 }
+
+/* Skip-to-content link for keyboard navigation accessibility */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--accent-blue);
+    color: var(--text-on-accent);
+    padding: 8px 16px;
+    z-index: 10000;
+    transition: top 0.3s;
+}
+.skip-link:focus {
+    top: 0;
+}
+
+/* Reduced motion support for users who prefer minimal animations */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: more) {
+    :root {
+        --border-color: #8a8b90;
+    }
+    [data-theme="tokyo-night"] {
+        --border-color: #6a6f99;
+    }
+}

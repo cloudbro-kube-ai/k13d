@@ -5626,4 +5626,150 @@
 }
 .troubleshoot-btn:hover { background: var(--accent-yellow); color: var(--bg-primary); }
 
-/* System light preference overrides removed - now using CSS variables */
+/* ==========================================
+ * Tokyo Night Light - view refinements
+ * Overrides hardcoded dark-optimized values
+ * for login, modals, detail panels, etc.
+ * ========================================== */
+
+/* Login page */
+html:not([data-theme]) .login-container::before {
+    background-image:
+        radial-gradient(circle at 20% 80%, rgba(52, 84, 138, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(90, 74, 120, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(22, 103, 117, 0.04) 0%, transparent 40%),
+        radial-gradient(circle at 60% 60%, rgba(72, 94, 48, 0.04) 0%, transparent 40%);
+}
+html:not([data-theme]) .login-box {
+    box-shadow:
+        0 0 40px rgba(52, 84, 138, 0.06),
+        0 20px 40px rgba(52, 59, 88, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+html:not([data-theme]) .login-box input {
+    border-color: rgba(52, 84, 138, 0.15);
+}
+html:not([data-theme]) .login-box input:focus {
+    box-shadow: 0 0 0 3px rgba(52, 84, 138, 0.1), 0 0 15px rgba(52, 84, 138, 0.06);
+}
+html:not([data-theme]) .login-box button.login-btn:hover {
+    box-shadow: 0 8px 24px rgba(52, 84, 138, 0.25);
+}
+html:not([data-theme]) .login-box button.login-btn:focus {
+    box-shadow: 0 0 0 3px rgba(52, 84, 138, 0.2), 0 8px 24px rgba(52, 84, 138, 0.25);
+}
+html:not([data-theme]) .login-ascii-logo {
+    text-shadow: 0 0 15px rgba(52, 84, 138, 0.3);
+}
+html:not([data-theme]) .login-error {
+    background: rgba(140, 67, 81, 0.08);
+    border-color: rgba(140, 67, 81, 0.15);
+}
+html:not([data-theme]) .login-tab {
+    border-color: rgba(52, 84, 138, 0.08);
+}
+html:not([data-theme]) .login-tab:hover {
+    background: rgba(52, 84, 138, 0.06);
+    border-color: rgba(52, 84, 138, 0.12);
+}
+html:not([data-theme]) .login-tab.active {
+    background: rgba(52, 84, 138, 0.1);
+    border-color: var(--accent-blue);
+}
+html:not([data-theme]) .login-footer {
+    border-top-color: rgba(52, 84, 138, 0.08);
+}
+html:not([data-theme]) .token-help-box {
+    border-color: rgba(52, 84, 138, 0.1);
+}
+html:not([data-theme]) .token-help-toggle:hover {
+    background: rgba(52, 84, 138, 0.06);
+}
+html:not([data-theme]) .token-help-note {
+    background: rgba(143, 94, 21, 0.06);
+    border-color: rgba(143, 94, 21, 0.12);
+}
+html:not([data-theme]) .auth-mode-indicator.token-mode {
+    background: rgba(72, 94, 48, 0.08);
+    border-color: rgba(72, 94, 48, 0.15);
+}
+html:not([data-theme]) .auth-mode-indicator.local-mode {
+    background: rgba(52, 84, 138, 0.06);
+    border-color: rgba(52, 84, 138, 0.12);
+}
+
+/* Template cards */
+html:not([data-theme]) .template-card:hover {
+    box-shadow: 0 4px 16px rgba(52, 59, 88, 0.1);
+}
+
+/* Re-apply dark values for auto dark mode */
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme]) .login-container::before {
+        background-image:
+            radial-gradient(circle at 20% 80%, rgba(122, 162, 247, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(187, 154, 247, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 40% 40%, rgba(125, 211, 252, 0.05) 0%, transparent 40%),
+            radial-gradient(circle at 60% 60%, rgba(52, 211, 153, 0.05) 0%, transparent 40%);
+    }
+    html:not([data-theme]) .login-box {
+        box-shadow:
+            0 0 60px rgba(122, 162, 247, 0.1),
+            0 25px 50px rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    html:not([data-theme]) .login-box input {
+        border-color: rgba(122, 162, 247, 0.2);
+    }
+    html:not([data-theme]) .login-box input:focus {
+        box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.15), 0 0 20px rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .login-box button.login-btn:hover {
+        box-shadow: 0 10px 30px rgba(122, 162, 247, 0.3);
+    }
+    html:not([data-theme]) .login-box button.login-btn:focus {
+        box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.3), 0 10px 30px rgba(122, 162, 247, 0.3);
+    }
+    html:not([data-theme]) .login-ascii-logo {
+        text-shadow: 0 0 20px rgba(122, 162, 247, 0.5);
+    }
+    html:not([data-theme]) .login-error {
+        background: rgba(247, 118, 142, 0.1);
+        border-color: rgba(247, 118, 142, 0.2);
+    }
+    html:not([data-theme]) .login-tab {
+        border-color: rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .login-tab:hover {
+        background: rgba(122, 162, 247, 0.1);
+        border-color: rgba(122, 162, 247, 0.2);
+    }
+    html:not([data-theme]) .login-tab.active {
+        background: rgba(122, 162, 247, 0.15);
+        border-color: var(--accent-blue);
+    }
+    html:not([data-theme]) .login-footer {
+        border-top-color: rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .token-help-box {
+        border-color: rgba(122, 162, 247, 0.15);
+    }
+    html:not([data-theme]) .token-help-toggle:hover {
+        background: rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .token-help-note {
+        background: rgba(224, 175, 104, 0.1);
+        border-color: rgba(224, 175, 104, 0.2);
+    }
+    html:not([data-theme]) .auth-mode-indicator.token-mode {
+        background: rgba(158, 206, 106, 0.1);
+        border-color: rgba(158, 206, 106, 0.2);
+    }
+    html:not([data-theme]) .auth-mode-indicator.local-mode {
+        background: rgba(122, 162, 247, 0.1);
+        border-color: rgba(122, 162, 247, 0.2);
+    }
+    html:not([data-theme]) .template-card:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+}

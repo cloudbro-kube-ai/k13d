@@ -616,4 +616,540 @@
     animation: spin 1s linear infinite;
 }
 
-/* Light Theme Overrides removed - now using CSS variables */
+/* ==========================================
+ * Responsive Media Queries
+ * ========================================== */
+
+/* --- Tablet (max-width: 1024px) --- */
+@media (max-width: 1024px) {
+    .ai-panel {
+        width: 320px;
+        min-width: 250px;
+        max-width: 400px;
+    }
+
+    .sidebar {
+        width: 200px;
+        min-width: 160px;
+    }
+
+    .nav-section {
+        padding: 12px 8px;
+    }
+
+    .nav-item {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    .top-bar {
+        padding: 8px 16px;
+    }
+
+    .logo {
+        font-size: 18px;
+    }
+
+    .panel-header {
+        padding: 12px 16px;
+    }
+
+    .ai-messages {
+        padding: 14px;
+    }
+
+    .ai-input-container {
+        padding: 14px;
+    }
+}
+
+/* --- Mobile (max-width: 768px) --- */
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 260px;
+        min-width: 260px;
+        z-index: 200;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+
+    .sidebar.collapsed {
+        transform: translateX(-100%);
+    }
+
+    .ai-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        z-index: 200;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .ai-panel.mobile-open {
+        transform: translateX(0);
+    }
+
+    .main-panel {
+        min-width: 0;
+    }
+
+    .resize-handle {
+        display: none;
+    }
+
+    .top-bar {
+        padding: 8px 12px;
+    }
+
+    .logo {
+        font-size: 16px;
+        gap: 6px;
+    }
+
+    .logo::before {
+        font-size: 20px;
+    }
+
+    .user-info {
+        gap: 8px;
+    }
+
+    .header-team-badge {
+        display: none;
+    }
+
+    .panel-header {
+        padding: 10px 14px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .panel-title {
+        font-size: 14px;
+    }
+
+    .resource-summary {
+        margin-left: 0;
+        flex-wrap: wrap;
+    }
+
+    .panel-actions {
+        gap: 6px;
+    }
+
+    .auto-refresh-container {
+        margin-left: 0;
+        padding: 4px 8px;
+    }
+
+    .ai-messages {
+        padding: 12px;
+    }
+
+    .ai-input-container {
+        padding: 12px;
+    }
+
+    .ai-input {
+        padding: 12px 14px;
+    }
+
+    .message-content {
+        max-width: 95%;
+    }
+}
+
+/* --- Small Mobile (max-width: 480px) --- */
+@media (max-width: 480px) {
+    .top-bar {
+        padding: 6px 8px;
+    }
+
+    .logo {
+        font-size: 14px;
+        gap: 4px;
+    }
+
+    .logo::before {
+        font-size: 18px;
+    }
+
+    .user-info {
+        gap: 6px;
+        font-size: 12px;
+    }
+
+    .sidebar {
+        width: 100%;
+        min-width: 100%;
+        max-width: 100%;
+    }
+
+    .ai-panel {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .main-panel {
+        min-width: 0;
+    }
+
+    .nav-section {
+        padding: 10px 6px;
+    }
+
+    .nav-item {
+        padding: 8px 8px;
+        font-size: 12px;
+        border-radius: 8px;
+    }
+
+    .panel-header {
+        padding: 8px 10px;
+    }
+
+    .panel-title {
+        font-size: 13px;
+        gap: 6px;
+    }
+
+    .resource-summary {
+        font-size: 11px;
+    }
+
+    .panel-actions {
+        gap: 4px;
+    }
+
+    .auto-refresh-container {
+        gap: 4px;
+        padding: 2px 6px;
+        font-size: 11px;
+    }
+
+    .ai-header {
+        padding: 10px 12px;
+    }
+
+    .ai-header-title {
+        font-size: 13px;
+    }
+
+    .ai-messages {
+        padding: 8px;
+    }
+
+    .ai-input-container {
+        padding: 8px;
+    }
+
+    .ai-input {
+        padding: 10px 12px;
+        font-size: 12px;
+        border-radius: 10px;
+    }
+
+    .ai-actions {
+        margin-top: 8px;
+    }
+
+    .ai-hint {
+        font-size: 10px;
+    }
+
+    .message {
+        margin-bottom: 12px;
+    }
+
+    .message-content {
+        padding: 10px 12px;
+        font-size: 12px;
+        max-width: 100%;
+        border-radius: 12px;
+    }
+
+    .message-content pre {
+        padding: 8px;
+        font-size: 11px;
+    }
+
+    .content-wrapper {
+        min-width: 0;
+    }
+}
+
+/* --- Reduced Motion --- */
+@media (prefers-reduced-motion: reduce) {
+    .app-container.active {
+        animation: none;
+    }
+
+    .logo::before {
+        animation: none;
+    }
+
+    .ai-status-dot {
+        animation: none;
+    }
+
+    .ai-status-dot.checking {
+        animation: none;
+    }
+
+    .message {
+        animation: none;
+    }
+
+    .message.streaming .cursor {
+        animation: none;
+    }
+
+    .refresh-btn.spinning svg {
+        animation: none;
+    }
+
+    .nav-item {
+        transition: none;
+    }
+
+    .nav-item::before {
+        transition: none;
+    }
+
+    .nav-item .count {
+        transition: none;
+    }
+
+    .resize-handle {
+        transition: none;
+    }
+
+    .resize-handle::before {
+        transition: none;
+    }
+
+    .sidebar-transition {
+        transition: none;
+    }
+
+    .ai-input {
+        transition: none;
+    }
+
+    .message-content .resource-link {
+        transition: none;
+    }
+
+    .refresh-btn {
+        transition: none;
+    }
+
+    .sidebar {
+        transition: none;
+    }
+
+    .ai-panel {
+        transition: none;
+    }
+}
+
+/* ==========================================
+ * Tokyo Night Light - layout refinements
+ * ========================================== */
+
+/* Top bar: cool-tinted gradient border */
+html:not([data-theme]) .top-bar {
+    border-bottom-color: rgba(52, 84, 138, 0.12);
+}
+html:not([data-theme]) .top-bar::before {
+    background: linear-gradient(90deg, transparent, rgba(52, 84, 138, 0.2), rgba(90, 74, 120, 0.2), transparent);
+}
+
+/* Sidebar: tinted border and scrollbar */
+html:not([data-theme]) .sidebar {
+    border-right-color: rgba(52, 84, 138, 0.1);
+}
+html:not([data-theme]) .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(52, 84, 138, 0.2);
+}
+html:not([data-theme]) .sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(52, 84, 138, 0.35);
+}
+
+/* Nav items: accent-matched hover & active */
+html:not([data-theme]) .nav-item::before {
+    background: linear-gradient(90deg, rgba(52, 84, 138, 0.15), transparent);
+}
+html:not([data-theme]) .nav-item:hover {
+    border-color: rgba(52, 84, 138, 0.08);
+}
+html:not([data-theme]) .nav-item.active {
+    background: linear-gradient(135deg, rgba(52, 84, 138, 0.14) 0%, rgba(90, 74, 120, 0.08) 100%);
+    border-color: rgba(52, 84, 138, 0.2);
+    box-shadow: 0 2px 10px rgba(52, 84, 138, 0.06);
+}
+html:not([data-theme]) .nav-item:hover .count {
+    background: rgba(52, 84, 138, 0.12);
+}
+html:not([data-theme]) .nav-item.active .count {
+    background: rgba(52, 84, 138, 0.18);
+}
+
+/* Resize handle */
+html:not([data-theme]) .resize-handle {
+    background: linear-gradient(180deg, rgba(52, 84, 138, 0.08), rgba(90, 74, 120, 0.08));
+}
+html:not([data-theme]) .resize-handle::before {
+    background: rgba(52, 84, 138, 0.2);
+}
+html:not([data-theme]) .resize-handle:hover {
+    background: linear-gradient(180deg, rgba(52, 84, 138, 0.15), rgba(90, 74, 120, 0.15));
+}
+
+/* AI panel */
+html:not([data-theme]) .ai-panel {
+    border-left-color: rgba(90, 74, 120, 0.1);
+}
+html:not([data-theme]) .ai-panel::before {
+    background: linear-gradient(180deg, rgba(90, 74, 120, 0.2), transparent, rgba(52, 84, 138, 0.2));
+}
+html:not([data-theme]) .ai-header {
+    border-bottom-color: rgba(90, 74, 120, 0.1);
+    background: linear-gradient(90deg, rgba(90, 74, 120, 0.06) 0%, rgba(52, 84, 138, 0.03) 100%);
+}
+html:not([data-theme]) .ai-messages {
+    background: linear-gradient(180deg, transparent 0%, rgba(52, 59, 88, 0.03) 100%);
+}
+html:not([data-theme]) .ai-messages::-webkit-scrollbar-thumb {
+    background: rgba(90, 74, 120, 0.2);
+}
+html:not([data-theme]) .message.user .message-content {
+    box-shadow: 0 4px 12px rgba(52, 84, 138, 0.2);
+}
+html:not([data-theme]) .message.assistant .message-content {
+    border-color: rgba(90, 74, 120, 0.08);
+}
+html:not([data-theme]) .message-content pre {
+    border-color: rgba(52, 84, 138, 0.08);
+}
+html:not([data-theme]) .ai-input-container {
+    border-top-color: rgba(90, 74, 120, 0.1);
+}
+html:not([data-theme]) .ai-input {
+    border-color: rgba(90, 74, 120, 0.15);
+}
+html:not([data-theme]) .ai-input:focus {
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 0 3px rgba(90, 74, 120, 0.08), 0 0 15px rgba(90, 74, 120, 0.06);
+}
+
+/* Panel header */
+html:not([data-theme]) .panel-header {
+    border-bottom-color: rgba(52, 84, 138, 0.08);
+}
+
+/* Pagination border */
+html:not([data-theme]) .pagination-container {
+    border-top-color: rgba(52, 84, 138, 0.08);
+}
+
+/* Re-apply dark values for auto dark mode */
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme]) .top-bar {
+        border-bottom-color: rgba(122, 162, 247, 0.15);
+    }
+    html:not([data-theme]) .top-bar::before {
+        background: linear-gradient(90deg, transparent, rgba(122, 162, 247, 0.3), rgba(187, 154, 247, 0.3), transparent);
+    }
+    html:not([data-theme]) .sidebar {
+        border-right-color: rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .sidebar::-webkit-scrollbar-thumb {
+        background: rgba(122, 162, 247, 0.3);
+    }
+    html:not([data-theme]) .sidebar::-webkit-scrollbar-thumb:hover {
+        background: rgba(122, 162, 247, 0.5);
+    }
+    html:not([data-theme]) .nav-item::before {
+        background: linear-gradient(90deg, rgba(122, 162, 247, 0.2), transparent);
+    }
+    html:not([data-theme]) .nav-item:hover {
+        border-color: rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .nav-item.active {
+        background: linear-gradient(135deg, rgba(122, 162, 247, 0.2) 0%, rgba(187, 154, 247, 0.15) 100%);
+        border-color: rgba(122, 162, 247, 0.3);
+        box-shadow: 0 4px 15px rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .nav-item:hover .count {
+        background: rgba(122, 162, 247, 0.2);
+    }
+    html:not([data-theme]) .nav-item.active .count {
+        background: rgba(122, 162, 247, 0.3);
+    }
+    html:not([data-theme]) .resize-handle {
+        background: linear-gradient(180deg, rgba(122, 162, 247, 0.1), rgba(187, 154, 247, 0.1));
+    }
+    html:not([data-theme]) .resize-handle::before {
+        background: rgba(122, 162, 247, 0.3);
+    }
+    html:not([data-theme]) .resize-handle:hover {
+        background: linear-gradient(180deg, rgba(122, 162, 247, 0.2), rgba(187, 154, 247, 0.2));
+    }
+    html:not([data-theme]) .ai-panel {
+        border-left-color: rgba(187, 154, 247, 0.1);
+    }
+    html:not([data-theme]) .ai-panel::before {
+        background: linear-gradient(180deg, rgba(187, 154, 247, 0.3), transparent, rgba(122, 162, 247, 0.3));
+    }
+    html:not([data-theme]) .ai-header {
+        border-bottom-color: rgba(187, 154, 247, 0.15);
+        background: linear-gradient(90deg, rgba(187, 154, 247, 0.08) 0%, rgba(122, 162, 247, 0.05) 100%);
+    }
+    html:not([data-theme]) .ai-messages {
+        background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.1) 100%);
+    }
+    html:not([data-theme]) .ai-messages::-webkit-scrollbar-thumb {
+        background: rgba(187, 154, 247, 0.3);
+    }
+    html:not([data-theme]) .message.user .message-content {
+        box-shadow: 0 4px 15px rgba(122, 162, 247, 0.3);
+    }
+    html:not([data-theme]) .message.assistant .message-content {
+        border-color: rgba(187, 154, 247, 0.1);
+    }
+    html:not([data-theme]) .message-content pre {
+        border-color: rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .ai-input-container {
+        border-top-color: rgba(187, 154, 247, 0.15);
+    }
+    html:not([data-theme]) .ai-input {
+        border-color: rgba(187, 154, 247, 0.2);
+    }
+    html:not([data-theme]) .ai-input:focus {
+        border-color: var(--accent-purple);
+        box-shadow: 0 0 0 3px rgba(187, 154, 247, 0.1), 0 0 20px rgba(187, 154, 247, 0.1);
+    }
+    html:not([data-theme]) .panel-header {
+        border-bottom-color: rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .pagination-container {
+        border-top-color: rgba(122, 162, 247, 0.1);
+    }
+}

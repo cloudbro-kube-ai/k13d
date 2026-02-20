@@ -1417,3 +1417,307 @@ tbody tr:hover {
     margin-left: auto;
     color: var(--text-secondary);
 }
+
+/* ==========================================
+ * Tokyo Night Light - component refinements
+ * Overrides hardcoded dark-theme rgba values
+ * for a cohesive cool-light appearance.
+ * ========================================== */
+
+/* Status badges: remove neon glow on light bg */
+html:not([data-theme]) .status-running,
+html:not([data-theme]) .status-active,
+html:not([data-theme]) .status-ready {
+    text-shadow: none;
+}
+html:not([data-theme]) .status-pending {
+    text-shadow: none;
+}
+html:not([data-theme]) .status-failed,
+html:not([data-theme]) .status-error {
+    text-shadow: none;
+}
+
+/* Tables: softer shadow on light bg */
+html:not([data-theme]) table {
+    box-shadow: 0 2px 12px rgba(52, 59, 88, 0.08), 0 1px 3px rgba(52, 59, 88, 0.06);
+}
+
+/* Table header: visible tint for depth */
+html:not([data-theme]) th {
+    border-bottom: 1px solid rgba(52, 84, 138, 0.15);
+}
+html:not([data-theme]) th:hover {
+    background: linear-gradient(180deg, rgba(52, 84, 138, 0.12) 0%, var(--surface-primary) 100%);
+}
+
+/* Table rows */
+html:not([data-theme]) tr:hover {
+    background: linear-gradient(90deg, rgba(52, 84, 138, 0.06) 0%, rgba(90, 74, 120, 0.04) 100%);
+}
+html:not([data-theme]) tr:hover td {
+    border-bottom-color: rgba(52, 84, 138, 0.15);
+}
+html:not([data-theme]) tr.selected {
+    background: linear-gradient(90deg, rgba(52, 84, 138, 0.1) 0%, rgba(90, 74, 120, 0.06) 100%);
+}
+
+/* Buttons: accent-matched shadows */
+html:not([data-theme]) .btn-primary {
+    box-shadow: 0 4px 12px rgba(52, 84, 138, 0.25);
+}
+html:not([data-theme]) .btn-primary:hover {
+    box-shadow: 0 6px 18px rgba(52, 84, 138, 0.3);
+}
+html:not([data-theme]) .btn-secondary {
+    border-color: rgba(52, 84, 138, 0.25);
+}
+html:not([data-theme]) .btn-secondary:hover {
+    background: rgba(52, 84, 138, 0.08);
+}
+html:not([data-theme]) .send-btn {
+    box-shadow: 0 4px 12px rgba(90, 74, 120, 0.25);
+}
+html:not([data-theme]) .send-btn:hover:not(:disabled) {
+    box-shadow: 0 6px 18px rgba(90, 74, 120, 0.3);
+}
+html:not([data-theme]) .refresh-btn {
+    background: linear-gradient(135deg, rgba(52, 84, 138, 0.08) 0%, rgba(22, 103, 117, 0.08) 100%);
+    border-color: rgba(52, 84, 138, 0.15);
+}
+html:not([data-theme]) .refresh-btn:hover {
+    background: linear-gradient(135deg, rgba(52, 84, 138, 0.15) 0%, rgba(22, 103, 117, 0.15) 100%);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 4px 12px rgba(22, 103, 117, 0.15);
+}
+html:not([data-theme]) .logout-btn {
+    border-color: rgba(140, 67, 81, 0.3);
+}
+html:not([data-theme]) .logout-btn:hover {
+    background: rgba(140, 67, 81, 0.08);
+}
+
+/* Pagination */
+html:not([data-theme]) .pagination-container {
+    border-top-color: rgba(52, 84, 138, 0.1);
+}
+html:not([data-theme]) .pagination-btn {
+    border-color: rgba(52, 84, 138, 0.15);
+}
+html:not([data-theme]) .pagination-btn:hover:not(:disabled) {
+    box-shadow: 0 4px 12px rgba(52, 84, 138, 0.2);
+}
+
+/* Badges */
+html:not([data-theme]) .user-badge {
+    background: linear-gradient(135deg, rgba(52, 84, 138, 0.1) 0%, rgba(90, 74, 120, 0.1) 100%);
+    border-color: rgba(52, 84, 138, 0.15);
+}
+html:not([data-theme]) .ai-badge {
+    box-shadow: 0 2px 6px rgba(90, 74, 120, 0.2);
+}
+
+/* Modals: lighter backdrop, softer shadow */
+html:not([data-theme]) .modal-overlay {
+    background: rgba(52, 59, 88, 0.5);
+}
+html:not([data-theme]) .modal {
+    border-color: rgba(52, 84, 138, 0.15);
+    box-shadow: 0 25px 60px rgba(52, 59, 88, 0.18), 0 0 30px rgba(52, 84, 138, 0.06);
+}
+html:not([data-theme]) .modal-header {
+    border-bottom-color: rgba(52, 84, 138, 0.12);
+    background: linear-gradient(90deg, rgba(52, 84, 138, 0.04) 0%, transparent 100%);
+}
+html:not([data-theme]) .modal-footer {
+    border-top-color: rgba(52, 84, 138, 0.12);
+    background: linear-gradient(90deg, transparent 0%, rgba(52, 84, 138, 0.02) 100%);
+}
+
+/* Approval modal */
+html:not([data-theme]) .approval-modal {
+    background: rgba(52, 59, 88, 0.5);
+}
+
+/* Tabs */
+html:not([data-theme]) .tabs {
+    border-bottom-color: rgba(52, 84, 138, 0.1);
+}
+html:not([data-theme]) .tab:hover {
+    background: rgba(52, 84, 138, 0.08);
+}
+html:not([data-theme]) .tab.active {
+    background: linear-gradient(135deg, rgba(52, 84, 138, 0.1) 0%, rgba(22, 103, 117, 0.06) 100%);
+    border-color: rgba(52, 84, 138, 0.2);
+    box-shadow: 0 2px 8px rgba(52, 84, 138, 0.08);
+}
+
+/* Forms */
+html:not([data-theme]) .form-group input,
+html:not([data-theme]) .form-group select {
+    border-color: rgba(52, 84, 138, 0.15);
+}
+html:not([data-theme]) .form-group input:focus,
+html:not([data-theme]) .form-group select:focus {
+    box-shadow: 0 0 0 3px rgba(52, 84, 138, 0.08);
+}
+html:not([data-theme]) .namespace-select {
+    border-color: rgba(52, 84, 138, 0.15);
+}
+html:not([data-theme]) .namespace-select:focus {
+    box-shadow: 0 0 0 3px rgba(52, 84, 138, 0.08);
+}
+
+/* Search */
+html:not([data-theme]) .search-results {
+    box-shadow: 0 8px 24px rgba(52, 59, 88, 0.12);
+}
+
+/* Health dots: no glow on light bg */
+html:not([data-theme]) .health-dot.ok {
+    box-shadow: none;
+}
+html:not([data-theme]) .health-dot.warning {
+    box-shadow: none;
+}
+html:not([data-theme]) .health-dot.error {
+    box-shadow: none;
+}
+
+/* Re-apply dark values when system prefers dark + no explicit theme */
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme]) .status-running,
+    html:not([data-theme]) .status-active,
+    html:not([data-theme]) .status-ready {
+        text-shadow: 0 0 10px rgba(158, 206, 106, 0.5);
+    }
+    html:not([data-theme]) .status-pending {
+        text-shadow: 0 0 10px rgba(224, 175, 104, 0.5);
+    }
+    html:not([data-theme]) .status-failed,
+    html:not([data-theme]) .status-error {
+        text-shadow: 0 0 10px rgba(247, 118, 142, 0.5);
+    }
+    html:not([data-theme]) table {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+    html:not([data-theme]) th {
+        border-bottom: 1px solid rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) th:hover {
+        background: linear-gradient(180deg, rgba(122, 162, 247, 0.2) 0%, var(--surface-primary) 100%);
+    }
+    html:not([data-theme]) tr:hover {
+        background: linear-gradient(90deg, rgba(122, 162, 247, 0.08) 0%, rgba(187, 154, 247, 0.05) 100%);
+    }
+    html:not([data-theme]) tr:hover td {
+        border-bottom-color: rgba(122, 162, 247, 0.2);
+    }
+    html:not([data-theme]) tr.selected {
+        background: linear-gradient(90deg, rgba(122, 162, 247, 0.15) 0%, rgba(187, 154, 247, 0.1) 100%);
+    }
+    html:not([data-theme]) .btn-primary {
+        box-shadow: 0 4px 15px rgba(122, 162, 247, 0.3);
+    }
+    html:not([data-theme]) .btn-primary:hover {
+        box-shadow: 0 6px 20px rgba(122, 162, 247, 0.4);
+    }
+    html:not([data-theme]) .btn-secondary {
+        border-color: rgba(122, 162, 247, 0.3);
+    }
+    html:not([data-theme]) .btn-secondary:hover {
+        background: rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .send-btn {
+        box-shadow: 0 4px 15px rgba(187, 154, 247, 0.3);
+    }
+    html:not([data-theme]) .send-btn:hover:not(:disabled) {
+        box-shadow: 0 6px 20px rgba(187, 154, 247, 0.4);
+    }
+    html:not([data-theme]) .refresh-btn {
+        background: linear-gradient(135deg, rgba(122, 162, 247, 0.1) 0%, rgba(125, 207, 255, 0.1) 100%);
+        border-color: rgba(122, 162, 247, 0.2);
+    }
+    html:not([data-theme]) .refresh-btn:hover {
+        background: linear-gradient(135deg, rgba(122, 162, 247, 0.2) 0%, rgba(125, 207, 255, 0.2) 100%);
+        border-color: var(--accent-cyan);
+        box-shadow: 0 4px 12px rgba(125, 207, 255, 0.2);
+    }
+    html:not([data-theme]) .logout-btn {
+        border-color: rgba(247, 118, 142, 0.3);
+    }
+    html:not([data-theme]) .logout-btn:hover {
+        background: rgba(247, 118, 142, 0.1);
+    }
+    html:not([data-theme]) .pagination-container {
+        border-top-color: rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .pagination-btn {
+        border-color: rgba(122, 162, 247, 0.2);
+    }
+    html:not([data-theme]) .pagination-btn:hover:not(:disabled) {
+        box-shadow: 0 4px 12px rgba(122, 162, 247, 0.3);
+    }
+    html:not([data-theme]) .user-badge {
+        background: linear-gradient(135deg, rgba(122, 162, 247, 0.15) 0%, rgba(187, 154, 247, 0.15) 100%);
+        border-color: rgba(122, 162, 247, 0.2);
+    }
+    html:not([data-theme]) .ai-badge {
+        box-shadow: 0 2px 8px rgba(187, 154, 247, 0.3);
+    }
+    html:not([data-theme]) .modal-overlay {
+        background: rgba(0, 0, 0, 0.8);
+    }
+    html:not([data-theme]) .modal {
+        border-color: rgba(122, 162, 247, 0.2);
+        box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5), 0 0 60px rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .modal-header {
+        border-bottom-color: rgba(122, 162, 247, 0.15);
+        background: linear-gradient(90deg, rgba(122, 162, 247, 0.05) 0%, transparent 100%);
+    }
+    html:not([data-theme]) .modal-footer {
+        border-top-color: rgba(122, 162, 247, 0.15);
+        background: linear-gradient(90deg, transparent 0%, rgba(122, 162, 247, 0.03) 100%);
+    }
+    html:not([data-theme]) .approval-modal {
+        background: rgba(0, 0, 0, 0.7);
+    }
+    html:not([data-theme]) .tabs {
+        border-bottom-color: rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .tab:hover {
+        background: rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .tab.active {
+        background: linear-gradient(135deg, rgba(122, 162, 247, 0.15) 0%, rgba(125, 207, 255, 0.1) 100%);
+        border-color: rgba(122, 162, 247, 0.3);
+        box-shadow: 0 2px 10px rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .form-group input,
+    html:not([data-theme]) .form-group select {
+        border-color: rgba(122, 162, 247, 0.2);
+    }
+    html:not([data-theme]) .form-group input:focus,
+    html:not([data-theme]) .form-group select:focus {
+        box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .namespace-select {
+        border-color: rgba(122, 162, 247, 0.2);
+    }
+    html:not([data-theme]) .namespace-select:focus {
+        box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.1);
+    }
+    html:not([data-theme]) .search-results {
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    html:not([data-theme]) .health-dot.ok {
+        box-shadow: 0 0 10px var(--accent-green);
+    }
+    html:not([data-theme]) .health-dot.warning {
+        box-shadow: 0 0 10px var(--accent-yellow);
+    }
+    html:not([data-theme]) .health-dot.error {
+        box-shadow: 0 0 10px var(--accent-red);
+    }
+}

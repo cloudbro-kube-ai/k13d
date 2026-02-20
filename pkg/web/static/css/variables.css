@@ -17,31 +17,33 @@
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
 
-    /* Colors - Light Theme (default) */
-    --bg-primary: #f8f9fa;
-    --bg-secondary: #ffffff;
-    --bg-tertiary: #e9ecef;
-    --text-primary: #212529;
-    --text-secondary: #6c757d;
-    --accent-blue: #2563eb;
-    --accent-green: #16a34a;
-    --accent-red: #dc2626;
-    --accent-yellow: #d97706;
-    --accent-purple: #7c3aed;
-    --accent-cyan: #0891b2;
-    --bg-hover: rgba(37, 99, 235, 0.08);
-    --text-muted: #adb5bd;
-    --border-color: #dee2e6;
+    /* Colors - Tokyo Night Light Theme (default)
+     * Based on the official Tokyo Night Light VS Code palette
+     * Cool, muted tones with navy/slate text and warm gray backgrounds */
+    --bg-primary: #d5d6db;
+    --bg-secondary: #e9e9ec;
+    --bg-tertiary: #c4c5ca;
+    --text-primary: #343b58;
+    --text-secondary: #565a6e;
+    --accent-blue: #34548a;
+    --accent-green: #485e30;
+    --accent-red: #8c4351;
+    --accent-yellow: #8f5e15;
+    --accent-purple: #5a4a78;
+    --accent-cyan: #166775;
+    --bg-hover: rgba(52, 84, 138, 0.1);
+    --text-muted: #9699a3;
+    --border-color: #b4b5b9;
 
     /* Surface/Glass backgrounds */
-    --bg-deep: #edf0f5;
-    --surface-primary: rgba(255, 255, 255, 0.95);
-    --surface-secondary: rgba(248, 249, 250, 0.9);
-    --surface-tertiary: rgba(233, 236, 239, 0.6);
-    --surface-input: rgba(255, 255, 255, 0.8);
-    --surface-input-solid: #ffffff;
-    --surface-elevated: rgba(233, 236, 239, 0.8);
-    --surface-code: rgba(233, 236, 239, 0.5);
+    --bg-deep: #cbccd1;
+    --surface-primary: rgba(233, 233, 236, 0.95);
+    --surface-secondary: rgba(213, 214, 219, 0.95);
+    --surface-tertiary: rgba(196, 197, 202, 0.7);
+    --surface-input: rgba(233, 233, 236, 0.8);
+    --surface-input-solid: #e9e9ec;
+    --surface-elevated: rgba(196, 197, 202, 0.8);
+    --surface-code: rgba(196, 197, 202, 0.5);
     --text-on-accent: #ffffff;
 
     /* Spacing */
@@ -62,13 +64,13 @@
     --transition-normal: 0.3s ease;
     --transition-slow: 0.5s ease;
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-    --shadow-glow-blue: 0 0 20px rgba(37, 99, 235, 0.15);
-    --shadow-glow-purple: 0 0 20px rgba(124, 58, 237, 0.15);
-    --shadow-glow-green: 0 0 20px rgba(22, 163, 74, 0.15);
+    /* Shadows - soft, cool-tinted for Tokyo Night Light */
+    --shadow-sm: 0 1px 3px rgba(52, 59, 88, 0.1);
+    --shadow-md: 0 4px 8px rgba(52, 59, 88, 0.1);
+    --shadow-lg: 0 10px 20px rgba(52, 59, 88, 0.12);
+    --shadow-glow-blue: 0 0 15px rgba(52, 84, 138, 0.2);
+    --shadow-glow-purple: 0 0 15px rgba(90, 74, 120, 0.2);
+    --shadow-glow-green: 0 0 15px rgba(72, 94, 48, 0.2);
 
     /* Z-index layers */
     --z-base: 1;
