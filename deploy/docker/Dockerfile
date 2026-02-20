@@ -16,7 +16,7 @@
 FROM golang:1.25.5-alpine AS builder
 
 # Install build dependencies
-RUN apk add --no-cache git ca-certificates tzdata
+RUN apk add --no-cache git ca-certificates
 
 # Set working directory
 WORKDIR /app
@@ -44,7 +44,8 @@ FROM alpine:3.21
 # - curl: For health checks
 # - bash: Required for AI agent shell commands
 # - kubectl: Required for AI agent Kubernetes operations
-RUN apk add --no-cache ca-certificates tzdata curl ncurses bash kubectl
+RUN apk add --no-cache ca-certificates tzdata curl ncurses bash
+RUN apk add --no-cache kubectl
 
 # Create non-root user
 RUN adduser -D -g '' k13d
