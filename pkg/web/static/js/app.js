@@ -8630,6 +8630,7 @@ spec:
 
             sidebar.classList.toggle('collapsed', sidebarCollapsed);
             hamburger.classList.toggle('active', sidebarCollapsed);
+            hamburger.setAttribute('aria-expanded', String(!sidebarCollapsed));
             localStorage.setItem('k13d_sidebar_collapsed', sidebarCollapsed);
         }
 

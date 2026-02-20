@@ -1,11 +1,12 @@
 /**
  * k13d CSS Variables
- * Light theme: Clean, professional (default)
- * Dark themes: Tokyo Night, Production, Staging, Development
+ * Dark theme: Tokyo Night (default)
+ * Light theme: Clean, professional (via prefers-color-scheme or data-theme)
+ * Environment themes: Production, Staging, Development
  *
  * Theme is controlled by [data-theme="..."] on <html>.
- * Default (no attribute) = light theme.
- * System preference respected via prefers-color-scheme.
+ * Default (no attribute) = Tokyo Night dark theme.
+ * System preference respected via prefers-color-scheme: light.
  */
 
 :root {
@@ -17,21 +18,21 @@
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
 
-    /* Colors - Light Theme (default) */
-    --bg-primary: #f8f9fa;
-    --bg-secondary: #ffffff;
-    --bg-tertiary: #e9ecef;
-    --text-primary: #212529;
-    --text-secondary: #6c757d;
-    --accent-blue: #2563eb;
-    --accent-green: #16a34a;
-    --accent-red: #dc2626;
-    --accent-yellow: #d97706;
-    --accent-purple: #7c3aed;
-    --accent-cyan: #0891b2;
-    --bg-hover: rgba(37, 99, 235, 0.08);
-    --text-muted: #adb5bd;
-    --border-color: #dee2e6;
+    /* Colors - Tokyo Night Dark (default) */
+    --bg-primary: #1a1b26;
+    --bg-secondary: #24283b;
+    --bg-tertiary: #414868;
+    --text-primary: #c0caf5;
+    --text-secondary: #a9b1d6;
+    --accent-blue: #7aa2f7;
+    --accent-green: #9ece6a;
+    --accent-red: #f7768e;
+    --accent-yellow: #e0af68;
+    --accent-purple: #bb9af7;
+    --accent-cyan: #7dcfff;
+    --bg-hover: rgba(122, 162, 247, 0.1);
+    --text-muted: #565f89;
+    --border-color: #414868;
 
     /* Spacing */
     --spacing-xs: 4px;
@@ -52,12 +53,12 @@
     --transition-slow: 0.5s ease;
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-    --shadow-glow-blue: 0 0 20px rgba(37, 99, 235, 0.15);
-    --shadow-glow-purple: 0 0 20px rgba(124, 58, 237, 0.15);
-    --shadow-glow-green: 0 0 20px rgba(22, 163, 74, 0.15);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+    --shadow-glow-blue: 0 0 20px rgba(122, 162, 247, 0.3);
+    --shadow-glow-purple: 0 0 20px rgba(187, 154, 247, 0.3);
+    --shadow-glow-green: 0 0 20px rgba(158, 206, 106, 0.3);
 
     /* Z-index layers */
     --z-base: 1;
@@ -167,29 +168,54 @@
     --shadow-glow-green: 0 0 20px rgba(158, 206, 106, 0.3);
 }
 
-/* Auto-detect system preference when no explicit theme is set */
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme]) {
-        --bg-primary: #1a1b26;
-        --bg-secondary: #24283b;
-        --bg-tertiary: #414868;
-        --text-primary: #c0caf5;
-        --text-secondary: #a9b1d6;
-        --accent-blue: #7aa2f7;
-        --accent-green: #9ece6a;
-        --accent-red: #f7768e;
-        --accent-yellow: #e0af68;
-        --accent-purple: #bb9af7;
-        --accent-cyan: #7dcfff;
-        --bg-hover: rgba(122, 162, 247, 0.1);
-        --text-muted: #565f89;
-        --border-color: #414868;
+/* Light Theme (explicit) */
+[data-theme="light"] {
+    --bg-primary: #f8f9fa;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #e9ecef;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --accent-blue: #2563eb;
+    --accent-green: #16a34a;
+    --accent-red: #dc2626;
+    --accent-yellow: #d97706;
+    --accent-purple: #7c3aed;
+    --accent-cyan: #0891b2;
+    --bg-hover: rgba(37, 99, 235, 0.08);
+    --text-muted: #adb5bd;
+    --border-color: #dee2e6;
 
-        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
-        --shadow-glow-blue: 0 0 20px rgba(122, 162, 247, 0.3);
-        --shadow-glow-purple: 0 0 20px rgba(187, 154, 247, 0.3);
-        --shadow-glow-green: 0 0 20px rgba(158, 206, 106, 0.3);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    --shadow-glow-blue: 0 0 20px rgba(37, 99, 235, 0.15);
+    --shadow-glow-purple: 0 0 20px rgba(124, 58, 237, 0.15);
+    --shadow-glow-green: 0 0 20px rgba(22, 163, 74, 0.15);
+}
+
+/* Auto-detect system preference when no explicit theme is set */
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+        --bg-primary: #f8f9fa;
+        --bg-secondary: #ffffff;
+        --bg-tertiary: #e9ecef;
+        --text-primary: #212529;
+        --text-secondary: #6c757d;
+        --accent-blue: #2563eb;
+        --accent-green: #16a34a;
+        --accent-red: #dc2626;
+        --accent-yellow: #d97706;
+        --accent-purple: #7c3aed;
+        --accent-cyan: #0891b2;
+        --bg-hover: rgba(37, 99, 235, 0.08);
+        --text-muted: #adb5bd;
+        --border-color: #dee2e6;
+
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+        --shadow-glow-blue: 0 0 20px rgba(37, 99, 235, 0.15);
+        --shadow-glow-purple: 0 0 20px rgba(124, 58, 237, 0.15);
+        --shadow-glow-green: 0 0 20px rgba(22, 163, 74, 0.15);
     }
 }

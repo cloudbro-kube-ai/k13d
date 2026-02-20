@@ -618,10 +618,11 @@
 
 /* ==========================================
  * Light Theme Overrides
- * Override hardcoded dark backgrounds for light mode
+ * Override hardcoded dark backgrounds for light mode.
+ * Applied when data-theme="light" is set explicitly,
+ * or when the system prefers light and no theme is set.
  * ========================================== */
 
-:root:not([data-theme]),
 [data-theme="light"] {
     /* App container */
     & .app-container {
@@ -735,5 +736,158 @@
     }
     & .resource-summary .summary-item {
         background: rgba(248, 249, 250, 0.8);
+    }
+}
+
+/* Auto-apply light layout overrides when system prefers light and no theme is set */
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme]) .app-container {
+        background: linear-gradient(180deg, var(--bg-primary) 0%, #edf0f5 100%);
+    }
+    :root:not([data-theme]) .top-bar {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.98) 100%);
+        border-bottom: 1px solid var(--border-color);
+    }
+    :root:not([data-theme]) .top-bar::before {
+        background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.2), rgba(124, 58, 237, 0.2), transparent);
+    }
+    :root:not([data-theme]) .logo {
+        text-shadow: none;
+    }
+    :root:not([data-theme]) .sidebar {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 249, 250, 0.95) 100%);
+        border-right: 1px solid var(--border-color);
+    }
+    :root:not([data-theme]) .nav-item:hover {
+        background: rgba(37, 99, 235, 0.06);
+        border-color: rgba(37, 99, 235, 0.1);
+    }
+    :root:not([data-theme]) .nav-item.active {
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(124, 58, 237, 0.08) 100%);
+        border-color: rgba(37, 99, 235, 0.2);
+    }
+    :root:not([data-theme]) .main-panel {
+        background: linear-gradient(180deg, rgba(248, 249, 250, 0.5) 0%, rgba(241, 243, 245, 0.8) 100%);
+    }
+    :root:not([data-theme]) .ai-panel {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.98) 100%);
+        border-left: 1px solid var(--border-color);
+    }
+    :root:not([data-theme]) .ai-header {
+        border-bottom: 1px solid var(--border-color);
+        background: linear-gradient(90deg, rgba(124, 58, 237, 0.04) 0%, rgba(37, 99, 235, 0.03) 100%);
+    }
+    :root:not([data-theme]) .ai-input-container {
+        border-top: 1px solid var(--border-color);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(248, 249, 250, 0.8) 100%);
+    }
+    :root:not([data-theme]) .ai-input {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(124, 58, 237, 0.2);
+    }
+    :root:not([data-theme]) .panel-header {
+        border-bottom: 1px solid var(--border-color);
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 249, 250, 0.95) 100%);
+    }
+}
+
+/* ==========================================
+ * Responsive Breakpoints
+ * ========================================== */
+
+/* Tablet and below: collapse sidebar, stack AI panel */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 0;
+        min-width: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .sidebar.mobile-open {
+        width: 240px;
+        min-width: 200px;
+        padding: 0;
+        overflow-y: auto;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: var(--z-dropdown);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .main-panel {
+        min-width: 0;
+    }
+
+    .ai-panel {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: 100%;
+        z-index: var(--z-dropdown);
+    }
+
+    .top-bar {
+        padding: 8px 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .global-search {
+        width: 160px;
+    }
+
+    .search-container {
+        margin-right: 8px;
+    }
+
+    .auto-refresh-container {
+        display: none;
+    }
+
+    .header-team-badge {
+        display: none;
+    }
+
+    .user-info {
+        gap: 6px;
+    }
+
+    .user-badge {
+        display: none;
+    }
+
+    .panel-header {
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 12px;
+    }
+
+    .panel-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+    .global-search {
+        width: 120px;
+    }
+
+    .cluster-switcher .cluster-name {
+        max-width: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .logout-btn {
+        padding: 4px 8px;
+        font-size: 11px;
     }
 }
