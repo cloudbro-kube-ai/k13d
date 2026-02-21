@@ -404,6 +404,9 @@ func (c *Client) ListContexts() ([]string, string, error) {
 }
 
 func (c *Client) ScaleResource(ctx context.Context, gvr schema.GroupVersionResource, namespace, name string, replicas int32) error {
+	if c.Dynamic == nil {
+		return fmt.Errorf("dynamic client not initialized")
+	}
 	// For deployments, statefulsets, etc.
 	patch := map[string]interface{}{
 		"spec": map[string]interface{}{
@@ -419,6 +422,9 @@ func (c *Client) ScaleResource(ctx context.Context, gvr schema.GroupVersionResou
 }
 
 func (c *Client) RolloutRestart(ctx context.Context, gvr schema.GroupVersionResource, namespace, name string) error {
+	if c.Dynamic == nil {
+		return fmt.Errorf("dynamic client not initialized")
+	}
 	// Trigger restart by updating annotation
 	timestamp := time.Now().Format(time.RFC3339)
 	patch := map[string]interface{}{
@@ -470,6 +476,9 @@ func (c *Client) PortForward(ctx context.Context, namespace, podName string, loc
 }
 
 func (c *Client) DeleteResource(ctx context.Context, gvr schema.GroupVersionResource, namespace, name string) error {
+	if c.Dynamic == nil {
+		return fmt.Errorf("dynamic client not initialized")
+	}
 	return c.Dynamic.Resource(gvr).Namespace(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 }
 
@@ -594,6 +603,9 @@ func (c *Client) GetResourceContext(ctx context.Context, ns, name, resource stri
 }
 
 func (c *Client) GetResourceYAML(ctx context.Context, namespace, name string, gvr schema.GroupVersionResource) (string, error) {
+	if c.Dynamic == nil {
+		return "", fmt.Errorf("dynamic client not initialized")
+	}
 	obj, err := c.Dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
@@ -1076,6 +1088,9 @@ func (c *Client) ListHPAs(ctx context.Context, namespace string) ([]autoscalingv
 }
 
 func (c *Client) ListCRDs(ctx context.Context) ([]apiextv1.CustomResourceDefinition, error) {
+	if c.Dynamic == nil {
+		return nil, fmt.Errorf("dynamic client not initialized")
+	}
 	gvr := schema.GroupVersionResource{
 		Group:    "apiextensions.k8s.io",
 		Version:  "v1",
@@ -1117,6 +1132,9 @@ type CRDInfo struct {
 
 // GetCRDInfo returns detailed information about a CRD by name
 func (c *Client) GetCRDInfo(ctx context.Context, crdName string) (*CRDInfo, error) {
+	if c.Dynamic == nil {
+		return nil, fmt.Errorf("dynamic client not initialized")
+	}
 	gvr := schema.GroupVersionResource{
 		Group:    "apiextensions.k8s.io",
 		Version:  "v1",
@@ -1186,6 +1204,9 @@ func (c *Client) GetCRDInfo(ctx context.Context, crdName string) (*CRDInfo, erro
 
 // ListCRDsDetailed returns detailed information about all CRDs
 func (c *Client) ListCRDsDetailed(ctx context.Context) ([]CRDInfo, error) {
+	if c.Dynamic == nil {
+		return nil, fmt.Errorf("dynamic client not initialized")
+	}
 	gvr := schema.GroupVersionResource{
 		Group:    "apiextensions.k8s.io",
 		Version:  "v1",
@@ -1401,6 +1422,9 @@ func resolvePathRecursive(current interface{}, path string) interface{} {
 
 // ListCustomResources lists instances of a custom resource
 func (c *Client) ListCustomResources(ctx context.Context, crdInfo *CRDInfo, namespace string) ([]unstructured.Unstructured, error) {
+	if c.Dynamic == nil {
+		return nil, fmt.Errorf("dynamic client not initialized")
+	}
 	gvr := schema.GroupVersionResource{
 		Group:    crdInfo.Group,
 		Version:  crdInfo.Version,
@@ -1425,6 +1449,9 @@ func (c *Client) ListCustomResources(ctx context.Context, crdInfo *CRDInfo, name
 
 // GetCustomResource gets a single custom resource instance
 func (c *Client) GetCustomResource(ctx context.Context, crdInfo *CRDInfo, namespace, name string) (*unstructured.Unstructured, error) {
+	if c.Dynamic == nil {
+		return nil, fmt.Errorf("dynamic client not initialized")
+	}
 	gvr := schema.GroupVersionResource{
 		Group:    crdInfo.Group,
 		Version:  crdInfo.Version,
@@ -1586,6 +1613,9 @@ func (c *Client) DescribeResource(ctx context.Context, resource, namespace, name
 
 	default:
 		// Generic describe using dynamic client
+		if c.Dynamic == nil {
+			return "", fmt.Errorf("dynamic client not initialized")
+		}
 		gvr, err := c.getGVRForResource(resource)
 		if err != nil {
 			return "", err
@@ -1728,6 +1758,9 @@ func (c *Client) GetCommonResources() []APIResource {
 
 // ListDynamicResource lists resources using the dynamic client for any resource type
 func (c *Client) ListDynamicResource(ctx context.Context, gvr schema.GroupVersionResource, namespace string) ([]map[string]interface{}, error) {
+	if c.Dynamic == nil {
+		return nil, fmt.Errorf("dynamic client not initialized")
+	}
 	var uList *unstructured.UnstructuredList
 	var err error
 
@@ -1810,6 +1843,9 @@ func (c *Client) StartPortForward(namespace, podName string, localPort, remotePo
 // ApplyYAML applies a YAML manifest to the cluster using kubectl-style apply
 // It supports dry-run mode for validation without actually applying changes
 func (c *Client) ApplyYAML(ctx context.Context, yamlContent string, defaultNamespace string, dryRun bool) (string, error) {
+	if c.Dynamic == nil {
+		return "", fmt.Errorf("dynamic client not initialized")
+	}
 	if defaultNamespace == "" {
 		defaultNamespace = "default"
 	}

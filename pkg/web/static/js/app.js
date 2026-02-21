@@ -856,7 +856,7 @@
 
         // Theme toggle (dark/light)
         function initTheme() {
-            const saved = localStorage.getItem('k13d_theme') || 'tokyo-night';
+            const saved = localStorage.getItem('k13d_theme') || 'light';
             if (saved === 'light') {
                 document.documentElement.removeAttribute('data-theme');
             } else {
@@ -1032,6 +1032,8 @@
             if (sidebarCollapsed) {
                 document.getElementById('sidebar').classList.add('collapsed');
                 document.getElementById('hamburger-btn').classList.add('active');
+                var toggleIcon = document.getElementById('sidebar-toggle-icon');
+                if (toggleIcon) toggleIcon.textContent = '»';
             }
             // Restore debug mode
             if (debugMode) {
@@ -3151,7 +3153,7 @@ ${escapeHtml(execInfo.result)}</div>
                 loadPrometheusSettings();
             } else if (tab === 'general') {
                 // Load saved theme
-                const saved = localStorage.getItem('k13d_theme') || 'tokyo-night';
+                const saved = localStorage.getItem('k13d_theme') || 'light';
                 const sel = document.getElementById('setting-theme');
                 if (sel) sel.value = saved;
             }
@@ -3174,7 +3176,7 @@ ${escapeHtml(execInfo.result)}</div>
 
         // Apply saved theme on load
         (function initSettingsTheme() {
-            const saved = localStorage.getItem('k13d_theme') || 'tokyo-night';
+            const saved = localStorage.getItem('k13d_theme') || 'light';
             applyTheme(saved);
         })();
 
@@ -6115,11 +6117,22 @@ ${escapeHtml(execInfo.result)}</div>
             const panel = document.getElementById('ai-panel');
             const handle = document.getElementById('resize-handle');
             const btn = document.getElementById('ai-toggle-btn');
-            const isHidden = panel.style.display === 'none';
-            panel.style.display = isHidden ? 'flex' : 'none';
-            handle.style.display = isHidden ? 'block' : 'none';
-            if (btn) btn.classList.toggle('active', isHidden);
-            localStorage.setItem('k13d_ai_panel', isHidden ? 'open' : 'closed');
+            const isMobile = window.innerWidth <= 768;
+
+            if (isMobile) {
+                // Mobile: use class toggle (CSS transform-based)
+                const isOpen = panel.classList.contains('mobile-open');
+                panel.classList.toggle('mobile-open', !isOpen);
+                if (btn) btn.classList.toggle('active', !isOpen);
+                localStorage.setItem('k13d_ai_panel', !isOpen ? 'open' : 'closed');
+            } else {
+                // Desktop: use display toggle
+                const isHidden = panel.style.display === 'none';
+                panel.style.display = isHidden ? 'flex' : 'none';
+                handle.style.display = isHidden ? 'block' : 'none';
+                if (btn) btn.classList.toggle('active', isHidden);
+                localStorage.setItem('k13d_ai_panel', isHidden ? 'open' : 'closed');
+            }
         }
 
         // Restore AI panel state on load
@@ -8628,6 +8641,7 @@ spec:
             const sidebar = document.getElementById('sidebar');
             const hamburger = document.getElementById('hamburger-btn');
             const overlay = document.getElementById('sidebar-overlay');
+            const toggleIcon = document.getElementById('sidebar-toggle-icon');
             const isMobile = window.innerWidth <= 768;
 
             if (isMobile) {
@@ -8657,6 +8671,7 @@ spec:
                 sidebarCollapsed = !sidebarCollapsed;
                 sidebar.classList.toggle('collapsed', sidebarCollapsed);
                 hamburger.classList.toggle('active', sidebarCollapsed);
+                if (toggleIcon) toggleIcon.textContent = sidebarCollapsed ? '»' : '«';
                 localStorage.setItem('k13d_sidebar_collapsed', sidebarCollapsed);
             }
         }

@@ -27,7 +27,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 20px;
+    padding: 6px 16px;
     background: linear-gradient(135deg, var(--surface-primary) 0%, var(--surface-secondary) 100%);
     border-bottom: 1px solid rgba(122, 162, 247, 0.15);
     backdrop-filter: blur(10px);
@@ -47,7 +47,7 @@
 
 .logo {
     font-family: var(--font-mono);
-    font-size: 20px;
+    font-size: 18px;
     font-weight: var(--font-weight-bold);
     background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 50%, var(--accent-purple) 100%);
     -webkit-background-clip: text;
@@ -65,7 +65,11 @@
     content: '⎈';
     -webkit-text-fill-color: var(--accent-blue);
     font-size: 24px;
-    animation: logoSpin 20s linear infinite;
+    transition: transform 0.6s ease;
+}
+
+.logo:hover::before {
+    transform: rotate(20deg);
 }
 
 .user-info {
@@ -114,8 +118,8 @@
  * ========================================== */
 
 .sidebar {
-    width: 240px;
-    min-width: 200px;
+    width: 200px;
+    min-width: 180px;
     background: linear-gradient(180deg, var(--surface-primary) 0%, var(--surface-secondary) 100%);
     border-right: 1px solid rgba(122, 162, 247, 0.1);
     display: flex;
@@ -153,15 +157,15 @@
 }
 
 .nav-section {
-    padding: 16px 12px;
+    padding: 10px 8px;
 }
 
 .nav-title {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: var(--font-weight-bold);
     text-transform: uppercase;
     color: var(--text-secondary);
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     letter-spacing: 0.15em;
     padding-left: 12px;
     display: flex;
@@ -178,13 +182,13 @@
 }
 
 .nav-item {
-    padding: 10px 14px;
+    padding: 7px 10px;
     border-radius: 10px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     transition: all 0.2s ease;
     margin-bottom: 4px;
@@ -234,9 +238,9 @@
 
 .nav-item .count {
     background: var(--surface-elevated);
-    padding: 3px 10px;
+    padding: 2px 8px;
     border-radius: 12px;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     min-width: 28px;
     text-align: center;
@@ -1109,10 +1113,6 @@
 /* --- Reduced Motion --- */
 @media (prefers-reduced-motion: reduce) {
     .app-container.active {
-        animation: none;
-    }
-
-    .logo::before {
         animation: none;
     }
 

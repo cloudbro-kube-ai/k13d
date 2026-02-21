@@ -296,53 +296,21 @@ func TestE2EFilterModeComplete(t *testing.T) {
 }
 
 // TestE2ERegexFilter tests regex filter functionality.
-// Skipped in CI due to timing-sensitive key event processing.
 func TestE2ERegexFilter(t *testing.T) {
-	if os.Getenv("CI") == "true" {
-		t.Skip("Skipping timing-sensitive filter test in CI")
-	}
-	screen := createTestScreen(t)
+	ctx := NewTUITestContext(t)
+	defer ctx.Cleanup()
 
-	app := NewTestApp(TestAppConfig{
-		UseSimulationScreen:   true,
-		Screen:                screen,
-		SkipBackgroundLoading: true,
-		SkipBriefing:          true,
-	})
+	// Enter filter mode with '/' and type regex pattern /nginx-.*/
+	ctx.PressRune('/').Type("/nginx-.*/").Press(tcell.KeyEnter)
 
-	done := make(chan struct{})
-	go func() {
-		_ = app.Run()
-		close(done)
-	}()
-	defer func() {
-		app.Stop()
-		<-done
-	}()
+	// Use polling assertion for filterText
+	ctx.ExpectFilter("nginx-.*")
 
-	time.Sleep(100 * time.Millisecond)
+	// Verify filterRegex flag
+	ctx.app.mx.RLock()
+	isRegex := ctx.app.filterRegex
+	ctx.app.mx.RUnlock()
 
-	// Enter filter mode with regex
-	screen.InjectKey(tcell.KeyRune, '/', tcell.ModNone)
-	time.Sleep(30 * time.Millisecond)
-
-	// Type regex pattern /nginx-.*/
-	for _, r := range "/nginx-.*/" {
-		screen.InjectKey(tcell.KeyRune, r, tcell.ModNone)
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	screen.InjectKey(tcell.KeyEnter, 0, tcell.ModNone)
-	time.Sleep(50 * time.Millisecond)
-
-	app.mx.RLock()
-	filter := app.filterText
-	isRegex := app.filterRegex
-	app.mx.RUnlock()
-
-	if filter != "nginx-.*" {
-		t.Errorf("Expected filter pattern 'nginx-.*', got %q", filter)
-	}
 	if !isRegex {
 		t.Error("Expected filterRegex to be true")
 	}
