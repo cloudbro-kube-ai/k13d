@@ -480,6 +480,9 @@
 
         // Update UI language
         function updateUILanguage() {
+            // Update document lang attribute for accessibility
+            document.documentElement.lang = currentLanguage;
+
             // Update AI placeholder
             const aiInput = document.getElementById('ai-input');
             if (aiInput) aiInput.placeholder = t('ai_placeholder');
@@ -2533,7 +2536,6 @@
             addMessage(message, true);
 
             // Always use agentic mode
-            console.log('[DEBUG] sendMessage - using agentic mode');
             await sendMessageAgentic(message);
 
             isLoading = false;
@@ -3126,7 +3128,9 @@ ${escapeHtml(execInfo.result)}</div>
 
         function switchSettingsTab(tab) {
             document.querySelectorAll('.tabs .tab').forEach((t, i) => {
-                t.classList.toggle('active', t.textContent.toLowerCase().includes(tab));
+                const isActive = t.textContent.toLowerCase().includes(tab);
+                t.classList.toggle('active', isActive);
+                t.setAttribute('aria-selected', String(isActive));
             });
             document.querySelectorAll('.settings-content').forEach(c => c.style.display = 'none');
             document.getElementById(`settings-${tab}`).style.display = 'block';
@@ -8652,6 +8656,7 @@ spec:
                 }
                 sidebar.classList.toggle('mobile-open', !isOpen);
                 hamburger.classList.toggle('active', !isOpen);
+                hamburger.setAttribute('aria-expanded', String(!isOpen));
                 if (overlay) overlay.classList.toggle('active', !isOpen);
                 // Auto-scroll to active nav item when opening
                 if (!isOpen) {
@@ -8671,6 +8676,7 @@ spec:
                 sidebarCollapsed = !sidebarCollapsed;
                 sidebar.classList.toggle('collapsed', sidebarCollapsed);
                 hamburger.classList.toggle('active', sidebarCollapsed);
+                hamburger.setAttribute('aria-expanded', String(!sidebarCollapsed));
                 if (toggleIcon) toggleIcon.textContent = sidebarCollapsed ? '»' : '«';
                 localStorage.setItem('k13d_sidebar_collapsed', sidebarCollapsed);
             }

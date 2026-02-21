@@ -17,6 +17,7 @@ func TestNewAuthManager(t *testing.T) {
 		SessionDuration: time.Hour,
 		AuthMode:        "local",
 	})
+	defer am.StopCleanup()
 
 	if am == nil {
 		t.Fatal("expected AuthManager to be created")
@@ -45,6 +46,7 @@ func TestNewAuthManager_TokenMode(t *testing.T) {
 		SessionDuration: time.Hour,
 		AuthMode:        "token",
 	})
+	defer am.StopCleanup()
 
 	if am == nil {
 		t.Fatal("expected AuthManager to be created")
@@ -68,6 +70,7 @@ func TestNewAuthManager_DefaultMode(t *testing.T) {
 		Enabled:         true,
 		SessionDuration: time.Hour,
 	})
+	defer am.StopCleanup()
 
 	if am == nil {
 		t.Fatal("expected AuthManager to be created")
@@ -86,8 +89,9 @@ func TestAuthManager_Authenticate(t *testing.T) {
 		SessionDuration: time.Hour,
 		AuthMode:        "local",
 		DefaultAdmin:    "admin",
-		DefaultPassword: "testpass",
+		DefaultPassword: "testpass1234",
 	})
+	defer am.StopCleanup()
 
 	tests := []struct {
 		name      string
@@ -95,10 +99,10 @@ func TestAuthManager_Authenticate(t *testing.T) {
 		password  string
 		wantError bool
 	}{
-		{"valid admin", "admin", "testpass", false},
+		{"valid admin", "admin", "testpass1234", false},
 		{"invalid password", "admin", "wrong", true},
-		{"invalid user", "notexist", "testpass", true},
-		{"empty username", "", "testpass", true},
+		{"invalid user", "notexist", "testpass1234", true},
+		{"empty username", "", "testpass1234", true},
 		{"empty password", "admin", "", true},
 	}
 
@@ -123,21 +127,22 @@ func TestAuthManager_CreateUser(t *testing.T) {
 		SessionDuration: time.Hour,
 		AuthMode:        "local",
 	})
+	defer am.StopCleanup()
 
 	// Create a new user
-	err := am.CreateUser("testuser", "testpass", "user")
+	err := am.CreateUser("testuser", "testpass1234", "user")
 	if err != nil {
 		t.Fatalf("CreateUser() error = %v", err)
 	}
 
 	// Try to create duplicate user
-	err = am.CreateUser("testuser", "testpass", "user")
+	err = am.CreateUser("testuser", "testpass1234", "user")
 	if err == nil {
 		t.Error("expected error when creating duplicate user")
 	}
 
 	// Authenticate with new user
-	session, err := am.Authenticate("testuser", "testpass")
+	session, err := am.Authenticate("testuser", "testpass1234")
 	if err != nil {
 		t.Errorf("Authenticate() error = %v", err)
 	}
@@ -156,6 +161,7 @@ func TestAuthManager_ValidateSession(t *testing.T) {
 		DefaultAdmin:    "admin",
 		DefaultPassword: "admin",
 	})
+	defer am.StopCleanup()
 
 	// Create a session
 	session, _ := am.Authenticate("admin", "admin")
@@ -186,6 +192,7 @@ func TestAuthManager_InvalidateSession(t *testing.T) {
 		DefaultAdmin:    "admin",
 		DefaultPassword: "admin",
 	})
+	defer am.StopCleanup()
 
 	session, _ := am.Authenticate("admin", "admin")
 	sessionID := session.ID
@@ -213,6 +220,7 @@ func TestAuthManager_HandleLogin(t *testing.T) {
 		DefaultAdmin:    "admin",
 		DefaultPassword: "admin",
 	})
+	defer am.StopCleanup()
 
 	tests := []struct {
 		name           string
@@ -265,6 +273,7 @@ func TestAuthManager_HandleLogout(t *testing.T) {
 		DefaultAdmin:    "admin",
 		DefaultPassword: "admin",
 	})
+	defer am.StopCleanup()
 
 	// Create a session first
 	session, _ := am.Authenticate("admin", "admin")
@@ -298,6 +307,7 @@ func TestAuthMiddleware(t *testing.T) {
 		DefaultAdmin:    "admin",
 		DefaultPassword: "admin",
 	})
+	defer am.StopCleanup()
 
 	// Create a test handler
 	handlerCalled := false
@@ -359,6 +369,7 @@ func TestAuthMiddleware_Disabled(t *testing.T) {
 		Enabled:         false,
 		SessionDuration: time.Hour,
 	})
+	defer am.StopCleanup()
 
 	handlerCalled := false
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -390,6 +401,7 @@ func TestAuthManager_ChangePassword(t *testing.T) {
 		DefaultAdmin:    "admin",
 		DefaultPassword: "oldpass",
 	})
+	defer am.StopCleanup()
 
 	// Change password with wrong old password
 	err := am.ChangePassword("admin", "wrongold", "newpass")
@@ -423,9 +435,10 @@ func TestAuthManager_DeleteUser(t *testing.T) {
 		SessionDuration: time.Hour,
 		AuthMode:        "local",
 	})
+	defer am.StopCleanup()
 
 	// Create a user to delete
-	if err := am.CreateUser("testuser", "testpass", "user"); err != nil {
+	if err := am.CreateUser("testuser", "testpass1234", "user"); err != nil {
 		t.Fatalf("CreateUser() error = %v", err)
 	}
 
@@ -436,7 +449,7 @@ func TestAuthManager_DeleteUser(t *testing.T) {
 	}
 
 	// Try to authenticate with deleted user
-	_, err = am.Authenticate("testuser", "testpass")
+	_, err = am.Authenticate("testuser", "testpass1234")
 	if err == nil {
 		t.Error("expected authentication to fail for deleted user")
 	}
@@ -455,12 +468,13 @@ func TestAuthManager_GetUsers(t *testing.T) {
 		SessionDuration: time.Hour,
 		AuthMode:        "local",
 	})
+	defer am.StopCleanup()
 
 	// Create additional users
-	if err := am.CreateUser("user1", "password1", "user"); err != nil {
+	if err := am.CreateUser("user1", "password1234", "user"); err != nil {
 		t.Fatalf("CreateUser() error = %v", err)
 	}
-	if err := am.CreateUser("user2", "password2", "viewer"); err != nil {
+	if err := am.CreateUser("user2", "password2abcd", "viewer"); err != nil {
 		t.Fatalf("CreateUser() error = %v", err)
 	}
 
@@ -478,6 +492,7 @@ func TestAuthManager_HandleLogin_WithToken(t *testing.T) {
 		SessionDuration: time.Hour,
 		AuthMode:        "token",
 	})
+	defer am.StopCleanup()
 
 	body, _ := json.Marshal(map[string]string{
 		"token": "fake-k8s-token",
@@ -492,5 +507,196 @@ func TestAuthManager_HandleLogin_WithToken(t *testing.T) {
 	// Should fail because K8s token validator is not available in tests
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("HandleLogin() with token status = %d, want %d (unauthorized because no K8s cluster)", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestAuthManager_CleanupExpiredSessions(t *testing.T) {
+	am := NewAuthManager(&AuthConfig{
+		Quiet:           true,
+		Enabled:         true,
+		SessionDuration: time.Hour,
+		AuthMode:        "local",
+		DefaultAdmin:    "admin",
+		DefaultPassword: "admin",
+	})
+	defer am.StopCleanup()
+
+	// Create a session
+	session, err := am.Authenticate("admin", "admin")
+	if err != nil {
+		t.Fatalf("Authenticate() error = %v", err)
+	}
+
+	// Verify session exists
+	if _, err := am.ValidateSession(session.ID); err != nil {
+		t.Fatal("session should exist before cleanup")
+	}
+
+	// Manually expire the session
+	am.mu.Lock()
+	am.sessions[session.ID].ExpiresAt = time.Now().Add(-time.Hour)
+	am.mu.Unlock()
+
+	// Run cleanup
+	am.cleanupExpiredSessions()
+
+	// Session should be removed
+	am.mu.RLock()
+	_, exists := am.sessions[session.ID]
+	am.mu.RUnlock()
+	if exists {
+		t.Error("expired session should be cleaned up")
+	}
+}
+
+func TestAuthManager_CleanupExpiredCSRFTokens(t *testing.T) {
+	am := NewAuthManager(&AuthConfig{
+		Quiet:           true,
+		Enabled:         true,
+		SessionDuration: time.Hour,
+		AuthMode:        "local",
+	})
+	defer am.StopCleanup()
+
+	// Generate a CSRF token
+	token := am.GenerateCSRFToken()
+	if token == "" {
+		t.Fatal("expected CSRF token to be generated")
+	}
+
+	// Token should be valid
+	if !am.ValidateCSRFToken(token) {
+		t.Error("CSRF token should be valid initially")
+	}
+
+	// Manually expire the token
+	am.mu.Lock()
+	am.csrfTokens[token] = time.Now().Add(-time.Hour)
+	am.mu.Unlock()
+
+	// Run cleanup
+	am.CleanupExpiredCSRFTokens()
+
+	// Token should be removed
+	if am.ValidateCSRFToken(token) {
+		t.Error("expired CSRF token should be cleaned up")
+	}
+}
+
+func TestAuthManager_HandleUpdateUser_PathTraversal(t *testing.T) {
+	am := NewAuthManager(&AuthConfig{
+		Quiet:           true,
+		Enabled:         true,
+		SessionDuration: time.Hour,
+		AuthMode:        "local",
+	})
+	defer am.StopCleanup()
+
+	tests := []struct {
+		name           string
+		path           string
+		expectedStatus int
+	}{
+		{"path traversal with ..", "/api/admin/users/../admin", http.StatusBadRequest},
+		{"path traversal with /", "/api/admin/users/foo/bar", http.StatusBadRequest},
+		{"empty username", "/api/admin/users/", http.StatusBadRequest},
+		{"valid username", "/api/admin/users/testuser", http.StatusNotFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, _ := json.Marshal(UserRequest{Role: "user"})
+			req := httptest.NewRequest(http.MethodPut, tt.path, bytes.NewBuffer(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			am.HandleUpdateUser(w, req)
+
+			if w.Code != tt.expectedStatus {
+				t.Errorf("HandleUpdateUser(%s) status = %d, want %d", tt.path, w.Code, tt.expectedStatus)
+			}
+		})
+	}
+}
+
+func TestAuthManager_HandleDeleteUser_PathTraversal(t *testing.T) {
+	am := NewAuthManager(&AuthConfig{
+		Quiet:           true,
+		Enabled:         true,
+		SessionDuration: time.Hour,
+		AuthMode:        "local",
+	})
+	defer am.StopCleanup()
+
+	tests := []struct {
+		name           string
+		path           string
+		expectedStatus int
+	}{
+		{"path traversal with ..", "/api/admin/users/../admin", http.StatusBadRequest},
+		{"path traversal with /", "/api/admin/users/foo/bar", http.StatusBadRequest},
+		{"empty username", "/api/admin/users/", http.StatusBadRequest},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodDelete, tt.path, nil)
+			req.Header.Set("X-Username", "admin")
+			w := httptest.NewRecorder()
+
+			am.HandleDeleteUser(w, req)
+
+			if w.Code != tt.expectedStatus {
+				t.Errorf("HandleDeleteUser(%s) status = %d, want %d", tt.path, w.Code, tt.expectedStatus)
+			}
+		})
+	}
+}
+
+func TestAuthManager_StopCleanup(t *testing.T) {
+	am := NewAuthManager(&AuthConfig{
+		Quiet:           true,
+		Enabled:         true,
+		SessionDuration: time.Hour,
+		AuthMode:        "local",
+	})
+
+	// StopCleanup should not panic when called
+	am.StopCleanup()
+
+	// Calling StopCleanup again should not panic (channel already closed)
+	// This is a no-op since the goroutine already exited
+}
+
+func TestAuthManager_CreateUser_Validation(t *testing.T) {
+	am := NewAuthManager(&AuthConfig{
+		Quiet:           true,
+		Enabled:         true,
+		SessionDuration: time.Hour,
+		AuthMode:        "local",
+	})
+	defer am.StopCleanup()
+
+	tests := []struct {
+		name     string
+		username string
+		password string
+		role     string
+		wantErr  bool
+	}{
+		{"valid user", "testuser", "password1234", "user", false},
+		{"short password", "testuser2", "short", "user", true},
+		{"short username", "ab", "password1234", "user", true},
+		{"long username", "a23456789012345678901234567890123", "password1234", "user", true},
+		{"invalid chars in username", "test@user", "password1234", "user", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := am.CreateUser(tt.username, tt.password, tt.role)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CreateUser(%s) error = %v, wantErr %v", tt.username, err, tt.wantErr)
+			}
+		})
 	}
 }

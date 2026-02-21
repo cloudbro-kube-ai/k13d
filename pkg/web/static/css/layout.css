@@ -1110,6 +1110,48 @@
     }
 }
 
+/* --- Extra-Small Mobile (max-width: 375px) --- */
+@media (max-width: 375px) {
+    .top-bar {
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 4px 6px;
+    }
+
+    .user-info {
+        gap: 4px;
+    }
+
+    .logout-btn {
+        padding: 4px 6px;
+        font-size: 11px;
+    }
+
+    .filter-input {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .filter-bar {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .pagination-controls {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .pagination-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+
+    .page-size-select {
+        font-size: 11px;
+    }
+}
+
 /* --- Reduced Motion --- */
 @media (prefers-reduced-motion: reduce) {
     .app-container.active {

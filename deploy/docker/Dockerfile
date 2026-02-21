@@ -1,5 +1,5 @@
-# Multi-architecture build stage
-# For standard build, use: docker build -t k13d .
+# Dockerfile for k13d - multi-stage build from source
+# Build: docker build -t k13d .
 # For pre-built binary, use: docker build -f Dockerfile.prebuilt -t k13d .
 #
 # Air-gapped/Offline environment:
@@ -13,7 +13,10 @@
 # - Set imagePullPolicy: IfNotPresent or Never
 # - Configure LLM endpoint to internal Ollama/vLLM server
 
-FROM golang:1.25.5-alpine AS builder
+ARG GO_VERSION=1.25.5
+ARG ALPINE_VERSION=3.21
+
+FROM golang:${GO_VERSION}-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates
@@ -35,28 +38,22 @@ RUN CGO_ENABLED=0 go build \
     -o k13d ./cmd/kube-ai-dashboard-cli/main.go
 
 # Final stage
-FROM alpine:3.21
+FROM alpine:${ALPINE_VERSION}
 
-# Install runtime dependencies
+# Install runtime dependencies, create non-root user, and set up directories
 # - ncurses: Required for TUI mode (terminal UI)
 # - ca-certificates: For HTTPS connections
 # - tzdata: For timezone support
 # - curl: For health checks
 # - bash: Required for AI agent shell commands
 # - kubectl: Required for AI agent Kubernetes operations
-RUN apk add --no-cache ca-certificates tzdata curl ncurses bash
-RUN apk add --no-cache kubectl
-
-# Create non-root user
-RUN adduser -D -g '' k13d
+RUN apk add --no-cache ca-certificates tzdata curl ncurses bash kubectl && \
+    adduser -D -g '' k13d && \
+    mkdir -p /home/k13d/.config/k13d /home/k13d/.kube /home/k13d/data && \
+    chown -R k13d:k13d /home/k13d
 
 # Copy binary from builder
 COPY --from=builder /app/k13d /usr/local/bin/k13d
-
-# Create config, kubeconfig, and data directories
-# data directory is writable for SQLite audit DB and user locks
-RUN mkdir -p /home/k13d/.config/k13d /home/k13d/.kube /home/k13d/data && \
-    chown -R k13d:k13d /home/k13d
 
 # Switch to non-root user
 USER k13d

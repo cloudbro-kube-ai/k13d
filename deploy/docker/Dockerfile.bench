@@ -2,7 +2,7 @@
 # Build: docker build -f Dockerfile.bench -t k13d-bench .
 # Run:   docker run --rm -v ~/.kube/config:/home/k13d/.kube/config:ro k13d-bench list
 
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25.5-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates
@@ -30,11 +30,11 @@ RUN CGO_ENABLED=0 go build \
 # Final stage
 FROM alpine:3.21
 
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata curl bash kubectl
-
-# Create user
-RUN adduser -D -g '' k13d
+# Install runtime dependencies, create non-root user, and set up directories
+RUN apk add --no-cache ca-certificates tzdata curl bash kubectl && \
+    adduser -D -g '' k13d && \
+    mkdir -p /app/results /home/k13d/.kube && \
+    chown -R k13d:k13d /app /home/k13d
 
 # Copy binaries
 COPY --from=builder /k13d-bench /usr/local/bin/k13d-bench
@@ -43,17 +43,13 @@ COPY --from=builder /k13d /usr/local/bin/k13d
 # Copy benchmark tasks
 COPY benchmarks /app/benchmarks
 
-# Create directories
-RUN mkdir -p /app/results /home/k13d/.kube && \
-    chown -R k13d:k13d /app /home/k13d
-
 USER k13d
 WORKDIR /app
 
 # Default environment
-ENV K13S_LLM_PROVIDER=ollama \
-    K13S_LLM_MODEL=qwen2.5:3b \
-    K13S_LLM_ENDPOINT=http://localhost:11434
+ENV K13D_LLM_PROVIDER=ollama \
+    K13D_LLM_MODEL=qwen2.5:3b \
+    K13D_LLM_ENDPOINT=http://localhost:11434
 
 # Default command: show help
 ENTRYPOINT ["/usr/local/bin/k13d-bench"]

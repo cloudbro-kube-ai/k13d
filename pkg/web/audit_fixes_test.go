@@ -87,8 +87,8 @@ func TestCreateUserPasswordValidation(t *testing.T) {
 		wantErr  bool
 	}{
 		{"too short (1 char)", "a", true},
-		{"too short (7 chars)", "1234567", true},
-		{"minimum length (8 chars)", "12345678", false},
+		{"too short (11 chars)", "12345678901", true},
+		{"minimum length (12 chars)", "123456789012", false},
 		{"longer password", "mysecurepassword123", false},
 	}
 

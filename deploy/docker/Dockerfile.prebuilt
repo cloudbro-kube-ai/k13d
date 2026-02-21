@@ -7,25 +7,19 @@
 
 FROM alpine:3.21
 
-# Install runtime dependencies
+# Install runtime dependencies, create non-root user, and set up directories
 # - ca-certificates: For HTTPS connections
 # - tzdata: For timezone support
 # - curl: For health checks
 # - bash: Required for AI agent shell commands
 # - kubectl: Required for AI agent Kubernetes operations
-RUN apk add --no-cache ca-certificates tzdata curl bash kubectl
-
-# Create non-root user
-RUN adduser -D -g '' k13d
+RUN apk add --no-cache ca-certificates tzdata curl bash kubectl && \
+    adduser -D -g '' k13d && \
+    mkdir -p /home/k13d/.config/k13d /home/k13d/.kube /home/k13d/data && \
+    chown -R k13d:k13d /home/k13d
 
 # Copy pre-built binary (build locally first)
-COPY k13d /usr/local/bin/k13d
-RUN chmod +x /usr/local/bin/k13d
-
-# Create config, kubeconfig, and data directories
-# data directory is writable for SQLite audit DB and user locks
-RUN mkdir -p /home/k13d/.config/k13d /home/k13d/.kube /home/k13d/data && \
-    chown -R k13d:k13d /home/k13d
+COPY --chmod=755 k13d /usr/local/bin/k13d
 
 # Switch to non-root user
 USER k13d
@@ -34,8 +28,8 @@ WORKDIR /home/k13d
 # Environment variables for configuration
 ENV K13D_PORT=8080 \
     K13D_AUTH_MODE=token \
-    K13D_LLM_PROVIDER=ollama \
-    K13D_LLM_MODEL=llama3 \
+    K13D_LLM_PROVIDER="" \
+    K13D_LLM_MODEL="" \
     K13D_LLM_ENDPOINT="" \
     K13D_JWT_SECRET="" \
     K13D_DEFAULT_ROLE=admin

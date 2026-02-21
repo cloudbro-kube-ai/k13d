@@ -280,13 +280,13 @@ func TestE2E_UserManagement(t *testing.T) {
 	_, authManager := setupTestServer(t)
 
 	// Create a new user
-	err := authManager.CreateUser("testuser", "testpass123", "user")
+	err := authManager.CreateUser("testuser", "testpass12345", "user")
 	if err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
 
 	// Login with new user
-	session, err := authManager.Authenticate("testuser", "testpass123")
+	session, err := authManager.Authenticate("testuser", "testpass12345")
 	if err != nil {
 		t.Fatalf("failed to login with new user: %v", err)
 	}
@@ -296,7 +296,7 @@ func TestE2E_UserManagement(t *testing.T) {
 	}
 
 	// Change password
-	err = authManager.ChangePassword("testuser", "testpass123", "newpass456")
+	err = authManager.ChangePassword("testuser", "testpass12345", "newpass456")
 	if err != nil {
 		t.Fatalf("failed to change password: %v", err)
 	}
@@ -308,7 +308,7 @@ func TestE2E_UserManagement(t *testing.T) {
 	}
 
 	// Old password should fail
-	_, err = authManager.Authenticate("testuser", "testpass123")
+	_, err = authManager.Authenticate("testuser", "testpass12345")
 	if err == nil {
 		t.Error("old password should not work")
 	}

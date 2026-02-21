@@ -5,6 +5,26 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.6] - 2026-02-22
+
+### Security
+- **Auth: Session ID generation**: Proper error handling for `crypto/rand.Read` failures with secure fallback
+- **Auth: Path traversal prevention**: Validate username extracted from URL path in user update/delete endpoints
+- **Auth: CSRF/session cleanup**: Periodic goroutine cleans up expired CSRF tokens and sessions to prevent memory leaks
+- **Auth: Token session cleanup**: Expired K8s token sessions now garbage-collected automatically
+
+### Fixed
+- **Web UI: Dark mode contrast**: Improved `--text-muted` color from `#565f89` to `#737aa2` for WCAG AA compliance (~4.5:1 ratio)
+- **Web UI: Form accessibility**: Added `<label>` elements and `aria-label` attributes to login form inputs
+- **Web UI: Debug logging**: Removed `console.log('[DEBUG]')` from production JavaScript
+- **Web UI: Autocomplete**: Added proper `autocomplete` attributes to login form inputs
+- **Docker: Reproducible builds**: Pinned Go version in `Dockerfile.bench` to `1.25.5` (was unpinned `1.25`)
+
+### Tests
+- Added tests for CSRF token cleanup, expired session cleanup, and path traversal prevention
+- Added `defer am.StopCleanup()` to all auth tests to prevent goroutine leaks under race detector
+- Added user creation validation tests (username length, characters, password length)
+
 ## [0.8.5] - 2026-02-16
 
 ### Added

@@ -560,8 +560,8 @@ func TestHandleLogin_AccountLockout(t *testing.T) {
 	// Verify the response message
 	var resp map[string]string
 	_ = json.NewDecoder(w.Body).Decode(&resp)
-	if !strings.Contains(resp["error"], "계정이 잠겼습니다") {
-		t.Errorf("expected Korean lockout message, got: %s", resp["error"])
+	if !strings.Contains(resp["error"], "Account is locked") {
+		t.Errorf("expected lockout message, got: %s", resp["error"])
 	}
 }
 
@@ -577,7 +577,7 @@ func TestHandleLogin_AccountLockout_IndependentOfIPBlock(t *testing.T) {
 	disableDelays(am)
 
 	// Create a second user
-	_ = am.CreateUser("user2", "password2!", "user")
+	_ = am.CreateUser("user2", "password2!abcd", "user")
 
 	// Lock the "admin" account via failures from various IPs
 	for i := 0; i < 10; i++ {
@@ -595,7 +595,7 @@ func TestHandleLogin_AccountLockout_IndependentOfIPBlock(t *testing.T) {
 	// user2 should still be able to login even though admin is locked
 	body, _ := json.Marshal(map[string]string{
 		"username": "user2",
-		"password": "password2!",
+		"password": "password2!abcd",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")

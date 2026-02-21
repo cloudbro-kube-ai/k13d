@@ -70,6 +70,7 @@ type AuthManager struct {
 	roleValidator  func(string) bool    // Optional: validates custom role names
 	bruteForce     *BruteForceProtector // IP-based brute-force protection
 	accountLockout *AccountLockout      // Account-based lockout protection
+	csrfDone       chan struct{}         // signals CSRF cleanup goroutine to stop
 }
 
 // SetRoleValidator sets a function that validates custom role names
@@ -281,6 +282,22 @@ func NewAuthManager(cfg *AuthConfig) *AuthManager {
 		}
 	}
 
+	// Start periodic CSRF token cleanup
+	am.csrfDone = make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				am.CleanupExpiredCSRFTokens()
+				am.cleanupExpiredSessions()
+			case <-am.csrfDone:
+				return
+			}
+		}
+	}()
+
 	// Create default admin user only for local auth mode
 	if cfg.Enabled && cfg.AuthMode == "local" {
 		adminUser := cfg.DefaultAdmin
@@ -351,7 +368,14 @@ func checkPassword(password, hash string) bool {
 // generateSessionID creates a random session ID
 func generateSessionID() string {
 	b := make([]byte, 32)
-	_, _ = rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback: use timestamp + smaller random read as best effort
+		fallback := make([]byte, 16)
+		for i := range fallback {
+			fallback[i] = byte(time.Now().UnixNano() >> (i * 4))
+		}
+		return base64.URLEncoding.EncodeToString(fallback)
+	}
 	return base64.URLEncoding.EncodeToString(b)
 }
 
@@ -364,8 +388,8 @@ func (am *AuthManager) CreateUser(username, password, role string) error {
 		return fmt.Errorf("user already exists: %s", username)
 	}
 
-	if len(password) < 8 {
-		return fmt.Errorf("password must be at least 8 characters")
+	if len(password) < 12 {
+		return fmt.Errorf("password must be at least 12 characters")
 	}
 
 	if len(username) < 3 || len(username) > 32 {
@@ -811,7 +835,7 @@ func (am *AuthManager) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusTooManyRequests)
 		_ = json.NewEncoder(w).Encode(map[string]string{
-			"error": "계정이 잠겼습니다. 30분 후 다시 시도하세요.",
+			"error": "Account is locked. Please try again after 30 minutes.",
 		})
 		return
 	}
@@ -1108,8 +1132,8 @@ func (am *AuthManager) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 
 	// Get username from URL path
 	username := strings.TrimPrefix(r.URL.Path, "/api/admin/users/")
-	if username == "" {
-		http.Error(w, "Username is required", http.StatusBadRequest)
+	if username == "" || strings.ContainsAny(username, "/\\..") {
+		http.Error(w, "Invalid username", http.StatusBadRequest)
 		return
 	}
 
@@ -1168,8 +1192,8 @@ func (am *AuthManager) HandleDeleteUser(w http.ResponseWriter, r *http.Request) 
 
 	// Get username from URL path
 	username := strings.TrimPrefix(r.URL.Path, "/api/admin/users/")
-	if username == "" {
-		http.Error(w, "Username is required", http.StatusBadRequest)
+	if username == "" || strings.ContainsAny(username, "/\\..") {
+		http.Error(w, "Invalid username", http.StatusBadRequest)
 		return
 	}
 
@@ -1210,6 +1234,11 @@ func (am *AuthManager) HandleResetPassword(w http.ResponseWriter, r *http.Reques
 
 	if req.Username == "" || req.NewPassword == "" {
 		http.Error(w, "Username and new password are required", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.NewPassword) < 12 {
+		http.Error(w, "Password must be at least 12 characters", http.StatusBadRequest)
 		return
 	}
 
@@ -1596,6 +1625,31 @@ func (am *AuthManager) CleanupExpiredCSRFTokens() {
 	for token, expiry := range am.csrfTokens {
 		if now.After(expiry) {
 			delete(am.csrfTokens, token)
+		}
+	}
+}
+
+// StopCleanup signals the CSRF/session cleanup goroutine to stop
+func (am *AuthManager) StopCleanup() {
+	if am.csrfDone != nil {
+		close(am.csrfDone)
+	}
+}
+
+// cleanupExpiredSessions removes expired sessions and token sessions from memory
+func (am *AuthManager) cleanupExpiredSessions() {
+	am.mu.Lock()
+	defer am.mu.Unlock()
+
+	now := time.Now()
+	for id, session := range am.sessions {
+		if now.After(session.ExpiresAt) {
+			delete(am.sessions, id)
+		}
+	}
+	for token, session := range am.tokenSessions {
+		if now.After(session.ExpiresAt) {
+			delete(am.tokenSessions, token)
 		}
 	}
 }

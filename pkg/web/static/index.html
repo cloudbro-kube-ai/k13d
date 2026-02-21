@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>k13d - kube-ai-dashboard</title>
     <!-- All assets vendored locally for air-gapped environments -->
     <!-- xterm.js for terminal -->
@@ -57,7 +57,7 @@
                 <div class="token-hint" id="token-hint">
                     <div style="margin-bottom: 12px;">🔐 Kubernetes ServiceAccount 토큰으로 로그인하세요</div>
                     <div class="token-help-box" id="token-help-box">
-                        <div class="token-help-toggle" onclick="toggleTokenHelp()">
+                        <div class="token-help-toggle" onclick="toggleTokenHelp()" role="button" tabindex="0">
                             <span class="token-help-toggle-text">📋 토큰 생성 방법 보기</span>
                             <span class="token-help-toggle-icon">▼</span>
                         </div>
@@ -89,7 +89,8 @@
                         </div>
                     </div>
                 </div>
-                <textarea id="login-token" class="token-input" placeholder="eyJhbGciOiJSUzI1NiIs..." onkeydown="handleTokenKeydown(event)"></textarea>
+                <label for="login-token" class="sr-only">Kubernetes Token</label>
+                <textarea id="login-token" class="token-input" placeholder="eyJhbGciOiJSUzI1NiIs..." aria-label="Kubernetes service account token" onkeydown="handleTokenKeydown(event)"></textarea>
                 <button class="login-btn" onclick="loginWithToken()">🚀 Sign In with Token</button>
             </div>
 
@@ -99,8 +100,10 @@
                     <div style="margin-bottom: 8px;">👤 로컬 계정으로 로그인하세요</div>
                     <div style="font-size: 11px; color: var(--text-muted);">관리자에게 계정 정보를 문의하세요</div>
                 </div>
-                <input type="text" id="login-username" placeholder="Username" onkeydown="handlePasswordKeydown(event)">
-                <input type="password" id="login-password" placeholder="Password" onkeydown="handlePasswordKeydown(event)">
+                <label for="login-username" class="sr-only">Username</label>
+                <input type="text" id="login-username" placeholder="Username" aria-label="Username" autocomplete="username" onkeydown="handlePasswordKeydown(event)">
+                <label for="login-password" class="sr-only">Password</label>
+                <input type="password" id="login-password" placeholder="Password" aria-label="Password" autocomplete="current-password" onkeydown="handlePasswordKeydown(event)">
                 <button class="login-btn" onclick="login()">🚀 Sign In</button>
             </div>
 
@@ -129,9 +132,9 @@
     <!-- Main App -->
     <div class="app-container" id="app">
         <!-- Top Bar -->
-        <div class="top-bar">
+        <div class="top-bar" role="banner">
             <div style="display: flex; align-items: center;">
-                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Toggle Sidebar (B)">
+                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Toggle Sidebar (B)" aria-label="Toggle navigation" aria-expanded="false">
                     <span class="hamburger-line"></span>
                     <span class="hamburger-line"></span>
                     <span class="hamburger-line"></span>
@@ -167,14 +170,14 @@
                 <span id="health-status">Connected</span>
             </div>
             <div class="auto-refresh-container">
-                <button class="refresh-btn" onclick="manualRefresh()" title="Refresh now">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <button class="refresh-btn" onclick="manualRefresh()" title="Refresh now" aria-label="Refresh now">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path d="M23 4v6h-6M1 20v-6h6"/>
                         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
                     </svg>
                 </button>
                 <span style="color: var(--text-secondary);">Auto:</span>
-                <div class="auto-refresh-toggle" id="auto-refresh-toggle" onclick="toggleAutoRefresh()" title="Toggle auto-refresh"></div>
+                <div class="auto-refresh-toggle" id="auto-refresh-toggle" onclick="toggleAutoRefresh()" title="Toggle auto-refresh" role="switch" tabindex="0" aria-checked="false" aria-label="Toggle auto-refresh"></div>
                 <select class="refresh-interval-select" id="refresh-interval" onchange="setAutoRefreshInterval(this.value)" title="Refresh interval">
                     <option value="10">10s</option>
                     <option value="30" selected>30s</option>
@@ -186,7 +189,7 @@
             </div>
             <div class="user-info">
                 <span class="user-badge" id="user-badge">admin</span>
-                <button class="logout-btn" onclick="showShortcuts()">?</button>
+                <button class="logout-btn" onclick="showShortcuts()" aria-label="Keyboard shortcuts">?</button>
                 <button class="logout-btn" onclick="showSettings()">Settings</button>
                 <button class="logout-btn" id="logout-btn" onclick="logout()">Logout</button>
             </div>
@@ -198,131 +201,131 @@
         <!-- Main Content -->
         <div class="main-container">
             <!-- Sidebar -->
-            <div class="sidebar sidebar-transition" id="sidebar">
+            <div class="sidebar sidebar-transition" id="sidebar" role="navigation">
                 <!-- Mobile header with close button -->
                 <div class="sidebar-mobile-header">
                     <span class="sidebar-mobile-title">Navigation</span>
-                    <button class="sidebar-close-btn" onclick="toggleSidebar()" title="Close">&times;</button>
+                    <button class="sidebar-close-btn" onclick="toggleSidebar()" title="Close" aria-label="Close sidebar">&times;</button>
                 </div>
                 <div class="nav-section">
-                    <div class="nav-item" data-resource="overview" onclick="showOverviewPanel()" style="font-weight: 600; margin-bottom: 8px;">
+                    <div class="nav-item" data-resource="overview" onclick="showOverviewPanel()" style="font-weight: 600; margin-bottom: 8px;" role="button" tabindex="0">
                         <span>Overview</span>
                     </div>
                 </div>
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)">Workloads<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item active" data-resource="pods" onclick="switchResource('pods')">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Workloads<span class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item active" data-resource="pods" onclick="switchResource('pods')" role="button" tabindex="0">
                         <span>Pods</span>
                         <span class="count" id="pods-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="deployments" onclick="switchResource('deployments')">
+                    <div class="nav-item" data-resource="deployments" onclick="switchResource('deployments')" role="button" tabindex="0">
                         <span>Deployments</span>
                         <span class="count" id="deployments-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="daemonsets" onclick="switchResource('daemonsets')">
+                    <div class="nav-item" data-resource="daemonsets" onclick="switchResource('daemonsets')" role="button" tabindex="0">
                         <span>DaemonSets</span>
                         <span class="count" id="daemonsets-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="statefulsets" onclick="switchResource('statefulsets')">
+                    <div class="nav-item" data-resource="statefulsets" onclick="switchResource('statefulsets')" role="button" tabindex="0">
                         <span>StatefulSets</span>
                         <span class="count" id="statefulsets-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="replicasets" onclick="switchResource('replicasets')">
+                    <div class="nav-item" data-resource="replicasets" onclick="switchResource('replicasets')" role="button" tabindex="0">
                         <span>ReplicaSets</span>
                         <span class="count" id="replicasets-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="jobs" onclick="switchResource('jobs')">
+                    <div class="nav-item" data-resource="jobs" onclick="switchResource('jobs')" role="button" tabindex="0">
                         <span>Jobs</span>
                         <span class="count" id="jobs-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="cronjobs" onclick="switchResource('cronjobs')">
+                    <div class="nav-item" data-resource="cronjobs" onclick="switchResource('cronjobs')" role="button" tabindex="0">
                         <span>CronJobs</span>
                         <span class="count" id="cronjobs-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)">Network<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="services" onclick="switchResource('services')">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Network<span class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="services" onclick="switchResource('services')" role="button" tabindex="0">
                         <span>Services</span>
                         <span class="count" id="services-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="ingresses" onclick="switchResource('ingresses')">
+                    <div class="nav-item" data-resource="ingresses" onclick="switchResource('ingresses')" role="button" tabindex="0">
                         <span>Ingresses</span>
                         <span class="count" id="ingresses-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="networkpolicies" onclick="switchResource('networkpolicies')">
+                    <div class="nav-item" data-resource="networkpolicies" onclick="switchResource('networkpolicies')" role="button" tabindex="0">
                         <span>NetworkPolicies</span>
                         <span class="count" id="networkpolicies-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)">Config<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="configmaps" onclick="switchResource('configmaps')">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Config<span class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="configmaps" onclick="switchResource('configmaps')" role="button" tabindex="0">
                         <span>ConfigMaps</span>
                         <span class="count" id="configmaps-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="secrets" onclick="switchResource('secrets')">
+                    <div class="nav-item" data-resource="secrets" onclick="switchResource('secrets')" role="button" tabindex="0">
                         <span>Secrets</span>
                         <span class="count" id="secrets-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="serviceaccounts" onclick="switchResource('serviceaccounts')">
+                    <div class="nav-item" data-resource="serviceaccounts" onclick="switchResource('serviceaccounts')" role="button" tabindex="0">
                         <span>ServiceAccounts</span>
                         <span class="count" id="serviceaccounts-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)">Storage<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="persistentvolumes" onclick="switchResource('persistentvolumes')">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Storage<span class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="persistentvolumes" onclick="switchResource('persistentvolumes')" role="button" tabindex="0">
                         <span>PersistentVolumes</span>
                         <span class="count" id="persistentvolumes-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="persistentvolumeclaims" onclick="switchResource('persistentvolumeclaims')">
+                    <div class="nav-item" data-resource="persistentvolumeclaims" onclick="switchResource('persistentvolumeclaims')" role="button" tabindex="0">
                         <span>PVCs</span>
                         <span class="count" id="persistentvolumeclaims-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)">Cluster<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="nodes" onclick="switchResource('nodes')">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Cluster<span class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="nodes" onclick="switchResource('nodes')" role="button" tabindex="0">
                         <span>Nodes</span>
                         <span class="count" id="nodes-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="namespaces" onclick="switchResource('namespaces')">
+                    <div class="nav-item" data-resource="namespaces" onclick="switchResource('namespaces')" role="button" tabindex="0">
                         <span>Namespaces</span>
                         <span class="count" id="namespaces-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="events" onclick="switchResource('events')">
+                    <div class="nav-item" data-resource="events" onclick="switchResource('events')" role="button" tabindex="0">
                         <span>Events</span>
                         <span class="count" id="events-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)">RBAC<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="roles" onclick="switchResource('roles')">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">RBAC<span class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="roles" onclick="switchResource('roles')" role="button" tabindex="0">
                         <span>Roles</span>
                         <span class="count" id="roles-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="rolebindings" onclick="switchResource('rolebindings')">
+                    <div class="nav-item" data-resource="rolebindings" onclick="switchResource('rolebindings')" role="button" tabindex="0">
                         <span>RoleBindings</span>
                         <span class="count" id="rolebindings-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="clusterroles" onclick="switchResource('clusterroles')">
+                    <div class="nav-item" data-resource="clusterroles" onclick="switchResource('clusterroles')" role="button" tabindex="0">
                         <span>ClusterRoles</span>
                         <span class="count" id="clusterroles-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="clusterrolebindings" onclick="switchResource('clusterrolebindings')">
+                    <div class="nav-item" data-resource="clusterrolebindings" onclick="switchResource('clusterrolebindings')" role="button" tabindex="0">
                         <span>ClusterRoleBindings</span>
                         <span class="count" id="clusterrolebindings-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section" id="crd-nav-section">
-                    <div class="nav-title" style="display: flex; justify-content: space-between; align-items: center;" onclick="toggleNavSection(this)">
+                    <div class="nav-title" style="display: flex; justify-content: space-between; align-items: center;" onclick="toggleNavSection(this)" role="button" tabindex="0">
                         Custom Resources
                         <span class="count" id="crd-count" style="font-size: 10px;">0</span>
                         <span class="nav-section-arrow">▾</span>
@@ -333,43 +336,43 @@
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)">Visualization<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="topology" onclick="showTopology()">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Visualization<span class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="topology" onclick="showTopology()" role="button" tabindex="0">
                         <span>Topology</span>
                     </div>
-                    <div class="nav-item" data-resource="applications" onclick="showApplicationsView()">
+                    <div class="nav-item" data-resource="applications" onclick="showApplicationsView()" role="button" tabindex="0">
                         <span>Applications</span>
                     </div>
-                    <div class="nav-item" data-resource="rbac-viz" onclick="showRBACVizView()">
+                    <div class="nav-item" data-resource="rbac-viz" onclick="showRBACVizView()" role="button" tabindex="0">
                         <span>RBAC Viewer</span>
                     </div>
-                    <div class="nav-item" data-resource="netpol-viz" onclick="showNetPolVizView()">
+                    <div class="nav-item" data-resource="netpol-viz" onclick="showNetPolVizView()" role="button" tabindex="0">
                         <span>Net Policy Map</span>
                     </div>
-                    <div class="nav-item" data-resource="timeline" onclick="showTimelineView()">
+                    <div class="nav-item" data-resource="timeline" onclick="showTimelineView()" role="button" tabindex="0">
                         <span>Event Timeline</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)">Operations<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="validate" onclick="showValidateView()">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Operations<span class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="validate" onclick="showValidateView()" role="button" tabindex="0">
                         <span>Validate</span>
                     </div>
-<div class="nav-item" data-resource="templates" onclick="showTemplatesView()">
+<div class="nav-item" data-resource="templates" onclick="showTemplatesView()" role="button" tabindex="0">
                         <span>Templates</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)">Monitoring<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="metrics" onclick="showMetricsDashboard()">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Monitoring<span class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="metrics" onclick="showMetricsDashboard()" role="button" tabindex="0">
                         <span>Metrics</span>
                     </div>
-                    <div class="nav-item" onclick="showAuditLogs()">
+                    <div class="nav-item" onclick="showAuditLogs()" role="button" tabindex="0">
                         <span>Audit Logs</span>
                     </div>
-                    <div class="nav-item" onclick="showReports()">
+                    <div class="nav-item" onclick="showReports()" role="button" tabindex="0">
                         <span>Reports</span>
                     </div>
                 </div>
@@ -378,7 +381,7 @@
             <!-- Content Wrapper -->
             <div class="content-wrapper">
                 <!-- Main Panel -->
-                <div class="main-panel" id="main-panel">
+                <div class="main-panel" id="main-panel" role="main">
                     <div class="panel-header">
                         <h2 class="panel-title" id="panel-title">Pods</h2>
                         <span class="resource-summary" id="resource-summary"></span>
@@ -387,7 +390,7 @@
                                 <option value="">All Namespaces</option>
                             </select>
                             <button class="refresh-btn" onclick="refreshData()">↻ Refresh</button>
-                            <button class="ai-toggle-btn" id="ai-toggle-btn" onclick="toggleAIPanel()" title="Toggle AI Assistant (Ctrl+A)">🤖</button>
+                            <button class="ai-toggle-btn" id="ai-toggle-btn" onclick="toggleAIPanel()" title="Toggle AI Assistant (Ctrl+A)" aria-label="Toggle AI Assistant">🤖</button>
                         </div>
                     </div>
                     <div class="filter-bar">
@@ -468,7 +471,7 @@
                     <div id="topology-detail">
                         <div class="topology-detail-header">
                             <h3 id="topology-detail-title">Resource</h3>
-                            <button class="topology-detail-close" onclick="closeTopologyDetail()">&times;</button>
+                            <button class="topology-detail-close" onclick="closeTopologyDetail()" aria-label="Close topology detail">&times;</button>
                         </div>
                         <div class="topology-detail-body" id="topology-detail-body"></div>
                         <div class="topology-detail-actions">
@@ -774,8 +777,8 @@
                         <div class="ai-actions">
                             <span class="ai-hint">Enter send · Shift+Enter newline · ↑↓ history</span>
                             <div class="ai-actions-buttons">
-                                <button class="ai-clear-btn" id="ai-clear-btn" onclick="clearAiInput()" title="Clear input">&#x2715;</button>
-                                <button class="ai-expand-btn" id="ai-expand-btn" onclick="toggleAiExpand()" title="Expand input area">&#x26F6;</button>
+                                <button class="ai-clear-btn" id="ai-clear-btn" onclick="clearAiInput()" title="Clear input" aria-label="Clear input">&#x2715;</button>
+                                <button class="ai-expand-btn" id="ai-expand-btn" onclick="toggleAiExpand()" title="Expand input area" aria-label="Expand input area">&#x26F6;</button>
                                 <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
                             </div>
                         </div>
@@ -786,22 +789,22 @@
     </div>
 
     <!-- Settings Modal -->
-    <div class="modal-overlay" id="settings-modal">
+    <div class="modal-overlay" id="settings-modal" role="dialog" aria-modal="true">
         <div class="modal">
             <div class="modal-header">
                 <h2>Settings</h2>
-                <button class="modal-close" onclick="closeSettings()">&times;</button>
+                <button class="modal-close" onclick="closeSettings()" aria-label="Close settings">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="tabs">
-                    <div class="tab active" onclick="switchSettingsTab('general')">General</div>
-                    <div class="tab" onclick="switchSettingsTab('ai')">AI</div>
-                    <div class="tab" onclick="switchSettingsTab('mcp')">MCP</div>
-                    <div class="tab" onclick="switchSettingsTab('security')">Security</div>
-                    <div class="tab" onclick="switchSettingsTab('metrics')">Metrics</div>
-                    <div class="tab" onclick="switchSettingsTab('notifications')">Notifications</div>
-                    <div class="tab" id="admin-tab" onclick="switchSettingsTab('admin')" style="display:none;">Admin</div>
-                    <div class="tab" onclick="switchSettingsTab('about')">About</div>
+                <div class="tabs" role="tablist">
+                    <div class="tab active" role="tab" aria-selected="true" onclick="switchSettingsTab('general')">General</div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('ai')">AI</div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('mcp')">MCP</div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('security')">Security</div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('metrics')">Metrics</div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('notifications')">Notifications</div>
+                    <div class="tab" role="tab" aria-selected="false" id="admin-tab" onclick="switchSettingsTab('admin')" style="display:none;">Admin</div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('about')">About</div>
                 </div>
 
                 <div id="settings-general" class="settings-content">
@@ -1825,11 +1828,11 @@
     </div>
 
     <!-- Resource Detail Modal -->
-    <div class="modal-overlay" id="detail-modal">
+    <div class="modal-overlay" id="detail-modal" role="dialog" aria-modal="true">
         <div class="modal detail-modal">
             <div class="modal-header">
                 <h2 id="detail-title">Resource Details</h2>
-                <button class="modal-close" onclick="closeDetail()">&times;</button>
+                <button class="modal-close" onclick="closeDetail()" aria-label="Close detail">&times;</button>
             </div>
             <div class="detail-tabs">
                 <button class="detail-tab active" onclick="switchDetailTab('overview')">Overview</button>
@@ -1851,11 +1854,11 @@
     </div>
 
     <!-- Keyboard Shortcuts Modal -->
-    <div class="modal-overlay" id="shortcuts-modal">
+    <div class="modal-overlay" id="shortcuts-modal" role="dialog" aria-modal="true">
         <div class="modal">
             <div class="modal-header">
                 <h2>Keyboard Shortcuts</h2>
-                <button class="modal-close" onclick="closeShortcuts()">&times;</button>
+                <button class="modal-close" onclick="closeShortcuts()" aria-label="Close shortcuts">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="shortcuts-grid">
@@ -2039,7 +2042,7 @@ spec:
                 <span class="pod-name" id="terminal-pod-name">-</span>
                 <span class="container-name" id="terminal-container-name">-</span>
             </div>
-            <button class="terminal-close" onclick="closeTerminal()">&times;</button>
+            <button class="terminal-close" onclick="closeTerminal()" aria-label="Close terminal">&times;</button>
         </div>
         <div class="terminal-body" id="terminal-container"></div>
     </div>
@@ -2064,7 +2067,7 @@ spec:
                 </select>
                 <button id="log-follow-btn" onclick="toggleLogFollow()">Follow</button>
                 <button onclick="downloadLogs()">Download</button>
-                <button class="terminal-close" onclick="closeLogViewer()">&times;</button>
+                <button class="terminal-close" onclick="closeLogViewer()" aria-label="Close log viewer">&times;</button>
             </div>
         </div>
         <div class="log-pod-legend" id="log-pod-legend" style="display: none;"></div>
@@ -2103,7 +2106,7 @@ spec:
                 </div>
                 <button onclick="collectMetricsNow()" title="Trigger immediate metrics collection" style="background:var(--accent-green);color:#1a1b26;">Collect</button>
                 <button onclick="loadMetrics()">Refresh</button>
-                <button class="terminal-close" onclick="closeMetrics()">&times;</button>
+                <button class="terminal-close" onclick="closeMetrics()" aria-label="Close metrics">&times;</button>
             </div>
         </div>
         <div class="metrics-body">
@@ -2197,11 +2200,11 @@ spec:
     </div>
 
     <!-- Port Forward Modal -->
-    <div class="modal-overlay" id="portforward-modal">
+    <div class="modal-overlay" id="portforward-modal" role="dialog" aria-modal="true">
         <div class="modal portforward-modal">
             <div class="modal-header">
                 <h2>Port Forwarding</h2>
-                <button class="modal-close" onclick="closePortForward()">&times;</button>
+                <button class="modal-close" onclick="closePortForward()" aria-label="Close port forward">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="portforward-form">
@@ -2230,11 +2233,11 @@ spec:
     </div>
 
     <!-- Audit Logs Modal -->
-    <div class="modal-overlay" id="audit-modal">
+    <div class="modal-overlay" id="audit-modal" role="dialog" aria-modal="true">
         <div class="modal audit-modal">
             <div class="modal-header">
                 <h2>Audit Logs</h2>
-                <button class="modal-close" onclick="closeAuditModal()">&times;</button>
+                <button class="modal-close" onclick="closeAuditModal()" aria-label="Close audit logs">&times;</button>
             </div>
             <div class="audit-filters" style="padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                 <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px;">
@@ -2272,11 +2275,11 @@ spec:
     </div>
 
     <!-- Reports Modal -->
-    <div class="modal-overlay" id="reports-modal">
+    <div class="modal-overlay" id="reports-modal" role="dialog" aria-modal="true">
         <div class="modal reports-modal">
             <div class="modal-header">
                 <h2>Generate Report</h2>
-                <button class="modal-close" onclick="closeReportsModal()">&times;</button>
+                <button class="modal-close" onclick="closeReportsModal()" aria-label="Close reports">&times;</button>
             </div>
             <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                 <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 13px;">
@@ -2367,11 +2370,11 @@ spec:
     </div>
 
     <!-- Resource Diff Modal -->
-    <div class="modal-overlay" id="diff-modal">
+    <div class="modal-overlay" id="diff-modal" role="dialog" aria-modal="true">
         <div class="modal diff-modal">
             <div class="modal-header">
                 <h2>Resource Diff</h2>
-                <button class="modal-close" onclick="closeDiffModal()">&times;</button>
+                <button class="modal-close" onclick="closeDiffModal()" aria-label="Close diff">&times;</button>
             </div>
             <div class="modal-body" style="padding: 0;">
                 <div class="diff-toolbar" style="padding:12px 24px;border-bottom:1px solid var(--border-color);display:flex;gap:12px;align-items:center;">
@@ -2396,11 +2399,11 @@ spec:
     </div>
 
     <!-- Template Deploy Modal -->
-    <div class="modal-overlay" id="template-deploy-modal">
+    <div class="modal-overlay" id="template-deploy-modal" role="dialog" aria-modal="true">
         <div class="modal" style="max-width:700px;">
             <div class="modal-header">
                 <h2>Deploy Template</h2>
-                <button class="modal-close" onclick="closeTemplateDeployModal()">&times;</button>
+                <button class="modal-close" onclick="closeTemplateDeployModal()" aria-label="Close template deploy">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">

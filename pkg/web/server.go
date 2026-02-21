@@ -919,6 +919,11 @@ func (s *Server) Stop() error {
 		s.authManager.bruteForce.Stop()
 	}
 
+	// Stop CSRF/session cleanup goroutine
+	if s.authManager != nil {
+		s.authManager.StopCleanup()
+	}
+
 	// Disconnect all MCP servers
 	if s.mcpClient != nil {
 		s.mcpClient.DisconnectAll()
