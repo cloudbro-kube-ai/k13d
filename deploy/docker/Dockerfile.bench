@@ -28,7 +28,7 @@ RUN CGO_ENABLED=0 go build \
     -o /k13d ./cmd/kube-ai-dashboard-cli/main.go
 
 # Final stage
-FROM alpine:3.21
+FROM alpine:3.23
 
 # Install runtime dependencies, create non-root user, and set up directories
 RUN apk add --no-cache ca-certificates tzdata curl bash kubectl && \
