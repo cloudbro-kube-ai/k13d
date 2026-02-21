@@ -2,158 +2,158 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/ai-llm/benchmarks/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/ai-llm/embedded/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/ai-llm/providers/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/ai-llm/tool-calling/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/concepts/ai-assistant/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/concepts/architecture/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/concepts/mcp-integration/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/concepts/security/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/concepts/tui-architecture/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/deployment/air-gapped/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/deployment/docker/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/deployment/helm/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/deployment/kubernetes/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/features/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/features/ai-assistant/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/features/security/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/features/tui/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/features/web-ui/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/getting-started/configuration/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/getting-started/installation/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/getting-started/overview/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/getting-started/quick-start/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/ko/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/reference/ENTERPRISE_OPERATIONS/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/reference/RELEASE_REVIEW_REPORT/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/reference/STABILITY_ANALYSIS/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/reference/STABILITY_ARCHITECTURE/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/reference/api/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/reference/changelog/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/reference/cli/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/reference/env-vars/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/reference/feature-gap-analysis/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/reference/teleport-comparison/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/reference/tui-testing/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/user-guide/reports/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/user-guide/shortcuts/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/user-guide/tui/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
     <url>
          <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.2/user-guide/web/</loc>
-         <lastmod>2026-02-19</lastmod>
+         <lastmod>2026-02-21</lastmod>
     </url>
 </urlset>
