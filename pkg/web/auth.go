@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -68,6 +69,7 @@ type AuthManager struct {
 	jwtManager     *JWTManager          // JWT token manager (Teleport-inspired)
 	roleValidator  func(string) bool    // Optional: validates custom role names
 	bruteForce     *BruteForceProtector // IP-based brute-force protection
+	accountLockout *AccountLockout      // Account-based lockout protection
 }
 
 // SetRoleValidator sets a function that validates custom role names
@@ -228,13 +230,14 @@ type TokenReview struct {
 // NewAuthManager creates a new authentication manager
 func NewAuthManager(cfg *AuthConfig) *AuthManager {
 	am := &AuthManager{
-		users:         make(map[string]*User),
-		sessions:      make(map[string]*Session),
-		tokenSessions: make(map[string]*Session),
-		csrfTokens:    make(map[string]time.Time),
-		config:        cfg,
-		jwtManager:    NewJWTManager(JWTConfig{}), // Auto-generates secret
-		bruteForce:    NewBruteForceProtector(),
+		users:          make(map[string]*User),
+		sessions:       make(map[string]*Session),
+		tokenSessions:  make(map[string]*Session),
+		csrfTokens:     make(map[string]time.Time),
+		config:         cfg,
+		jwtManager:     NewJWTManager(JWTConfig{}), // Auto-generates secret
+		bruteForce:     NewBruteForceProtector(),
+		accountLockout: NewAccountLockout(),
 	}
 
 	// Set default auth mode to "token" if not specified
@@ -363,6 +366,13 @@ func (am *AuthManager) CreateUser(username, password, role string) error {
 
 	if len(password) < 8 {
 		return fmt.Errorf("password must be at least 8 characters")
+	}
+
+	if len(username) < 3 || len(username) > 32 {
+		return fmt.Errorf("username must be 3-32 characters")
+	}
+	if matched, _ := regexp.MatchString(`^[a-zA-Z0-9_-]+$`, username); !matched {
+		return fmt.Errorf("username must contain only alphanumeric characters, hyphens, and underscores")
 	}
 
 	am.users[username] = &User{
@@ -796,6 +806,21 @@ func (am *AuthManager) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check account-based lockout (independent of IP rate limit)
+	if req.Username != "" && am.accountLockout.IsLocked(req.Username) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"error": "계정이 잠겼습니다. 30분 후 다시 시도하세요.",
+		})
+		return
+	}
+
+	// Before creating new session, invalidate old session to prevent session fixation
+	if cookie, err := r.Cookie("k13d_session"); err == nil && cookie.Value != "" {
+		am.InvalidateSession(cookie.Value)
+	}
+
 	var session *Session
 	var err error
 
@@ -818,7 +843,9 @@ func (am *AuthManager) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		// Handle username/password login (local or LDAP)
 		session, err = am.Authenticate(req.Username, req.Password)
 		if err != nil {
-			// Record failure and apply progressive delay
+			// Record account-level failure
+			am.accountLockout.RecordFailure(req.Username)
+			// Record IP-level failure and apply progressive delay
 			delay := am.bruteForce.RecordFailure(clientIP)
 			if delay > 0 {
 				time.Sleep(delay)
@@ -828,8 +855,9 @@ func (am *AuthManager) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Login succeeded — clear failure counter for this IP
+	// Login succeeded — clear failure counters
 	am.bruteForce.RecordSuccess(clientIP)
+	am.accountLockout.RecordSuccess(req.Username)
 
 	// Set session cookie with security flags
 	http.SetCookie(w, &http.Cookie{

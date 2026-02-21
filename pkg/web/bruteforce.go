@@ -158,6 +158,127 @@ func (bp *BruteForceProtector) cleanupLoop() {
 	}
 }
 
+// AccountLockout tracks per-account failed login attempts and temporarily
+// locks accounts after too many consecutive failures (independent of IP).
+type AccountLockout struct {
+	mu           sync.Mutex
+	attempts     map[string]*accountAttempt // username -> attempt state
+	MaxFailures  int                        // failures before lock (default: 10)
+	LockDuration time.Duration              // how long the lock lasts (default: 30min)
+	done         chan struct{}
+}
+
+// accountAttempt records failure state for a single username.
+type accountAttempt struct {
+	Count    int
+	LastFail time.Time
+	LockedAt time.Time // zero means not locked
+}
+
+// NewAccountLockout creates an AccountLockout with default settings.
+func NewAccountLockout() *AccountLockout {
+	al := &AccountLockout{
+		attempts:     make(map[string]*accountAttempt),
+		MaxFailures:  10,
+		LockDuration: 30 * time.Minute,
+		done:         make(chan struct{}),
+	}
+	go al.cleanupLoop()
+	return al
+}
+
+// Stop signals the cleanup goroutine to exit.
+func (al *AccountLockout) Stop() {
+	close(al.done)
+}
+
+// IsLocked returns true if the account is currently locked due to failed attempts.
+func (al *AccountLockout) IsLocked(username string) bool {
+	al.mu.Lock()
+	defer al.mu.Unlock()
+
+	attempt, exists := al.attempts[username]
+	if !exists {
+		return false
+	}
+	if !attempt.LockedAt.IsZero() {
+		if time.Since(attempt.LockedAt) < al.LockDuration {
+			return true
+		}
+		// Lock expired — clear record.
+		delete(al.attempts, username)
+		return false
+	}
+	return false
+}
+
+// RecordFailure increments the failure counter for a username.
+// Returns true if the account just became locked.
+func (al *AccountLockout) RecordFailure(username string) bool {
+	al.mu.Lock()
+	defer al.mu.Unlock()
+
+	attempt, exists := al.attempts[username]
+	if !exists {
+		attempt = &accountAttempt{}
+		al.attempts[username] = attempt
+	}
+
+	attempt.Count++
+	attempt.LastFail = time.Now()
+
+	if attempt.Count >= al.MaxFailures {
+		attempt.LockedAt = time.Now()
+		fmt.Printf("[SECURITY] Account %q locked for %v after %d consecutive failed login attempts\n",
+			username, al.LockDuration, attempt.Count)
+		return true
+	}
+	return false
+}
+
+// RecordSuccess resets the failure counter on successful login.
+func (al *AccountLockout) RecordSuccess(username string) {
+	al.mu.Lock()
+	defer al.mu.Unlock()
+	delete(al.attempts, username)
+}
+
+// FailureCount returns the current failure count for a username (for testing).
+func (al *AccountLockout) FailureCount(username string) int {
+	al.mu.Lock()
+	defer al.mu.Unlock()
+	if attempt, exists := al.attempts[username]; exists {
+		return attempt.Count
+	}
+	return 0
+}
+
+// cleanupLoop periodically removes expired lock entries.
+func (al *AccountLockout) cleanupLoop() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			al.mu.Lock()
+			now := time.Now()
+			for username, attempt := range al.attempts {
+				if !attempt.LockedAt.IsZero() && now.Sub(attempt.LockedAt) > al.LockDuration {
+					delete(al.attempts, username)
+					continue
+				}
+				if now.Sub(attempt.LastFail) > al.LockDuration*2 {
+					delete(al.attempts, username)
+				}
+			}
+			al.mu.Unlock()
+		case <-al.done:
+			return
+		}
+	}
+}
+
 // ClientIP extracts the real client IP from a request, respecting
 // X-Forwarded-For and X-Real-IP headers (for reverse proxy setups like nginx).
 func ClientIP(r *http.Request) string {

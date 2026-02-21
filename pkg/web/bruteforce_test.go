@@ -3,8 +3,10 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -422,5 +424,187 @@ func TestHandleLogin_XForwardedFor(t *testing.T) {
 
 	if w.Code != http.StatusTooManyRequests {
 		t.Errorf("blocked XFF IP: expected 429, got %d", w.Code)
+	}
+}
+
+// --- Account Lockout Tests ---
+
+func TestAccountLockout_LockAfterMaxFailures(t *testing.T) {
+	al := NewAccountLockout()
+	defer al.Stop()
+
+	username := "testuser"
+
+	for i := 0; i < 9; i++ {
+		locked := al.RecordFailure(username)
+		if locked {
+			t.Errorf("should not lock on failure %d", i+1)
+		}
+	}
+
+	if al.IsLocked(username) {
+		t.Error("should not be locked before 10th failure")
+	}
+
+	// 10th failure triggers lock
+	locked := al.RecordFailure(username)
+	if !locked {
+		t.Error("10th failure should trigger lock")
+	}
+
+	if !al.IsLocked(username) {
+		t.Error("account should be locked after 10 failures")
+	}
+}
+
+func TestAccountLockout_LockExpiry(t *testing.T) {
+	al := NewAccountLockout()
+	defer al.Stop()
+
+	al.LockDuration = 50 * time.Millisecond
+
+	username := "expiryuser"
+	for i := 0; i < 10; i++ {
+		al.RecordFailure(username)
+	}
+
+	if !al.IsLocked(username) {
+		t.Error("should be locked immediately")
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	if al.IsLocked(username) {
+		t.Error("lock should have expired")
+	}
+}
+
+func TestAccountLockout_SuccessResets(t *testing.T) {
+	al := NewAccountLockout()
+	defer al.Stop()
+
+	username := "resetuser"
+	for i := 0; i < 5; i++ {
+		al.RecordFailure(username)
+	}
+
+	if al.FailureCount(username) != 5 {
+		t.Errorf("expected 5 failures, got %d", al.FailureCount(username))
+	}
+
+	al.RecordSuccess(username)
+
+	if al.FailureCount(username) != 0 {
+		t.Errorf("expected 0 after success, got %d", al.FailureCount(username))
+	}
+}
+
+func TestAccountLockout_IndependentAccounts(t *testing.T) {
+	al := NewAccountLockout()
+	defer al.Stop()
+
+	for i := 0; i < 10; i++ {
+		al.RecordFailure("user1")
+	}
+
+	if !al.IsLocked("user1") {
+		t.Error("user1 should be locked")
+	}
+
+	if al.IsLocked("user2") {
+		t.Error("user2 should not be affected by user1's lockout")
+	}
+}
+
+func TestHandleLogin_AccountLockout(t *testing.T) {
+	am := NewAuthManager(&AuthConfig{
+		Quiet:           true,
+		Enabled:         true,
+		SessionDuration: time.Hour,
+		AuthMode:        "local",
+		DefaultAdmin:    "admin",
+		DefaultPassword: "correctpassword",
+	})
+	disableDelays(am)
+
+	// Simulate 10 failed logins for the same account from different IPs
+	for i := 0; i < 10; i++ {
+		body, _ := json.Marshal(map[string]string{
+			"username": "admin",
+			"password": "wrongpassword",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = fmt.Sprintf("10.0.%d.1:12345", i) // different IPs
+		w := httptest.NewRecorder()
+
+		am.HandleLogin(w, req)
+	}
+
+	// 11th attempt should be blocked by account lockout (429)
+	body, _ := json.Marshal(map[string]string{
+		"username": "admin",
+		"password": "correctpassword",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = "10.99.99.99:12345" // fresh IP — proves it's account-level
+	w := httptest.NewRecorder()
+
+	am.HandleLogin(w, req)
+
+	if w.Code != http.StatusTooManyRequests {
+		t.Errorf("locked account: expected 429, got %d", w.Code)
+	}
+
+	// Verify the response message
+	var resp map[string]string
+	_ = json.NewDecoder(w.Body).Decode(&resp)
+	if !strings.Contains(resp["error"], "계정이 잠겼습니다") {
+		t.Errorf("expected Korean lockout message, got: %s", resp["error"])
+	}
+}
+
+func TestHandleLogin_AccountLockout_IndependentOfIPBlock(t *testing.T) {
+	am := NewAuthManager(&AuthConfig{
+		Quiet:           true,
+		Enabled:         true,
+		SessionDuration: time.Hour,
+		AuthMode:        "local",
+		DefaultAdmin:    "admin",
+		DefaultPassword: "correctpassword",
+	})
+	disableDelays(am)
+
+	// Create a second user
+	_ = am.CreateUser("user2", "password2!", "user")
+
+	// Lock the "admin" account via failures from various IPs
+	for i := 0; i < 10; i++ {
+		body, _ := json.Marshal(map[string]string{
+			"username": "admin",
+			"password": "wrong",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = fmt.Sprintf("10.0.%d.1:12345", i)
+		w := httptest.NewRecorder()
+		am.HandleLogin(w, req)
+	}
+
+	// user2 should still be able to login even though admin is locked
+	body, _ := json.Marshal(map[string]string{
+		"username": "user2",
+		"password": "password2!",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = "10.99.0.1:12345"
+	w := httptest.NewRecorder()
+
+	am.HandleLogin(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("user2 should succeed while admin is locked: expected 200, got %d", w.Code)
 	}
 }

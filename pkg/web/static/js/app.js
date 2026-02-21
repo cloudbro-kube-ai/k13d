@@ -856,11 +856,11 @@
 
         // Theme toggle (dark/light)
         function initTheme() {
-            const saved = localStorage.getItem('k13d_theme');
-            if (saved && saved !== 'light') {
-                document.documentElement.setAttribute('data-theme', saved);
-            } else {
+            const saved = localStorage.getItem('k13d_theme') || 'tokyo-night';
+            if (saved === 'light') {
                 document.documentElement.removeAttribute('data-theme');
+            } else {
+                document.documentElement.setAttribute('data-theme', saved);
             }
             updateThemeIcon();
         }
@@ -1280,6 +1280,7 @@
 
         // Switch to viewing a Custom Resource's instances
         async function switchToCRD(crdName) {
+            closeMobileSidebar();
             currentCRD = loadedCRDs.find(c => c.name === crdName);
             if (!currentCRD) return;
 
@@ -1482,6 +1483,7 @@
         }
 
         function switchResource(resource) {
+            closeMobileSidebar();
             currentResource = resource;
 
             // Clear column filters when switching resources
@@ -3171,10 +3173,8 @@ ${escapeHtml(execInfo.result)}</div>
 
         // Apply saved theme on load
         (function initSettingsTheme() {
-            const saved = localStorage.getItem('k13d_theme');
-            if (saved && saved !== 'light') {
-                applyTheme(saved);
-            }
+            const saved = localStorage.getItem('k13d_theme') || 'tokyo-night';
+            applyTheme(saved);
         })();
 
         // ==========================================
@@ -8626,11 +8626,42 @@ spec:
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const hamburger = document.getElementById('hamburger-btn');
-            sidebarCollapsed = !sidebarCollapsed;
+            const isMobile = window.innerWidth <= 768;
 
-            sidebar.classList.toggle('collapsed', sidebarCollapsed);
-            hamburger.classList.toggle('active', sidebarCollapsed);
-            localStorage.setItem('k13d_sidebar_collapsed', sidebarCollapsed);
+            if (isMobile) {
+                const isOpen = sidebar.classList.contains('mobile-open');
+                sidebar.classList.toggle('mobile-open', !isOpen);
+                hamburger.classList.toggle('active', !isOpen);
+                // Show/hide overlay
+                let overlay = document.getElementById('sidebar-overlay');
+                if (!isOpen) {
+                    if (!overlay) {
+                        overlay = document.createElement('div');
+                        overlay.id = 'sidebar-overlay';
+                        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:199;';
+                        overlay.onclick = function() { toggleSidebar(); };
+                        document.body.appendChild(overlay);
+                    }
+                    overlay.style.display = 'block';
+                } else if (overlay) {
+                    overlay.style.display = 'none';
+                }
+            } else {
+                sidebarCollapsed = !sidebarCollapsed;
+                sidebar.classList.toggle('collapsed', sidebarCollapsed);
+                hamburger.classList.toggle('active', sidebarCollapsed);
+                localStorage.setItem('k13d_sidebar_collapsed', sidebarCollapsed);
+            }
+        }
+
+        // Close mobile sidebar when a nav item is clicked
+        function closeMobileSidebar() {
+            if (window.innerWidth <= 768) {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar.classList.contains('mobile-open')) {
+                    toggleSidebar();
+                }
+            }
         }
 
         // ==========================================
@@ -10194,6 +10225,7 @@ spec:
         }
 
         function showOverviewPanel() {
+            closeMobileSidebar();
             currentResource = 'overview';
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             const nav = document.querySelector('.nav-item[data-resource="overview"]');
