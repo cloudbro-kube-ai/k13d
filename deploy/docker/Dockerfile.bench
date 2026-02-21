@@ -2,7 +2,7 @@
 # Build: docker build -f Dockerfile.bench -t k13d-bench .
 # Run:   docker run --rm -v ~/.kube/config:/home/k13d/.kube/config:ro k13d-bench list
 
-FROM golang:1.25.5-alpine AS builder
+FROM golang:1.26.0-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates
