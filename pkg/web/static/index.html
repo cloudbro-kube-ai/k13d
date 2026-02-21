@@ -191,17 +191,25 @@
             </div>
         </div>
 
+        <!-- Sidebar Overlay (mobile backdrop) -->
+        <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
         <!-- Main Content -->
         <div class="main-container">
             <!-- Sidebar -->
             <div class="sidebar sidebar-transition" id="sidebar">
+                <!-- Mobile header with close button -->
+                <div class="sidebar-mobile-header">
+                    <span class="sidebar-mobile-title">Navigation</span>
+                    <button class="sidebar-close-btn" onclick="toggleSidebar()" title="Close">&times;</button>
+                </div>
                 <div class="nav-section">
                     <div class="nav-item" data-resource="overview" onclick="showOverviewPanel()" style="font-weight: 600; margin-bottom: 8px;">
                         <span>Overview</span>
                     </div>
                 </div>
                 <div class="nav-section">
-                    <div class="nav-title">Workloads</div>
+                    <div class="nav-title" onclick="toggleNavSection(this)">Workloads<span class="nav-section-arrow">▾</span></div>
                     <div class="nav-item active" data-resource="pods" onclick="switchResource('pods')">
                         <span>Pods</span>
                         <span class="count" id="pods-count">0</span>
@@ -233,7 +241,7 @@
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title">Network</div>
+                    <div class="nav-title" onclick="toggleNavSection(this)">Network<span class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="services" onclick="switchResource('services')">
                         <span>Services</span>
                         <span class="count" id="services-count">0</span>
@@ -249,7 +257,7 @@
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title">Config</div>
+                    <div class="nav-title" onclick="toggleNavSection(this)">Config<span class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="configmaps" onclick="switchResource('configmaps')">
                         <span>ConfigMaps</span>
                         <span class="count" id="configmaps-count">0</span>
@@ -265,7 +273,7 @@
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title">Storage</div>
+                    <div class="nav-title" onclick="toggleNavSection(this)">Storage<span class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="persistentvolumes" onclick="switchResource('persistentvolumes')">
                         <span>PersistentVolumes</span>
                         <span class="count" id="persistentvolumes-count">0</span>
@@ -277,7 +285,7 @@
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title">Cluster</div>
+                    <div class="nav-title" onclick="toggleNavSection(this)">Cluster<span class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="nodes" onclick="switchResource('nodes')">
                         <span>Nodes</span>
                         <span class="count" id="nodes-count">0</span>
@@ -293,7 +301,7 @@
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title">RBAC</div>
+                    <div class="nav-title" onclick="toggleNavSection(this)">RBAC<span class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="roles" onclick="switchResource('roles')">
                         <span>Roles</span>
                         <span class="count" id="roles-count">0</span>
@@ -313,9 +321,10 @@
                 </div>
 
                 <div class="nav-section" id="crd-nav-section">
-                    <div class="nav-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="nav-title" style="display: flex; justify-content: space-between; align-items: center;" onclick="toggleNavSection(this)">
                         Custom Resources
                         <span class="count" id="crd-count" style="font-size: 10px;">0</span>
+                        <span class="nav-section-arrow">▾</span>
                     </div>
                     <div id="crd-nav-items">
                         <!-- CRD items will be dynamically loaded here -->
@@ -323,7 +332,7 @@
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title">Visualization</div>
+                    <div class="nav-title" onclick="toggleNavSection(this)">Visualization<span class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="topology" onclick="showTopology()">
                         <span>Topology</span>
                     </div>
@@ -342,7 +351,7 @@
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title">Operations</div>
+                    <div class="nav-title" onclick="toggleNavSection(this)">Operations<span class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="validate" onclick="showValidateView()">
                         <span>Validate</span>
                     </div>
@@ -352,7 +361,7 @@
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title">Monitoring</div>
+                    <div class="nav-title" onclick="toggleNavSection(this)">Monitoring<span class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="metrics" onclick="showMetricsDashboard()">
                         <span>Metrics</span>
                     </div>

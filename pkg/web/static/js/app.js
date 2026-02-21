@@ -8626,25 +8626,27 @@ spec:
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const hamburger = document.getElementById('hamburger-btn');
+            const overlay = document.getElementById('sidebar-overlay');
             const isMobile = window.innerWidth <= 768;
 
             if (isMobile) {
                 const isOpen = sidebar.classList.contains('mobile-open');
                 sidebar.classList.toggle('mobile-open', !isOpen);
                 hamburger.classList.toggle('active', !isOpen);
-                // Show/hide overlay
-                let overlay = document.getElementById('sidebar-overlay');
+                if (overlay) overlay.classList.toggle('active', !isOpen);
+                // Auto-scroll to active nav item when opening
                 if (!isOpen) {
-                    if (!overlay) {
-                        overlay = document.createElement('div');
-                        overlay.id = 'sidebar-overlay';
-                        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:199;';
-                        overlay.onclick = function() { toggleSidebar(); };
-                        document.body.appendChild(overlay);
-                    }
-                    overlay.style.display = 'block';
-                } else if (overlay) {
-                    overlay.style.display = 'none';
+                    requestAnimationFrame(function() {
+                        const activeItem = sidebar.querySelector('.nav-item.active');
+                        if (activeItem) {
+                            activeItem.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                            // Expand the section containing the active item
+                            const section = activeItem.closest('.nav-section');
+                            if (section && section.classList.contains('collapsed')) {
+                                section.classList.remove('collapsed');
+                            }
+                        }
+                    });
                 }
             } else {
                 sidebarCollapsed = !sidebarCollapsed;
@@ -8663,6 +8665,36 @@ spec:
                 }
             }
         }
+
+        // Toggle nav section collapse (mobile only)
+        function toggleNavSection(titleEl) {
+            if (window.innerWidth > 768) return;
+            const section = titleEl.closest('.nav-section');
+            if (section) section.classList.toggle('collapsed');
+        }
+
+        // Auto-collapse inactive nav sections on mobile load
+        function initMobileNavSections() {
+            if (window.innerWidth > 768) return;
+            document.querySelectorAll('#sidebar .nav-section').forEach(function(section) {
+                // Skip the overview section (no nav-title)
+                if (!section.querySelector('.nav-title')) return;
+                // Collapse sections that don't contain the active item
+                if (!section.querySelector('.nav-item.active')) {
+                    section.classList.add('collapsed');
+                }
+            });
+        }
+        // Run on load and resize
+        window.addEventListener('load', initMobileNavSections);
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                // Remove collapsed state when switching to desktop
+                document.querySelectorAll('#sidebar .nav-section.collapsed').forEach(function(s) {
+                    s.classList.remove('collapsed');
+                });
+            }
+        });
 
         // ==========================================
         // Debug Mode (MCP Tool Calling)
