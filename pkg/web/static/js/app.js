@@ -1040,6 +1040,7 @@
             }
             loadNamespaces();
             switchResource('pods');
+            initMobileNavSections();
             setupResizeHandle();
             setupHealthCheck();
             // Initialize auto-refresh
@@ -8631,6 +8632,10 @@ spec:
 
             if (isMobile) {
                 const isOpen = sidebar.classList.contains('mobile-open');
+                // Remove desktop collapsed class to prevent width:0/overflow:hidden conflict
+                if (!isOpen && sidebar.classList.contains('collapsed')) {
+                    sidebar.classList.remove('collapsed');
+                }
                 sidebar.classList.toggle('mobile-open', !isOpen);
                 hamburger.classList.toggle('active', !isOpen);
                 if (overlay) overlay.classList.toggle('active', !isOpen);
@@ -8676,6 +8681,8 @@ spec:
         // Auto-collapse inactive nav sections on mobile load
         function initMobileNavSections() {
             if (window.innerWidth > 768) return;
+            // Skip if no active item yet (will be called again after switchResource)
+            if (!document.querySelector('#sidebar .nav-item.active')) return;
             document.querySelectorAll('#sidebar .nav-section').forEach(function(section) {
                 // Skip the overview section (no nav-title)
                 if (!section.querySelector('.nav-title')) return;

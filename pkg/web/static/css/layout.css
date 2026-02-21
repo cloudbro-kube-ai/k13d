@@ -709,6 +709,11 @@
 
     .sidebar.mobile-open {
         transform: translateX(0);
+        /* Override desktop .collapsed styles when mobile drawer is open */
+        width: 280px;
+        min-width: 280px;
+        padding: 0;
+        overflow-y: auto;
     }
 
     .sidebar.collapsed {
@@ -880,6 +885,101 @@
     .message-content {
         max-width: 95%;
     }
+
+    /* --- Mobile: Top bar condensation --- */
+    .health-indicator span#health-status {
+        display: none;
+    }
+
+    .user-info .logout-btn {
+        padding: 8px 10px;
+        font-size: 11px;
+        min-height: 36px;
+    }
+
+    /* --- Mobile: Touch targets (min 44px) --- */
+    .hamburger-btn {
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .nav-item {
+        min-height: 44px;
+    }
+
+    .nav-title {
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+    }
+
+    .pagination-btn {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 8px 14px;
+    }
+
+    .logout-btn {
+        min-height: 44px;
+    }
+
+    .refresh-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* --- Mobile: Table horizontal scroll --- */
+    .table-container {
+        padding: 8px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+        min-width: 600px;
+    }
+
+    th {
+        padding: 10px 12px;
+        white-space: nowrap;
+    }
+
+    td {
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    /* --- Mobile: Pagination visibility --- */
+    .pagination-container {
+        padding: 10px 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .pagination-info {
+        width: 100%;
+        text-align: center;
+        font-size: 12px;
+    }
+
+    .pagination-controls {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .page-size-select {
+        min-height: 44px;
+        font-size: 13px;
+    }
+
+    /* --- Mobile: Font size floor --- */
+    body {
+        font-size: 14px;
+        -webkit-text-size-adjust: 100%;
+    }
 }
 
 /* --- Small Mobile (max-width: 480px) --- */
@@ -906,6 +1006,11 @@
         width: 100%;
         min-width: 100%;
         max-width: 100%;
+    }
+
+    .sidebar.mobile-open {
+        width: 100%;
+        min-width: 100%;
     }
 
     .ai-panel {
