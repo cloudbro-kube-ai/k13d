@@ -70,7 +70,7 @@ type AuthManager struct {
 	roleValidator  func(string) bool    // Optional: validates custom role names
 	bruteForce     *BruteForceProtector // IP-based brute-force protection
 	accountLockout *AccountLockout      // Account-based lockout protection
-	csrfDone       chan struct{}         // signals CSRF cleanup goroutine to stop
+	csrfDone       chan struct{}        // signals CSRF cleanup goroutine to stop
 }
 
 // SetRoleValidator sets a function that validates custom role names

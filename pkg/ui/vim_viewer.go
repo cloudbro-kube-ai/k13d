@@ -25,7 +25,7 @@ type VimViewer struct {
 	searchInput   string
 	content       string   // Original content for searching
 	lines         []string // Split lines for navigation
-	totalLines int // Total line count
+	totalLines    int      // Total line count
 
 	// Secret decode toggle
 	isSecretView  bool   // True when viewing a Secret resource

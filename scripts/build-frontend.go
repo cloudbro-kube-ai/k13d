@@ -184,4 +184,3 @@ func bundleFiles(files []string, outputPath string, commentStart, commentEnd str
 
 	return nil
 }
-
