@@ -80,32 +80,34 @@
     --z-tooltip: 3000;
 }
 
-/* Tokyo Night Theme */
+/* Tokyo Night Theme — improved contrast (WCAG AA compliant)
+ * Backgrounds lifted slightly, text brightened for readability.
+ * Inspired by Grafana/Lens/Rancher dark palette conventions. */
 [data-theme="tokyo-night"] {
-    --bg-primary: #1a1b26;
-    --bg-secondary: #24283b;
-    --bg-tertiary: #414868;
-    --text-primary: #c0caf5;
-    --text-secondary: #a9b1d6;
+    --bg-primary: #1e2030;
+    --bg-secondary: #282d42;
+    --bg-tertiary: #4a5272;
+    --text-primary: #d5ddf8;
+    --text-secondary: #b8c0de;
     --accent-blue: #7aa2f7;
     --accent-green: #9ece6a;
     --accent-red: #f7768e;
     --accent-yellow: #e0af68;
     --accent-purple: #bb9af7;
     --accent-cyan: #7dcfff;
-    --bg-hover: rgba(122, 162, 247, 0.1);
-    --text-muted: #737aa2;
-    --border-color: #414868;
+    --bg-hover: rgba(122, 162, 247, 0.12);
+    --text-muted: #9098be;
+    --border-color: #4f5680;
 
-    --bg-deep: #12131a;
-    --surface-primary: rgba(36, 40, 59, 0.95);
-    --surface-secondary: rgba(26, 27, 38, 0.9);
-    --surface-tertiary: rgba(65, 72, 104, 0.6);
-    --surface-input: rgba(26, 27, 38, 0.8);
-    --surface-input-solid: rgba(26, 27, 38, 1);
-    --surface-elevated: rgba(65, 72, 104, 0.8);
-    --surface-code: rgba(0, 0, 0, 0.3);
-    --text-on-accent: #1a1b26;
+    --bg-deep: #161722;
+    --surface-primary: rgba(40, 45, 66, 0.95);
+    --surface-secondary: rgba(30, 32, 48, 0.9);
+    --surface-tertiary: rgba(74, 82, 114, 0.65);
+    --surface-input: rgba(30, 32, 48, 0.8);
+    --surface-input-solid: rgba(30, 32, 48, 1);
+    --surface-elevated: rgba(74, 82, 114, 0.8);
+    --surface-code: rgba(0, 0, 0, 0.25);
+    --text-on-accent: #1e2030;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
@@ -117,30 +119,30 @@
 
 /* Production Theme (Red accent - warns you're in production) */
 [data-theme="production"] {
-    --bg-primary: #1c1517;
-    --bg-secondary: #2a1f22;
-    --bg-tertiary: #4a3035;
-    --text-primary: #e8d0d4;
-    --text-secondary: #b89a9f;
+    --bg-primary: #211a1c;
+    --bg-secondary: #2f2427;
+    --bg-tertiary: #54363c;
+    --text-primary: #f0dce0;
+    --text-secondary: #c8a8ae;
     --accent-blue: #7aa2f7;
     --accent-green: #9ece6a;
     --accent-red: #ff6b81;
     --accent-yellow: #e0af68;
     --accent-purple: #bb9af7;
     --accent-cyan: #7dcfff;
-    --bg-hover: rgba(255, 107, 129, 0.1);
-    --text-muted: #8a6a6f;
-    --border-color: #5a3a40;
+    --bg-hover: rgba(255, 107, 129, 0.12);
+    --text-muted: #a58890;
+    --border-color: #644046;
 
-    --bg-deep: #150f11;
-    --surface-primary: rgba(42, 31, 34, 0.95);
-    --surface-secondary: rgba(28, 21, 23, 0.9);
-    --surface-tertiary: rgba(74, 48, 53, 0.6);
-    --surface-input: rgba(28, 21, 23, 0.8);
-    --surface-input-solid: rgba(28, 21, 23, 1);
-    --surface-elevated: rgba(74, 48, 53, 0.8);
-    --surface-code: rgba(0, 0, 0, 0.3);
-    --text-on-accent: #1c1517;
+    --bg-deep: #1a1416;
+    --surface-primary: rgba(47, 36, 39, 0.95);
+    --surface-secondary: rgba(33, 26, 28, 0.9);
+    --surface-tertiary: rgba(84, 54, 60, 0.65);
+    --surface-input: rgba(33, 26, 28, 0.8);
+    --surface-input-solid: rgba(33, 26, 28, 1);
+    --surface-elevated: rgba(84, 54, 60, 0.8);
+    --surface-code: rgba(0, 0, 0, 0.25);
+    --text-on-accent: #211a1c;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
@@ -152,30 +154,30 @@
 
 /* Staging Theme (Yellow accent) */
 [data-theme="staging"] {
-    --bg-primary: #1c1b17;
-    --bg-secondary: #2a2820;
-    --bg-tertiary: #4a4530;
-    --text-primary: #e8e0d0;
-    --text-secondary: #b8b09a;
+    --bg-primary: #21201a;
+    --bg-secondary: #302e25;
+    --bg-tertiary: #544f38;
+    --text-primary: #f0e8d8;
+    --text-secondary: #c8c0a8;
     --accent-blue: #7aa2f7;
     --accent-green: #9ece6a;
     --accent-red: #f7768e;
     --accent-yellow: #ffb86c;
     --accent-purple: #bb9af7;
     --accent-cyan: #7dcfff;
-    --bg-hover: rgba(255, 184, 108, 0.1);
-    --text-muted: #8a8060;
-    --border-color: #5a5230;
+    --bg-hover: rgba(255, 184, 108, 0.12);
+    --text-muted: #a59e78;
+    --border-color: #645c38;
 
-    --bg-deep: #151411;
-    --surface-primary: rgba(42, 40, 32, 0.95);
-    --surface-secondary: rgba(28, 27, 23, 0.9);
-    --surface-tertiary: rgba(74, 69, 48, 0.6);
-    --surface-input: rgba(28, 27, 23, 0.8);
-    --surface-input-solid: rgba(28, 27, 23, 1);
-    --surface-elevated: rgba(74, 69, 48, 0.8);
-    --surface-code: rgba(0, 0, 0, 0.3);
-    --text-on-accent: #1c1b17;
+    --bg-deep: #1a1916;
+    --surface-primary: rgba(48, 46, 37, 0.95);
+    --surface-secondary: rgba(33, 32, 26, 0.9);
+    --surface-tertiary: rgba(84, 79, 56, 0.65);
+    --surface-input: rgba(33, 32, 26, 0.8);
+    --surface-input-solid: rgba(33, 32, 26, 1);
+    --surface-elevated: rgba(84, 79, 56, 0.8);
+    --surface-code: rgba(0, 0, 0, 0.25);
+    --text-on-accent: #21201a;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
@@ -187,30 +189,30 @@
 
 /* Development Theme (Green accent) */
 [data-theme="dev"] {
-    --bg-primary: #171c17;
-    --bg-secondary: #202a20;
-    --bg-tertiary: #304a30;
-    --text-primary: #d0e8d0;
-    --text-secondary: #9ab89a;
+    --bg-primary: #1c211c;
+    --bg-secondary: #253025;
+    --bg-tertiary: #385438;
+    --text-primary: #d8f0d8;
+    --text-secondary: #a8c8a8;
     --accent-blue: #7aa2f7;
     --accent-green: #73daca;
     --accent-red: #f7768e;
     --accent-yellow: #e0af68;
     --accent-purple: #bb9af7;
     --accent-cyan: #7dcfff;
-    --bg-hover: rgba(115, 218, 202, 0.1);
-    --text-muted: #6a8a6a;
-    --border-color: #3a5a3a;
+    --bg-hover: rgba(115, 218, 202, 0.12);
+    --text-muted: #85a585;
+    --border-color: #3e643e;
 
-    --bg-deep: #111511;
-    --surface-primary: rgba(32, 42, 32, 0.95);
-    --surface-secondary: rgba(23, 28, 23, 0.9);
-    --surface-tertiary: rgba(48, 74, 48, 0.6);
-    --surface-input: rgba(23, 28, 23, 0.8);
-    --surface-input-solid: rgba(23, 28, 23, 1);
-    --surface-elevated: rgba(48, 74, 48, 0.8);
-    --surface-code: rgba(0, 0, 0, 0.3);
-    --text-on-accent: #171c17;
+    --bg-deep: #161a16;
+    --surface-primary: rgba(37, 48, 37, 0.95);
+    --surface-secondary: rgba(28, 33, 28, 0.9);
+    --surface-tertiary: rgba(56, 84, 56, 0.65);
+    --surface-input: rgba(28, 33, 28, 0.8);
+    --surface-input-solid: rgba(28, 33, 28, 1);
+    --surface-elevated: rgba(56, 84, 56, 0.8);
+    --surface-code: rgba(0, 0, 0, 0.25);
+    --text-on-accent: #1c211c;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
@@ -223,30 +225,30 @@
 /* Auto-detect system preference when no explicit theme is set */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme]) {
-        --bg-primary: #1a1b26;
-        --bg-secondary: #24283b;
-        --bg-tertiary: #414868;
-        --text-primary: #c0caf5;
-        --text-secondary: #a9b1d6;
+        --bg-primary: #1e2030;
+        --bg-secondary: #282d42;
+        --bg-tertiary: #4a5272;
+        --text-primary: #d5ddf8;
+        --text-secondary: #b8c0de;
         --accent-blue: #7aa2f7;
         --accent-green: #9ece6a;
         --accent-red: #f7768e;
         --accent-yellow: #e0af68;
         --accent-purple: #bb9af7;
         --accent-cyan: #7dcfff;
-        --bg-hover: rgba(122, 162, 247, 0.1);
-        --text-muted: #737aa2;
-        --border-color: #414868;
+        --bg-hover: rgba(122, 162, 247, 0.12);
+        --text-muted: #9098be;
+        --border-color: #4f5680;
 
-        --bg-deep: #12131a;
-        --surface-primary: rgba(36, 40, 59, 0.95);
-        --surface-secondary: rgba(26, 27, 38, 0.9);
-        --surface-tertiary: rgba(65, 72, 104, 0.6);
-        --surface-input: rgba(26, 27, 38, 0.8);
-        --surface-input-solid: rgba(26, 27, 38, 1);
-        --surface-elevated: rgba(65, 72, 104, 0.8);
-        --surface-code: rgba(0, 0, 0, 0.3);
-        --text-on-accent: #1a1b26;
+        --bg-deep: #161722;
+        --surface-primary: rgba(40, 45, 66, 0.95);
+        --surface-secondary: rgba(30, 32, 48, 0.9);
+        --surface-tertiary: rgba(74, 82, 114, 0.65);
+        --surface-input: rgba(30, 32, 48, 0.8);
+        --surface-input-solid: rgba(30, 32, 48, 1);
+        --surface-elevated: rgba(74, 82, 114, 0.8);
+        --surface-code: rgba(0, 0, 0, 0.25);
+        --text-on-accent: #1e2030;
 
         --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
         --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
