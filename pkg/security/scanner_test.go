@@ -17,8 +17,8 @@ import (
 
 // ---------- helpers ----------
 
-func boolPtr(b bool) *bool       { return &b }
-func int64Ptr(i int64) *int64    { return &i }
+func boolPtr(b bool) *bool    { return &b }
+func int64Ptr(i int64) *int64 { return &i }
 
 // ---------- Test Scanner Initialization ----------
 
@@ -309,10 +309,10 @@ func TestGenerateRecommendations(t *testing.T) {
 	scanner := &Scanner{k8sClient: client}
 
 	tests := []struct {
-		name          string
-		result        *ScanResult
-		wantMinCount  int
-		wantCategory  string // at least one recommendation with this category
+		name         string
+		result       *ScanResult
+		wantMinCount int
+		wantCategory string // at least one recommendation with this category
 	}{
 		{
 			name:         "empty result no recommendations",

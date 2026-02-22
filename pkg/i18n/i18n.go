@@ -98,11 +98,11 @@ var translations = map[Language]map[string]string{
 		"desc_clear_select":  "Clear all selections",
 
 		// Auth & Security
-		"account_locked":       "Account is locked. Please try again after 30 minutes.",
-		"invalid_credentials":  "Invalid username or password",
-		"session_expired":      "Session expired. Please log in again.",
-		"password_too_short":   "Password must be at least 12 characters",
-		"permission_denied":    "Permission denied",
+		"account_locked":      "Account is locked. Please try again after 30 minutes.",
+		"invalid_credentials": "Invalid username or password",
+		"session_expired":     "Session expired. Please log in again.",
+		"password_too_short":  "Password must be at least 12 characters",
+		"permission_denied":   "Permission denied",
 
 		// Status
 		"status_connected":    "Connected",
@@ -113,8 +113,8 @@ var translations = map[Language]map[string]string{
 
 		// Actions
 		"action_confirm_delete": "Are you sure you want to delete this resource?",
-		"action_cancelled":     "Action cancelled",
-		"action_success":       "Operation completed successfully",
+		"action_cancelled":      "Action cancelled",
+		"action_success":        "Operation completed successfully",
 	},
 	KO: {
 		"app_title":          "k13d - K8s AI 탐색기",
@@ -170,11 +170,11 @@ var translations = map[Language]map[string]string{
 		"desc_clear_select":  "모든 선택 해제",
 
 		// Auth & Security
-		"account_locked":       "계정이 잠겼습니다. 30분 후 다시 시도하세요.",
-		"invalid_credentials":  "잘못된 사용자 이름 또는 비밀번호",
-		"session_expired":      "세션이 만료되었습니다. 다시 로그인해주세요.",
-		"password_too_short":   "비밀번호는 최소 12자 이상이어야 합니다",
-		"permission_denied":    "접근이 거부되었습니다",
+		"account_locked":      "계정이 잠겼습니다. 30분 후 다시 시도하세요.",
+		"invalid_credentials": "잘못된 사용자 이름 또는 비밀번호",
+		"session_expired":     "세션이 만료되었습니다. 다시 로그인해주세요.",
+		"password_too_short":  "비밀번호는 최소 12자 이상이어야 합니다",
+		"permission_denied":   "접근이 거부되었습니다",
 
 		// Status
 		"status_connected":    "연결됨",
@@ -185,8 +185,8 @@ var translations = map[Language]map[string]string{
 
 		// Actions
 		"action_confirm_delete": "이 리소스를 삭제하시겠습니까?",
-		"action_cancelled":     "작업이 취소되었습니다",
-		"action_success":       "작업이 완료되었습니다",
+		"action_cancelled":      "작업이 취소되었습니다",
+		"action_success":        "작업이 완료되었습니다",
 	},
 	ZH: {
 		"app_title":          "k13d - K8s AI 资源管理器",
@@ -242,11 +242,11 @@ var translations = map[Language]map[string]string{
 		"desc_clear_select":  "清除所有选择",
 
 		// Auth & Security
-		"account_locked":       "账户已锁定，请30分钟后重试。",
-		"invalid_credentials":  "用户名或密码错误",
-		"session_expired":      "会话已过期，请重新登录。",
-		"password_too_short":   "密码至少需要12个字符",
-		"permission_denied":    "拒绝访问",
+		"account_locked":      "账户已锁定，请30分钟后重试。",
+		"invalid_credentials": "用户名或密码错误",
+		"session_expired":     "会话已过期，请重新登录。",
+		"password_too_short":  "密码至少需要12个字符",
+		"permission_denied":   "拒绝访问",
 
 		// Status
 		"status_connected":    "已连接",
@@ -257,8 +257,8 @@ var translations = map[Language]map[string]string{
 
 		// Actions
 		"action_confirm_delete": "确定要删除此资源吗？",
-		"action_cancelled":     "操作已取消",
-		"action_success":       "操作成功完成",
+		"action_cancelled":      "操作已取消",
+		"action_success":        "操作成功完成",
 	},
 	JA: {
 		"app_title":          "k13d - K8s AI エクスプローラー",
@@ -314,11 +314,11 @@ var translations = map[Language]map[string]string{
 		"desc_clear_select":  "すべての選択を解除",
 
 		// Auth & Security
-		"account_locked":       "アカウントがロックされています。30分後に再試行してください。",
-		"invalid_credentials":  "ユーザー名またはパスワードが正しくありません",
-		"session_expired":      "セッションが期限切れです。再度ログインしてください。",
-		"password_too_short":   "パスワードは12文字以上必要です",
-		"permission_denied":    "アクセスが拒否されました",
+		"account_locked":      "アカウントがロックされています。30分後に再試行してください。",
+		"invalid_credentials": "ユーザー名またはパスワードが正しくありません",
+		"session_expired":     "セッションが期限切れです。再度ログインしてください。",
+		"password_too_short":  "パスワードは12文字以上必要です",
+		"permission_denied":   "アクセスが拒否されました",
 
 		// Status
 		"status_connected":    "接続済み",
@@ -329,8 +329,8 @@ var translations = map[Language]map[string]string{
 
 		// Actions
 		"action_confirm_delete": "このリソースを削除してもよろしいですか？",
-		"action_cancelled":     "操作がキャンセルされました",
-		"action_success":       "操作が正常に完了しました",
+		"action_cancelled":      "操作がキャンセルされました",
+		"action_success":        "操作が正常に完了しました",
 	},
 }
 

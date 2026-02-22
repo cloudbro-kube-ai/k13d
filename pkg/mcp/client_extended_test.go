@@ -969,7 +969,7 @@ func TestMCPToolExecutorAdapterMultipleContentBlocks(t *testing.T) {
 				Content: []ContentBlock{
 					{Type: "text", Text: "line 1"},
 					{Type: "text", Text: "line 2"},
-					{Type: "image", Text: ""},      // should be skipped
+					{Type: "image", Text: ""}, // should be skipped
 					{Type: "text", Text: "line 3"},
 				},
 			}

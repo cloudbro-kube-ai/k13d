@@ -441,4 +441,3 @@ func runCommand(ctx context.Context, cmdStr string, timeout time.Duration) (stri
 
 	return output, nil
 }
-

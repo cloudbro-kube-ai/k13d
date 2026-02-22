@@ -2045,8 +2045,8 @@ func TestCalculateBackoff(t *testing.T) {
 			attempt:    1,
 			maxBackoff: 10.0,
 			jitter:     0.5,
-			wantMin:    1 * time.Second,  // 2 - 2*0.5 = 1
-			wantMax:    3 * time.Second,  // 2 + 2*0.5 = 3
+			wantMin:    1 * time.Second, // 2 - 2*0.5 = 1
+			wantMax:    3 * time.Second, // 2 + 2*0.5 = 3
 		},
 	}
 
