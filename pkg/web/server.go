@@ -728,7 +728,6 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/search", s.authManager.AuthMiddleware(s.handleGlobalSearch))
 	mux.HandleFunc("/api/safety/analyze", s.authManager.AuthMiddleware(s.handleSafetyAnalysis))
 	mux.HandleFunc("/api/settings/tool-approval", s.authManager.AuthMiddleware(s.handleToolApprovalSettings))
-	mux.HandleFunc("/api/validate", s.authManager.AuthMiddleware(s.handleValidate))
 	mux.HandleFunc("/api/pulse", s.authManager.AuthMiddleware(s.handlePulse))
 	mux.HandleFunc("/api/xray", s.authManager.AuthMiddleware(s.handleXRay))
 
@@ -738,16 +737,16 @@ func (s *Server) Start() error {
 
 	// RBAC visualization
 	mux.HandleFunc("/api/rbac/visualization", s.authManager.AuthMiddleware(s.handleRBACVisualization))
+	mux.HandleFunc("/api/rbac/subject/detail", s.authManager.AuthMiddleware(s.handleRBACSubjectDetail))
+
+	// Resource references (Secret/ConfigMap "Referenced By")
+	mux.HandleFunc("/api/resource/references", s.authManager.AuthMiddleware(s.handleResourceReferences))
 
 	// Network Policy visualization
 	mux.HandleFunc("/api/netpol/visualization", s.authManager.AuthMiddleware(s.handleNetworkPolicyVisualization))
 
 	// GitOps status (ArgoCD / Flux)
 	mux.HandleFunc("/api/gitops/status", s.authManager.AuthMiddleware(s.handleGitOpsStatus))
-
-	// Resource templates (feature-gated)
-	mux.HandleFunc("/api/templates", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureTemplates)(s.handleTemplates)))
-	mux.HandleFunc("/api/templates/apply", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureTemplates)(s.authorizer.AuthzMiddleware("*", ActionApply)(s.handleTemplateApply))))
 
 	// Notification webhook configuration
 	mux.HandleFunc("/api/notifications/config", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionEdit)(s.handleNotificationConfig)))

@@ -64,6 +64,10 @@ var errorMessages = map[string]struct {
 		Message:    "The selected LLM model doesn't support tool calling",
 		Suggestion: "Enable JSON mode in Settings, or switch to a model that supports function calling (e.g., GPT-4, Claude 3).",
 	},
+	ErrCodeLLMError: {
+		Message:    "LLM API error",
+		Suggestion: "Check your LLM provider settings, API key, and network connection in Settings > AI/LLM Settings.",
+	},
 	ErrCodeK8sError: {
 		Message:    "Kubernetes API error",
 		Suggestion: "Check your cluster connection and permissions. Ensure your kubeconfig is valid.",

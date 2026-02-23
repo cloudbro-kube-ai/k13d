@@ -860,11 +860,7 @@
         // Theme toggle (dark/light)
         function initTheme() {
             const saved = localStorage.getItem('k13d_theme') || 'light';
-            if (saved === 'light') {
-                document.documentElement.removeAttribute('data-theme');
-            } else {
-                document.documentElement.setAttribute('data-theme', saved);
-            }
+            document.documentElement.setAttribute('data-theme', saved);
             updateThemeIcon();
         }
 
@@ -1191,6 +1187,7 @@
 
                     if (!resp.ok) {
                         console.error(`API error for ${resource}: ${resp.status}`);
+                        clearResourceData(resource);
                         continue;
                     }
 
@@ -1199,6 +1196,7 @@
                     // Check for API error in response
                     if (data.error) {
                         console.error(`API returned error for ${resource}:`, data.error);
+                        clearResourceData(resource);
                         continue;
                     }
 
@@ -1211,11 +1209,20 @@
                     }
                 } catch (e) {
                     console.error(`Failed to load ${resource}:`, e);
+                    clearResourceData(resource);
                 }
             }
 
             // Also load CRDs
             loadCRDs();
+        }
+
+        function clearResourceData(resource) {
+            const countEl = document.getElementById(`${resource}-count`);
+            if (countEl) countEl.textContent = '-';
+            if (resource === currentResource) {
+                renderTable(resource, []);
+            }
         }
 
         // Load Custom Resource Definitions
@@ -3075,7 +3082,7 @@ ${escapeHtml(execInfo.result)}</div>
                 if (!isResizing) return;
                 const containerWidth = document.querySelector('.content-wrapper').offsetWidth;
                 const newWidth = containerWidth - e.clientX + document.querySelector('.sidebar').offsetWidth;
-                if (newWidth >= 280 && newWidth <= 600) {
+                if (newWidth >= 280 && newWidth <= containerWidth * 0.75) {
                     aiPanel.style.width = newWidth + 'px';
                 }
             });
@@ -3166,11 +3173,7 @@ ${escapeHtml(execInfo.result)}</div>
         // Theme / Skin support
         function applyTheme(theme) {
             const html = document.documentElement;
-            if (theme === 'light') {
-                html.removeAttribute('data-theme');
-            } else {
-                html.setAttribute('data-theme', theme);
-            }
+            html.setAttribute('data-theme', theme);
             localStorage.setItem('k13d_theme', theme);
             updateThemeIcon();
             // Sync settings dropdown
@@ -3612,9 +3615,12 @@ ${escapeHtml(execInfo.result)}</div>
             if (fetchBtn) {
                 fetchBtn.style.display = fetchableProviders.includes(provider) ? 'inline' : 'none';
             }
-            // Clear previous suggestions when switching providers
-            const datalist = document.getElementById('model-suggestions');
-            if (datalist) datalist.innerHTML = '';
+            // Hide model select and clear when switching providers
+            const modelSelect2 = document.getElementById('setting-llm-model-select');
+            if (modelSelect2) {
+                modelSelect2.style.display = 'none';
+                modelSelect2.innerHTML = '';
+            }
         }
 
         async function fetchAvailableModels() {
@@ -3622,7 +3628,8 @@ ${escapeHtml(execInfo.result)}</div>
             const apiKey = document.getElementById('setting-llm-apikey').value;
             const endpoint = document.getElementById('setting-llm-endpoint').value;
             const status = document.getElementById('fetch-models-status');
-            const datalist = document.getElementById('model-suggestions');
+            const modelSelect = document.getElementById('setting-llm-model-select');
+            const modelInput = document.getElementById('setting-llm-model');
             const btn = document.getElementById('fetch-models-btn');
 
             if (!apiKey && provider !== 'ollama') {
@@ -3636,9 +3643,11 @@ ${escapeHtml(execInfo.result)}</div>
             status.style.color = 'var(--text-secondary)';
 
             try {
-                const params = new URLSearchParams({ provider, api_key: apiKey });
-                if (endpoint) params.set('endpoint', endpoint);
-                const resp = await fetchWithAuth('/api/llm/available-models?' + params);
+                const resp = await fetchWithAuth('/api/llm/available-models', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ provider, api_key: apiKey, endpoint })
+                });
                 const data = await resp.json();
 
                 if (data.error) {
@@ -3654,7 +3663,23 @@ ${escapeHtml(execInfo.result)}</div>
                     return;
                 }
 
-                datalist.innerHTML = models.map(m => `<option value="${escapeHtml(m)}">`).join('');
+                // Populate select box with fetched models
+                const currentModel = modelInput.value;
+                modelSelect.innerHTML = models.map(m => {
+                    const escaped = escapeHtml(m);
+                    const selected = m === currentModel ? ' selected' : '';
+                    return `<option value="${escaped}"${selected}>${escaped}</option>`;
+                }).join('');
+                modelSelect.style.display = 'block';
+
+                // Auto-select: keep current model if it exists in the list, otherwise use first model
+                if (models.includes(currentModel)) {
+                    modelSelect.value = currentModel;
+                } else {
+                    modelSelect.value = models[0];
+                    modelInput.value = models[0];
+                }
+
                 status.textContent = `${models.length} models available`;
                 status.style.color = 'var(--accent-green)';
             } catch (e) {
@@ -3944,7 +3969,6 @@ ${escapeHtml(execInfo.result)}</div>
                 'reports': 'reports',
                 'helm': 'helm',
                 'security': 'security_scanning',
-                'templates': 'templates',
             };
             document.querySelectorAll('.sidebar-item[data-view]').forEach(item => {
                 const view = item.getAttribute('data-view');
@@ -3979,7 +4003,7 @@ ${escapeHtml(execInfo.result)}</div>
         }
 
         async function showCreateRoleModal() {
-            const allFeatures = ['dashboard','topology','reports','metrics','helm','terminal','rbac_viewer','network_policy','event_timeline','templates','ai_assistant','security_scanning','audit_logs','settings_general','settings_ai','settings_metrics','settings_mcp','settings_notifications'];
+            const allFeatures = ['dashboard','topology','reports','metrics','helm','terminal','rbac_viewer','network_policy','event_timeline','ai_assistant','security_scanning','audit_logs','settings_general','settings_ai','settings_metrics','settings_mcp','settings_notifications'];
 
             let checkboxes = allFeatures.map(f => `<label style="display:block;margin:4px 0;"><input type="checkbox" value="${f}" checked> ${f.replace(/_/g, ' ')}</label>`).join('');
 
@@ -5008,6 +5032,7 @@ ${escapeHtml(execInfo.result)}</div>
             failed: '#f7768e',
             succeeded: '#7aa2f7',
             unknown: '#a9b1d6',
+            active: '#ff9e64',
         };
 
         const topologyKindShapes = {
@@ -5024,6 +5049,9 @@ ${escapeHtml(execInfo.result)}</div>
             Secret: 'triangle',
             PVC: 'rect',
             HPA: 'diamond',
+            NetworkPolicy: 'diamond',
+            Namespace: 'rect',
+            External: 'triangle',
         };
 
         const topologyKindLabels = {
@@ -5040,6 +5068,9 @@ ${escapeHtml(execInfo.result)}</div>
             Secret: 'Sec',
             PVC: 'PVC',
             HPA: 'HPA',
+            NetworkPolicy: 'NetPol',
+            Namespace: 'NS',
+            External: 'Ext',
         };
 
         const topologyEdgeStyles = {
@@ -5048,6 +5079,9 @@ ${escapeHtml(execInfo.result)}</div>
             mounts: { lineDash: [2, 4], stroke: '#bb9af7' },
             routes: { lineDash: 0, stroke: '#9ece6a' },
             scales: { lineDash: [8, 4], stroke: '#e0af68' },
+            'netpol-select': { lineDash: [3, 3], stroke: '#ff9e64' },
+            'netpol-ingress': { lineDash: 0, stroke: '#9ece6a' },
+            'netpol-egress': { lineDash: 0, stroke: '#f7768e' },
         };
 
         function hideTopologyView() {
@@ -5104,7 +5138,10 @@ ${escapeHtml(execInfo.result)}</div>
             if (!graphContainer) return;
 
             try {
-                const resp = await fetchWithAuth(`/api/topology/?namespace=${encodeURIComponent(namespace)}`);
+                const showNetPol = document.getElementById('topology-show-netpol')?.checked;
+                let apiUrl = `/api/topology/?namespace=${encodeURIComponent(namespace)}`;
+                if (showNetPol) apiUrl += '&include_netpol=true';
+                const resp = await fetchWithAuth(apiUrl);
                 const data = await resp.json();
                 topologyData = data;
 
@@ -5201,6 +5238,11 @@ ${escapeHtml(execInfo.result)}</div>
             // Clear container
             container.innerHTML = '';
 
+            // Read theme colors from CSS variables for canvas rendering
+            const cs = getComputedStyle(document.documentElement);
+            const labelColor = cs.getPropertyValue('--text-primary').trim() || '#c0caf5';
+            const edgeDimColor = cs.getPropertyValue('--text-muted').trim() || '#565f89';
+
             // Transform data for G6
             const g6Nodes = nodes.map(n => ({
                 id: n.id,
@@ -5257,7 +5299,7 @@ ${escapeHtml(execInfo.result)}</div>
                             const shortName = name.length > maxLen ? name.substring(0, maxLen - 2) + '..' : name;
                             return isCompact ? `${label}\n${shortName}` : `${label}: ${shortName}`;
                         },
-                        labelFill: '#c0caf5',
+                        labelFill: labelColor,
                         labelFontSize: (d) => {
                             const kind = d.data?.kind;
                             const isCompact = (kind === 'Pod' || kind === 'ConfigMap' || kind === 'Secret');
@@ -5606,13 +5648,19 @@ ${escapeHtml(execInfo.result)}</div>
 
                 const html = await resp.text();
 
-                // Open in new window
-                const previewWindow = window.open('', '_blank', 'width=1200,height=800');
-                previewWindow.document.write(html);
-                previewWindow.document.close();
+                // Show preview inline using an iframe (avoids popup blocker issues)
+                const previewEl = document.getElementById('report-preview');
+                const iframe = document.createElement('iframe');
+                iframe.style.cssText = 'width:100%;height:600px;border:1px solid var(--border-color);border-radius:8px;background:#fff;';
+                iframe.sandbox = 'allow-same-origin';
+                previewEl.innerHTML = '';
+                previewEl.appendChild(iframe);
+                iframe.contentDocument.open();
+                iframe.contentDocument.write(html);
+                iframe.contentDocument.close();
 
                 statusEl.innerHTML = `<div style="color: var(--accent-green);">
-                    Report preview opened in new window
+                    Report preview generated below
                 </div>`;
             } catch (e) {
                 statusEl.innerHTML = `<div style="color: var(--accent-red);">
@@ -8382,6 +8430,17 @@ spec:
                 podsTab.style.display = 'none';
             }
 
+            // Referenced By tab - only for Secrets and ConfigMaps
+            const refsTab = document.getElementById('detail-refs-tab');
+            const refsContent = document.getElementById('detail-refs');
+            if (['secrets', 'configmaps'].includes(currentResource)) {
+                refsTab.style.display = 'inline-block';
+                refsContent.innerHTML = '<p style="color: var(--text-secondary);">Click the Referenced By tab to load...</p>';
+                refsContent.dataset.loaded = 'false';
+            } else {
+                refsTab.style.display = 'none';
+            }
+
             document.getElementById('detail-modal').classList.add('active');
             switchDetailTab('overview');
         }
@@ -8394,6 +8453,7 @@ spec:
             document.getElementById('detail-yaml').style.display = tab === 'yaml' ? 'block' : 'none';
             document.getElementById('detail-events').style.display = tab === 'events' ? 'block' : 'none';
             document.getElementById('detail-pods').style.display = tab === 'pods' ? 'block' : 'none';
+            document.getElementById('detail-refs').style.display = tab === 'refs' ? 'block' : 'none';
 
             // Load YAML on demand
             if (tab === 'yaml' && selectedResource) {
@@ -8581,6 +8641,45 @@ spec:
                         podsEl.dataset.loaded = 'true';
                     } catch (error) {
                         podsEl.innerHTML = `<p style="color: var(--accent-red);">Error loading related pods: ${escapeHtml(error.message)}</p>`;
+                    }
+                }
+            }
+
+            // Load Referenced By on demand
+            if (tab === 'refs' && selectedResource) {
+                const refsEl = document.getElementById('detail-refs');
+                if (refsEl.dataset.loaded !== 'true') {
+                    refsEl.innerHTML = '<p style="color: var(--text-secondary);">Loading references...</p>';
+                    try {
+                        const kind = currentResource === 'secrets' ? 'Secret' : 'ConfigMap';
+                        const ns = selectedResource.namespace || '';
+                        const params = new URLSearchParams({ kind, name: selectedResource.name, namespace: ns });
+                        const resp = await fetchWithAuth(`/api/resource/references?${params}`);
+                        const data = await resp.json();
+
+                        if (!data.references || data.references.length === 0) {
+                            refsEl.innerHTML = '<p style="color: var(--text-secondary);">No resources reference this ' + kind + '.</p>';
+                            refsEl.dataset.loaded = 'true';
+                            return;
+                        }
+
+                        let html = `<div style="margin-bottom:8px;font-size:12px;color:var(--text-secondary);">${data.references.length} resource(s) reference this ${kind}</div>`;
+                        html += `<table class="data-table" style="font-size:12px;">
+                            <thead><tr><th>Kind</th><th>Name</th><th>Namespace</th><th>Reference Type</th></tr></thead>
+                            <tbody>`;
+                        for (const ref of data.references) {
+                            html += `<tr>
+                                <td><span style="padding:2px 6px;border-radius:3px;background:var(--bg-tertiary);font-size:11px;">${escapeHtml(ref.kind)}</span></td>
+                                <td style="color:var(--accent-blue);">${escapeHtml(ref.name)}</td>
+                                <td style="color:var(--text-secondary);">${escapeHtml(ref.namespace)}</td>
+                                <td>${escapeHtml(ref.ref_type)}</td>
+                            </tr>`;
+                        }
+                        html += '</tbody></table>';
+                        refsEl.innerHTML = html;
+                        refsEl.dataset.loaded = 'true';
+                    } catch (error) {
+                        refsEl.innerHTML = `<p style="color: var(--accent-red);">Error loading references: ${escapeHtml(error.message)}</p>`;
                     }
                 }
             }
@@ -10325,7 +10424,7 @@ spec:
         // ============================
         // Custom View Helpers
         // ============================
-        const customViewIds = ['overview-container','metrics-dashboard-container','topology-tree-container','applications-container','validate-container','rbac-viz-container','netpol-viz-container','timeline-container','templates-container'];
+        const customViewIds = ['overview-container','metrics-dashboard-container','topology-tree-container','applications-container','rbac-viz-container','netpol-viz-container','timeline-container'];
 
         function hideAllCustomViews() {
             customViewIds.forEach(id => {
@@ -10353,21 +10452,15 @@ spec:
         function syncCustomViewNamespaces() {
             const src = document.getElementById('namespace-select');
             if (!src) return;
-            ['metrics-dash-ns-select','topo-tree-ns-select','apps-ns-select','validate-ns-select','rbac-viz-ns-select','netpol-viz-ns-select','timeline-ns-select'].forEach(id => {
+            ['metrics-dash-ns-select','topo-tree-ns-select','apps-ns-select','rbac-viz-ns-select','netpol-viz-ns-select','timeline-ns-select'].forEach(id => {
                 const sel = document.getElementById(id);
                 if (!sel) return;
                 const prev = sel.value;
                 sel.innerHTML = '';
-                // For validate, add a placeholder instead of "All Namespaces"
-                const needsPlaceholder = (id === 'validate-ns-select');
                 for (const opt of src.options) {
                     const o = document.createElement('option');
                     o.value = opt.value;
-                    if (needsPlaceholder && opt.value === '') {
-                        o.textContent = '-- Select Namespace --';
-                    } else {
-                        o.textContent = opt.textContent;
-                    }
+                    o.textContent = opt.textContent;
                     sel.appendChild(o);
                 }
                 // Restore previous selection, or use currentNamespace if available
@@ -10458,7 +10551,6 @@ spec:
                     </div>
                     <div style="display:flex;gap:10px;margin-bottom:16px;">
                         <button onclick="showMetrics()" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--accent-blue);cursor:pointer;font-size:12px;">Historical Charts</button>
-                        <button onclick="showValidateView()" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--accent-yellow);cursor:pointer;font-size:12px;">Run Validation</button>
                         <button onclick="showApplicationsView()" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--accent-purple);cursor:pointer;font-size:12px;">Applications</button>
                     </div>
                     ${d.events && d.events.length > 0 ? `
@@ -10580,95 +10672,6 @@ spec:
                 body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed to load applications: ${escapeHtml(e.message)}</div>`;
             }
         }
-
-        // ============================
-        // Validate View
-        // ============================
-        function showValidateView() {
-            showCustomView('validate-container', 'validate');
-            // Auto-select current namespace if validate select is empty
-            const sel = document.getElementById('validate-ns-select');
-            if (sel && !sel.value && currentNamespace) {
-                sel.value = currentNamespace;
-            }
-            // Always call loadValidateData - it shows a placeholder if no namespace is selected
-            loadValidateData();
-        }
-
-        async function loadValidateData() {
-            const body = document.getElementById('validate-body');
-            const ns = document.getElementById('validate-ns-select')?.value;
-            if (!ns) {
-                body.innerHTML = '<div class="loading-placeholder">Select a namespace to run cross-resource validation.</div>';
-                return;
-            }
-            body.innerHTML = '<div class="loading-placeholder">Running validation...</div>';
-            try {
-                const resp = await fetchWithAuth(`/api/validate?namespace=${encodeURIComponent(ns)}`);
-                const data = await resp.json();
-                const findings = data.findings || [];
-                const critCount = findings.filter(f => f.severity === 'critical').length;
-                const warnCount = findings.filter(f => f.severity === 'warning').length;
-                const infoCount = findings.filter(f => f.severity === 'info').length;
-                const rc = data.resource_counts || {};
-                const scanned = data.resources_scanned || 0;
-
-                body.innerHTML = `
-                    <div class="validate-summary">
-                        <div class="validate-summary-card">
-                            <div class="count" style="color:var(--text-primary);">${scanned}</div>
-                            <div class="label">Scanned</div>
-                        </div>
-                        <div class="validate-summary-card">
-                            <div class="count" style="color:var(--accent-red);">${critCount}</div>
-                            <div class="label">Critical</div>
-                        </div>
-                        <div class="validate-summary-card">
-                            <div class="count" style="color:var(--accent-yellow);">${warnCount}</div>
-                            <div class="label">Warning</div>
-                        </div>
-                        <div class="validate-summary-card">
-                            <div class="count" style="color:var(--accent-blue);">${infoCount}</div>
-                            <div class="label">Info</div>
-                        </div>
-                    </div>
-                    <div style="margin-bottom:12px;padding:10px;background:var(--bg-tertiary);border-radius:6px;font-size:12px;color:var(--text-secondary);display:flex;gap:12px;flex-wrap:wrap;">
-                        ${rc.pods != null ? `<span>Pods: ${rc.pods}</span>` : ''}
-                        ${rc.services != null ? `<span>Services: ${rc.services}</span>` : ''}
-                        ${rc.deployments != null ? `<span>Deployments: ${rc.deployments}</span>` : ''}
-                        ${rc.statefulsets != null ? `<span>StatefulSets: ${rc.statefulsets}</span>` : ''}
-                        ${rc.configmaps != null ? `<span>ConfigMaps: ${rc.configmaps}</span>` : ''}
-                        ${rc.secrets != null ? `<span>Secrets: ${rc.secrets}</span>` : ''}
-                        ${rc.ingresses != null ? `<span>Ingresses: ${rc.ingresses}</span>` : ''}
-                        ${rc.hpas != null ? `<span>HPAs: ${rc.hpas}</span>` : ''}
-                    </div>
-                    ${findings.length === 0 ? '<div class="loading-placeholder" style="color:var(--accent-green);">No issues found. All resources look healthy!</div>' :
-                    findings.map(f => `
-                        <div class="validate-finding">
-                            <div class="validate-finding-header">
-                                <span class="validate-severity ${f.severity || 'info'}">${escapeHtml(f.severity || 'info')}</span>
-                                <span class="validate-finding-title">${escapeHtml(f.title || '')}</span>
-                            </div>
-                            <div class="validate-finding-resource">${escapeHtml(f.resource || '')}</div>
-                            <div class="validate-finding-details">${escapeHtml(f.details || '')}</div>
-                            ${f.suggestions && f.suggestions.length > 0 ? `
-                                <div class="validate-finding-suggestions">
-                                    <ul style="margin:0;padding-left:16px;">
-                                        ${f.suggestions.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
-                                    </ul>
-                                </div>` : ''}
-                        </div>
-                    `).join('')}
-                    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-color);display:flex;gap:10px;">
-                        <button onclick="showReports()" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--accent-blue);cursor:pointer;font-size:12px;">Generate Full Report (incl. FinOps)</button>
-                        <button onclick="showMetricsDashboard()" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--accent-green);cursor:pointer;font-size:12px;">View Metrics</button>
-                    </div>`;
-            } catch (e) {
-                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Validation failed: ${escapeHtml(e.message)}</div>`;
-            }
-        }
-
-        // ============================
 
         // ============================
         // Helm View
@@ -10883,8 +10886,19 @@ spec:
                     const errText = await resp.text();
                     throw new Error(errText || `HTTP ${resp.status}`);
                 }
+                const result = await resp.json();
                 document.getElementById('cluster-name').textContent = name;
                 document.getElementById('cluster-dropdown').classList.remove('active');
+                // Clear all existing resource data immediately
+                for (const resource of allResources) {
+                    clearResourceData(resource);
+                }
+                if (!result.reachable) {
+                    showToast(`Context "${name}" is not reachable. Check cluster connectivity.`, 'error');
+                    currentNamespace = '';
+                    document.getElementById('namespace-select').value = '';
+                    return;
+                }
                 showToast(`Switched to context: ${name}`);
                 // Reload namespaces (different cluster = different namespaces)
                 currentNamespace = '';
@@ -10932,7 +10946,7 @@ spec:
                 body.innerHTML = data.subjects.map(s => {
                     const iconClass = s.kind === 'ServiceAccount' ? 'sa' : s.kind === 'User' ? 'user' : 'group';
                     const initial = s.kind === 'ServiceAccount' ? 'SA' : s.kind === 'User' ? 'U' : 'G';
-                    return `<div class="rbac-card">
+                    return `<div class="rbac-card" style="cursor:pointer;" onclick="showRBACSubjectDetail('${escapeHtml(s.name)}','${escapeHtml(s.kind)}','${escapeHtml(s.namespace || '')}')">
                         <div class="rbac-card-header">
                             <div class="rbac-subject-icon ${iconClass}">${initial}</div>
                             <div>
@@ -10948,6 +10962,69 @@ spec:
             } catch (e) {
                 body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed to load RBAC: ${escapeHtml(e.message)}</div>`;
             }
+        }
+
+        async function showRBACSubjectDetail(name, kind, namespace) {
+            const modal = document.getElementById('rbac-detail-modal');
+            const title = document.getElementById('rbac-detail-title');
+            const content = document.getElementById('rbac-detail-content');
+            title.textContent = `${kind}: ${name}`;
+            content.innerHTML = '<div class="loading-placeholder">Loading subject details...</div>';
+            modal.classList.add('active');
+
+            try {
+                const params = new URLSearchParams({ name, kind });
+                if (namespace) params.set('namespace', namespace);
+                const resp = await fetchWithAuth(`/api/rbac/subject/detail?${params}`);
+                const data = await resp.json();
+
+                if (!data.bindings || data.bindings.length === 0) {
+                    content.innerHTML = '<div class="loading-placeholder">No bindings found for this subject</div>';
+                    return;
+                }
+
+                content.innerHTML = data.bindings.map(b => `
+                    <div style="border:1px solid var(--border-color);border-radius:8px;padding:12px;margin-bottom:12px;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                            <span style="font-weight:600;color:var(--accent-blue);">${escapeHtml(b.role_name)}</span>
+                            <span style="font-size:11px;padding:2px 6px;border-radius:4px;background:var(--bg-tertiary);color:var(--text-secondary);">${escapeHtml(b.role_kind)}</span>
+                            <span style="font-size:11px;color:var(--text-secondary);">via ${escapeHtml(b.binding_kind)}: ${escapeHtml(b.binding_name)}</span>
+                            ${b.namespace ? `<span style="font-size:11px;color:var(--text-secondary);">(${escapeHtml(b.namespace)})</span>` : ''}
+                        </div>
+                        ${(b.rules && b.rules.length > 0) ? `
+                        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+                            <thead>
+                                <tr style="border-bottom:1px solid var(--border-color);">
+                                    <th style="text-align:left;padding:4px 8px;color:var(--text-secondary);">Verbs</th>
+                                    <th style="text-align:left;padding:4px 8px;color:var(--text-secondary);">Resources</th>
+                                    <th style="text-align:left;padding:4px 8px;color:var(--text-secondary);">API Groups</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${b.rules.map(r => `<tr style="border-bottom:1px solid var(--border-color);">
+                                    <td style="padding:4px 8px;">${(r.verbs || []).map(v => `<span style="padding:1px 4px;border-radius:3px;background:var(--bg-tertiary);margin-right:2px;">${escapeHtml(v)}</span>`).join(' ')}</td>
+                                    <td style="padding:4px 8px;">${(r.resources || []).join(', ')}</td>
+                                    <td style="padding:4px 8px;">${(r.api_groups || []).map(g => g || 'core').join(', ')}</td>
+                                </tr>`).join('')}
+                            </tbody>
+                        </table>` : '<div style="font-size:12px;color:var(--text-secondary);">No rules defined</div>'}
+                    </div>
+                `).join('');
+            } catch (e) {
+                content.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed to load details: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        function viewNetPolInTopology(namespace, name) {
+            // Switch to topology view with Network Policies enabled and focus on the specific policy
+            const netpolCheckbox = document.getElementById('topology-show-netpol');
+            if (netpolCheckbox) netpolCheckbox.checked = true;
+            const nsSelect = document.getElementById('topology-ns-select');
+            if (nsSelect && namespace) nsSelect.value = namespace;
+            if (name) {
+                topologyFocusNodeId = `NetworkPolicy/${namespace}/${name}`;
+            }
+            showTopology();
         }
 
         // ============================
@@ -10977,7 +11054,10 @@ spec:
                                 <div style="font-weight:600;">${escapeHtml(p.name)}</div>
                                 <div style="font-size:11px;color:var(--text-secondary);">${escapeHtml(p.namespace)}</div>
                             </div>
-                            <div class="netpol-selector">Selector: ${escapeHtml(p.pod_selector || '*')}</div>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <div class="netpol-selector">Selector: ${escapeHtml(p.pod_selector || '*')}</div>
+                                <button onclick="viewNetPolInTopology('${escapeHtml(p.namespace)}','${escapeHtml(p.name)}')" style="padding:4px 10px;font-size:11px;border-radius:4px;border:1px solid var(--accent-blue);background:transparent;color:var(--accent-blue);cursor:pointer;white-space:nowrap;">View in Topology</button>
+                            </div>
                         </div>
                         <div class="netpol-direction">
                             <div class="netpol-direction-col">
@@ -11115,89 +11195,6 @@ spec:
                 body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed: ${escapeHtml(e.message)}</div>`;
             }
         }
-
-        // ============================
-        // Templates View
-        // ============================
-        let allTemplates = [];
-
-        function showTemplatesView() {
-            showCustomView('templates-container', 'templates');
-            loadTemplatesData();
-        }
-
-        async function loadTemplatesData() {
-            const body = document.getElementById('templates-body');
-            body.innerHTML = '<div class="loading-placeholder">Loading templates...</div>';
-            try {
-                const resp = await fetchWithAuth('/api/templates');
-                const data = await resp.json();
-                allTemplates = data.templates || [];
-                renderTemplates(allTemplates);
-            } catch (e) {
-                body.innerHTML = `<div class="loading-placeholder" style="color:var(--accent-red);">Failed: ${escapeHtml(e.message)}</div>`;
-            }
-        }
-
-        function filterTemplates() {
-            const cat = document.getElementById('templates-category')?.value || '';
-            const filtered = cat ? allTemplates.filter(t => t.category === cat) : allTemplates;
-            renderTemplates(filtered);
-        }
-
-        function renderTemplates(templates) {
-            const body = document.getElementById('templates-body');
-            if (!templates.length) {
-                body.innerHTML = '<div class="loading-placeholder">No templates available</div>';
-                return;
-            }
-            const icons = {webserver:'🌐',database:'💾',cache:'⚡',queue:'📨',monitoring:'📊',batch:'⏱️',networking:'🔗'};
-            body.innerHTML = `<div class="templates-grid">${templates.map((t, i) => `
-                <div class="template-card" onclick="openTemplateDeploy(${i})">
-                    <div class="template-card-icon">${icons[t.category] || '📦'}</div>
-                    <div class="template-card-name">${escapeHtml(t.name)}</div>
-                    <div class="template-card-desc">${escapeHtml(t.description)}</div>
-                    <span class="template-card-category">${escapeHtml(t.category)}</span>
-                </div>
-            `).join('')}</div>`;
-        }
-
-        function openTemplateDeploy(idx) {
-            const t = allTemplates[idx];
-            if (!t) return;
-            document.getElementById('template-deploy-name').textContent = t.name;
-            document.getElementById('template-deploy-yaml').value = t.yaml || '';
-            document.getElementById('template-deploy-ns').value = 'default';
-            document.getElementById('template-deploy-resname').value = '';
-            document.getElementById('template-deploy-modal').classList.add('active');
-        }
-
-        function closeTemplateDeployModal() {
-            document.getElementById('template-deploy-modal').classList.remove('active');
-        }
-
-        async function applyTemplate() {
-            const yaml = document.getElementById('template-deploy-yaml').value;
-            const ns = document.getElementById('template-deploy-ns').value || 'default';
-            try {
-                const resp = await fetchWithAuth('/api/templates/apply', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({yaml, namespace: ns})
-                });
-                if (!resp.ok) {
-                    const errText = await resp.text();
-                    showToast('Deploy failed: ' + errText, 'error');
-                    return;
-                }
-                const data = await resp.json();
-                showToast('Template deployed: ' + (data.result || 'success'), 'success');
-                closeTemplateDeployModal();
-            } catch (e) {
-                showToast('Deploy failed: ' + e.message, 'error');
-            }
-        }
-
 
         // ============================
         // Resource Diff Modal

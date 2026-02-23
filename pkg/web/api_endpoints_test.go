@@ -280,7 +280,7 @@ func TestAPIResponseFormat(t *testing.T) {
 		{"/api/health", []string{"status"}, "Health check response"},
 		{"/api/llm/status", []string{"configured"}, "LLM status response"},
 		{"/api/llm/usage", []string{"items", "count"}, "LLM usage response"},
-		{"/api/llm/usage/stats", []string{"stats"}, "LLM usage stats response"},
+		{"/api/llm/usage/stats", []string{"total_requests", "total_tokens", "minutes"}, "LLM usage stats response"},
 		{"/api/models", []string{"models"}, "Models list response"},
 		{"/api/security/scans", []string{"scans"}, "Security scans response"},
 		{"/api/portforward/list", []string{"items"}, "Port forward list response"},

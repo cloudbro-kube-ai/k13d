@@ -30,14 +30,17 @@ func (s *Server) handlePodMetrics(w http.ResponseWriter, r *http.Request) {
 	namespace := r.URL.Query().Get("namespace")
 	w.Header().Set("Content-Type", "application/json")
 
-	// Try to get metrics from metrics-server
+	// Try to get metrics from metrics-server, fall back to pod resource requests
 	metricsMap, err := s.k8sClient.GetPodMetrics(r.Context(), namespace)
 	if err != nil {
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"error": "Metrics server not available: " + err.Error(),
-			"items": []PodMetricItem{},
-		})
-		return
+		metricsMap, err = s.k8sClient.GetPodMetricsFromRequests(r.Context(), namespace)
+		if err != nil {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Metrics not available: " + err.Error(),
+				"items": []PodMetricItem{},
+			})
+			return
+		}
 	}
 
 	// Convert map to slice
@@ -66,13 +69,17 @@ func (s *Server) handleNodeMetrics(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
+	// Try metrics-server, fall back to pod resource requests per node
 	metricsMap, err := s.k8sClient.GetNodeMetrics(r.Context())
 	if err != nil {
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"error": "Metrics server not available: " + err.Error(),
-			"items": []interface{}{},
-		})
-		return
+		metricsMap, err = s.k8sClient.GetNodeMetricsFromPodRequests(r.Context())
+		if err != nil {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Metrics not available: " + err.Error(),
+				"items": []interface{}{},
+			})
+			return
+		}
 	}
 
 	// Convert map to slice

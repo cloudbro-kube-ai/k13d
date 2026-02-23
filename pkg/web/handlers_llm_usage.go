@@ -124,10 +124,26 @@ func (s *Server) handleLLMUsageStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Flatten stats into top-level fields to match frontend expectations
+	// Convert ByModel map to array for frontend
+	var byModelArr []map[string]interface{}
+	for model, ms := range stats.ByModel {
+		byModelArr = append(byModelArr, map[string]interface{}{
+			"model":        model,
+			"requests":     ms.Requests,
+			"total_tokens": ms.TotalTokens,
+		})
+	}
+
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"stats":      stats,
-		"minutes":    minutes,
-		"start_time": filter.StartTime,
-		"end_time":   time.Now(),
+		"total_requests":    stats.TotalRequests,
+		"total_tokens":      stats.TotalTokens,
+		"prompt_tokens":     stats.TotalPromptTokens,
+		"completion_tokens": stats.TotalCompTokens,
+		"hourly":            stats.TimeSeriesHourly,
+		"by_model":          byModelArr,
+		"minutes":           minutes,
+		"start_time":        filter.StartTime,
+		"end_time":          time.Now(),
 	})
 }

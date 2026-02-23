@@ -10,6 +10,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
@@ -368,6 +369,188 @@ func TestCRDInfo(t *testing.T) {
 				t.Errorf("ShortNames count = %d, want %d", len(tt.crd.ShortNames), tt.wantShorts)
 			}
 		})
+	}
+}
+
+// ============================================================================
+// Resource Request Fallback Tests
+// ============================================================================
+
+// podWithResources creates a pod with resource requests and a node assignment.
+func podWithResources(name, ns, nodeName string, cpuMillis int64, memMB int64) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+		Spec: corev1.PodSpec{
+			NodeName: nodeName,
+			Containers: []corev1.Container{
+				{
+					Name:  "main",
+					Image: "test:latest",
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    *resource.NewMilliQuantity(cpuMillis, resource.DecimalSI),
+							corev1.ResourceMemory: *resource.NewQuantity(memMB*1024*1024, resource.BinarySI),
+						},
+					},
+				},
+			},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+}
+
+func TestGetPodMetricsFromRequests(t *testing.T) {
+	objects := []runtime.Object{
+		podWithResources("pod-1", "default", "node-1", 250, 128),
+		podWithResources("pod-2", "default", "node-1", 500, 256),
+		podWithResources("pod-3", "kube-system", "node-2", 100, 64),
+	}
+	client := &Client{Clientset: fake.NewSimpleClientset(objects...)} //nolint:staticcheck
+	ctx := context.Background()
+
+	// Test namespace-scoped query
+	res, err := client.GetPodMetricsFromRequests(ctx, "default")
+	if err != nil {
+		t.Fatalf("GetPodMetricsFromRequests failed: %v", err)
+	}
+	if len(res) != 2 {
+		t.Fatalf("Expected 2 pods, got %d", len(res))
+	}
+	if cpu := res["pod-1"][0]; cpu != 250 {
+		t.Errorf("pod-1 CPU = %d, want 250", cpu)
+	}
+	if mem := res["pod-1"][1]; mem != 128 {
+		t.Errorf("pod-1 Memory = %d, want 128", mem)
+	}
+	if cpu := res["pod-2"][0]; cpu != 500 {
+		t.Errorf("pod-2 CPU = %d, want 500", cpu)
+	}
+
+	// Test all-namespaces query
+	resAll, err := client.GetPodMetricsFromRequests(ctx, "")
+	if err != nil {
+		t.Fatalf("GetPodMetricsFromRequests (all ns) failed: %v", err)
+	}
+	if len(resAll) != 3 {
+		t.Errorf("Expected 3 pods across all namespaces, got %d", len(resAll))
+	}
+}
+
+func TestGetPodMetricsFromRequests_SkipsNonRunning(t *testing.T) {
+	pending := podWithResources("pending-pod", "default", "node-1", 100, 64)
+	pending.Status.Phase = corev1.PodPending
+
+	failed := podWithResources("failed-pod", "default", "node-1", 100, 64)
+	failed.Status.Phase = corev1.PodFailed
+
+	running := podWithResources("running-pod", "default", "node-1", 200, 128)
+
+	objects := []runtime.Object{pending, failed, running}
+	client := &Client{Clientset: fake.NewSimpleClientset(objects...)} //nolint:staticcheck
+	ctx := context.Background()
+
+	res, err := client.GetPodMetricsFromRequests(ctx, "default")
+	if err != nil {
+		t.Fatalf("GetPodMetricsFromRequests failed: %v", err)
+	}
+	if len(res) != 1 {
+		t.Fatalf("Expected 1 running pod, got %d", len(res))
+	}
+	if _, ok := res["running-pod"]; !ok {
+		t.Error("Expected running-pod in results")
+	}
+}
+
+func TestGetPodMetricsFromRequests_NoRequests(t *testing.T) {
+	// Pod without resource requests should return 0 CPU/Mem
+	fix := newFixtures()
+	pod := fix.pod("no-requests", "default")
+	pod.Status.Phase = corev1.PodRunning
+	pod.Spec.Containers = []corev1.Container{{Name: "main", Image: "test:latest"}}
+
+	client := &Client{Clientset: fake.NewSimpleClientset(pod)} //nolint:staticcheck
+	ctx := context.Background()
+
+	res, err := client.GetPodMetricsFromRequests(ctx, "default")
+	if err != nil {
+		t.Fatalf("GetPodMetricsFromRequests failed: %v", err)
+	}
+	if len(res) != 1 {
+		t.Fatalf("Expected 1 pod, got %d", len(res))
+	}
+	if cpu := res["no-requests"][0]; cpu != 0 {
+		t.Errorf("CPU = %d, want 0", cpu)
+	}
+	if mem := res["no-requests"][1]; mem != 0 {
+		t.Errorf("Memory = %d, want 0", mem)
+	}
+}
+
+func TestGetNodeMetricsFromPodRequests(t *testing.T) {
+	objects := []runtime.Object{
+		podWithResources("pod-1a", "default", "node-1", 250, 128),
+		podWithResources("pod-1b", "default", "node-1", 150, 64),
+		podWithResources("pod-2a", "kube-system", "node-2", 500, 256),
+	}
+	client := &Client{Clientset: fake.NewSimpleClientset(objects...)} //nolint:staticcheck
+	ctx := context.Background()
+
+	res, err := client.GetNodeMetricsFromPodRequests(ctx)
+	if err != nil {
+		t.Fatalf("GetNodeMetricsFromPodRequests failed: %v", err)
+	}
+	if len(res) != 2 {
+		t.Fatalf("Expected 2 nodes, got %d", len(res))
+	}
+
+	// node-1 should aggregate pod-1a + pod-1b
+	if cpu := res["node-1"][0]; cpu != 400 { // 250+150
+		t.Errorf("node-1 CPU = %d, want 400", cpu)
+	}
+	if mem := res["node-1"][1]; mem != 192 { // 128+64
+		t.Errorf("node-1 Memory = %d, want 192", mem)
+	}
+
+	// node-2 should have pod-2a only
+	if cpu := res["node-2"][0]; cpu != 500 {
+		t.Errorf("node-2 CPU = %d, want 500", cpu)
+	}
+	if mem := res["node-2"][1]; mem != 256 {
+		t.Errorf("node-2 Memory = %d, want 256", mem)
+	}
+}
+
+func TestGetNodeMetricsFromPodRequests_SkipsUnscheduled(t *testing.T) {
+	// Pods without NodeName should be excluded
+	scheduled := podWithResources("scheduled", "default", "node-1", 200, 128)
+	unscheduled := podWithResources("unscheduled", "default", "", 300, 256)
+
+	objects := []runtime.Object{scheduled, unscheduled}
+	client := &Client{Clientset: fake.NewSimpleClientset(objects...)} //nolint:staticcheck
+	ctx := context.Background()
+
+	res, err := client.GetNodeMetricsFromPodRequests(ctx)
+	if err != nil {
+		t.Fatalf("GetNodeMetricsFromPodRequests failed: %v", err)
+	}
+	if len(res) != 1 {
+		t.Fatalf("Expected 1 node, got %d", len(res))
+	}
+	if _, ok := res["node-1"]; !ok {
+		t.Error("Expected node-1 in results")
+	}
+}
+
+func TestGetNodeMetricsFromPodRequests_Empty(t *testing.T) {
+	client := &Client{Clientset: fake.NewSimpleClientset()} //nolint:staticcheck
+	ctx := context.Background()
+
+	res, err := client.GetNodeMetricsFromPodRequests(ctx)
+	if err != nil {
+		t.Fatalf("GetNodeMetricsFromPodRequests failed: %v", err)
+	}
+	if len(res) != 0 {
+		t.Errorf("Expected empty map, got %d entries", len(res))
 	}
 }
 

@@ -43,7 +43,7 @@ func TestFeaturePermissions_ViewerLimitedFeatures(t *testing.T) {
 	// Viewer should NOT have helm, terminal, AI, etc.
 	deniedFeatures := []Feature{
 		FeatureHelmManagement, FeatureSecurityScan, FeatureAIAssistant,
-		FeatureTerminal, FeatureReports, FeatureTemplates,
+		FeatureTerminal, FeatureReports,
 		FeaturePortForward, FeatureGitOps, FeatureVelero,
 	}
 	for _, f := range deniedFeatures {

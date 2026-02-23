@@ -37,7 +37,6 @@ const (
 	FeatureAIAssistant      Feature = "ai_assistant"
 	FeatureTerminal         Feature = "terminal"
 	FeatureReports          Feature = "reports"
-	FeatureTemplates        Feature = "templates"
 	FeatureEventTimeline    Feature = "event_timeline"
 	FeatureAuditLogs        Feature = "audit_logs"
 	FeaturePortForward      Feature = "port_forward"
@@ -57,7 +56,7 @@ func AllFeatures() []Feature {
 	return []Feature{
 		FeatureDashboard, FeatureTopology, FeatureMetrics,
 		FeatureHelmManagement, FeatureSecurityScan, FeatureAIAssistant,
-		FeatureTerminal, FeatureReports, FeatureTemplates,
+		FeatureTerminal, FeatureReports,
 		FeatureEventTimeline, FeatureAuditLogs, FeaturePortForward,
 		FeatureGitOps, FeatureVelero, FeatureCostEstimate,
 		FeatureNetworkPolicy, FeatureRBACViz,

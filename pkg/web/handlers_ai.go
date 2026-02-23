@@ -618,8 +618,28 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 	}, toolApprovalCallback, toolExecutionCallback)
 
 	if err != nil {
-		apiErr := ParseLLMError(err, s.cfg.LLM.Provider)
-		_ = sse.Write(fmt.Sprintf("[ERROR] %s - %s", apiErr.Message, apiErr.Suggestion))
+		errStr := err.Error()
+		// If the model doesn't support tools, fall back to simple chat mode
+		if strings.Contains(errStr, "does not support tools") || strings.Contains(errStr, "not support function") || strings.Contains(errStr, "tool_use is not supported") {
+			// Retry with simple chat mode (no tool calling)
+			responseBuilder.Reset()
+			simpleErr := s.aiClient.Ask(r.Context(), message, func(text string) {
+				responseBuilder.WriteString(text)
+				escaped := strings.ReplaceAll(text, "\n", "\\n")
+				_ = sse.Write(escaped)
+			})
+			if simpleErr != nil {
+				apiErr := ParseLLMError(simpleErr, s.cfg.LLM.Provider)
+				_ = sse.Write(fmt.Sprintf("[ERROR] %s - %s", apiErr.Message, apiErr.Suggestion))
+			}
+		} else {
+			apiErr := ParseLLMError(err, s.cfg.LLM.Provider)
+			detail := ""
+			if apiErr.Detail != "" {
+				detail = fmt.Sprintf(" (%s)", apiErr.Detail)
+			}
+			_ = sse.Write(fmt.Sprintf("[ERROR] %s%s - %s", apiErr.Message, detail, apiErr.Suggestion))
+		}
 	}
 
 	// Save assistant response to session
@@ -960,7 +980,10 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var client *ai.Client
-	if provider != "" && apiKey != "" {
+	// Create temporary client if provider is specified
+	// For Ollama and embedded providers, API key is not required
+	noKeyProviders := map[string]bool{"ollama": true, "embedded": true}
+	if provider != "" && (apiKey != "" || noKeyProviders[provider]) {
 		// Create temporary client with provided config
 		tempConfig := config.LLMConfig{
 			Provider: provider,

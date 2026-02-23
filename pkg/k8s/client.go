@@ -553,6 +553,63 @@ func (c *Client) GetNodeMetrics(ctx context.Context) (map[string][]int64, error)
 	return res, nil
 }
 
+// GetPodMetricsFromRequests estimates pod resource usage from container resource requests.
+// Used as a fallback when metrics-server is unavailable.
+func (c *Client) GetPodMetricsFromRequests(ctx context.Context, namespace string) (map[string][]int64, error) {
+	pods, err := c.Clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string][]int64)
+	for _, pod := range pods.Items {
+		if pod.Status.Phase != corev1.PodRunning {
+			continue
+		}
+		var cpu, mem int64
+		for _, container := range pod.Spec.Containers {
+			if req, ok := container.Resources.Requests[corev1.ResourceCPU]; ok {
+				cpu += req.MilliValue()
+			}
+			if req, ok := container.Resources.Requests[corev1.ResourceMemory]; ok {
+				mem += req.Value() / 1024 / 1024
+			}
+		}
+		res[pod.Name] = []int64{cpu, mem}
+	}
+	return res, nil
+}
+
+// GetNodeMetricsFromPodRequests estimates node resource usage by summing
+// resource requests of all running pods scheduled on each node.
+// Used as a fallback when metrics-server is unavailable.
+func (c *Client) GetNodeMetricsFromPodRequests(ctx context.Context) (map[string][]int64, error) {
+	pods, err := c.Clientset.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	res := make(map[string][]int64)
+	for _, pod := range pods.Items {
+		if pod.Status.Phase != corev1.PodRunning || pod.Spec.NodeName == "" {
+			continue
+		}
+		var cpu, mem int64
+		for _, container := range pod.Spec.Containers {
+			if req, ok := container.Resources.Requests[corev1.ResourceCPU]; ok {
+				cpu += req.MilliValue()
+			}
+			if req, ok := container.Resources.Requests[corev1.ResourceMemory]; ok {
+				mem += req.Value() / 1024 / 1024
+			}
+		}
+		if existing, ok := res[pod.Spec.NodeName]; ok {
+			res[pod.Spec.NodeName] = []int64{existing[0] + cpu, existing[1] + mem}
+		} else {
+			res[pod.Spec.NodeName] = []int64{cpu, mem}
+		}
+	}
+	return res, nil
+}
+
 func (c *Client) GetResourceContext(ctx context.Context, ns, name, resource string) (string, error) {
 	gvr, ok := c.GetGVR(resource)
 	if !ok {

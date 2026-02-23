@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -355,16 +355,6 @@
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Operations<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="validate" onclick="showValidateView()" role="button" tabindex="0">
-                        <span>Validate</span>
-                    </div>
-<div class="nav-item" data-resource="templates" onclick="showTemplatesView()" role="button" tabindex="0">
-                        <span>Templates</span>
-                    </div>
-                </div>
-
-                <div class="nav-section">
                     <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Monitoring<span class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="metrics" onclick="showMetricsDashboard()" role="button" tabindex="0">
                         <span>Metrics</span>
@@ -460,6 +450,7 @@
                         <div class="toolbar-separator"></div>
                         <label><input type="checkbox" id="topology-show-configmaps" onchange="loadTopology()"> ConfigMaps</label>
                         <label><input type="checkbox" id="topology-show-secrets" onchange="loadTopology()"> Secrets</label>
+                        <label><input type="checkbox" id="topology-show-netpol" onchange="loadTopology()"> Network Policies</label>
                         <div class="topology-legend">
                             <div class="topology-legend-item"><div class="topology-legend-dot" style="background: var(--accent-green);"></div> Running</div>
                             <div class="topology-legend-item"><div class="topology-legend-dot" style="background: var(--accent-yellow);"></div> Pending</div>
@@ -531,7 +522,6 @@
                                     <button class="overview-action-btn" onclick="showTopology()">Topology</button>
                                     <button class="overview-action-btn" onclick="showMetricsDashboard()">Metrics</button>
                                     <button class="overview-action-btn" onclick="showApplicationsView()">Applications</button>
-                                    <button class="overview-action-btn" onclick="showValidateView()">Validate</button>
                                 </div>
                             </div>
                             <div class="overview-section">
@@ -603,23 +593,6 @@
                     </div>
                 </div>
 
-                <!-- Validate View Container -->
-                <div class="custom-view-container" id="validate-container" style="display:none;">
-                    <div class="custom-view-toolbar">
-                        <h2>Cluster Validation</h2>
-                        <div style="display:flex;gap:8px;align-items:center;">
-                            <select id="validate-ns-select" onchange="loadValidateData()">
-                                <option value="">Select Namespace</option>
-                            </select>
-                            <button onclick="loadValidateData()">↻ Run Validation</button>
-                        </div>
-                    </div>
-                    <div class="custom-view-body" id="validate-body">
-                        <div class="loading-placeholder">Select a namespace and run validation...</div>
-                    </div>
-                </div>
-
-
                 <!-- RBAC Visualization Container -->
                 <div class="custom-view-container" id="rbac-viz-container" style="display:none;">
                     <div class="custom-view-toolbar">
@@ -651,6 +624,7 @@
                                 <option value="">All Namespaces</option>
                             </select>
                             <button onclick="loadNetPolVizData()">↻ Refresh</button>
+                            <button onclick="viewNetPolInTopology(document.getElementById('netpol-viz-ns-select')?.value||'')" style="background:var(--accent-blue);color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;">View in Topology</button>
                         </div>
                     </div>
                     <div class="custom-view-body" id="netpol-viz-body">
@@ -681,28 +655,6 @@
                     </div>
                 </div>
 
-
-                <!-- Templates Container -->
-                <div class="custom-view-container" id="templates-container" style="display:none;">
-                    <div class="custom-view-toolbar">
-                        <h2>Resource Templates</h2>
-                        <div style="display:flex;gap:8px;align-items:center;">
-                            <select id="templates-category" onchange="filterTemplates()">
-                                <option value="">All Categories</option>
-                                <option value="webserver">Web Server</option>
-                                <option value="database">Database</option>
-                                <option value="cache">Cache</option>
-                                <option value="queue">Message Queue</option>
-                                <option value="monitoring">Monitoring</option>
-                                <option value="batch">Batch Jobs</option>
-                                <option value="networking">Networking</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="custom-view-body" id="templates-body">
-                        <div class="loading-placeholder">Loading templates...</div>
-                    </div>
-                </div>
 
 
                 <!-- Resize Handle -->
@@ -939,8 +891,8 @@
                         </div>
                         <div class="form-group">
                             <label>Model <button type="button" id="fetch-models-btn" onclick="fetchAvailableModels()" style="font-size:11px;color:var(--accent-blue);background:none;border:1px solid var(--accent-blue);border-radius:4px;padding:1px 8px;margin-left:8px;cursor:pointer;display:none;">Fetch Models</button><span id="fetch-models-status" style="font-size:11px;color:var(--text-secondary);margin-left:6px;"></span></label>
-                            <input type="text" id="setting-llm-model" placeholder="solar-pro2" list="model-suggestions">
-                            <datalist id="model-suggestions"></datalist>
+                            <select id="setting-llm-model-select" onchange="document.getElementById('setting-llm-model').value=this.value" style="display:none;margin-bottom:4px;"></select>
+                            <input type="text" id="setting-llm-model" placeholder="solar-pro2">
                         </div>
                         <div class="form-group">
                             <label>Endpoint <span id="endpoint-hint" style="font-size:11px;color:var(--text-secondary);"></span></label>
@@ -1839,16 +1791,33 @@
                 <button class="detail-tab" onclick="switchDetailTab('yaml')">YAML</button>
                 <button class="detail-tab" onclick="switchDetailTab('events')">Events</button>
                 <button class="detail-tab" id="detail-pods-tab" onclick="switchDetailTab('pods')" style="display:none;">Related Pods</button>
+                <button class="detail-tab" id="detail-refs-tab" onclick="switchDetailTab('refs')" style="display:none;">Referenced By</button>
             </div>
             <div class="detail-content" id="detail-content">
                 <div id="detail-overview"></div>
                 <div id="detail-yaml" style="display:none;"></div>
                 <div id="detail-events" style="display:none;"></div>
                 <div id="detail-pods" style="display:none;"></div>
+                <div id="detail-refs" style="display:none;"></div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeDetail()">Close</button>
                 <button class="btn btn-primary" onclick="analyzeWithAI()">🤖 Analyze with AI</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RBAC Subject Detail Modal -->
+    <div class="modal-overlay" id="rbac-detail-modal" role="dialog" aria-modal="true">
+        <div class="modal detail-modal">
+            <div class="modal-header">
+                <h2 id="rbac-detail-title">Subject Details</h2>
+                <button class="modal-close" onclick="document.getElementById('rbac-detail-modal').classList.remove('active')" aria-label="Close">&times;</button>
+            </div>
+            <div class="detail-content" id="rbac-detail-content" style="padding:16px;">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('rbac-detail-modal').classList.remove('active')">Close</button>
             </div>
         </div>
     </div>
@@ -2194,6 +2163,8 @@ spec:
                     <div class="metric-chart" style="height: 100px;">
                         <canvas id="llm-usage-chart"></canvas>
                     </div>
+                    <h5 style="margin-top:12px;margin-bottom:8px;font-size:12px;color:var(--text-secondary);">Model Breakdown</h5>
+                    <div id="llm-model-list" style="max-height:120px;overflow-y:auto;"></div>
                 </div>
             </div>
         </div>
@@ -2399,36 +2370,6 @@ spec:
     </div>
 
     <!-- Template Deploy Modal -->
-    <div class="modal-overlay" id="template-deploy-modal" role="dialog" aria-modal="true">
-        <div class="modal" style="max-width:700px;">
-            <div class="modal-header">
-                <h2>Deploy Template</h2>
-                <button class="modal-close" onclick="closeTemplateDeployModal()" aria-label="Close template deploy">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Template</label>
-                    <span id="template-deploy-name" style="font-weight:600;"></span>
-                </div>
-                <div class="form-group">
-                    <label>Target Namespace</label>
-                    <input type="text" id="template-deploy-ns" placeholder="default" value="default">
-                </div>
-                <div class="form-group">
-                    <label>Resource Name</label>
-                    <input type="text" id="template-deploy-resname" placeholder="my-app">
-                </div>
-                <div class="form-group">
-                    <label>YAML Preview</label>
-                    <textarea id="template-deploy-yaml" style="width:100%;height:300px;font-family:var(--font-mono);font-size:12px;background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border-color);border-radius:6px;padding:12px;resize:vertical;"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer" style="padding:12px 24px;border-top:1px solid var(--border-color);display:flex;justify-content:flex-end;gap:8px;">
-                <button class="btn btn-secondary" onclick="closeTemplateDeployModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="applyTemplate()">Deploy</button>
-            </div>
-        </div>
-    </div>
 
     <script src="js/core/utils.js"></script>
     <script src="js/app.js"></script>

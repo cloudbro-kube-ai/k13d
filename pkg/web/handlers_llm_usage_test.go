@@ -209,18 +209,14 @@ func TestHandleLLMUsageStats_EmptyDB(t *testing.T) {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
 
-	// Response wraps stats in "stats" key
-	stats, ok := resp["stats"].(map[string]interface{})
-	if !ok {
-		// Empty stats might be nil
-		if resp["stats"] == nil {
-			return // OK for empty DB
-		}
-		t.Fatalf("Expected stats object in response, got %T", resp["stats"])
+	// Response uses flat fields (not wrapped in "stats")
+	if total, ok := resp["total_requests"].(float64); ok && total != 0 {
+		t.Errorf("Expected 0 total requests, got %v", total)
 	}
 
-	if total, ok := stats["total_requests"].(float64); ok && total != 0 {
-		t.Errorf("Expected 0 total requests, got %v", total)
+	// minutes field should be present (default 5)
+	if minutes, ok := resp["minutes"].(float64); !ok || int(minutes) != 5 {
+		t.Errorf("Expected minutes=5, got %v", resp["minutes"])
 	}
 }
 
@@ -261,29 +257,41 @@ func TestHandleLLMUsageStats_WithData(t *testing.T) {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
 
-	// Response wraps stats in "stats" key
-	stats, ok := resp["stats"].(map[string]interface{})
-	if !ok {
-		t.Fatalf("Expected stats object in response, got %T", resp["stats"])
-	}
-
-	totalRequests := int(stats["total_requests"].(float64))
+	// Response uses flat fields (not wrapped in "stats")
+	totalRequests := int(resp["total_requests"].(float64))
 	if totalRequests != 3 {
 		t.Errorf("Expected 3 total requests, got %d", totalRequests)
 	}
 
-	totalTokens := int(stats["total_tokens"].(float64))
+	totalTokens := int(resp["total_tokens"].(float64))
 	if totalTokens != 675 { // 150+300+225
 		t.Errorf("Expected 675 total tokens, got %d", totalTokens)
 	}
 
-	// Check model breakdown (it's a map, not array)
-	byModel, ok := stats["by_model"].(map[string]interface{})
+	// Check model breakdown (now an array, not a map)
+	byModel, ok := resp["by_model"].([]interface{})
 	if !ok {
-		t.Fatal("Expected by_model map in stats")
+		t.Fatalf("Expected by_model array in response, got %T", resp["by_model"])
 	}
 	if len(byModel) < 2 {
 		t.Errorf("Expected at least 2 models, got %d", len(byModel))
+	}
+
+	// Verify by_model array entries have expected structure
+	for _, entry := range byModel {
+		m, ok := entry.(map[string]interface{})
+		if !ok {
+			t.Fatalf("Expected by_model entry to be an object, got %T", entry)
+		}
+		if _, ok := m["model"]; !ok {
+			t.Error("Expected 'model' field in by_model entry")
+		}
+		if _, ok := m["requests"]; !ok {
+			t.Error("Expected 'requests' field in by_model entry")
+		}
+		if _, ok := m["total_tokens"]; !ok {
+			t.Error("Expected 'total_tokens' field in by_model entry")
+		}
 	}
 }
 

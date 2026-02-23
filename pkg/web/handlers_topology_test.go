@@ -347,7 +347,7 @@ func TestBuildTopology(t *testing.T) {
 		pendingApprovals: make(map[string]*PendingToolApproval),
 	}
 
-	resp, err := server.buildTopology(context.Background(), "prod")
+	resp, err := server.buildTopology(context.Background(), "prod", false)
 	if err != nil {
 		t.Fatalf("buildTopology failed: %v", err)
 	}
@@ -471,7 +471,7 @@ func TestBuildTopology_EmptyNamespace(t *testing.T) {
 		pendingApprovals: make(map[string]*PendingToolApproval),
 	}
 
-	resp, err := server.buildTopology(context.Background(), "empty-ns")
+	resp, err := server.buildTopology(context.Background(), "empty-ns", false)
 	if err != nil {
 		t.Fatalf("buildTopology failed: %v", err)
 	}

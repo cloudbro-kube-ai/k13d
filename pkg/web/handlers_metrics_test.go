@@ -12,6 +12,7 @@ import (
 	"github.com/cloudbro-kube-ai/k13d/pkg/mcp"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
@@ -89,7 +90,7 @@ func TestPodMetrics_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-func TestPodMetrics_NilMetricsClient(t *testing.T) {
+func TestPodMetrics_NilMetricsClient_FallsBackToRequests(t *testing.T) {
 	s := setupMetricsTestServer(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/metrics/pods?namespace=default", nil)
@@ -97,8 +98,8 @@ func TestPodMetrics_NilMetricsClient(t *testing.T) {
 
 	s.handlePodMetrics(w, req)
 
-	// With nil Metrics client, GetPodMetrics returns an error.
-	// The handler encodes a JSON response with error field (not HTTP error).
+	// With nil Metrics client, GetPodMetrics fails but handler falls back
+	// to GetPodMetricsFromRequests which succeeds via the fake clientset.
 	if w.Code != http.StatusOK {
 		t.Errorf("GET /api/metrics/pods (nil metrics): status = %d, want %d", w.Code, http.StatusOK)
 	}
@@ -108,15 +109,18 @@ func TestPodMetrics_NilMetricsClient(t *testing.T) {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
 
-	if _, ok := resp["error"]; !ok {
-		t.Error("Expected 'error' field in response when metrics-server not available")
+	// Fallback succeeds, so no error field expected
+	if _, ok := resp["error"]; ok {
+		t.Error("Did not expect 'error' field - fallback to pod requests should succeed")
 	}
 
 	items, ok := resp["items"].([]interface{})
 	if !ok {
-		t.Error("Expected 'items' field to be an array")
-	} else if len(items) != 0 {
-		t.Errorf("Expected empty items array, got %d items", len(items))
+		t.Fatal("Expected 'items' field to be an array")
+	}
+	// The test pod (Running) should appear with 0 CPU/Mem (no resource requests set)
+	if len(items) != 1 {
+		t.Errorf("Expected 1 item (fallback from pod requests), got %d", len(items))
 	}
 }
 
@@ -151,7 +155,7 @@ func TestNodeMetrics_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-func TestNodeMetrics_NilMetricsClient(t *testing.T) {
+func TestNodeMetrics_NilMetricsClient_FallsBackToRequests(t *testing.T) {
 	s := setupMetricsTestServer(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/metrics/nodes", nil)
@@ -168,15 +172,21 @@ func TestNodeMetrics_NilMetricsClient(t *testing.T) {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
 
-	if _, ok := resp["error"]; !ok {
-		t.Error("Expected 'error' field when metrics-server not available")
+	// Fallback succeeds (but test pod has no NodeName, so no node metrics)
+	if _, ok := resp["error"]; ok {
+		t.Error("Did not expect 'error' field - fallback to pod requests should succeed")
 	}
 
-	items, ok := resp["items"].([]interface{})
-	if !ok {
-		t.Error("Expected 'items' field to be an array")
-	} else if len(items) != 0 {
-		t.Errorf("Expected empty items array, got %d items", len(items))
+	// Test pod has no Spec.NodeName, so no node data from fallback.
+	// items may be null (nil slice) or empty array.
+	if items := resp["items"]; items != nil {
+		arr, ok := items.([]interface{})
+		if !ok {
+			t.Fatalf("Expected 'items' to be an array, got %T", items)
+		}
+		if len(arr) != 0 {
+			t.Errorf("Expected 0 items (test pod has no NodeName), got %d", len(arr))
+		}
 	}
 }
 
@@ -435,5 +445,190 @@ func TestAggregatedMetrics_NilCollector(t *testing.T) {
 
 	if _, ok := resp["error"]; !ok {
 		t.Error("Expected 'error' field when collector not initialized")
+	}
+}
+
+// ==========================================
+// Metrics Fallback with Resource Requests
+// ==========================================
+
+// setupMetricsTestServerWithResources creates a server with pods that have resource requests set.
+func setupMetricsTestServerWithResources(t *testing.T) *Server {
+	t.Helper()
+
+	cfg := &config.Config{
+		Language:    "en",
+		EnableAudit: false,
+		LLM: config.LLMConfig{
+			Provider: "openai",
+			Model:    "gpt-4",
+		},
+	}
+
+	authConfig := &AuthConfig{
+		Enabled:         false,
+		SessionDuration: time.Hour,
+		AuthMode:        "local",
+		DefaultAdmin:    "admin",
+		DefaultPassword: "admin123",
+		Quiet:           true,
+	}
+	authManager := NewAuthManager(authConfig)
+
+	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
+		&corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "web-app", Namespace: "default"},
+			Spec: corev1.PodSpec{
+				NodeName: "node-1",
+				Containers: []corev1.Container{
+					{
+						Name:  "web",
+						Image: "nginx:latest",
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("250m"),
+								corev1.ResourceMemory: resource.MustParse("128Mi"),
+							},
+						},
+					},
+				},
+			},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning},
+		},
+		&corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "api-server", Namespace: "default"},
+			Spec: corev1.PodSpec{
+				NodeName: "node-1",
+				Containers: []corev1.Container{
+					{
+						Name:  "api",
+						Image: "api:latest",
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("500m"),
+								corev1.ResourceMemory: resource.MustParse("256Mi"),
+							},
+						},
+					},
+				},
+			},
+			Status: corev1.PodStatus{Phase: corev1.PodRunning},
+		},
+		&corev1.Node{
+			ObjectMeta: metav1.ObjectMeta{Name: "node-1"},
+		},
+	)
+
+	k8sClient := &k8s.Client{
+		Clientset: fakeClientset,
+		// Metrics is nil - triggers fallback to pod resource requests
+	}
+
+	return &Server{
+		cfg:              cfg,
+		k8sClient:        k8sClient,
+		mcpClient:        mcp.NewClient(),
+		authManager:      authManager,
+		port:             8080,
+		pendingApprovals: make(map[string]*PendingToolApproval),
+	}
+}
+
+func TestPodMetrics_FallbackWithResourceRequests(t *testing.T) {
+	s := setupMetricsTestServerWithResources(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/metrics/pods?namespace=default", nil)
+	w := httptest.NewRecorder()
+
+	s.handlePodMetrics(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if _, ok := resp["error"]; ok {
+		t.Error("Did not expect error - fallback should succeed")
+	}
+
+	items, ok := resp["items"].([]interface{})
+	if !ok {
+		t.Fatal("Expected 'items' field to be an array")
+	}
+	if len(items) != 2 {
+		t.Fatalf("Expected 2 items, got %d", len(items))
+	}
+
+	// Verify CPU/Memory values from resource requests
+	for _, item := range items {
+		m := item.(map[string]interface{})
+		name := m["name"].(string)
+		cpu := m["cpu"].(float64)
+		mem := m["memory"].(float64)
+
+		switch name {
+		case "web-app":
+			if cpu != 250 {
+				t.Errorf("web-app CPU = %v, want 250", cpu)
+			}
+			if mem != 128 {
+				t.Errorf("web-app Memory = %v, want 128", mem)
+			}
+		case "api-server":
+			if cpu != 500 {
+				t.Errorf("api-server CPU = %v, want 500", cpu)
+			}
+			if mem != 256 {
+				t.Errorf("api-server Memory = %v, want 256", mem)
+			}
+		default:
+			t.Errorf("Unexpected pod: %s", name)
+		}
+	}
+}
+
+func TestNodeMetrics_FallbackWithResourceRequests(t *testing.T) {
+	s := setupMetricsTestServerWithResources(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/metrics/nodes", nil)
+	w := httptest.NewRecorder()
+
+	s.handleNodeMetrics(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	if _, ok := resp["error"]; ok {
+		t.Error("Did not expect error - fallback should succeed")
+	}
+
+	items, ok := resp["items"].([]interface{})
+	if !ok {
+		t.Fatal("Expected 'items' field to be an array")
+	}
+	if len(items) != 1 {
+		t.Fatalf("Expected 1 node, got %d", len(items))
+	}
+
+	node := items[0].(map[string]interface{})
+	if node["name"] != "node-1" {
+		t.Errorf("node name = %v, want node-1", node["name"])
+	}
+	// node-1 should aggregate both pods: 250+500=750 CPU, 128+256=384 Mem
+	if cpu := node["cpu"].(float64); cpu != 750 {
+		t.Errorf("node-1 CPU = %v, want 750", cpu)
+	}
+	if mem := node["memory"].(float64); mem != 384 {
+		t.Errorf("node-1 Memory = %v, want 384", mem)
 	}
 }
