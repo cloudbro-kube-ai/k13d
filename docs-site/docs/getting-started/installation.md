@@ -187,11 +187,42 @@ xattr -d com.apple.provenance ./k13d
 # Run TUI mode (requires valid kubeconfig)
 ./k13d
 
-# Run web mode
-./k13d -web -port 8080
+# Run web mode with local auth (recommended for desktop use)
+./k13d -web -auth-mode local
+# Open http://localhost:8080 — Default login: admin / admin
+
+# Run web mode with K8s RBAC auth (for production)
+./k13d -web -auth-mode token
 
 # Check embedded LLM status
 ./k13d --embedded-llm-status
+```
+
+### Authentication Modes
+
+When running the web server (`-web`), choose an authentication mode:
+
+| Mode | Flag | Description |
+|------|------|-------------|
+| **Local** | `-auth-mode local` | Username/password auth stored in memory. Ideal for local development, desktop use, and standalone deployments. No external auth infrastructure needed. |
+| **Token** | `-auth-mode token` | Kubernetes RBAC token validation via TokenReview API. Best for in-cluster deployments. This is the default. |
+| **LDAP** | `-auth-mode ldap` | Authenticate against an LDAP directory (Active Directory, OpenLDAP). |
+| **OIDC** | `-auth-mode oidc` | SSO via OpenID Connect providers (Google, Okta, Azure AD). |
+| **No Auth** | `--no-auth` | Disables authentication entirely. **Not recommended** — use only for local testing. |
+
+For local/desktop usage, `-auth-mode local` is the simplest option:
+
+```bash
+# With default credentials (admin / admin)
+./k13d -web -auth-mode local
+
+# With custom credentials
+./k13d -web -auth-mode local -admin-user myadmin -admin-password mysecurepassword
+
+# Or via environment variables
+export K13D_USERNAME=myadmin
+export K13D_PASSWORD=mysecurepassword
+./k13d -web -auth-mode local
 ```
 
 ---

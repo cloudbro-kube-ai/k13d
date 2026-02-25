@@ -87,8 +87,30 @@ Best tool support, industry standard.
 ```yaml
 llm:
   provider: openai
-  model: gpt-4              # or gpt-3.5-turbo
+  model: gpt-4              # or gpt-4o, gpt-3.5-turbo
   api_key: sk-your-key
+```
+
+### Anthropic
+
+Strong reasoning and analysis capabilities.
+
+```yaml
+llm:
+  provider: anthropic
+  model: claude-3-sonnet     # or claude-3-opus, claude-3-haiku
+  api_key: your-anthropic-key
+```
+
+### Google Gemini
+
+Multimodal capable with large context windows.
+
+```yaml
+llm:
+  provider: gemini
+  model: gemini-2.5-flash    # or gemini-2.5-pro, gemini-2.0-flash
+  api_key: your-gemini-key
 ```
 
 ### Azure OpenAI
@@ -101,6 +123,17 @@ llm:
   model: gpt-4
   endpoint: https://your-resource.openai.azure.com
   api_key: your-azure-key
+```
+
+### AWS Bedrock
+
+Access Claude, Llama, and Mistral models via AWS.
+
+```yaml
+llm:
+  provider: bedrock
+  model: anthropic.claude-3-sonnet
+  region: us-east-1
 ```
 
 ### Ollama (Local)
@@ -141,7 +174,7 @@ Zero external dependencies - built-in llama.cpp.
 ./k13d --download-model
 
 # Run with embedded LLM
-./k13d --embedded-llm -web -port 8080
+./k13d --embedded-llm -web -auth-mode local
 ```
 
 ---
@@ -482,10 +515,14 @@ All configuration can be overridden with environment variables:
 | `K13D_LLM_MODEL` | Model name |
 | `K13D_LLM_ENDPOINT` | Custom endpoint |
 | `K13D_LLM_API_KEY` | API key |
-| `K13D_AUTH_MODE` | `local`, `token`, `ldap` |
+| `K13D_AUTH_MODE` | `local`, `token`, `ldap`, `oidc` |
 | `K13D_NO_AUTH` | Disable authentication |
-| `K13D_ADMIN_USER` | Default admin username |
-| `K13D_ADMIN_PASSWORD` | Default admin password |
+| `K13D_USERNAME` | Default admin username (local auth mode) |
+| `K13D_PASSWORD` | Default admin password (local auth mode) |
+| `K13D_PORT` | Web server port (default: 8080) |
+| `K13D_CORS_ALLOWED_ORIGINS` | Allowed CORS origins |
+| `OPENAI_API_KEY` | OpenAI API key (alternative to config) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (alternative to config) |
 
 ---
 
