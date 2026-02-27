@@ -43,10 +43,18 @@ type Tool struct {
 	ServerName  string                 `json:"-"` // Which server provides this tool
 }
 
-// JSONRPCRequest represents a JSON-RPC 2.0 request
+// JSONRPCRequest represents a JSON-RPC 2.0 request (must include id)
 type JSONRPCRequest struct {
 	JSONRPC string      `json:"jsonrpc"`
 	ID      int64       `json:"id"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params,omitempty"`
+}
+
+// JSONRPCNotification represents a JSON-RPC 2.0 notification (no id field).
+// Per the spec, notifications are one-way messages that must NOT include an id.
+type JSONRPCNotification struct {
+	JSONRPC string      `json:"jsonrpc"`
 	Method  string      `json:"method"`
 	Params  interface{} `json:"params,omitempty"`
 }
@@ -153,10 +161,14 @@ func (c *Client) Connect(ctx context.Context, serverCfg config.MCPServer) error 
 func (c *Client) startServer(ctx context.Context, serverCfg config.MCPServer) (*ServerConnection, error) {
 	cmd := exec.CommandContext(ctx, serverCfg.Command, serverCfg.Args...)
 
-	// Set environment variables
+	// Set environment variables: inherit system env, then overlay non-empty
+	// config values. Empty config values are skipped so that system-level
+	// env vars (e.g. tokens set in .zshrc) are not accidentally overridden.
 	cmd.Env = os.Environ()
 	for k, v := range serverCfg.Env {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+		if v != "" {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+		}
 	}
 
 	stdin, err := cmd.StdinPipe()
@@ -377,7 +389,7 @@ func (conn *ServerConnection) initialize(ctx context.Context) error {
 
 	// Send initialized notification (acquire lock since sendRequest released it)
 	conn.mu.Lock()
-	notif := JSONRPCRequest{
+	notif := JSONRPCNotification{
 		JSONRPC: "2.0",
 		Method:  "notifications/initialized",
 	}
