@@ -339,8 +339,7 @@ func (p *EmbeddedProvider) AskWithTools(ctx context.Context, prompt string, tool
 				Role:      "assistant",
 				Content:   content,
 				ToolCalls: []ToolCall{*parsedToolCall},
-			})
-			messages = append(messages, ChatMessage{
+			}, ChatMessage{
 				Role:       "tool",
 				Content:    result.Content,
 				ToolCallID: parsedToolCall.ID,

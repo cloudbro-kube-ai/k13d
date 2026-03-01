@@ -96,7 +96,7 @@ func (t *TerminalSession) Read(p []byte) (int, error) {
 
 	switch msg.Type {
 	case "input":
-		return copy(p, []byte(msg.Data)), nil
+		return copy(p, msg.Data), nil
 	case "resize":
 		t.sizeChan <- remotecommand.TerminalSize{
 			Width:  msg.Cols,

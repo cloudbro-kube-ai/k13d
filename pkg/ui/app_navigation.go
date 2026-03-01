@@ -405,9 +405,8 @@ func (a *App) sortByColumnName(colName string) {
 	a.mx.RUnlock()
 
 	// Find column index by name (case-insensitive)
-	colUpper := strings.ToUpper(colName)
 	for i, h := range headers {
-		if strings.ToUpper(h) == colUpper {
+		if strings.EqualFold(h, colName) {
 			a.sortByColumn(i)
 			return
 		}

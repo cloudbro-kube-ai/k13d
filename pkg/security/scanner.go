@@ -960,7 +960,7 @@ func (s *Scanner) calculateScore(result *ScanResult) float64 {
 		case "MEDIUM":
 			score -= 2
 		case "LOW":
-			score -= 1
+			score--
 		}
 	}
 

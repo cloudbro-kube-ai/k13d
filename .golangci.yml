@@ -1,0 +1,133 @@
+# .golangci.yml - k13d linter configuration
+# Phase 1: Conservative set of high-value, low-noise linters
+run:
+  timeout: 10m
+  modules-download-mode: readonly
+
+linters:
+  disable-all: true
+  enable:
+    # Tier 1: Core linters
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+    # Tier 2: Additional quality checks
+    - revive
+    - misspell
+    - gocritic
+
+linters-settings:
+  errcheck:
+    exclude-functions:
+      # HTTP handler response writes - errors handled by net/http
+      - (net/http.ResponseWriter).Write
+      - (*encoding/json.Encoder).Encode
+      - fmt.Fprint
+      - fmt.Fprintf
+      - fmt.Fprintln
+      - (io.Writer).Write
+      # Cleanup operations where errors are non-actionable
+      - os.Remove
+      - os.RemoveAll
+      - (*os.File).Close
+      - (io.Closer).Close
+      - (*net.TCPListener).Close
+    check-type-assertions: false
+    check-blank: false
+
+  govet:
+    enable:
+      - printf
+      - structtag
+      - assign
+      - bools
+      - buildtag
+      - copylocks
+      - httpresponse
+      - loopclosure
+      - lostcancel
+      - nilfunc
+      - unreachable
+
+  revive:
+    rules:
+      - name: blank-imports
+        disabled: true
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+        disabled: true
+      - name: increment-decrement
+      - name: var-naming
+        disabled: true
+      - name: package-comments
+        disabled: true
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: superfluous-else
+
+  misspell:
+    # No locale restriction - only check unambiguous misspellings
+    # (avoids false positives on British vs American spelling like cancelled/canceled)
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - performance
+    disabled-checks:
+      - hugeParam
+      - rangeValCopy
+      - appendAssign
+      - ifElseChain
+      - sprintfQuotedString
+      - exitAfterDefer
+      - commentedOutCode
+      - singleCaseSwitch
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-use-default: false
+
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gocritic
+        - revive
+
+    - path: ^tests/mocks/
+      linters:
+        - errcheck
+        - revive
+        - gocritic
+
+    - path: tui_test_harness\.go
+      linters:
+        - errcheck
+
+    - path: tui_test_fixtures\.go
+      linters:
+        - errcheck
+        - revive
+
+    # Exclude defer Close() patterns from errcheck
+    - text: "Error return value of .+\\.Close"
+      linters:
+        - errcheck
+
+    # Exclude resp.Body.Close from errcheck
+    - text: "Error return value of .+Body\\.Close"
+      linters:
+        - errcheck

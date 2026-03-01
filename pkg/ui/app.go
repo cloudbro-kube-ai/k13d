@@ -813,10 +813,8 @@ func parseJSON(jsonStr string, v interface{}) error {
 	return jsonUnmarshal([]byte(jsonStr), v)
 }
 
-// jsonUnmarshal wraps json.Unmarshal
-var jsonUnmarshal = func(data []byte, v interface{}) error {
-	return json.Unmarshal(data, v)
-}
+// jsonUnmarshal wraps json.Unmarshal for testability
+var jsonUnmarshal = json.Unmarshal
 
 // analyzeAndShowDecisions extracts commands from AI response and shows decision UI
 func (a *App) analyzeAndShowDecisions(question, response string) {
