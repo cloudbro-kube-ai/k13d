@@ -224,145 +224,145 @@
                 <div class="nav-section">
                     <div class="nav-item" data-resource="overview" onclick="showOverviewPanel()"
                         style="font-weight: 600; margin-bottom: 8px;" role="button" tabindex="0">
-                        <span>Overview</span>
+                        <span data-i18n="nav_overview">Overview</span>
                     </div>
                 </div>
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Workloads<span
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_workloads">Workloads</span><span
                             class="nav-section-arrow">▾</span></div>
                     <div class="nav-item active" data-resource="pods" onclick="switchResource('pods')" role="button"
                         tabindex="0">
-                        <span>Pods</span>
+                        <span data-i18n="nav_pods">Pods</span>
                         <span class="count" id="pods-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="deployments" onclick="switchResource('deployments')"
                         role="button" tabindex="0">
-                        <span>Deployments</span>
+                        <span data-i18n="nav_deployments">Deployments</span>
                         <span class="count" id="deployments-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="daemonsets" onclick="switchResource('daemonsets')"
                         role="button" tabindex="0">
-                        <span>DaemonSets</span>
+                        <span data-i18n="nav_daemonsets">DaemonSets</span>
                         <span class="count" id="daemonsets-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="statefulsets" onclick="switchResource('statefulsets')"
                         role="button" tabindex="0">
-                        <span>StatefulSets</span>
+                        <span data-i18n="nav_statefulsets">StatefulSets</span>
                         <span class="count" id="statefulsets-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="replicasets" onclick="switchResource('replicasets')"
                         role="button" tabindex="0">
-                        <span>ReplicaSets</span>
+                        <span data-i18n="nav_replicasets">ReplicaSets</span>
                         <span class="count" id="replicasets-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="jobs" onclick="switchResource('jobs')" role="button"
                         tabindex="0">
-                        <span>Jobs</span>
+                        <span data-i18n="nav_jobs">Jobs</span>
                         <span class="count" id="jobs-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="cronjobs" onclick="switchResource('cronjobs')" role="button"
                         tabindex="0">
-                        <span>CronJobs</span>
+                        <span data-i18n="nav_cronjobs">CronJobs</span>
                         <span class="count" id="cronjobs-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Network<span
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_network">Network</span><span
                             class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="services" onclick="switchResource('services')" role="button"
                         tabindex="0">
-                        <span>Services</span>
+                        <span data-i18n="nav_services">Services</span>
                         <span class="count" id="services-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="ingresses" onclick="switchResource('ingresses')" role="button"
                         tabindex="0">
-                        <span>Ingresses</span>
+                        <span data-i18n="nav_ingresses">Ingresses</span>
                         <span class="count" id="ingresses-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="networkpolicies" onclick="switchResource('networkpolicies')"
                         role="button" tabindex="0">
-                        <span>NetworkPolicies</span>
+                        <span data-i18n="nav_networkpolicies">NetworkPolicies</span>
                         <span class="count" id="networkpolicies-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Config<span
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_config">Config</span><span
                             class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="configmaps" onclick="switchResource('configmaps')"
                         role="button" tabindex="0">
-                        <span>ConfigMaps</span>
+                        <span data-i18n="nav_configmaps">ConfigMaps</span>
                         <span class="count" id="configmaps-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="secrets" onclick="switchResource('secrets')" role="button"
                         tabindex="0">
-                        <span>Secrets</span>
+                        <span data-i18n="nav_secrets">Secrets</span>
                         <span class="count" id="secrets-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="serviceaccounts" onclick="switchResource('serviceaccounts')"
                         role="button" tabindex="0">
-                        <span>ServiceAccounts</span>
+                        <span data-i18n="nav_serviceaccounts">ServiceAccounts</span>
                         <span class="count" id="serviceaccounts-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Storage<span
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_storage">Storage</span><span
                             class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="persistentvolumes"
                         onclick="switchResource('persistentvolumes')" role="button" tabindex="0">
-                        <span>PersistentVolumes</span>
+                        <span data-i18n="nav_pvs">PersistentVolumes</span>
                         <span class="count" id="persistentvolumes-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="persistentvolumeclaims"
                         onclick="switchResource('persistentvolumeclaims')" role="button" tabindex="0">
-                        <span>PVCs</span>
+                        <span data-i18n="nav_pvcs">PVCs</span>
                         <span class="count" id="persistentvolumeclaims-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Cluster<span
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_cluster">Cluster</span><span
                             class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="nodes" onclick="switchResource('nodes')" role="button"
                         tabindex="0">
-                        <span>Nodes</span>
+                        <span data-i18n="nav_nodes">Nodes</span>
                         <span class="count" id="nodes-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="namespaces" onclick="switchResource('namespaces')"
                         role="button" tabindex="0">
-                        <span>Namespaces</span>
+                        <span data-i18n="nav_namespaces">Namespaces</span>
                         <span class="count" id="namespaces-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="events" onclick="switchResource('events')" role="button"
                         tabindex="0">
-                        <span>Events</span>
+                        <span data-i18n="nav_events">Events</span>
                         <span class="count" id="events-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">RBAC<span
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_rbac">RBAC</span><span
                             class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="roles" onclick="switchResource('roles')" role="button"
                         tabindex="0">
-                        <span>Roles</span>
+                        <span data-i18n="nav_roles">Roles</span>
                         <span class="count" id="roles-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="rolebindings" onclick="switchResource('rolebindings')"
                         role="button" tabindex="0">
-                        <span>RoleBindings</span>
+                        <span data-i18n="nav_rolebindings">RoleBindings</span>
                         <span class="count" id="rolebindings-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="clusterroles" onclick="switchResource('clusterroles')"
                         role="button" tabindex="0">
-                        <span>ClusterRoles</span>
+                        <span data-i18n="nav_clusterroles">ClusterRoles</span>
                         <span class="count" id="clusterroles-count">0</span>
                     </div>
                     <div class="nav-item" data-resource="clusterrolebindings"
                         onclick="switchResource('clusterrolebindings')" role="button" tabindex="0">
-                        <span>ClusterRoleBindings</span>
+                        <span data-i18n="nav_clusterrolebindings">ClusterRoleBindings</span>
                         <span class="count" id="clusterrolebindings-count">0</span>
                     </div>
                 </div>
@@ -381,40 +381,40 @@
 
                 <div class="nav-section">
                     <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">
-                        Visualization<span class="nav-section-arrow">▾</span></div>
+                        <span data-i18n="header_visualization">Visualization</span><span class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="topology" onclick="showTopology()" role="button" tabindex="0">
-                        <span>Topology</span>
+                        <span data-i18n="nav_topology">Topology</span>
                     </div>
                     <div class="nav-item" data-resource="applications" onclick="showApplicationsView()" role="button"
                         tabindex="0">
-                        <span>Applications</span>
+                        <span data-i18n="nav_applications">Applications</span>
                     </div>
                     <div class="nav-item" data-resource="rbac-viz" onclick="showRBACVizView()" role="button"
                         tabindex="0">
-                        <span>RBAC Viewer</span>
+                        <span data-i18n="nav_rbac_viewer">RBAC Viewer</span>
                     </div>
                     <div class="nav-item" data-resource="netpol-viz" onclick="showNetPolVizView()" role="button"
                         tabindex="0">
-                        <span>Net Policy Map</span>
+                        <span data-i18n="nav_netpol_map">Net Policy Map</span>
                     </div>
                     <div class="nav-item" data-resource="timeline" onclick="showTimelineView()" role="button"
                         tabindex="0">
-                        <span>Event Timeline</span>
+                        <span data-i18n="nav_timeline">Event Timeline</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Monitoring<span
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_monitoring">Monitoring</span><span
                             class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="metrics" onclick="showMetricsDashboard()" role="button"
                         tabindex="0">
-                        <span>Metrics</span>
+                        <span data-i18n="nav_metrics">Metrics</span>
                     </div>
                     <div class="nav-item" onclick="showAuditLogs()" role="button" tabindex="0">
-                        <span>Audit Logs</span>
+                        <span data-i18n="nav_audit_logs">Audit Logs</span>
                     </div>
                     <div class="nav-item" onclick="showReports()" role="button" tabindex="0">
-                        <span>Reports</span>
+                        <span data-i18n="nav_reports">Reports</span>
                     </div>
                 </div>
             </div>
@@ -661,23 +661,35 @@
                 <!-- Applications View Container -->
                 <div class="custom-view-container" id="applications-container" style="display:none;">
                     <div class="custom-view-toolbar">
-                        <h2>Applications</h2>
+                        <h2 data-i18n="header_applications">Applications</h2>
                         <div style="display:flex;gap:8px;align-items:center;">
                             <select id="apps-ns-select" onchange="loadApplicationsData()">
-                                <option value="">All Namespaces</option>
+                                <option value="" data-i18n="msg_all_namespaces">All Namespaces</option>
                             </select>
-                            <button onclick="loadApplicationsData()">↻ Refresh</button>
+                            <button onclick="loadApplicationsData()">↻ <span data-i18n="btn_refresh">Refresh</span></button>
                         </div>
                     </div>
                     <div class="custom-view-body" id="applications-body">
-                        <div class="loading-placeholder">Loading applications...</div>
+                        <div class="loading-placeholder" data-i18n="msg_loading_applications">Loading applications...</div>
+                    </div>
+                </div>
+
+                <!-- Application Detail Modal -->
+                <div class="modal-overlay" id="app-detail-overlay" onclick="closeAppDetail()">
+                    <div class="modal" onclick="event.stopPropagation()" style="max-width:700px;">
+                        <div class="modal-header">
+                            <h3 id="app-detail-title">Application</h3>
+                            <button class="modal-close" onclick="closeAppDetail()">&times;</button>
+                        </div>
+                        <div class="modal-body" id="app-detail-body" style="max-height:70vh;overflow-y:auto;">
+                        </div>
                     </div>
                 </div>
 
                 <!-- RBAC Visualization Container -->
                 <div class="custom-view-container" id="rbac-viz-container" style="display:none;">
                     <div class="custom-view-toolbar">
-                        <h2>RBAC Viewer</h2>
+                        <h2 data-i18n="header_rbac_viewer">RBAC Viewer</h2>
                         <div style="display:flex;gap:8px;align-items:center;">
                             <select id="rbac-viz-ns-select" onchange="loadRBACVizData()">
                                 <option value="">Cluster-wide</option>
@@ -699,7 +711,7 @@
                 <!-- Network Policy Visualization Container -->
                 <div class="custom-view-container" id="netpol-viz-container" style="display:none;">
                     <div class="custom-view-toolbar">
-                        <h2>Network Policy Map</h2>
+                        <h2 data-i18n="header_netpol_map">Network Policy Map</h2>
                         <div style="display:flex;gap:8px;align-items:center;">
                             <select id="netpol-viz-ns-select" onchange="loadNetPolVizData()">
                                 <option value="">All Namespaces</option>
@@ -719,7 +731,7 @@
                 <!-- Event Timeline Container -->
                 <div class="custom-view-container" id="timeline-container" style="display:none;">
                     <div class="custom-view-toolbar">
-                        <h2>Event Timeline</h2>
+                        <h2 data-i18n="header_timeline">Event Timeline</h2>
                         <div style="display:flex;gap:8px;align-items:center;">
                             <select id="timeline-ns-select" onchange="loadTimelineData()">
                                 <option value="">All Namespaces</option>

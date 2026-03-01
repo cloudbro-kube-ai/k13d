@@ -5054,6 +5054,7 @@
     border-radius: 10px;
     padding: 16px;
     transition: border-color 0.2s;
+    cursor: pointer;
 }
 .app-card:hover { border-color: var(--accent-blue); }
 .app-card-header {

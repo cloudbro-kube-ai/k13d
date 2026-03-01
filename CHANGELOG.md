@@ -5,6 +5,18 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.6] - 2026-03-01
+
+### Added
+- **Web UI: Application Detail Modal**: Clicking an app card now opens a detail modal showing status badge, version, component, pod count, and a resource table grouped by kind (Name/Namespace/Status)
+- **Web UI: i18n Support**: Added `data-i18n` attributes to ~40 sidebar nav items, section headers, and view titles — changing language in Settings now updates the entire UI in real-time (English, Korean, Chinese, Japanese)
+- **i18n: New Translation Keys**: Added translations for all nav items (Overview, Topology, Applications, RBAC Viewer, Net Policy Map, Event Timeline, Metrics, Audit Logs, Reports, NetworkPolicies, ServiceAccounts, Roles, RoleBindings, ClusterRoles, ClusterRoleBindings), section headers (RBAC, Visualization, Monitoring), and application view messages
+
+### Tests
+- Added `TestHandleApplications_MultiResourceTypes`: Verifies StatefulSet, DaemonSet, Ingress, Service grouping under same `app.kubernetes.io/name` label
+- Added `TestHandleApplications_HealthStatus`: Verifies healthy/degraded/failing status calculation based on pod readiness
+- Added `TestHandleApplications_NamespaceFilter`: Verifies `?namespace=X` query parameter correctly filters applications
+
 ## [0.9.5] - 2026-03-01
 
 ### Fixed
