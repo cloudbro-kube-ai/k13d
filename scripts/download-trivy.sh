@@ -4,7 +4,7 @@
 # Downloads Trivy for linux/darwin amd64/arm64 into .trivy-cache/
 # Uses .trivy-cache/ (not dist/) to avoid conflict with goreleaser's dist directory
 
-set -euo pipefail
+set -uo pipefail
 
 TRIVY_VERSION="${1:-0.58.2}"
 DEST_DIR=".trivy-cache"
@@ -20,13 +20,13 @@ download_trivy() {
     case "$os" in
         linux)  trivy_os="Linux" ;;
         darwin) trivy_os="macOS" ;;
-        *)      echo "Skipping unsupported OS: $os"; return ;;
+        *)      echo "Skipping unsupported OS: $os"; return 0 ;;
     esac
 
     case "$arch" in
         amd64) trivy_arch="64bit" ;;
         arm64) trivy_arch="ARM64" ;;
-        *)     echo "Skipping unsupported arch: $arch"; return ;;
+        *)     echo "Skipping unsupported arch: $arch"; return 0 ;;
     esac
 
     ext="tar.gz"
@@ -37,14 +37,17 @@ download_trivy() {
     mkdir -p "$out_dir"
 
     echo "Downloading Trivy ${TRIVY_VERSION} for ${os}/${arch}..."
-    if curl -sSL -o "${out_dir}/${filename}" "$url"; then
+    local http_code
+    http_code=$(curl -sSL -o "${out_dir}/${filename}" -w "%{http_code}" "$url" 2>/dev/null) || true
+    if [ "$http_code" = "200" ] && file "${out_dir}/${filename}" | grep -q "gzip"; then
         echo "Extracting ${filename}..."
         tar -xzf "${out_dir}/${filename}" -C "$out_dir" trivy
         rm -f "${out_dir}/${filename}"
         chmod +x "${out_dir}/trivy"
         echo "Done: ${out_dir}/trivy"
     else
-        echo "Warning: Failed to download Trivy for ${os}/${arch}"
+        echo "Warning: Failed to download Trivy for ${os}/${arch} (HTTP ${http_code}), skipping..."
+        rm -f "${out_dir}/${filename}"
     fi
 }
 
