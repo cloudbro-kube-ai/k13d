@@ -886,7 +886,7 @@ func (s *Server) Start() error {
 				}
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-				w.Write([]byte(html))
+				_, _ = w.Write([]byte(html))
 				return
 			}
 		}
