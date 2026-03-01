@@ -5,6 +5,18 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.5] - 2026-03-01
+
+### Fixed
+- **Web UI: Login form visibility**: Fixed login form input fields not visible due to CSS specificity conflict between inline `style.display` and class-based `.active` rules — unified all form toggling to use `classList`
+- **Web UI: Auth mode form selection**: Correct login form (password vs token) now displayed based on `-auth-mode` flag via server-side HTML injection of `window.__AUTH_MODE__` and inline `style="display:block"`
+- **Web UI: Login page layout**: Fixed K13D ASCII logo being pushed to the right by adding `overflow: hidden` to `.login-ascii-logo`
+- **Web UI: JS syntax error**: Removed orphan code fragment (`") {"` with duplicate `fetchWithAuth` body) at line 723 that prevented all JavaScript from executing
+- **Web UI: renderTableBody undefined**: Defined missing `generateRowHTML()` and `renderTableBody()` functions that were referenced but never implemented, causing `ReferenceError` on resource table rendering
+- **Web UI: Infinite reload loop**: Fixed `loadClusterContexts()` being called at global scope before authentication, triggering 401 → `logout()` → `location.reload()` cycle. Moved into `showApp()` and added login page detection in `fetchWithAuth` to prevent auto-logout during login
+- **AI Client: Lint error**: Fixed unchecked `w.Write` error return in `pkg/ai/client.go`
+- **Web Server: Lint error**: Fixed unchecked `w.Write` error return in server-side HTML injection handler
+
 ## [0.8.6] - 2026-02-22
 
 ### Security
