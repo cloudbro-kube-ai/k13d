@@ -46,8 +46,11 @@ download_trivy() {
         chmod +x "${out_dir}/trivy"
         echo "Done: ${out_dir}/trivy"
     else
-        echo "Warning: Failed to download Trivy for ${os}/${arch} (HTTP ${http_code}), skipping..."
+        echo "Warning: Failed to download Trivy for ${os}/${arch} (HTTP ${http_code}), creating stub..."
         rm -f "${out_dir}/${filename}"
+        # Create stub so goreleaser archive doesn't fail on missing file
+        printf '#!/bin/sh\necho "Trivy not bundled. Install separately: https://github.com/aquasecurity/trivy"\nexit 1\n' > "${out_dir}/trivy"
+        chmod +x "${out_dir}/trivy"
     fi
 }
 
