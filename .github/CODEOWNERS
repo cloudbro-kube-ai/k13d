@@ -1,0 +1,17 @@
+# CODEOWNERS — auto-assigns reviewers on PRs
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default: project lead reviews everything
+*                           @fjvbn2003
+
+# CI / release — require explicit review
+.github/                    @fjvbn2003
+.goreleaser.yaml            @fjvbn2003
+Makefile                    @fjvbn2003
+
+# Security-sensitive files
+pkg/web/auth.go             @fjvbn2003
+pkg/web/jwt.go              @fjvbn2003
+pkg/web/ldap.go             @fjvbn2003
+pkg/ai/safety/              @fjvbn2003
+SECURITY.md                 @fjvbn2003
