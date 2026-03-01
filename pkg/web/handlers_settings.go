@@ -304,9 +304,10 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 
 		// Also persist LLM settings to SQLite so DB stays in sync after restart
 		llmDBSettings := map[string]string{
-			"llm.provider": s.cfg.LLM.Provider,
-			"llm.model":    s.cfg.LLM.Model,
-			"llm.endpoint": s.cfg.LLM.Endpoint,
+			"llm.active_model": s.cfg.ActiveModel,
+			"llm.provider":     s.cfg.LLM.Provider,
+			"llm.model":        s.cfg.LLM.Model,
+			"llm.endpoint":     s.cfg.LLM.Endpoint,
 		}
 		if s.cfg.LLM.APIKey != "" {
 			llmDBSettings["llm.api_key"] = s.cfg.LLM.APIKey

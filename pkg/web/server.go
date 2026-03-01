@@ -168,27 +168,39 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 
 	fmt.Printf("Starting k13d web server...\n")
 
-	// Load LLM settings from SQLite if available (web UI takes precedence over YAML)
+	// Load LLM settings from SQLite if available
+	// If user edited config.yaml's active_model, YAML takes precedence;
+	// otherwise DB settings (from Web UI) take precedence.
 	if llmSettings, dbErr := db.GetWebSettingsWithPrefix("llm."); dbErr == nil && len(llmSettings) > 0 {
-		if v, ok := llmSettings["llm.provider"]; ok && v != "" {
-			cfg.LLM.Provider = v
+		dbActiveModel := llmSettings["llm.active_model"]
+
+		if dbActiveModel != "" && dbActiveModel != cfg.ActiveModel {
+			// User changed active_model in config.yaml → YAML wins
+			// Re-apply the profile from YAML (already done by config.Load → SetActiveModel)
+			fmt.Printf("  LLM Settings: active_model changed in config.yaml (%s → %s), using YAML\n",
+				dbActiveModel, cfg.ActiveModel)
+		} else {
+			// DB matches YAML or no active_model in DB → use DB overrides
+			if v, ok := llmSettings["llm.provider"]; ok && v != "" {
+				cfg.LLM.Provider = v
+			}
+			if v, ok := llmSettings["llm.model"]; ok && v != "" {
+				cfg.LLM.Model = v
+			}
+			if v, ok := llmSettings["llm.endpoint"]; ok && v != "" {
+				cfg.LLM.Endpoint = v
+			}
+			if v, ok := llmSettings["llm.api_key"]; ok && v != "" {
+				cfg.LLM.APIKey = v
+			}
+			if v, ok := llmSettings["llm.use_json_mode"]; ok {
+				cfg.LLM.UseJSONMode = v == "true"
+			}
+			if v, ok := llmSettings["llm.reasoning_effort"]; ok && v != "" {
+				cfg.LLM.ReasoningEffort = v
+			}
+			fmt.Printf("  LLM Settings: Loaded from SQLite\n")
 		}
-		if v, ok := llmSettings["llm.model"]; ok && v != "" {
-			cfg.LLM.Model = v
-		}
-		if v, ok := llmSettings["llm.endpoint"]; ok && v != "" {
-			cfg.LLM.Endpoint = v
-		}
-		if v, ok := llmSettings["llm.api_key"]; ok && v != "" {
-			cfg.LLM.APIKey = v
-		}
-		if v, ok := llmSettings["llm.use_json_mode"]; ok {
-			cfg.LLM.UseJSONMode = v == "true"
-		}
-		if v, ok := llmSettings["llm.reasoning_effort"]; ok && v != "" {
-			cfg.LLM.ReasoningEffort = v
-		}
-		fmt.Printf("  LLM Settings: Loaded from SQLite\n")
 	}
 
 	// Load tool approval settings from SQLite if available
