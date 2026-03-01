@@ -136,7 +136,7 @@ func (c *Client) TestConnection(ctx context.Context) *ConnectionStatus {
 		toolErr := c.AskWithToolsAndExecution(ctx, "Say 'OK' without using any tools.", func(s string) {}, func(toolName string, args string) bool {
 			return false
 		}, nil)
-		
+
 		if toolErr != nil {
 			status.Connected = false
 			status.Error = "tool calling 모델이 필요함"
