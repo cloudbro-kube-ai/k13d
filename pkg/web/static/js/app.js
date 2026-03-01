@@ -1265,6 +1265,12 @@ function updateResourceSummary(resource, items) {
 }
 
 function renderTable(resource, items) {
+    // Delegate to renderTableBody (defined later, hoisted at runtime)
+    if (typeof renderTableBody === 'function') {
+        renderTableBody(resource, items);
+        return;
+    }
+    // Fallback (should not reach here)
     switch (resource) {
         case 'pods':
             const containers = item.containers || ['default'];
@@ -9761,18 +9767,10 @@ function showToast(message, type) {
     }
 });
 
-// Override renderTableBody to add action buttons for pods
-const baseRenderTableBody = renderTableBody;
-renderTableBody = function (resource, items) {
+// Generate HTML for a single table row
+function generateRowHTML(resource, item, index) {
     const headers = tableHeaders[resource];
-    if (!items || items.length === 0) {
-        document.getElementById('table-body').innerHTML =
-            `<tr><td colspan="${headers ? headers.length : 1}" style="text-align:center;padding:40px;">No ${resource} found</td></tr>`;
-        return;
-    }
-
-    document.getElementById('table-body').innerHTML = items.map((item, index) => {
-        switch (resource) {
+    switch (resource) {
             case 'pods':
                 const podContainers = item.containers || ['default'];
                 const podContainersJson = JSON.stringify(podContainers).replace(/'/g, "\\'");
@@ -9823,19 +9821,26 @@ renderTableBody = function (resource, items) {
                 return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.reference || '-'}</td><td>${item.minReplicas || '-'}</td><td>${item.maxReplicas || '-'}</td><td>${item.replicas || '-'}</td><td>${item.age}</td></tr>`;
             default:
                 // Handle CRDs and unknown types with fallback
-                if (resource.startsWith('crd:')) {
-                    return baseRenderTableBody.call(this, resource, [item]).replace(/<tbody[^>]*>|<\/tbody>/g, '');
-                }
-                // Generic fallback for any unhandled resource
+                // Generic fallback for CRDs and unknown resource types
                 const values = (headers || ['NAME']).map(h => {
                     const key = h.toLowerCase().replace(/[- ]/g, '');
                     return item[key] || item[h] || item.name || '-';
                 });
-                return `<tr data-index="${index}">${values.map(v => `<td>${v}</td>`).join('')}</tr>`;
-        }
-    }).join('');
+                return `<tr data-index="${index}">${values.map(v => `<td>${escapeHtml(String(v))}</td>`).join('')}</tr>`;
+    }
+}
+
+// Render table body using generateRowHTML
+function renderTableBody(resource, items) {
+    const headers = tableHeaders[resource];
+    if (!items || items.length === 0) {
+        document.getElementById('table-body').innerHTML =
+            `<tr><td colspan="${headers ? headers.length : 1}" style="text-align:center;padding:40px;">No ${resource} found</td></tr>`;
+        return;
+    }
+    document.getElementById('table-body').innerHTML = items.map((item, index) => generateRowHTML(resource, item, index)).join('');
     addRowClickHandlers();
-};
+}
 
 // Add Metrics nav item
 setTimeout(() => {
