@@ -2240,3 +2240,54 @@ var (
 	_ ToolProvider = (*EmbeddedProvider)(nil)
 	_ ToolProvider = (*retryProvider)(nil)
 )
+
+func TestFunctionCall_UnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		jsonStr string
+		want    FunctionCall
+		wantErr bool
+	}{
+		{
+			name:    "string arguments (OpenAI format)",
+			jsonStr: `{"name":"get_pods","arguments":"{\"namespace\":\"default\"}"}`,
+			want:    FunctionCall{Name: "get_pods", Arguments: `{"namespace":"default"}`},
+			wantErr: false,
+		},
+		{
+			name:    "object arguments (Ollama format)",
+			jsonStr: `{"name":"get_pods","arguments":{"namespace":"default"}}`,
+			want:    FunctionCall{Name: "get_pods", Arguments: `{"namespace":"default"}`},
+			wantErr: false,
+		},
+		{
+			name:    "empty arguments string",
+			jsonStr: `{"name":"get_pods","arguments":""}`,
+			want:    FunctionCall{Name: "get_pods", Arguments: ""},
+			wantErr: false,
+		},
+		{
+			name:    "empty arguments object",
+			jsonStr: `{"name":"get_pods","arguments":{}}`,
+			want:    FunctionCall{Name: "get_pods", Arguments: `{}`},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got FunctionCall
+			err := json.Unmarshal([]byte(tt.jsonStr), &got)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("UnmarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got.Name != tt.want.Name {
+				t.Errorf("Name = %v, want %v", got.Name, tt.want.Name)
+			}
+			if got.Arguments != tt.want.Arguments {
+				t.Errorf("Arguments = %v, want %v", got.Arguments, tt.want.Arguments)
+			}
+		})
+	}
+}

@@ -26,7 +26,7 @@ func setupXRayTestServer(t *testing.T) *Server {
 	replicas := int32(2)
 	completions := int32(1)
 
-	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		// Deployment
 		&appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{

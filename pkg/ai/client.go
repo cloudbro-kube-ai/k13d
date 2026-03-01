@@ -130,6 +130,26 @@ func (c *Client) TestConnection(ctx context.Context) *ConnectionStatus {
 		return status
 	}
 
+	// Validate tool calling capability as explicitly requested
+	if c.SupportsTools() {
+		// Run a simple query with tools to see if the model/API accepts it
+		toolErr := c.AskWithToolsAndExecution(ctx, "Say 'OK' without using any tools.", func(s string) {}, func(toolName string, args string) bool {
+			return false
+		}, nil)
+		
+		if toolErr != nil {
+			status.Connected = false
+			status.Error = "tool calling 모델이 필요함"
+			status.Message = fmt.Sprintf("Model %s successfully generated text but failed tool calling test: %v", status.Model, toolErr)
+			return status
+		}
+	} else {
+		status.Connected = false
+		status.Error = "tool calling 모델이 필요함"
+		status.Message = fmt.Sprintf("Provider %s does not support tool calling", status.Provider)
+		return status
+	}
+
 	status.Connected = true
 	status.Message = fmt.Sprintf("Successfully connected to %s (%s)", status.Provider, status.Model)
 	return status

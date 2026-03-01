@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -25,6 +26,7 @@
     <link rel="stylesheet" href="css/views.css" />
     <link rel="stylesheet" href="css/animations.css" />
 </head>
+
 <body>
     <!-- Login Page -->
     <div class="login-container" id="login-page">
@@ -38,12 +40,12 @@
 
             <!-- ASCII Art Logo -->
             <div class="login-ascii-logo">
- ██╗  ██╗ ██╗██████╗ ██████╗
- ██║ ██╔╝███║╚════██╗██╔══██╗
- █████╔╝ ╚██║ █████╔╝██║  ██║
- ██╔═██╗  ██║ ╚═══██╗██║  ██║
- ██║  ██╗ ██║██████╔╝██████╔╝
- ╚═╝  ╚═╝ ╚═╝╚═════╝ ╚═════╝</div>
+                ██╗ ██╗ ██╗██████╗ ██████╗
+                ██║ ██╔╝███║╚════██╗██╔══██╗
+                █████╔╝ ╚██║ █████╔╝██║ ██║
+                ██╔═██╗ ██║ ╚═══██╗██║ ██║
+                ██║ ██╗ ██║██████╔╝██████╔╝
+                ╚═╝ ╚═╝ ╚═╝╚═════╝ ╚═════╝</div>
             <h1>k13d</h1>
             <div class="login-subtitle"><span>kube-ai-dashboard</span></div>
 
@@ -90,7 +92,8 @@
                     </div>
                 </div>
                 <label for="login-token" class="sr-only">Kubernetes Token</label>
-                <textarea id="login-token" class="token-input" placeholder="eyJhbGciOiJSUzI1NiIs..." aria-label="Kubernetes service account token" onkeydown="handleTokenKeydown(event)"></textarea>
+                <textarea id="login-token" class="token-input" placeholder="eyJhbGciOiJSUzI1NiIs..."
+                    aria-label="Kubernetes service account token" onkeydown="handleTokenKeydown(event)"></textarea>
                 <button class="login-btn" onclick="loginWithToken()">🚀 Sign In with Token</button>
             </div>
 
@@ -101,9 +104,11 @@
                     <div style="font-size: 11px; color: var(--text-muted);">관리자에게 계정 정보를 문의하세요</div>
                 </div>
                 <label for="login-username" class="sr-only">Username</label>
-                <input type="text" id="login-username" placeholder="Username" aria-label="Username" autocomplete="username" onkeydown="handlePasswordKeydown(event)">
+                <input type="text" id="login-username" placeholder="Username" aria-label="Username"
+                    autocomplete="username" onkeydown="handlePasswordKeydown(event)">
                 <label for="login-password" class="sr-only">Password</label>
-                <input type="password" id="login-password" placeholder="Password" aria-label="Password" autocomplete="current-password" onkeydown="handlePasswordKeydown(event)">
+                <input type="password" id="login-password" placeholder="Password" aria-label="Password"
+                    autocomplete="current-password" onkeydown="handlePasswordKeydown(event)">
                 <button class="login-btn" onclick="login()">🚀 Sign In</button>
             </div>
 
@@ -111,14 +116,15 @@
             <div class="login-footer">
                 <div class="login-k8s-badge">
                     <svg viewBox="0 0 32 32" fill="currentColor">
-                        <path d="M16 0C7.2 0 0 7.2 0 16s7.2 16 16 16 16-7.2 16-16S24.8 0 16 0zm0 2c7.7 0 14 6.3 14 14s-6.3 14-14 14S2 23.7 2 16 8.3 2 16 2z"/>
-                        <circle cx="16" cy="16" r="4"/>
-                        <circle cx="16" cy="6" r="2"/>
-                        <circle cx="24.5" cy="11" r="2"/>
-                        <circle cx="24.5" cy="21" r="2"/>
-                        <circle cx="16" cy="26" r="2"/>
-                        <circle cx="7.5" cy="21" r="2"/>
-                        <circle cx="7.5" cy="11" r="2"/>
+                        <path
+                            d="M16 0C7.2 0 0 7.2 0 16s7.2 16 16 16 16-7.2 16-16S24.8 0 16 0zm0 2c7.7 0 14 6.3 14 14s-6.3 14-14 14S2 23.7 2 16 8.3 2 16 2z" />
+                        <circle cx="16" cy="16" r="4" />
+                        <circle cx="16" cy="6" r="2" />
+                        <circle cx="24.5" cy="11" r="2" />
+                        <circle cx="24.5" cy="21" r="2" />
+                        <circle cx="16" cy="26" r="2" />
+                        <circle cx="7.5" cy="21" r="2" />
+                        <circle cx="7.5" cy="11" r="2" />
                     </svg>
                     Powered by Kubernetes
                 </div>
@@ -134,7 +140,8 @@
         <!-- Top Bar -->
         <div class="top-bar" role="banner">
             <div style="display: flex; align-items: center;">
-                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Toggle Sidebar (B)" aria-label="Toggle navigation" aria-expanded="false">
+                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Toggle Sidebar (B)"
+                    aria-label="Toggle navigation" aria-expanded="false">
                     <span class="hamburger-line"></span>
                     <span class="hamburger-line"></span>
                     <span class="hamburger-line"></span>
@@ -148,7 +155,9 @@
             </div>
             <div class="search-container">
                 <span class="search-icon">🔍</span>
-                <input type="text" class="global-search" id="global-search" placeholder="Search all resources..." oninput="handleGlobalSearchInput(event)" onkeydown="handleGlobalSearchKeydown(event)" onfocus="showSearchResults()" autocomplete="off">
+                <input type="text" class="global-search" id="global-search" placeholder="Search all resources..."
+                    oninput="handleGlobalSearchInput(event)" onkeydown="handleGlobalSearchKeydown(event)"
+                    onfocus="showSearchResults()" autocomplete="off">
                 <span class="search-shortcut">⌘K</span>
                 <div class="search-results" id="search-results"></div>
             </div>
@@ -171,14 +180,18 @@
             </div>
             <div class="auto-refresh-container">
                 <button class="refresh-btn" onclick="manualRefresh()" title="Refresh now" aria-label="Refresh now">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path d="M23 4v6h-6M1 20v-6h6"/>
-                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        aria-hidden="true">
+                        <path d="M23 4v6h-6M1 20v-6h6" />
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                     </svg>
                 </button>
                 <span style="color: var(--text-secondary);">Auto:</span>
-                <div class="auto-refresh-toggle" id="auto-refresh-toggle" onclick="toggleAutoRefresh()" title="Toggle auto-refresh" role="switch" tabindex="0" aria-checked="false" aria-label="Toggle auto-refresh"></div>
-                <select class="refresh-interval-select" id="refresh-interval" onchange="setAutoRefreshInterval(this.value)" title="Refresh interval">
+                <div class="auto-refresh-toggle" id="auto-refresh-toggle" onclick="toggleAutoRefresh()"
+                    title="Toggle auto-refresh" role="switch" tabindex="0" aria-checked="false"
+                    aria-label="Toggle auto-refresh"></div>
+                <select class="refresh-interval-select" id="refresh-interval"
+                    onchange="setAutoRefreshInterval(this.value)" title="Refresh interval">
                     <option value="10">10s</option>
                     <option value="30" selected>30s</option>
                     <option value="60">1m</option>
@@ -205,127 +218,158 @@
                 <!-- Mobile header with close button -->
                 <div class="sidebar-mobile-header">
                     <span class="sidebar-mobile-title">Navigation</span>
-                    <button class="sidebar-close-btn" onclick="toggleSidebar()" title="Close" aria-label="Close sidebar">&times;</button>
+                    <button class="sidebar-close-btn" onclick="toggleSidebar()" title="Close"
+                        aria-label="Close sidebar">&times;</button>
                 </div>
                 <div class="nav-section">
-                    <div class="nav-item" data-resource="overview" onclick="showOverviewPanel()" style="font-weight: 600; margin-bottom: 8px;" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="overview" onclick="showOverviewPanel()"
+                        style="font-weight: 600; margin-bottom: 8px;" role="button" tabindex="0">
                         <span>Overview</span>
                     </div>
                 </div>
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Workloads<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item active" data-resource="pods" onclick="switchResource('pods')" role="button" tabindex="0">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Workloads<span
+                            class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item active" data-resource="pods" onclick="switchResource('pods')" role="button"
+                        tabindex="0">
                         <span>Pods</span>
                         <span class="count" id="pods-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="deployments" onclick="switchResource('deployments')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="deployments" onclick="switchResource('deployments')"
+                        role="button" tabindex="0">
                         <span>Deployments</span>
                         <span class="count" id="deployments-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="daemonsets" onclick="switchResource('daemonsets')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="daemonsets" onclick="switchResource('daemonsets')"
+                        role="button" tabindex="0">
                         <span>DaemonSets</span>
                         <span class="count" id="daemonsets-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="statefulsets" onclick="switchResource('statefulsets')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="statefulsets" onclick="switchResource('statefulsets')"
+                        role="button" tabindex="0">
                         <span>StatefulSets</span>
                         <span class="count" id="statefulsets-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="replicasets" onclick="switchResource('replicasets')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="replicasets" onclick="switchResource('replicasets')"
+                        role="button" tabindex="0">
                         <span>ReplicaSets</span>
                         <span class="count" id="replicasets-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="jobs" onclick="switchResource('jobs')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="jobs" onclick="switchResource('jobs')" role="button"
+                        tabindex="0">
                         <span>Jobs</span>
                         <span class="count" id="jobs-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="cronjobs" onclick="switchResource('cronjobs')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="cronjobs" onclick="switchResource('cronjobs')" role="button"
+                        tabindex="0">
                         <span>CronJobs</span>
                         <span class="count" id="cronjobs-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Network<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="services" onclick="switchResource('services')" role="button" tabindex="0">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Network<span
+                            class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="services" onclick="switchResource('services')" role="button"
+                        tabindex="0">
                         <span>Services</span>
                         <span class="count" id="services-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="ingresses" onclick="switchResource('ingresses')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="ingresses" onclick="switchResource('ingresses')" role="button"
+                        tabindex="0">
                         <span>Ingresses</span>
                         <span class="count" id="ingresses-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="networkpolicies" onclick="switchResource('networkpolicies')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="networkpolicies" onclick="switchResource('networkpolicies')"
+                        role="button" tabindex="0">
                         <span>NetworkPolicies</span>
                         <span class="count" id="networkpolicies-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Config<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="configmaps" onclick="switchResource('configmaps')" role="button" tabindex="0">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Config<span
+                            class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="configmaps" onclick="switchResource('configmaps')"
+                        role="button" tabindex="0">
                         <span>ConfigMaps</span>
                         <span class="count" id="configmaps-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="secrets" onclick="switchResource('secrets')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="secrets" onclick="switchResource('secrets')" role="button"
+                        tabindex="0">
                         <span>Secrets</span>
                         <span class="count" id="secrets-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="serviceaccounts" onclick="switchResource('serviceaccounts')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="serviceaccounts" onclick="switchResource('serviceaccounts')"
+                        role="button" tabindex="0">
                         <span>ServiceAccounts</span>
                         <span class="count" id="serviceaccounts-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Storage<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="persistentvolumes" onclick="switchResource('persistentvolumes')" role="button" tabindex="0">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Storage<span
+                            class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="persistentvolumes"
+                        onclick="switchResource('persistentvolumes')" role="button" tabindex="0">
                         <span>PersistentVolumes</span>
                         <span class="count" id="persistentvolumes-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="persistentvolumeclaims" onclick="switchResource('persistentvolumeclaims')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="persistentvolumeclaims"
+                        onclick="switchResource('persistentvolumeclaims')" role="button" tabindex="0">
                         <span>PVCs</span>
                         <span class="count" id="persistentvolumeclaims-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Cluster<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="nodes" onclick="switchResource('nodes')" role="button" tabindex="0">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Cluster<span
+                            class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="nodes" onclick="switchResource('nodes')" role="button"
+                        tabindex="0">
                         <span>Nodes</span>
                         <span class="count" id="nodes-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="namespaces" onclick="switchResource('namespaces')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="namespaces" onclick="switchResource('namespaces')"
+                        role="button" tabindex="0">
                         <span>Namespaces</span>
                         <span class="count" id="namespaces-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="events" onclick="switchResource('events')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="events" onclick="switchResource('events')" role="button"
+                        tabindex="0">
                         <span>Events</span>
                         <span class="count" id="events-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">RBAC<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="roles" onclick="switchResource('roles')" role="button" tabindex="0">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">RBAC<span
+                            class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="roles" onclick="switchResource('roles')" role="button"
+                        tabindex="0">
                         <span>Roles</span>
                         <span class="count" id="roles-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="rolebindings" onclick="switchResource('rolebindings')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="rolebindings" onclick="switchResource('rolebindings')"
+                        role="button" tabindex="0">
                         <span>RoleBindings</span>
                         <span class="count" id="rolebindings-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="clusterroles" onclick="switchResource('clusterroles')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="clusterroles" onclick="switchResource('clusterroles')"
+                        role="button" tabindex="0">
                         <span>ClusterRoles</span>
                         <span class="count" id="clusterroles-count">0</span>
                     </div>
-                    <div class="nav-item" data-resource="clusterrolebindings" onclick="switchResource('clusterrolebindings')" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="clusterrolebindings"
+                        onclick="switchResource('clusterrolebindings')" role="button" tabindex="0">
                         <span>ClusterRoleBindings</span>
                         <span class="count" id="clusterrolebindings-count">0</span>
                     </div>
                 </div>
 
                 <div class="nav-section" id="crd-nav-section">
-                    <div class="nav-title" style="display: flex; justify-content: space-between; align-items: center;" onclick="toggleNavSection(this)" role="button" tabindex="0">
+                    <div class="nav-title" style="display: flex; justify-content: space-between; align-items: center;"
+                        onclick="toggleNavSection(this)" role="button" tabindex="0">
                         Custom Resources
                         <span class="count" id="crd-count" style="font-size: 10px;">0</span>
                         <span class="nav-section-arrow">▾</span>
@@ -336,27 +380,34 @@
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Visualization<span class="nav-section-arrow">▾</span></div>
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">
+                        Visualization<span class="nav-section-arrow">▾</span></div>
                     <div class="nav-item" data-resource="topology" onclick="showTopology()" role="button" tabindex="0">
                         <span>Topology</span>
                     </div>
-                    <div class="nav-item" data-resource="applications" onclick="showApplicationsView()" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="applications" onclick="showApplicationsView()" role="button"
+                        tabindex="0">
                         <span>Applications</span>
                     </div>
-                    <div class="nav-item" data-resource="rbac-viz" onclick="showRBACVizView()" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="rbac-viz" onclick="showRBACVizView()" role="button"
+                        tabindex="0">
                         <span>RBAC Viewer</span>
                     </div>
-                    <div class="nav-item" data-resource="netpol-viz" onclick="showNetPolVizView()" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="netpol-viz" onclick="showNetPolVizView()" role="button"
+                        tabindex="0">
                         <span>Net Policy Map</span>
                     </div>
-                    <div class="nav-item" data-resource="timeline" onclick="showTimelineView()" role="button" tabindex="0">
+                    <div class="nav-item" data-resource="timeline" onclick="showTimelineView()" role="button"
+                        tabindex="0">
                         <span>Event Timeline</span>
                     </div>
                 </div>
 
                 <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Monitoring<span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="metrics" onclick="showMetricsDashboard()" role="button" tabindex="0">
+                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">Monitoring<span
+                            class="nav-section-arrow">▾</span></div>
+                    <div class="nav-item" data-resource="metrics" onclick="showMetricsDashboard()" role="button"
+                        tabindex="0">
                         <span>Metrics</span>
                     </div>
                     <div class="nav-item" onclick="showAuditLogs()" role="button" tabindex="0">
@@ -380,18 +431,22 @@
                                 <option value="">All Namespaces</option>
                             </select>
                             <button class="refresh-btn" onclick="refreshData()">↻ Refresh</button>
-                            <button class="ai-toggle-btn" id="ai-toggle-btn" onclick="toggleAIPanel()" title="Toggle AI Assistant (Ctrl+A)" aria-label="Toggle AI Assistant">🤖</button>
+                            <button class="ai-toggle-btn" id="ai-toggle-btn" onclick="toggleAIPanel()"
+                                title="Toggle AI Assistant (Ctrl+A)" aria-label="Toggle AI Assistant">🤖</button>
                         </div>
                     </div>
                     <div class="filter-bar">
                         <span style="font-size: 12px; color: var(--text-secondary);">Filter:</span>
-                        <input type="text" class="filter-input" id="filter-input" placeholder="Type to filter..." onkeyup="handleFilter(event)">
-                        <button class="filter-toggle-btn" id="column-filter-toggle" onclick="toggleColumnFilters()" title="Toggle column filters (Ctrl+F)">
+                        <input type="text" class="filter-input" id="filter-input" placeholder="Type to filter..."
+                            onkeyup="handleFilter(event)">
+                        <button class="filter-toggle-btn" id="column-filter-toggle" onclick="toggleColumnFilters()"
+                            title="Toggle column filters (Ctrl+F)">
                             <span>⊞</span> Columns
                         </button>
                         <div id="filter-chips"></div>
                         <div class="active-filters" id="active-column-filters"></div>
-                        <span style="font-size: 11px; color: var(--text-secondary); margin-left: auto;">/ filter | Ctrl+F columns</span>
+                        <span style="font-size: 11px; color: var(--text-secondary); margin-left: auto;">/ filter |
+                            Ctrl+F columns</span>
                     </div>
                     <div class="table-container">
                         <table>
@@ -412,9 +467,11 @@
                                 <option value="200">200 / page</option>
                                 <option value="-1">All</option>
                             </select>
-                            <button class="pagination-btn" id="prev-page-btn" onclick="goToPrevPage()" disabled>← Prev</button>
+                            <button class="pagination-btn" id="prev-page-btn" onclick="goToPrevPage()" disabled>←
+                                Prev</button>
                             <span id="page-indicator">1 / 1</span>
-                            <button class="pagination-btn" id="next-page-btn" onclick="goToNextPage()" disabled>Next →</button>
+                            <button class="pagination-btn" id="next-page-btn" onclick="goToNextPage()" disabled>Next
+                                →</button>
                         </div>
                     </div>
                 </div>
@@ -440,33 +497,50 @@
                             <option value="PVC">PVCs</option>
                             <option value="HPA">HPAs</option>
                         </select>
-                        <input type="text" id="topology-search" placeholder="Search resources..." oninput="filterTopologyGraph(this.value)">
+                        <input type="text" id="topology-search" placeholder="Search resources..."
+                            oninput="filterTopologyGraph(this.value)">
                         <div class="toolbar-separator"></div>
                         <button onclick="topologyFitView()">Fit</button>
                         <button onclick="clearTopologyFocus()">Show All</button>
                         <button onclick="loadTopology()">↻ Refresh</button>
                         <div class="toolbar-separator"></div>
-                        <button onclick="showTopologyTreeView()" title="View resource ownership as a tree">Tree View</button>
+                        <button onclick="showTopologyTreeView()" title="View resource ownership as a tree">Tree
+                            View</button>
                         <div class="toolbar-separator"></div>
-                        <label><input type="checkbox" id="topology-show-configmaps" onchange="loadTopology()"> ConfigMaps</label>
-                        <label><input type="checkbox" id="topology-show-secrets" onchange="loadTopology()"> Secrets</label>
-                        <label><input type="checkbox" id="topology-show-netpol" onchange="loadTopology()"> Network Policies</label>
+                        <label><input type="checkbox" id="topology-show-configmaps" onchange="loadTopology()">
+                            ConfigMaps</label>
+                        <label><input type="checkbox" id="topology-show-secrets" onchange="loadTopology()">
+                            Secrets</label>
+                        <label><input type="checkbox" id="topology-show-netpol" onchange="loadTopology()"> Network
+                            Policies</label>
                         <div class="topology-legend">
-                            <div class="topology-legend-item"><div class="topology-legend-dot" style="background: var(--accent-green);"></div> Running</div>
-                            <div class="topology-legend-item"><div class="topology-legend-dot" style="background: var(--accent-yellow);"></div> Pending</div>
-                            <div class="topology-legend-item"><div class="topology-legend-dot" style="background: var(--accent-red);"></div> Failed</div>
-                            <div class="topology-legend-item"><div class="topology-legend-dot" style="background: var(--accent-blue);"></div> Succeeded</div>
+                            <div class="topology-legend-item">
+                                <div class="topology-legend-dot" style="background: var(--accent-green);"></div> Running
+                            </div>
+                            <div class="topology-legend-item">
+                                <div class="topology-legend-dot" style="background: var(--accent-yellow);"></div>
+                                Pending
+                            </div>
+                            <div class="topology-legend-item">
+                                <div class="topology-legend-dot" style="background: var(--accent-red);"></div> Failed
+                            </div>
+                            <div class="topology-legend-item">
+                                <div class="topology-legend-dot" style="background: var(--accent-blue);"></div>
+                                Succeeded
+                            </div>
                         </div>
                     </div>
                     <div id="topology-graph"></div>
                     <div id="topology-detail">
                         <div class="topology-detail-header">
                             <h3 id="topology-detail-title">Resource</h3>
-                            <button class="topology-detail-close" onclick="closeTopologyDetail()" aria-label="Close topology detail">&times;</button>
+                            <button class="topology-detail-close" onclick="closeTopologyDetail()"
+                                aria-label="Close topology detail">&times;</button>
                         </div>
                         <div class="topology-detail-body" id="topology-detail-body"></div>
                         <div class="topology-detail-actions">
-                            <button id="topology-view-dashboard-btn" onclick="topologyNavigateToDashboard()">View in Dashboard</button>
+                            <button id="topology-view-dashboard-btn" onclick="topologyNavigateToDashboard()">View in
+                                Dashboard</button>
                         </div>
                     </div>
                 </div>
@@ -476,8 +550,10 @@
                     <div class="custom-view-toolbar">
                         <h2>Cluster Overview</h2>
                         <div style="display:flex;gap:8px;align-items:center;">
-                            <span class="overview-context" id="overview-context" style="color:var(--text-secondary);font-size:12px;"></span>
-                            <button onclick="loadOverviewData()" style="padding:6px 12px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;">Refresh</button>
+                            <span class="overview-context" id="overview-context"
+                                style="color:var(--text-secondary);font-size:12px;"></span>
+                            <button onclick="loadOverviewData()"
+                                style="padding:6px 12px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;">Refresh</button>
                         </div>
                     </div>
                     <div class="custom-view-body" id="overview-body">
@@ -516,12 +592,16 @@
                                 <h3>Quick Actions</h3>
                                 <div class="overview-actions">
                                     <button class="overview-action-btn" onclick="switchResource('pods')">Pods</button>
-                                    <button class="overview-action-btn" onclick="switchResource('deployments')">Deployments</button>
-                                    <button class="overview-action-btn" onclick="switchResource('services')">Services</button>
+                                    <button class="overview-action-btn"
+                                        onclick="switchResource('deployments')">Deployments</button>
+                                    <button class="overview-action-btn"
+                                        onclick="switchResource('services')">Services</button>
                                     <button class="overview-action-btn" onclick="switchResource('nodes')">Nodes</button>
                                     <button class="overview-action-btn" onclick="showTopology()">Topology</button>
-                                    <button class="overview-action-btn" onclick="showMetricsDashboard()">Metrics</button>
-                                    <button class="overview-action-btn" onclick="showApplicationsView()">Applications</button>
+                                    <button class="overview-action-btn"
+                                        onclick="showMetricsDashboard()">Metrics</button>
+                                    <button class="overview-action-btn"
+                                        onclick="showApplicationsView()">Applications</button>
                                 </div>
                             </div>
                             <div class="overview-section">
@@ -569,7 +649,8 @@
                             </select>
                             <button onclick="loadTopologyTreeData()">↻ Refresh</button>
                             <div class="toolbar-separator"></div>
-                            <button onclick="showTopology()" title="View resource relationships as a graph">Graph View</button>
+                            <button onclick="showTopology()" title="View resource relationships as a graph">Graph
+                                View</button>
                         </div>
                     </div>
                     <div class="custom-view-body" id="topo-tree-body">
@@ -624,7 +705,10 @@
                                 <option value="">All Namespaces</option>
                             </select>
                             <button onclick="loadNetPolVizData()">↻ Refresh</button>
-                            <button onclick="viewNetPolInTopology(document.getElementById('netpol-viz-ns-select')?.value||'')" style="background:var(--accent-blue);color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;">View in Topology</button>
+                            <button
+                                onclick="viewNetPolInTopology(document.getElementById('netpol-viz-ns-select')?.value||'')"
+                                style="background:var(--accent-blue);color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;">View
+                                in Topology</button>
                         </div>
                     </div>
                     <div class="custom-view-body" id="netpol-viz-body">
@@ -646,7 +730,10 @@
                                 <option value="24" selected>Last 24 hours</option>
                                 <option value="72">Last 3 days</option>
                             </select>
-                            <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);"><input type="checkbox" id="timeline-warnings-only" onchange="loadTimelineData()"> Warnings only</label>
+                            <label
+                                style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);"><input
+                                    type="checkbox" id="timeline-warnings-only" onchange="loadTimelineData()"> Warnings
+                                only</label>
                             <button onclick="loadTimelineData()">↻ Refresh</button>
                         </div>
                     </div>
@@ -667,12 +754,14 @@
                         <div class="chat-history-header">
                             <h4>💬 Chat History</h4>
                             <div class="chat-history-actions">
-                                <button class="chat-history-btn primary" onclick="createNewChat()" title="New Chat">+</button>
+                                <button class="chat-history-btn primary" onclick="createNewChat()"
+                                    title="New Chat">+</button>
                                 <button class="chat-history-btn" onclick="toggleChatHistory()" title="Close">✕</button>
                             </div>
                         </div>
                         <div class="chat-history-search">
-                            <input type="text" id="chat-history-search" placeholder="Search chats..." oninput="filterChatHistory(this.value)">
+                            <input type="text" id="chat-history-search" placeholder="Search chats..."
+                                oninput="filterChatHistory(this.value)">
                         </div>
                         <div class="chat-history-list" id="chat-history-list">
                             <!-- Populated dynamically -->
@@ -680,11 +769,13 @@
                     </div>
 
                     <div class="ai-header">
-                        <button class="chat-history-toggle" id="chat-history-toggle" onclick="toggleChatHistory()" title="Chat History">📋</button>
+                        <button class="chat-history-toggle" id="chat-history-toggle" onclick="toggleChatHistory()"
+                            title="Chat History">📋</button>
                         <span>AI Assistant</span>
                         <span class="ai-status-dot" id="ai-status-dot" title="Checking connection...">●</span>
                         <span class="ai-badge" id="ai-model-badge">Loading...</span>
-                        <button class="debug-toggle" id="debug-toggle" onclick="toggleDebugMode()" style="margin-left: auto;" title="Toggle Debug Mode">🐛 Debug</button>
+                        <button class="debug-toggle" id="debug-toggle" onclick="toggleDebugMode()"
+                            style="margin-left: auto;" title="Toggle Debug Mode">🐛 Debug</button>
                     </div>
                     <!-- Guardrails Status -->
                     <div class="guardrails-status" id="guardrails-status">
@@ -696,7 +787,8 @@
                     </div>
                     <!-- Context chips for selected resources -->
                     <div class="context-chips" id="context-chips">
-                        <span style="font-size: 11px; color: var(--text-secondary);">Context: Click resources to add</span>
+                        <span style="font-size: 11px; color: var(--text-secondary);">Context: Click resources to
+                            add</span>
                     </div>
                     <div class="ai-messages" id="ai-messages">
                         <div class="message assistant">
@@ -725,12 +817,15 @@
                         </div>
                     </div>
                     <div class="ai-input-container" id="ai-input-container">
-                        <textarea class="ai-input" id="ai-input" placeholder="Ask me anything about Kubernetes..." rows="2"></textarea>
+                        <textarea class="ai-input" id="ai-input" placeholder="Ask me anything about Kubernetes..."
+                            rows="2"></textarea>
                         <div class="ai-actions">
                             <span class="ai-hint">Enter send · Shift+Enter newline · ↑↓ history</span>
                             <div class="ai-actions-buttons">
-                                <button class="ai-clear-btn" id="ai-clear-btn" onclick="clearAiInput()" title="Clear input" aria-label="Clear input">&#x2715;</button>
-                                <button class="ai-expand-btn" id="ai-expand-btn" onclick="toggleAiExpand()" title="Expand input area" aria-label="Expand input area">&#x26F6;</button>
+                                <button class="ai-clear-btn" id="ai-clear-btn" onclick="clearAiInput()"
+                                    title="Clear input" aria-label="Clear input">&#x2715;</button>
+                                <button class="ai-expand-btn" id="ai-expand-btn" onclick="toggleAiExpand()"
+                                    title="Expand input area" aria-label="Expand input area">&#x26F6;</button>
                                 <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
                             </div>
                         </div>
@@ -749,13 +844,18 @@
             </div>
             <div class="modal-body">
                 <div class="tabs" role="tablist">
-                    <div class="tab active" role="tab" aria-selected="true" onclick="switchSettingsTab('general')">General</div>
+                    <div class="tab active" role="tab" aria-selected="true" onclick="switchSettingsTab('general')">
+                        General</div>
                     <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('ai')">AI</div>
                     <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('mcp')">MCP</div>
-                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('security')">Security</div>
-                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('metrics')">Metrics</div>
-                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('notifications')">Notifications</div>
-                    <div class="tab" role="tab" aria-selected="false" id="admin-tab" onclick="switchSettingsTab('admin')" style="display:none;">Admin</div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('security')">Security
+                    </div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('metrics')">Metrics
+                    </div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('notifications')">
+                        Notifications</div>
+                    <div class="tab" role="tab" aria-selected="false" id="admin-tab"
+                        onclick="switchSettingsTab('admin')" style="display:none;">Admin</div>
                     <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('about')">About</div>
                 </div>
 
@@ -812,7 +912,8 @@
                                 <div class="settings-label">Enable Streaming</div>
                                 <div class="settings-description">Show AI responses as they're generated</div>
                             </div>
-                            <div class="auto-refresh-toggle" id="setting-streaming" onclick="toggleStreamingSetting()"></div>
+                            <div class="auto-refresh-toggle" id="setting-streaming" onclick="toggleStreamingSetting()">
+                            </div>
                         </div>
                     </div>
                     <div class="settings-section">
@@ -822,7 +923,8 @@
                                 <div class="settings-label">Enable Auto Refresh</div>
                                 <div class="settings-description">Automatically refresh resource data</div>
                             </div>
-                            <div class="auto-refresh-toggle" id="setting-auto-refresh" onclick="toggleAutoRefreshSetting()"></div>
+                            <div class="auto-refresh-toggle" id="setting-auto-refresh"
+                                onclick="toggleAutoRefreshSetting()"></div>
                         </div>
                         <div class="settings-row">
                             <div>
@@ -860,15 +962,20 @@
                 <div id="settings-ai" class="settings-content" style="display:none;">
                     <!-- LLM Connection Status -->
                     <div class="settings-section" style="margin-bottom:16px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg-primary);border-radius:8px;">
+                        <div
+                            style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg-primary);border-radius:8px;">
                             <div style="display:flex;align-items:center;gap:12px;">
-                                <div id="llm-status-indicator" style="width:16px;height:16px;border-radius:50%;background:#888;box-shadow:0 0 8px rgba(136,136,136,0.5);transition:all 0.3s;"></div>
+                                <div id="llm-status-indicator"
+                                    style="width:16px;height:16px;border-radius:50%;background:#888;box-shadow:0 0 8px rgba(136,136,136,0.5);transition:all 0.3s;">
+                                </div>
                                 <div>
                                     <div id="llm-status-text" style="font-weight:500;">Connection Status: Unknown</div>
-                                    <div id="llm-status-detail" style="font-size:12px;color:var(--text-secondary);">Click 'Test Connection' to verify</div>
+                                    <div id="llm-status-detail" style="font-size:12px;color:var(--text-secondary);">
+                                        Click 'Test Connection' to verify</div>
                                 </div>
                             </div>
-                            <button class="btn btn-secondary" id="llm-test-btn" onclick="testLLMConnection()" style="min-width:130px;">
+                            <button class="btn btn-secondary" id="llm-test-btn" onclick="testLLMConnection()"
+                                style="min-width:130px;">
                                 <span id="llm-test-btn-text">Test Connection</span>
                             </button>
                         </div>
@@ -890,35 +997,47 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Model <button type="button" id="fetch-models-btn" onclick="fetchAvailableModels()" style="font-size:11px;color:var(--accent-blue);background:none;border:1px solid var(--accent-blue);border-radius:4px;padding:1px 8px;margin-left:8px;cursor:pointer;display:none;">Fetch Models</button><span id="fetch-models-status" style="font-size:11px;color:var(--text-secondary);margin-left:6px;"></span></label>
-                            <select id="setting-llm-model-select" onchange="document.getElementById('setting-llm-model').value=this.value" style="display:none;margin-bottom:4px;"></select>
+                            <label>Model <button type="button" id="fetch-models-btn" onclick="fetchAvailableModels()"
+                                    style="font-size:11px;color:var(--accent-blue);background:none;border:1px solid var(--accent-blue);border-radius:4px;padding:1px 8px;margin-left:8px;cursor:pointer;display:none;">Fetch
+                                    Models</button><span id="fetch-models-status"
+                                    style="font-size:11px;color:var(--text-secondary);margin-left:6px;"></span></label>
+                            <select id="setting-llm-model-select"
+                                onchange="document.getElementById('setting-llm-model').value=this.value"
+                                style="display:none;margin-bottom:4px;"></select>
                             <input type="text" id="setting-llm-model" placeholder="solar-pro2">
                         </div>
                         <div class="form-group">
-                            <label>Endpoint <span id="endpoint-hint" style="font-size:11px;color:var(--text-secondary);"></span></label>
+                            <label>Endpoint <span id="endpoint-hint"
+                                    style="font-size:11px;color:var(--text-secondary);"></span></label>
                             <input type="text" id="setting-llm-endpoint" placeholder="https://api.upstage.ai/v1">
                         </div>
                         <div class="form-group">
-                            <label>API Key <a href="https://console.upstage.ai/api-keys" target="_blank" style="font-size:11px;color:var(--accent-blue);margin-left:8px;">Get API Key →</a></label>
+                            <label>API Key <a href="https://console.upstage.ai/api-keys" target="_blank"
+                                    style="font-size:11px;color:var(--accent-blue);margin-left:8px;">Get API Key
+                                    →</a></label>
                             <input type="password" id="setting-llm-apikey" placeholder="up_...">
                         </div>
                     </div>
 
                     <!-- Reasoning Effort (Solar Pro2) -->
-                    <div class="settings-section" id="reasoning-effort-section" style="margin-top:16px;padding:12px;background:var(--bg-primary);border-radius:8px;">
+                    <div class="settings-section" id="reasoning-effort-section"
+                        style="margin-top:16px;padding:12px;background:var(--bg-primary);border-radius:8px;">
                         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
                             <span style="font-size:20px;">🧠</span>
                             <div>
                                 <h4 style="margin:0;color:var(--accent-purple);">Reasoning Effort (Solar Pro2)</h4>
-                                <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0 0;">Control reasoning depth for complex tasks</p>
+                                <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0 0;">Control
+                                    reasoning depth for complex tasks</p>
                             </div>
                         </div>
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Enable High Reasoning</div>
-                                <div class="settings-description">Use deeper reasoning for complex tasks (may increase token usage)</div>
+                                <div class="settings-description">Use deeper reasoning for complex tasks (may increase
+                                    token usage)</div>
                             </div>
-                            <div class="auto-refresh-toggle" id="reasoning-effort-toggle" onclick="toggleReasoningEffort()"></div>
+                            <div class="auto-refresh-toggle" id="reasoning-effort-toggle"
+                                onclick="toggleReasoningEffort()"></div>
                         </div>
                         <div style="margin-top:8px;font-size:12px;color:var(--text-secondary);">
                             <span id="reasoning-effort-status">Current: minimal (default)</span>
@@ -928,16 +1047,19 @@
                     <!-- Model Profiles -->
                     <div class="settings-section" style="margin-top:20px;">
                         <h4>Saved Model Profiles</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Manage multiple LLM configurations and switch between them easily.</p>
+                        <p class="settings-description" style="margin-bottom:12px;">Manage multiple LLM configurations
+                            and switch between them easily.</p>
 
                         <div id="models-list" style="margin-bottom:16px;">
                             <!-- Populated by JavaScript -->
                         </div>
 
-                        <button class="btn-add" onclick="showAddModelForm()" style="margin-top:8px;"><span class="plus-icon">+</span> Add Model Profile</button>
+                        <button class="btn-add" onclick="showAddModelForm()" style="margin-top:8px;"><span
+                                class="plus-icon">+</span> Add Model Profile</button>
                     </div>
 
-                    <div id="add-model-form" class="settings-section" style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
+                    <div id="add-model-form" class="settings-section"
+                        style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
                         <h4>Add New Model Profile</h4>
                         <div class="form-group">
                             <label>Profile Name</label>
@@ -977,65 +1099,87 @@
                     </div>
 
                     <!-- Ollama Quick Setup Section -->
-                    <div class="settings-section" id="ollama-setup-section" style="margin-top:20px;padding:16px;background:linear-gradient(135deg, rgba(122,162,247,0.1), rgba(187,154,247,0.1));border-radius:12px;border:1px solid rgba(122,162,247,0.2);">
+                    <div class="settings-section" id="ollama-setup-section"
+                        style="margin-top:20px;padding:16px;background:linear-gradient(135deg, rgba(122,162,247,0.1), rgba(187,154,247,0.1));border-radius:12px;border:1px solid rgba(122,162,247,0.2);">
                         <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
                             <span style="font-size:24px;">🦙</span>
                             <div>
                                 <h4 style="margin:0;color:var(--accent-blue);">Ollama - Local AI (Offline Mode)</h4>
-                                <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0 0;">Run AI models locally without API keys or internet</p>
+                                <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0 0;">Run AI models
+                                    locally without API keys or internet</p>
                             </div>
                         </div>
 
-                        <div id="ollama-status-panel" style="margin-bottom:12px;padding:12px;background:var(--bg-primary);border-radius:8px;">
+                        <div id="ollama-status-panel"
+                            style="margin-bottom:12px;padding:12px;background:var(--bg-primary);border-radius:8px;">
                             <div style="display:flex;align-items:center;justify-content:space-between;">
                                 <div style="display:flex;align-items:center;gap:8px;">
-                                    <div id="ollama-status-dot" style="width:10px;height:10px;border-radius:50%;background:#888;"></div>
+                                    <div id="ollama-status-dot"
+                                        style="width:10px;height:10px;border-radius:50%;background:#888;"></div>
                                     <span id="ollama-status-text">Checking Ollama status...</span>
                                 </div>
-                                <button class="btn btn-secondary" onclick="checkOllamaStatus()" style="padding:4px 12px;font-size:12px;">Refresh</button>
+                                <button class="btn btn-secondary" onclick="checkOllamaStatus()"
+                                    style="padding:4px 12px;font-size:12px;">Refresh</button>
                             </div>
                         </div>
 
                         <div id="ollama-not-installed" style="display:none;">
-                            <p style="font-size:13px;margin-bottom:12px;">Ollama is not detected on your system. Install it to use AI without API keys:</p>
+                            <p style="font-size:13px;margin-bottom:12px;">Ollama is not detected on your system. Install
+                                it to use AI without API keys:</p>
                             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                <button class="btn btn-primary" onclick="showOllamaInstallInstructions('macos')" style="display:flex;align-items:center;gap:6px;">
+                                <button class="btn btn-primary" onclick="showOllamaInstallInstructions('macos')"
+                                    style="display:flex;align-items:center;gap:6px;">
                                     <span>🍎</span> macOS
                                 </button>
-                                <button class="btn btn-secondary" onclick="showOllamaInstallInstructions('linux')" style="display:flex;align-items:center;gap:6px;">
+                                <button class="btn btn-secondary" onclick="showOllamaInstallInstructions('linux')"
+                                    style="display:flex;align-items:center;gap:6px;">
                                     <span>🐧</span> Linux
                                 </button>
-                                <button class="btn btn-secondary" onclick="showOllamaInstallInstructions('windows')" style="display:flex;align-items:center;gap:6px;">
+                                <button class="btn btn-secondary" onclick="showOllamaInstallInstructions('windows')"
+                                    style="display:flex;align-items:center;gap:6px;">
                                     <span>🪟</span> Windows
                                 </button>
                             </div>
-                            <div id="ollama-install-instructions" style="display:none;margin-top:12px;padding:12px;background:var(--bg-primary);border-radius:8px;font-family:var(--font-mono);font-size:12px;"></div>
+                            <div id="ollama-install-instructions"
+                                style="display:none;margin-top:12px;padding:12px;background:var(--bg-primary);border-radius:8px;font-family:var(--font-mono);font-size:12px;">
+                            </div>
                         </div>
 
                         <div id="ollama-installed" style="display:none;">
                             <div style="margin-bottom:12px;">
                                 <label style="font-size:12px;color:var(--text-secondary);">Available Models</label>
-                                <div id="ollama-models-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+                                <div id="ollama-models-list"
+                                    style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
                                     <span style="color:var(--text-secondary);font-size:12px;">Loading models...</span>
                                 </div>
                             </div>
 
                             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                                <button class="btn btn-primary" onclick="useOllamaModel()" id="use-ollama-btn" disabled>Use Selected Model</button>
-                                <button class="btn btn-secondary" onclick="showOllamaPullDialog()">Pull New Model</button>
+                                <button class="btn btn-primary" onclick="useOllamaModel()" id="use-ollama-btn"
+                                    disabled>Use Selected Model</button>
+                                <button class="btn btn-secondary" onclick="showOllamaPullDialog()">Pull New
+                                    Model</button>
                             </div>
 
-                            <div id="ollama-pull-dialog" style="display:none;margin-top:12px;padding:12px;background:var(--bg-primary);border-radius:8px;">
-                                <label style="font-size:12px;color:var(--text-secondary);">Recommended models for Kubernetes tasks:</label>
+                            <div id="ollama-pull-dialog"
+                                style="display:none;margin-top:12px;padding:12px;background:var(--bg-primary);border-radius:8px;">
+                                <label style="font-size:12px;color:var(--text-secondary);">Recommended models for
+                                    Kubernetes tasks:</label>
                                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;">
-                                    <button class="btn btn-secondary" onclick="pullOllamaModel('llama3.2:3b')" style="font-size:11px;padding:4px 10px;">llama3.2:3b (2GB)</button>
-                                    <button class="btn btn-secondary" onclick="pullOllamaModel('qwen2.5:7b')" style="font-size:11px;padding:4px 10px;">qwen2.5:7b (4GB)</button>
-                                    <button class="btn btn-secondary" onclick="pullOllamaModel('mistral:7b')" style="font-size:11px;padding:4px 10px;">mistral:7b (4GB)</button>
-                                    <button class="btn btn-secondary" onclick="pullOllamaModel('codellama:7b')" style="font-size:11px;padding:4px 10px;">codellama:7b (4GB)</button>
+                                    <button class="btn btn-secondary" onclick="pullOllamaModel('llama3.2:3b')"
+                                        style="font-size:11px;padding:4px 10px;">llama3.2:3b (2GB)</button>
+                                    <button class="btn btn-secondary" onclick="pullOllamaModel('qwen2.5:7b')"
+                                        style="font-size:11px;padding:4px 10px;">qwen2.5:7b (4GB)</button>
+                                    <button class="btn btn-secondary" onclick="pullOllamaModel('mistral:7b')"
+                                        style="font-size:11px;padding:4px 10px;">mistral:7b (4GB)</button>
+                                    <button class="btn btn-secondary" onclick="pullOllamaModel('codellama:7b')"
+                                        style="font-size:11px;padding:4px 10px;">codellama:7b (4GB)</button>
                                 </div>
                                 <div style="display:flex;gap:8px;align-items:center;">
-                                    <input type="text" id="ollama-custom-model" placeholder="Or enter model name..." style="flex:1;padding:8px;font-size:12px;">
-                                    <button class="btn btn-primary" onclick="pullOllamaModel()" style="font-size:12px;">Pull</button>
+                                    <input type="text" id="ollama-custom-model" placeholder="Or enter model name..."
+                                        style="flex:1;padding:8px;font-size:12px;">
+                                    <button class="btn btn-primary" onclick="pullOllamaModel()"
+                                        style="font-size:12px;">Pull</button>
                                 </div>
                                 <div id="ollama-pull-status" style="display:none;margin-top:8px;font-size:12px;"></div>
                             </div>
@@ -1045,52 +1189,65 @@
                     <!-- K8s Safety Guardrails Configuration -->
                     <div class="settings-section" style="margin-top:20px;">
                         <h4>🛡️ K8s Safety Guardrails</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Protect your cluster from dangerous AI-proposed operations</p>
+                        <p class="settings-description" style="margin-bottom:12px;">Protect your cluster from dangerous
+                            AI-proposed operations</p>
 
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Enable Safety Analysis</div>
-                                <div class="settings-description">Analyze K8s commands for potential risks before execution</div>
+                                <div class="settings-description">Analyze K8s commands for potential risks before
+                                    execution</div>
                             </div>
-                            <div class="auto-refresh-toggle active" id="guardrails-toggle" onclick="toggleGuardrailsSetting()"></div>
+                            <div class="auto-refresh-toggle active" id="guardrails-toggle"
+                                onclick="toggleGuardrailsSetting()"></div>
                         </div>
 
                         <div class="settings-row" style="margin-top:12px;">
                             <div>
                                 <div class="settings-label">Strict Mode</div>
-                                <div class="settings-description">Block all dangerous/critical operations (not just warn)</div>
+                                <div class="settings-description">Block all dangerous/critical operations (not just
+                                    warn)</div>
                             </div>
-                            <div class="auto-refresh-toggle" id="guardrails-strict-toggle" onclick="toggleStrictMode()"></div>
+                            <div class="auto-refresh-toggle" id="guardrails-strict-toggle" onclick="toggleStrictMode()">
+                            </div>
                         </div>
 
                         <div class="settings-row" style="margin-top:12px;">
                             <div>
                                 <div class="settings-label">Auto-Analyze AI Responses</div>
-                                <div class="settings-description">Automatically analyze kubectl commands in AI responses</div>
+                                <div class="settings-description">Automatically analyze kubectl commands in AI responses
+                                </div>
                             </div>
-                            <div class="auto-refresh-toggle active" id="guardrails-auto-analyze" onclick="toggleAutoAnalyze()"></div>
+                            <div class="auto-refresh-toggle active" id="guardrails-auto-analyze"
+                                onclick="toggleAutoAnalyze()"></div>
                         </div>
 
                         <!-- Risk Level Descriptions -->
                         <div style="margin-top:16px; padding:12px; background:var(--bg-tertiary); border-radius:8px;">
                             <div style="font-weight:600; margin-bottom:8px;">Risk Level Descriptions:</div>
                             <div style="display:grid; gap:6px; font-size:13px;">
-                                <div><span style="color:var(--accent-green);">● Safe</span> - Read-only operations (get, describe, logs)</div>
-                                <div><span style="color:var(--accent-yellow);">● Warning</span> - Modifications that need review (apply, scale)</div>
-                                <div><span style="color:var(--accent-red);">● Dangerous</span> - Deletions and destructive changes</div>
-                                <div><span style="color:#ff4757;">● Critical</span> - Cluster-wide impact (drain, delete namespace)</div>
+                                <div><span style="color:var(--accent-green);">● Safe</span> - Read-only operations (get,
+                                    describe, logs)</div>
+                                <div><span style="color:var(--accent-yellow);">● Warning</span> - Modifications that
+                                    need review (apply, scale)</div>
+                                <div><span style="color:var(--accent-red);">● Dangerous</span> - Deletions and
+                                    destructive changes</div>
+                                <div><span style="color:#ff4757;">● Critical</span> - Cluster-wide impact (drain, delete
+                                    namespace)</div>
                             </div>
                         </div>
 
                         <!-- Recent Safety Analysis -->
                         <div style="margin-top:16px;">
                             <div style="font-weight:600; margin-bottom:8px;">Recent Safety Checks:</div>
-                            <div id="guardrails-history" style="max-height:150px; overflow-y:auto; background:var(--bg-primary); border-radius:8px; padding:8px;">
+                            <div id="guardrails-history"
+                                style="max-height:150px; overflow-y:auto; background:var(--bg-primary); border-radius:8px; padding:8px;">
                                 <div style="color:var(--text-secondary); font-size:13px;">No recent checks</div>
                             </div>
                         </div>
 
-                        <button class="btn btn-secondary" onclick="clearGuardrailsHistory()" style="margin-top:12px;">Clear History</button>
+                        <button class="btn btn-secondary" onclick="clearGuardrailsHistory()"
+                            style="margin-top:12px;">Clear History</button>
                     </div>
 
                     <!-- Tool Approval Policy -->
@@ -1098,33 +1255,49 @@
                         <h4>Tool Approval Policy</h4>
                         <p class="settings-description">Control which AI tool commands require user approval</p>
                         <div class="settings-row">
-                            <div><div class="settings-label">Auto-approve read-only commands</div>
-                            <div class="settings-description">kubectl get, describe, logs, etc.</div></div>
-                            <div class="auto-refresh-toggle active" id="ta-auto-approve-ro" onclick="toggleToolApproval(this)"></div>
+                            <div>
+                                <div class="settings-label">Auto-approve read-only commands</div>
+                                <div class="settings-description">kubectl get, describe, logs, etc.</div>
+                            </div>
+                            <div class="auto-refresh-toggle active" id="ta-auto-approve-ro"
+                                onclick="toggleToolApproval(this)"></div>
                         </div>
                         <div class="settings-row">
-                            <div><div class="settings-label">Require approval for write operations</div>
-                            <div class="settings-description">kubectl apply, scale, restart, etc.</div></div>
-                            <div class="auto-refresh-toggle active" id="ta-require-write" onclick="toggleToolApproval(this)"></div>
+                            <div>
+                                <div class="settings-label">Require approval for write operations</div>
+                                <div class="settings-description">kubectl apply, scale, restart, etc.</div>
+                            </div>
+                            <div class="auto-refresh-toggle active" id="ta-require-write"
+                                onclick="toggleToolApproval(this)"></div>
                         </div>
                         <div class="settings-row">
-                            <div><div class="settings-label">Block dangerous commands entirely</div>
-                            <div class="settings-description">Dangerous operations will be blocked, not just requiring approval</div></div>
-                            <div class="auto-refresh-toggle" id="ta-block-dangerous" onclick="toggleToolApproval(this)"></div>
+                            <div>
+                                <div class="settings-label">Block dangerous commands entirely</div>
+                                <div class="settings-description">Dangerous operations will be blocked, not just
+                                    requiring approval</div>
+                            </div>
+                            <div class="auto-refresh-toggle" id="ta-block-dangerous" onclick="toggleToolApproval(this)">
+                            </div>
                         </div>
                         <div class="settings-row">
-                            <div><div class="settings-label">Require approval for unknown commands</div></div>
-                            <div class="auto-refresh-toggle active" id="ta-require-unknown" onclick="toggleToolApproval(this)"></div>
+                            <div>
+                                <div class="settings-label">Require approval for unknown commands</div>
+                            </div>
+                            <div class="auto-refresh-toggle active" id="ta-require-unknown"
+                                onclick="toggleToolApproval(this)"></div>
                         </div>
                         <div class="form-group" style="margin-top:12px;">
                             <label>Approval Timeout (seconds)</label>
-                            <input type="number" id="ta-timeout" class="form-control" value="60" min="10" max="600" style="width:120px;">
+                            <input type="number" id="ta-timeout" class="form-control" value="60" min="10" max="600"
+                                style="width:120px;">
                         </div>
                         <div class="form-group">
                             <label>Blocked Patterns (one regex per line)</label>
-                            <textarea id="ta-blocked-patterns" class="form-control" rows="3" placeholder="rm -rf.*&#10;kubectl delete ns.*"></textarea>
+                            <textarea id="ta-blocked-patterns" class="form-control" rows="3"
+                                placeholder="rm -rf.*&#10;kubectl delete ns.*"></textarea>
                         </div>
-                        <button class="btn btn-primary" onclick="saveToolApprovalSettings()">Save Tool Approval Settings</button>
+                        <button class="btn btn-primary" onclick="saveToolApprovalSettings()">Save Tool Approval
+                            Settings</button>
                     </div>
 
                     <!-- Agent Settings -->
@@ -1134,7 +1307,9 @@
                         <div class="form-group">
                             <label>Max Iterations (agent loop depth: 1-30)</label>
                             <div style="display:flex;align-items:center;gap:8px;">
-                                <input type="range" id="agent-max-iterations" min="1" max="30" value="10" style="flex:1;" oninput="document.getElementById('agent-max-iter-val').textContent=this.value">
+                                <input type="range" id="agent-max-iterations" min="1" max="30" value="10"
+                                    style="flex:1;"
+                                    oninput="document.getElementById('agent-max-iter-val').textContent=this.value">
                                 <span id="agent-max-iter-val" style="min-width:24px;">10</span>
                             </div>
                         </div>
@@ -1149,13 +1324,16 @@
                         <div class="form-group">
                             <label>Temperature (0.0 = deterministic, 2.0 = creative)</label>
                             <div style="display:flex;align-items:center;gap:8px;">
-                                <input type="range" id="agent-temperature" min="0" max="200" value="70" step="10" style="flex:1;" oninput="document.getElementById('agent-temp-val').textContent=(this.value/100).toFixed(1)">
+                                <input type="range" id="agent-temperature" min="0" max="200" value="70" step="10"
+                                    style="flex:1;"
+                                    oninput="document.getElementById('agent-temp-val').textContent=(this.value/100).toFixed(1)">
                                 <span id="agent-temp-val" style="min-width:32px;">0.7</span>
                             </div>
                         </div>
                         <div class="form-group">
                             <label>Max Tokens (0 = provider default)</label>
-                            <input type="number" id="agent-max-tokens" class="form-control" value="4096" min="0" max="128000" step="256" style="width:150px;">
+                            <input type="number" id="agent-max-tokens" class="form-control" value="4096" min="0"
+                                max="128000" step="256" style="width:150px;">
                         </div>
                         <button class="btn btn-primary" onclick="saveAgentSettings()">Save Agent Settings</button>
                     </div>
@@ -1165,16 +1343,19 @@
                 <div id="settings-mcp" class="settings-content" style="display:none;">
                     <div class="settings-section">
                         <h4>MCP Servers</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Connect to Model Context Protocol servers to extend AI capabilities with additional tools.</p>
+                        <p class="settings-description" style="margin-bottom:12px;">Connect to Model Context Protocol
+                            servers to extend AI capabilities with additional tools.</p>
 
                         <div id="mcp-servers-list" style="margin-bottom:16px;">
                             <!-- Populated by JavaScript -->
                         </div>
 
-                        <button class="btn-add" onclick="showAddMCPForm()" style="margin-top:8px;"><span class="plus-icon">+</span> Add MCP Server</button>
+                        <button class="btn-add" onclick="showAddMCPForm()" style="margin-top:8px;"><span
+                                class="plus-icon">+</span> Add MCP Server</button>
                     </div>
 
-                    <div id="add-mcp-form" class="settings-section" style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
+                    <div id="add-mcp-form" class="settings-section"
+                        style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
                         <h4>Add MCP Server</h4>
                         <div class="form-group">
                             <label>Server Name</label>
@@ -1211,10 +1392,12 @@
                         </div>
                     </div>
 
-                    <div class="settings-section" style="margin-top:16px;background:var(--bg-primary);padding:12px;border-radius:8px;">
+                    <div class="settings-section"
+                        style="margin-top:16px;background:var(--bg-primary);padding:12px;border-radius:8px;">
                         <h4>Example: Kubernetes MCP Server</h4>
                         <p class="settings-description" style="font-size:12px;">
-                            To add the <a href="https://github.com/containers/kubernetes-mcp-server" target="_blank" style="color:var(--accent-blue);">kubernetes-mcp-server</a>:<br><br>
+                            To add the <a href="https://github.com/containers/kubernetes-mcp-server" target="_blank"
+                                style="color:var(--accent-blue);">kubernetes-mcp-server</a>:<br><br>
                             <strong>Name:</strong> kubernetes<br>
                             <strong>Command:</strong> npx<br>
                             <strong>Args:</strong> -y, @anthropic/mcp-server-kubernetes<br>
@@ -1226,34 +1409,48 @@
                 <div id="settings-security" class="settings-content" style="display:none;">
                     <div class="settings-section">
                         <h4>Trivy CVE Scanner</h4>
-                        <p class="settings-description" style="margin-bottom:16px;">Trivy is used to scan container images for known vulnerabilities (CVEs). For air-gapped environments, you can download Trivy manually.</p>
+                        <p class="settings-description" style="margin-bottom:16px;">Trivy is used to scan container
+                            images for known vulnerabilities (CVEs). For air-gapped environments, you can download Trivy
+                            manually.</p>
 
-                        <div id="trivy-status-card" style="padding:16px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);margin-bottom:16px;">
+                        <div id="trivy-status-card"
+                            style="padding:16px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);margin-bottom:16px;">
                             <div style="display:flex;align-items:center;justify-content:space-between;">
                                 <div>
                                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                                        <span id="trivy-status-indicator" style="width:10px;height:10px;border-radius:50%;background:var(--text-secondary);"></span>
+                                        <span id="trivy-status-indicator"
+                                            style="width:10px;height:10px;border-radius:50%;background:var(--text-secondary);"></span>
                                         <span id="trivy-status-text" style="font-weight:600;">Checking...</span>
                                     </div>
                                     <div id="trivy-version" style="font-size:12px;color:var(--text-secondary);"></div>
-                                    <div id="trivy-path" style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-top:4px;"></div>
+                                    <div id="trivy-path"
+                                        style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-top:4px;">
+                                    </div>
                                 </div>
                                 <div id="trivy-actions">
-                                    <button class="btn btn-primary" id="trivy-install-btn" onclick="installTrivy()" style="display:none;">Install Trivy</button>
+                                    <button class="btn btn-primary" id="trivy-install-btn" onclick="installTrivy()"
+                                        style="display:none;">Install Trivy</button>
                                     <button class="btn btn-secondary" onclick="checkTrivyStatus()">Refresh</button>
                                 </div>
                             </div>
                             <div id="trivy-install-progress" style="display:none;margin-top:12px;">
-                                <div style="height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden;">
-                                    <div id="trivy-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));transition:width 0.3s;"></div>
+                                <div
+                                    style="height:6px;background:var(--bg-tertiary);border-radius:3px;overflow:hidden;">
+                                    <div id="trivy-progress-bar"
+                                        style="height:100%;width:0%;background:linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));transition:width 0.3s;">
+                                    </div>
                                 </div>
-                                <div id="trivy-progress-text" style="font-size:11px;color:var(--text-secondary);margin-top:4px;"></div>
+                                <div id="trivy-progress-text"
+                                    style="font-size:11px;color:var(--text-secondary);margin-top:4px;"></div>
                             </div>
                         </div>
 
-                        <div id="trivy-instructions" style="display:none;padding:16px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
-                            <h5 style="margin-bottom:12px;color:var(--text-primary);">Manual Installation (Air-gapped)</h5>
-                            <pre id="trivy-install-commands" style="padding:12px;background:var(--bg-tertiary);border-radius:6px;font-size:12px;overflow-x:auto;white-space:pre-wrap;"></pre>
+                        <div id="trivy-instructions"
+                            style="display:none;padding:16px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
+                            <h5 style="margin-bottom:12px;color:var(--text-primary);">Manual Installation (Air-gapped)
+                            </h5>
+                            <pre id="trivy-install-commands"
+                                style="padding:12px;background:var(--bg-tertiary);border-radius:6px;font-size:12px;overflow-x:auto;white-space:pre-wrap;"></pre>
                             <p style="margin-top:12px;font-size:12px;color:var(--text-secondary);">
                                 After manual installation, click "Refresh" to detect Trivy.
                             </p>
@@ -1266,7 +1463,8 @@
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Enable Image Vulnerability Scanning</div>
-                                <div class="settings-description">Scan container images for CVEs during security reports (requires Trivy)</div>
+                                <div class="settings-description">Scan container images for CVEs during security reports
+                                    (requires Trivy)</div>
                             </div>
                             <input type="checkbox" id="security-scan-images" checked>
                         </div>
@@ -1274,7 +1472,8 @@
                         <div class="settings-row" style="margin-top:12px;">
                             <div>
                                 <div class="settings-label">Minimum Severity</div>
-                                <div class="settings-description">Only report vulnerabilities at or above this level</div>
+                                <div class="settings-description">Only report vulnerabilities at or above this level
+                                </div>
                             </div>
                             <select id="security-min-severity">
                                 <option value="CRITICAL">Critical only</option>
@@ -1291,23 +1490,28 @@
                 <div id="settings-metrics" class="settings-content" style="display:none;">
                     <div class="settings-section">
                         <h4>Prometheus Integration</h4>
-                        <p class="settings-description" style="margin-bottom:16px;">Expose metrics for Prometheus scraping and connect to external Prometheus servers.</p>
+                        <p class="settings-description" style="margin-bottom:16px;">Expose metrics for Prometheus
+                            scraping and connect to external Prometheus servers.</p>
 
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Expose /metrics Endpoint</div>
                                 <div class="settings-description">Allow Prometheus to scrape metrics from k13d</div>
                             </div>
-                            <input type="checkbox" id="prometheus-expose-metrics" onchange="updatePrometheusExposeInfo()">
+                            <input type="checkbox" id="prometheus-expose-metrics"
+                                onchange="updatePrometheusExposeInfo()">
                         </div>
 
-                        <div id="prometheus-expose-info" style="margin-top:12px;padding:12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);display:none;">
+                        <div id="prometheus-expose-info"
+                            style="margin-top:12px;padding:12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);display:none;">
                             <div style="font-size:12px;color:var(--text-secondary);">
-                                Prometheus can scrape metrics at: <code style="background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;font-family:var(--font-mono);">http://&lt;host&gt;:&lt;port&gt;/metrics</code>
+                                Prometheus can scrape metrics at: <code
+                                    style="background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;font-family:var(--font-mono);">http://&lt;host&gt;:&lt;port&gt;/metrics</code>
                             </div>
                             <div style="margin-top:12px;font-size:11px;color:var(--text-secondary);">
                                 <strong>Example prometheus.yml:</strong>
-                                <pre style="margin-top:6px;padding:10px;background:var(--bg-tertiary);border-radius:4px;font-size:11px;overflow-x:auto;font-family:var(--font-mono);">scrape_configs:
+                                <pre
+                                    style="margin-top:6px;padding:10px;background:var(--bg-tertiary);border-radius:4px;font-size:11px;overflow-x:auto;font-family:var(--font-mono);">scrape_configs:
   - job_name: 'k13d'
     static_configs:
       - targets: ['k13d:8080']</pre>
@@ -1317,7 +1521,8 @@
 
                     <div class="settings-section" style="margin-top:20px;">
                         <h4>External Prometheus Server</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Connect to an external Prometheus server for advanced queries.</p>
+                        <p class="settings-description" style="margin-bottom:12px;">Connect to an external Prometheus
+                            server for advanced queries.</p>
 
                         <div class="form-group">
                             <label>Prometheus URL</label>
@@ -1335,10 +1540,12 @@
                         </div>
 
                         <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button class="btn btn-secondary" onclick="testPrometheusConnection()">Test Connection</button>
+                            <button class="btn btn-secondary" onclick="testPrometheusConnection()">Test
+                                Connection</button>
                         </div>
 
-                        <div id="prometheus-test-result" style="margin-top:12px;padding:10px;border-radius:6px;display:none;"></div>
+                        <div id="prometheus-test-result"
+                            style="margin-top:12px;padding:10px;border-radius:6px;display:none;"></div>
                     </div>
 
                     <div class="settings-section" style="margin-top:20px;">
@@ -1382,19 +1589,24 @@
                             </select>
                         </div>
 
-                        <div style="margin-top:16px;padding:12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
+                        <div
+                            style="margin-top:16px;padding:12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
                             <div style="display:flex;justify-content:space-between;align-items:center;">
                                 <div>
                                     <div style="font-weight:500;font-size:13px;">Storage Info</div>
-                                    <div id="metrics-storage-info" style="font-size:12px;color:var(--text-secondary);margin-top:4px;">Calculating...</div>
+                                    <div id="metrics-storage-info"
+                                        style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
+                                        Calculating...</div>
                                 </div>
-                                <button class="btn btn-secondary" onclick="cleanupOldMetrics()" style="font-size:12px;padding:6px 12px;">Cleanup Now</button>
+                                <button class="btn btn-secondary" onclick="cleanupOldMetrics()"
+                                    style="font-size:12px;padding:6px 12px;">Cleanup Now</button>
                             </div>
                         </div>
                     </div>
 
                     <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-color);">
-                        <button class="btn btn-primary" onclick="savePrometheusSettings()">Save Prometheus Settings</button>
+                        <button class="btn btn-primary" onclick="savePrometheusSettings()">Save Prometheus
+                            Settings</button>
                     </div>
                 </div>
 
@@ -1423,7 +1635,9 @@
                     </div>
 
                     <div class="about-description">
-                        <p>A modern Kubernetes dashboard combining the power of <strong>k9s-style TUI</strong> with an AI assistant. Manage clusters efficiently with natural language commands and intelligent analysis.</p>
+                        <p>A modern Kubernetes dashboard combining the power of <strong>k9s-style TUI</strong> with an
+                            AI assistant. Manage clusters efficiently with natural language commands and intelligent
+                            analysis.</p>
                     </div>
 
                     <div class="about-features">
@@ -1458,13 +1672,16 @@
                     </div>
 
                     <div class="about-links">
-                        <a href="https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli" target="_blank" class="about-link">
+                        <a href="https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli" target="_blank"
+                            class="about-link">
                             <span>📦</span> GitHub Repository
                         </a>
-                        <a href="https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/issues" target="_blank" class="about-link">
+                        <a href="https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/issues" target="_blank"
+                            class="about-link">
                             <span>🐛</span> Report Issue
                         </a>
-                        <a href="https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/blob/main/docs/USER_GUIDE.md" target="_blank" class="about-link">
+                        <a href="https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/blob/main/docs/USER_GUIDE.md"
+                            target="_blank" class="about-link">
                             <span>📖</span> Documentation
                         </a>
                     </div>
@@ -1479,7 +1696,8 @@
                 <div id="settings-notifications" class="settings-content" style="display:none;">
                     <div class="settings-section">
                         <h4>Webhook Notifications</h4>
-                        <p class="settings-description" style="margin-bottom:16px;">Receive alerts for cluster events via Slack, Discord, Teams, Email, or custom webhook.</p>
+                        <p class="settings-description" style="margin-bottom:16px;">Receive alerts for cluster events
+                            via Slack, Discord, Teams, Email, or custom webhook.</p>
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Enable Notifications</div>
@@ -1500,7 +1718,8 @@
                         <div id="notif-webhook-section">
                             <div class="form-group">
                                 <label>Webhook URL</label>
-                                <input type="text" id="notif-webhook-url" placeholder="https://hooks.slack.com/services/...">
+                                <input type="text" id="notif-webhook-url"
+                                    placeholder="https://hooks.slack.com/services/...">
                             </div>
                             <div class="form-group">
                                 <label>Channel (optional)</label>
@@ -1537,24 +1756,47 @@
                                 <input type="text" id="notif-smtp-to" placeholder="admin@example.com, team@example.com">
                             </div>
                             <div class="settings-row">
-                                <div><div class="settings-label">Use TLS</div></div>
+                                <div>
+                                    <div class="settings-label">Use TLS</div>
+                                </div>
                                 <input type="checkbox" id="notif-smtp-tls" checked>
                             </div>
                         </div>
                     </div>
                     <div class="settings-section" style="margin-top:16px;">
                         <h4>Event Triggers</h4>
-                        <div class="settings-row"><div><div class="settings-label">Pod CrashLoopBackOff</div></div><input type="checkbox" id="notif-evt-crash" checked></div>
-                        <div class="settings-row"><div><div class="settings-label">Pod OOMKilled</div></div><input type="checkbox" id="notif-evt-oom" checked></div>
-                        <div class="settings-row"><div><div class="settings-label">Node Not Ready</div></div><input type="checkbox" id="notif-evt-node" checked></div>
-                        <div class="settings-row"><div><div class="settings-label">Deployment Failed</div></div><input type="checkbox" id="notif-evt-deploy" checked></div>
-                        <div class="settings-row"><div><div class="settings-label">Image Pull Failed</div></div><input type="checkbox" id="notif-evt-imagepull" checked></div>
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-label">Pod CrashLoopBackOff</div>
+                            </div><input type="checkbox" id="notif-evt-crash" checked>
+                        </div>
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-label">Pod OOMKilled</div>
+                            </div><input type="checkbox" id="notif-evt-oom" checked>
+                        </div>
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-label">Node Not Ready</div>
+                            </div><input type="checkbox" id="notif-evt-node" checked>
+                        </div>
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-label">Deployment Failed</div>
+                            </div><input type="checkbox" id="notif-evt-deploy" checked>
+                        </div>
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-label">Image Pull Failed</div>
+                            </div><input type="checkbox" id="notif-evt-imagepull" checked>
+                        </div>
                     </div>
                     <div style="display:flex;gap:8px;margin-top:16px;">
                         <button class="btn btn-primary" onclick="saveNotificationSettings()">Save</button>
                         <button class="btn btn-secondary" onclick="testNotification()">Send Test</button>
                     </div>
-                    <div id="notif-test-result" style="margin-top:12px;padding:10px;border-radius:6px;display:none;"></div>
+                    <div id="notif-test-result" style="margin-top:12px;padding:10px;border-radius:6px;display:none;">
+                    </div>
                     <div class="settings-section" style="margin-top:16px;">
                         <h4>Notification History</h4>
                         <div id="notif-history-body" style="max-height:300px;overflow-y:auto;">
@@ -1567,16 +1809,19 @@
                 <div id="settings-admin" class="settings-content" style="display:none;">
                     <div class="settings-section">
                         <h4>User Management</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Manage user accounts and permissions.</p>
+                        <p class="settings-description" style="margin-bottom:12px;">Manage user accounts and
+                            permissions.</p>
 
                         <div id="admin-users-list" style="margin-bottom:16px;">
                             <!-- Populated by JavaScript -->
                         </div>
 
-                        <button class="btn-add" onclick="showAddUserForm()" style="margin-top:8px;"><span class="plus-icon">+</span> Add User</button>
+                        <button class="btn-add" onclick="showAddUserForm()" style="margin-top:8px;"><span
+                                class="plus-icon">+</span> Add User</button>
                     </div>
 
-                    <div id="add-user-form" class="settings-section" style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
+                    <div id="add-user-form" class="settings-section"
+                        style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
                         <h4>Add New User</h4>
                         <div class="form-group">
                             <label>Username</label>
@@ -1623,7 +1868,8 @@
                                 <div class="settings-label">Allow Password Login</div>
                                 <div class="settings-description">Enable local password login alongside SSO</div>
                             </div>
-                            <div class="auto-refresh-toggle" id="allow-password-login" onclick="toggleAllowPasswordLogin()"></div>
+                            <div class="auto-refresh-toggle" id="allow-password-login"
+                                onclick="toggleAllowPasswordLogin()"></div>
                         </div>
                         <div class="settings-row">
                             <div>
@@ -1638,7 +1884,8 @@
                     <div class="settings-section" id="oidc-settings" style="margin-top:16px;display:none;">
                         <h4>OIDC/OAuth Configuration</h4>
                         <p class="settings-description" style="margin-bottom:12px;">
-                            Configure Single Sign-On with any OIDC-compliant provider (Google, Microsoft, Okta, Keycloak, etc.)
+                            Configure Single Sign-On with any OIDC-compliant provider (Google, Microsoft, Okta,
+                            Keycloak, etc.)
                         </p>
                         <div class="form-group">
                             <label>Provider Name</label>
@@ -1646,7 +1893,8 @@
                         </div>
                         <div class="form-group">
                             <label>Discovery URL (Well-Known)</label>
-                            <input type="text" id="oidc-provider-url" placeholder="https://accounts.google.com/.well-known/openid-configuration">
+                            <input type="text" id="oidc-provider-url"
+                                placeholder="https://accounts.google.com/.well-known/openid-configuration">
                         </div>
                         <div class="form-group">
                             <label>Client ID</label>
@@ -1658,11 +1906,13 @@
                         </div>
                         <div class="form-group">
                             <label>Scopes</label>
-                            <input type="text" id="oidc-scopes" placeholder="openid email profile" value="openid email profile">
+                            <input type="text" id="oidc-scopes" placeholder="openid email profile"
+                                value="openid email profile">
                         </div>
                         <div class="form-group">
                             <label>Redirect URI</label>
-                            <input type="text" id="oidc-redirect-uri" placeholder="Auto-generated" readonly style="background:var(--bg-tertiary);">
+                            <input type="text" id="oidc-redirect-uri" placeholder="Auto-generated" readonly
+                                style="background:var(--bg-tertiary);">
                         </div>
 
                         <div class="settings-row" style="margin-top:12px;">
@@ -1675,7 +1925,8 @@
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Merge Accounts by Email</div>
-                                <div class="settings-description">Link OAuth logins to existing accounts (use with caution)</div>
+                                <div class="settings-description">Link OAuth logins to existing accounts (use with
+                                    caution)</div>
                             </div>
                             <div class="auto-refresh-toggle" id="oauth-merge-email"></div>
                         </div>
@@ -1711,7 +1962,8 @@
                         </p>
                         <div class="form-group">
                             <label>LDAP Server URL</label>
-                            <input type="text" id="ldap-server-url" placeholder="ldap://ldap.example.com:389 or ldaps://...">
+                            <input type="text" id="ldap-server-url"
+                                placeholder="ldap://ldap.example.com:389 or ldaps://...">
                         </div>
                         <div class="form-group">
                             <label>Bind DN</label>
@@ -1727,7 +1979,8 @@
                         </div>
                         <div class="form-group">
                             <label>User Search Filter</label>
-                            <input type="text" id="ldap-user-search-filter" placeholder="(uid={{username}})" value="(uid={{username}})">
+                            <input type="text" id="ldap-user-search-filter" placeholder="(uid={{username}})"
+                                value="(uid={{username}})">
                         </div>
                         <div class="form-group">
                             <label>Group Search Base (optional)</label>
@@ -1739,7 +1992,8 @@
                         </div>
                         <div class="form-group">
                             <label>Admin Group DN (optional)</label>
-                            <input type="text" id="ldap-admin-group" placeholder="cn=k13d-admins,ou=groups,dc=example,dc=com">
+                            <input type="text" id="ldap-admin-group"
+                                placeholder="cn=k13d-admins,ou=groups,dc=example,dc=com">
                         </div>
                         <div style="margin-top:12px;display:flex;gap:10px;">
                             <button class="btn btn-secondary" onclick="testLDAPConnection()">Test Connection</button>
@@ -1768,7 +2022,8 @@
                         <h4>Roles & Permissions</h4>
                         <p class="settings-description">Manage custom roles and feature access permissions</p>
                         <div id="roles-list-container"></div>
-                        <button class="btn btn-primary" style="margin-top:12px;" onclick="showCreateRoleModal()">+ Create Custom Role</button>
+                        <button class="btn btn-primary" style="margin-top:12px;" onclick="showCreateRoleModal()">+
+                            Create Custom Role</button>
                     </div>
                 </div>
             </div>
@@ -1790,8 +2045,10 @@
                 <button class="detail-tab active" onclick="switchDetailTab('overview')">Overview</button>
                 <button class="detail-tab" onclick="switchDetailTab('yaml')">YAML</button>
                 <button class="detail-tab" onclick="switchDetailTab('events')">Events</button>
-                <button class="detail-tab" id="detail-pods-tab" onclick="switchDetailTab('pods')" style="display:none;">Related Pods</button>
-                <button class="detail-tab" id="detail-refs-tab" onclick="switchDetailTab('refs')" style="display:none;">Referenced By</button>
+                <button class="detail-tab" id="detail-pods-tab" onclick="switchDetailTab('pods')"
+                    style="display:none;">Related Pods</button>
+                <button class="detail-tab" id="detail-refs-tab" onclick="switchDetailTab('refs')"
+                    style="display:none;">Referenced By</button>
             </div>
             <div class="detail-content" id="detail-content">
                 <div id="detail-overview"></div>
@@ -1812,12 +2069,15 @@
         <div class="modal detail-modal">
             <div class="modal-header">
                 <h2 id="rbac-detail-title">Subject Details</h2>
-                <button class="modal-close" onclick="document.getElementById('rbac-detail-modal').classList.remove('active')" aria-label="Close">&times;</button>
+                <button class="modal-close"
+                    onclick="document.getElementById('rbac-detail-modal').classList.remove('active')"
+                    aria-label="Close">&times;</button>
             </div>
             <div class="detail-content" id="rbac-detail-content" style="padding:16px;">
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="document.getElementById('rbac-detail-modal').classList.remove('active')">Close</button>
+                <button class="btn btn-secondary"
+                    onclick="document.getElementById('rbac-detail-modal').classList.remove('active')">Close</button>
             </div>
         </div>
     </div>
@@ -1831,7 +2091,8 @@
             </div>
             <div class="modal-body">
                 <div class="shortcuts-grid">
-                    <div class="shortcut-item" style="grid-column: 1 / -1; background: var(--bg-tertiary); border-radius: 4px; padding: 8px; margin-bottom: 8px;">
+                    <div class="shortcut-item"
+                        style="grid-column: 1 / -1; background: var(--bg-tertiary); border-radius: 4px; padding: 8px; margin-bottom: 8px;">
                         <span style="font-weight: 600; color: var(--accent-blue);">Navigation (TUI-style)</span>
                     </div>
                     <div class="shortcut-item">
@@ -1850,7 +2111,8 @@
                         <span>YAML Editor</span>
                         <span class="shortcut-key">E</span>
                     </div>
-                    <div class="shortcut-item" style="grid-column: 1 / -1; background: var(--bg-tertiary); border-radius: 4px; padding: 8px; margin: 8px 0;">
+                    <div class="shortcut-item"
+                        style="grid-column: 1 / -1; background: var(--bg-tertiary); border-radius: 4px; padding: 8px; margin: 8px 0;">
                         <span style="font-weight: 600; color: var(--accent-purple);">Namespace Switching</span>
                     </div>
                     <div class="shortcut-item">
@@ -1865,7 +2127,8 @@
                         <span>All Namespaces</span>
                         <span class="shortcut-key">Alt+0</span>
                     </div>
-                    <div class="shortcut-item" style="grid-column: 1 / -1; background: var(--bg-tertiary); border-radius: 4px; padding: 8px; margin: 8px 0;">
+                    <div class="shortcut-item"
+                        style="grid-column: 1 / -1; background: var(--bg-tertiary); border-radius: 4px; padding: 8px; margin: 8px 0;">
                         <span style="font-weight: 600; color: var(--accent-green);">Resource Views</span>
                     </div>
                     <div class="shortcut-item">
@@ -1884,7 +2147,8 @@
                         <span>View Nodes</span>
                         <span class="shortcut-key">4</span>
                     </div>
-                    <div class="shortcut-item" style="grid-column: 1 / -1; background: var(--bg-tertiary); border-radius: 4px; padding: 8px; margin: 8px 0;">
+                    <div class="shortcut-item"
+                        style="grid-column: 1 / -1; background: var(--bg-tertiary); border-radius: 4px; padding: 8px; margin: 8px 0;">
                         <span style="font-weight: 600; color: var(--accent-yellow);">Panels & Actions</span>
                     </div>
                     <div class="shortcut-item">
@@ -1936,7 +2200,8 @@
         <div class="command-bar">
             <div class="command-input-wrapper">
                 <span class="command-prefix">:</span>
-                <input type="text" class="command-input" id="command-input" placeholder="Type a command..." autocomplete="off">
+                <input type="text" class="command-input" id="command-input" placeholder="Type a command..."
+                    autocomplete="off">
             </div>
             <div class="command-suggestions" id="command-suggestions"></div>
             <div class="command-hint">
@@ -2060,8 +2325,10 @@ spec:
             <div class="log-controls">
                 <div class="time-range-selector">
                     <button class="time-range-btn" data-minutes="5" onclick="setMetricsTimeRangeMinutes(5)">5m</button>
-                    <button class="time-range-btn" data-minutes="15" onclick="setMetricsTimeRangeMinutes(15)">15m</button>
-                    <button class="time-range-btn active" data-minutes="30" onclick="setMetricsTimeRangeMinutes(30)">30m</button>
+                    <button class="time-range-btn" data-minutes="15"
+                        onclick="setMetricsTimeRangeMinutes(15)">15m</button>
+                    <button class="time-range-btn active" data-minutes="30"
+                        onclick="setMetricsTimeRangeMinutes(30)">30m</button>
                     <button class="time-range-btn" data-hours="1" onclick="setMetricsTimeRange(1)">1h</button>
                     <button class="time-range-btn" data-hours="6" onclick="setMetricsTimeRange(6)">6h</button>
                     <button class="time-range-btn" data-hours="24" onclick="setMetricsTimeRange(24)">24h</button>
@@ -2071,9 +2338,11 @@ spec:
                 </select>
                 <div class="auto-refresh-control">
                     <input type="checkbox" id="metrics-auto-refresh" checked onchange="toggleMetricsAutoRefresh()">
-                    <label for="metrics-auto-refresh" style="font-size:11px;color:var(--text-secondary);cursor:pointer;">Auto</label>
+                    <label for="metrics-auto-refresh"
+                        style="font-size:11px;color:var(--text-secondary);cursor:pointer;">Auto</label>
                 </div>
-                <button onclick="collectMetricsNow()" title="Trigger immediate metrics collection" style="background:var(--accent-green);color:#1a1b26;">Collect</button>
+                <button onclick="collectMetricsNow()" title="Trigger immediate metrics collection"
+                    style="background:var(--accent-green);color:#1a1b26;">Collect</button>
                 <button onclick="loadMetrics()">Refresh</button>
                 <button class="terminal-close" onclick="closeMetrics()" aria-label="Close metrics">&times;</button>
             </div>
@@ -2163,7 +2432,8 @@ spec:
                     <div class="metric-chart" style="height: 100px;">
                         <canvas id="llm-usage-chart"></canvas>
                     </div>
-                    <h5 style="margin-top:12px;margin-bottom:8px;font-size:12px;color:var(--text-secondary);">Model Breakdown</h5>
+                    <h5 style="margin-top:12px;margin-bottom:8px;font-size:12px;color:var(--text-secondary);">Model
+                        Breakdown</h5>
                     <div id="llm-model-list" style="max-height:120px;overflow-y:auto;"></div>
                 </div>
             </div>
@@ -2175,7 +2445,8 @@ spec:
         <div class="modal portforward-modal">
             <div class="modal-header">
                 <h2>Port Forwarding</h2>
-                <button class="modal-close" onclick="closePortForward()" aria-label="Close port forward">&times;</button>
+                <button class="modal-close" onclick="closePortForward()"
+                    aria-label="Close port forward">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="portforward-form">
@@ -2197,7 +2468,8 @@ spec:
                 </div>
                 <h4 style="margin-bottom: 12px;">Active Port Forwards</h4>
                 <div class="portforward-list" id="portforward-list">
-                    <p style="color: var(--text-secondary); text-align: center; padding: 20px;">No active port forwards</p>
+                    <p style="color: var(--text-secondary); text-align: center; padding: 20px;">No active port forwards
+                    </p>
                 </div>
             </div>
         </div>
@@ -2210,7 +2482,8 @@ spec:
                 <h2>Audit Logs</h2>
                 <button class="modal-close" onclick="closeAuditModal()" aria-label="Close audit logs">&times;</button>
             </div>
-            <div class="audit-filters" style="padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+            <div class="audit-filters"
+                style="padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                 <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px;">
                     <input type="checkbox" id="audit-filter-llm" onchange="toggleAuditFilter('onlyLLM')">
                     <span>LLM Actions Only</span>
@@ -2219,12 +2492,15 @@ spec:
                     <input type="checkbox" id="audit-filter-errors" onchange="toggleAuditFilter('onlyErrors')">
                     <span>Errors Only</span>
                 </label>
-                <span style="color: var(--text-secondary); margin-left: auto; font-size: 12px;" id="audit-entry-count"></span>
-                <button class="btn btn-secondary" onclick="loadAuditModalData()" style="padding: 4px 12px; font-size: 12px;">Refresh</button>
+                <span style="color: var(--text-secondary); margin-left: auto; font-size: 12px;"
+                    id="audit-entry-count"></span>
+                <button class="btn btn-secondary" onclick="loadAuditModalData()"
+                    style="padding: 4px 12px; font-size: 12px;">Refresh</button>
             </div>
             <div class="modal-body" style="max-height: 65vh; overflow-y: auto; padding: 0;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                    <thead id="audit-modal-header" style="position: sticky; top: 0; background: var(--bg-secondary); z-index: 1;">
+                    <thead id="audit-modal-header"
+                        style="position: sticky; top: 0; background: var(--bg-secondary); z-index: 1;">
                         <tr>
                             <th style="padding: 10px 12px; text-align: left;">TIME</th>
                             <th style="padding: 10px 12px; text-align: left;">USER</th>
@@ -2239,7 +2515,8 @@ spec:
                     <tbody id="audit-modal-body"></tbody>
                 </table>
             </div>
-            <div class="modal-footer" style="padding: 12px 24px; border-top: 1px solid var(--border-color); text-align: right;">
+            <div class="modal-footer"
+                style="padding: 12px 24px; border-top: 1px solid var(--border-color); text-align: right;">
                 <button class="btn btn-secondary" onclick="closeAuditModal()">Close</button>
             </div>
         </div>
@@ -2259,82 +2536,105 @@ spec:
 
                 <!-- Section Checkboxes -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                    <label
+                        style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
                         <input type="checkbox" id="report-sec-workloads" checked style="margin-top:2px;">
                         <div>
                             <div style="font-weight:600;font-size:13px;">Workloads</div>
-                            <div style="font-size:11px;color:var(--text-secondary);">Pods, Deployments, Services, Images</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">Pods, Deployments, Services, Images
+                            </div>
                         </div>
                     </label>
-                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                    <label
+                        style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
                         <input type="checkbox" id="report-sec-nodes" checked style="margin-top:2px;">
                         <div>
                             <div style="font-weight:600;font-size:13px;">Nodes & Namespaces</div>
-                            <div style="font-size:11px;color:var(--text-secondary);">Node status, capacity, namespace overview</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">Node status, capacity, namespace
+                                overview</div>
                         </div>
                     </label>
-                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                    <label
+                        style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
                         <input type="checkbox" id="report-sec-security" style="margin-top:2px;">
                         <div>
                             <div style="font-weight:600;font-size:13px;">Security Scan</div>
-                            <div style="font-size:11px;color:var(--text-secondary);">Pod security, RBAC, network policies</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">Pod security, RBAC, network
+                                policies</div>
                         </div>
                     </label>
-                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                    <label
+                        style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
                         <input type="checkbox" id="report-sec-trivy" style="margin-top:2px;">
                         <div>
                             <div style="font-weight:600;font-size:13px;">Trivy CVE Scan</div>
-                            <div style="font-size:11px;color:var(--text-secondary);">Container image vulnerability scanning (slower)</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">Container image vulnerability
+                                scanning (slower)</div>
                         </div>
                     </label>
-                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                    <label
+                        style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
                         <input type="checkbox" id="report-sec-finops" checked style="margin-top:2px;">
                         <div>
                             <div style="font-weight:600;font-size:13px;">FinOps Analysis</div>
-                            <div style="font-size:11px;color:var(--text-secondary);">Cost optimization, resource efficiency</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">Cost optimization, resource
+                                efficiency</div>
                         </div>
                     </label>
-                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                    <label
+                        style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
                         <input type="checkbox" id="report-sec-events" checked style="margin-top:2px;">
                         <div>
                             <div style="font-weight:600;font-size:13px;">Events</div>
-                            <div style="font-size:11px;color:var(--text-secondary);">Warning events from the cluster</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">Warning events from the cluster
+                            </div>
                         </div>
                     </label>
-                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                    <label
+                        style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
                         <input type="checkbox" id="report-sec-metrics" style="margin-top:2px;">
                         <div>
                             <div style="font-weight:600;font-size:13px;">Metrics History</div>
-                            <div style="font-size:11px;color:var(--text-secondary);">CPU/Memory usage over last 24h</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">CPU/Memory usage over last 24h
+                            </div>
                         </div>
                     </label>
-                    <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
+                    <label
+                        style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:var(--bg-tertiary);border-radius:8px;cursor:pointer;border:1px solid var(--border-color);">
                         <input type="checkbox" id="report-sec-ai" style="margin-top:2px;">
                         <div>
                             <div style="font-weight:600;font-size:13px;">AI Analysis</div>
-                            <div style="font-size:11px;color:var(--text-secondary);">AI-powered insights and recommendations</div>
+                            <div style="font-size:11px;color:var(--text-secondary);">AI-powered insights and
+                                recommendations</div>
                         </div>
                     </label>
                 </div>
 
                 <!-- Quick toggles -->
                 <div style="display:flex;gap:8px;margin-bottom:20px;">
-                    <button class="btn btn-secondary" onclick="reportSelectAll()" style="padding:6px 12px;font-size:12px;">Select All</button>
-                    <button class="btn btn-secondary" onclick="reportSelectNone()" style="padding:6px 12px;font-size:12px;">Deselect All</button>
+                    <button class="btn btn-secondary" onclick="reportSelectAll()"
+                        style="padding:6px 12px;font-size:12px;">Select All</button>
+                    <button class="btn btn-secondary" onclick="reportSelectNone()"
+                        style="padding:6px 12px;font-size:12px;">Deselect All</button>
                 </div>
 
                 <!-- Action buttons -->
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn btn-primary" onclick="previewReport()" style="padding: 10px 20px;">Preview Report</button>
-                    <button class="btn btn-secondary" onclick="downloadReport('html')" style="padding: 10px 20px;">Download HTML</button>
-                    <button class="btn btn-secondary" onclick="downloadReport('csv')" style="padding: 10px 20px;">Download CSV</button>
-                    <button class="btn btn-secondary" onclick="generateReport('json')" style="padding: 10px 20px;">View Summary</button>
+                    <button class="btn btn-primary" onclick="previewReport()" style="padding: 10px 20px;">Preview
+                        Report</button>
+                    <button class="btn btn-secondary" onclick="downloadReport('html')"
+                        style="padding: 10px 20px;">Download HTML</button>
+                    <button class="btn btn-secondary" onclick="downloadReport('csv')"
+                        style="padding: 10px 20px;">Download CSV</button>
+                    <button class="btn btn-secondary" onclick="generateReport('json')" style="padding: 10px 20px;">View
+                        Summary</button>
                 </div>
 
                 <div id="report-status" style="margin-top: 20px;"></div>
                 <div id="report-preview" style="margin-top: 16px;"></div>
             </div>
-            <div class="modal-footer" style="padding: 12px 24px; border-top: 1px solid var(--border-color); text-align: right;">
+            <div class="modal-footer"
+                style="padding: 12px 24px; border-top: 1px solid var(--border-color); text-align: right;">
                 <button class="btn btn-secondary" onclick="closeReportsModal()">Close</button>
             </div>
         </div>
@@ -2348,22 +2648,31 @@ spec:
                 <button class="modal-close" onclick="closeDiffModal()" aria-label="Close diff">&times;</button>
             </div>
             <div class="modal-body" style="padding: 0;">
-                <div class="diff-toolbar" style="padding:12px 24px;border-bottom:1px solid var(--border-color);display:flex;gap:12px;align-items:center;">
+                <div class="diff-toolbar"
+                    style="padding:12px 24px;border-bottom:1px solid var(--border-color);display:flex;gap:12px;align-items:center;">
                     <span style="font-size:12px;color:var(--text-secondary);">Comparing:</span>
                     <span class="diff-label" id="diff-resource-label" style="font-weight:600;"></span>
                 </div>
                 <div class="diff-container" id="diff-container" style="display:flex;height:60vh;overflow:hidden;">
-                    <div class="diff-pane" style="flex:1;overflow:auto;border-right:1px solid var(--border-color);padding:16px;">
-                        <div class="diff-pane-header" style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;font-weight:600;">Last Applied</div>
-                        <pre class="diff-content" id="diff-left" style="font-size:12px;white-space:pre-wrap;font-family:var(--font-mono);"></pre>
+                    <div class="diff-pane"
+                        style="flex:1;overflow:auto;border-right:1px solid var(--border-color);padding:16px;">
+                        <div class="diff-pane-header"
+                            style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;font-weight:600;">Last
+                            Applied</div>
+                        <pre class="diff-content" id="diff-left"
+                            style="font-size:12px;white-space:pre-wrap;font-family:var(--font-mono);"></pre>
                     </div>
                     <div class="diff-pane" style="flex:1;overflow:auto;padding:16px;">
-                        <div class="diff-pane-header" style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;font-weight:600;">Current</div>
-                        <pre class="diff-content" id="diff-right" style="font-size:12px;white-space:pre-wrap;font-family:var(--font-mono);"></pre>
+                        <div class="diff-pane-header"
+                            style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;font-weight:600;">
+                            Current</div>
+                        <pre class="diff-content" id="diff-right"
+                            style="font-size:12px;white-space:pre-wrap;font-family:var(--font-mono);"></pre>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="padding:12px 24px;border-top:1px solid var(--border-color);text-align:right;">
+            <div class="modal-footer"
+                style="padding:12px 24px;border-top:1px solid var(--border-color);text-align:right;">
                 <button class="btn btn-secondary" onclick="closeDiffModal()">Close</button>
             </div>
         </div>
@@ -2372,6 +2681,10 @@ spec:
     <!-- Template Deploy Modal -->
 
     <script src="js/core/utils.js"></script>
+    <script src="js/modules/i18n.js"></script>
+    <script src="js/modules/VirtualScroller.js"></script>
+    <script src="js/modules/api.js"></script>
     <script src="js/app.js"></script>
 </body>
+
 </html>

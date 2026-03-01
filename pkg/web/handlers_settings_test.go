@@ -82,7 +82,7 @@ func setupSettingsTestServer(t *testing.T) *Server {
 	}
 	authManager := NewAuthManager(authConfig)
 
-	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 	)
 

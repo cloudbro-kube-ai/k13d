@@ -42,7 +42,7 @@ func setupAPITestServer(t *testing.T) *Server {
 	authManager := NewAuthManager(authConfig)
 
 	// Create fake k8s client
-	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 		&corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pod", Namespace: "default"},

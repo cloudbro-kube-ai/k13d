@@ -927,6 +927,14 @@ func getLLMCapabilities(client *ai.Client, provider string) LLMCapabilities {
 		} else {
 			caps.Recommendation = "Azure OpenAI capabilities depend on the deployed model"
 		}
+	case "solar", "upstage":
+		caps.JSONMode = true
+		caps.MaxTokens = 32000
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available with Solar/Upstage tool calling"
+		} else {
+			caps.Recommendation = "Consider using Solar Pro models for tool calling support"
+		}
 	default:
 		caps.JSONMode = false
 		caps.Recommendation = "Unknown provider - capabilities may be limited"

@@ -57,7 +57,7 @@ func setupK8sTestServer(t *testing.T) (*Server, http.Handler) {
 	allowExpand := true
 	reclaimPolicy := corev1.PersistentVolumeReclaimDelete
 
-	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		// Namespaces
 		&corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Name: "default"},

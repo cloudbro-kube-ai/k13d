@@ -160,6 +160,10 @@ type App struct {
 	lastSync    int64 // Unix nanos of last screen.Sync() (for periodic safety sync)
 	flashSeq    int64 // Monotonic sequence for flash messages (prevents stale clears)
 
+	// Loading state for UX
+	loadingCount int32  // Number of active background tasks
+	spinnerIdx   uint32 // Current spinner animation frame
+
 	// Context management (k9s pattern for graceful shutdown)
 	appCtx     context.Context    // Root application context
 	appCancel  context.CancelFunc // Cancels all operations on Stop()
@@ -329,6 +333,9 @@ func (a *App) loadAPIResources() {
 		return
 	}
 
+	a.startLoading()
+	defer a.stopLoading()
+
 	ctx, cancel := context.WithTimeout(a.getAppContext(), 10*time.Second)
 	defer cancel()
 
@@ -351,6 +358,9 @@ func (a *App) loadNamespaces() {
 	if a.k8s == nil {
 		return
 	}
+
+	a.startLoading()
+	defer a.stopLoading()
 
 	ctx, cancel := context.WithTimeout(a.getAppContext(), 10*time.Second)
 	defer cancel()
@@ -569,6 +579,9 @@ type PendingDecision struct {
 
 // askAI sends a question to the AI and displays the response
 func (a *App) askAI(question string) {
+	a.startLoading()
+	defer a.stopLoading()
+
 	// Preserve existing conversation history
 	existingText := a.aiPanel.GetText(false)
 	historyPrefix := ""
@@ -2306,6 +2319,11 @@ func (a *App) updateStatusBar() {
 		shortcuts += " │ " + strings.Join(indicators, " ")
 	}
 
+	// Prepend spinner if loading
+	if atomic.LoadInt32(&a.loadingCount) > 0 {
+		shortcuts = ColoredSpinner(int(atomic.LoadUint32(&a.spinnerIdx)), "cyan") + " [white]Loading...[-] " + shortcuts
+	}
+
 	// Clear before setting to prevent ghosting
 	a.statusBar.Clear()
 	a.statusBar.SetText(shortcuts)
@@ -2346,6 +2364,9 @@ func (a *App) refresh() {
 		time.Sleep(50 * time.Millisecond)
 	}
 	defer atomic.StoreInt32(&a.inUpdate, 0)
+
+	a.startLoading()
+	defer a.stopLoading()
 
 	ctx := a.prepareContext()
 
@@ -2563,6 +2584,20 @@ func (a *App) IsRunning() bool {
 	return atomic.LoadInt32(&a.running) == 1 && atomic.LoadInt32(&a.stopping) == 0
 }
 
+// startLoading increments the background task counter
+func (a *App) startLoading() {
+	atomic.AddInt32(&a.loadingCount, 1)
+	a.QueueUpdateDraw(func() { a.updateStatusBar() })
+}
+
+// stopLoading decrements the background task counter
+func (a *App) stopLoading() {
+	if atomic.AddInt32(&a.loadingCount, -1) <= 0 {
+		atomic.StoreInt32(&a.loadingCount, 0)
+		a.QueueUpdateDraw(func() { a.updateStatusBar() })
+	}
+}
+
 // Stop stops the application and prevents any further UI updates.
 // This is safe to call from any goroutine.
 func (a *App) Stop() {
@@ -2636,6 +2671,22 @@ func (a *App) Run() error {
 		}
 		return false // Don't skip the draw
 	})
+
+	// Setup spinner animation loop
+	go func() {
+		ticker := time.NewTicker(150 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			if atomic.LoadInt32(&a.stopping) == 1 {
+				return
+			}
+			<-ticker.C
+			if atomic.LoadInt32(&a.loadingCount) > 0 {
+				atomic.AddUint32(&a.spinnerIdx, 1)
+				a.QueueUpdateDraw(func() { a.updateStatusBar() })
+			}
+		}
+	}()
 
 	// Mark as running and trigger initial refresh after first draw
 	a.SetAfterDrawFunc(func(screen tcell.Screen) {

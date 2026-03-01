@@ -41,7 +41,7 @@ func setupMetricsTestServer(t *testing.T) *Server {
 	}
 	authManager := NewAuthManager(authConfig)
 
-	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		&corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{Name: "default"},
 		},
@@ -475,7 +475,7 @@ func setupMetricsTestServerWithResources(t *testing.T) *Server {
 	}
 	authManager := NewAuthManager(authConfig)
 
-	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		&corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "web-app", Namespace: "default"},
 			Spec: corev1.PodSpec{

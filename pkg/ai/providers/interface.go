@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"encoding/json"
 )
 
 // Provider defines the interface for LLM providers.
@@ -63,6 +64,35 @@ type ToolCall struct {
 type FunctionCall struct {
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`
+}
+
+// UnmarshalJSON handles both string and object formats for FunctionCall arguments
+func (f *FunctionCall) UnmarshalJSON(data []byte) error {
+	type Alias FunctionCall
+	aux := &struct {
+		Arguments json.RawMessage `json:"arguments"`
+		*Alias
+	}{
+		Alias: (*Alias)(f),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	if len(aux.Arguments) > 0 {
+		if aux.Arguments[0] == '"' {
+			var strArgs string
+			if err := json.Unmarshal(aux.Arguments, &strArgs); err != nil {
+				return err
+			}
+			f.Arguments = strArgs
+		} else {
+			f.Arguments = string(aux.Arguments)
+		}
+	}
+
+	return nil
 }
 
 // ToolResult represents the result of executing a tool

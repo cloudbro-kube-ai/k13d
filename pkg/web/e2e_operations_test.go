@@ -43,7 +43,7 @@ func setupOperationsTestServer(t *testing.T) (*Server, *AuthManager) {
 	authManager := NewAuthManager(authConfig)
 
 	replicas := int32(3)
-	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		// Namespace
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "production"}},

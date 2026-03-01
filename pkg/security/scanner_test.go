@@ -23,7 +23,7 @@ func int64Ptr(i int64) *int64 { return &i }
 // ---------- Test Scanner Initialization ----------
 
 func TestNewScanner(t *testing.T) {
-	fakeClientset := fake.NewSimpleClientset() //nolint:staticcheck
+	fakeClientset := fake.NewClientset() //nolint:staticcheck
 	client := &k8s.Client{Clientset: fakeClientset}
 
 	scanner := NewScanner(client)
@@ -39,7 +39,7 @@ func TestNewScanner(t *testing.T) {
 }
 
 func TestScanner_TrivyAvailable(t *testing.T) {
-	fakeClientset := fake.NewSimpleClientset() //nolint:staticcheck
+	fakeClientset := fake.NewClientset() //nolint:staticcheck
 	client := &k8s.Client{Clientset: fakeClientset}
 
 	scanner := &Scanner{k8sClient: client, trivyPath: ""}
@@ -57,7 +57,7 @@ func TestScanner_TrivyAvailable(t *testing.T) {
 }
 
 func TestScanner_KubeBenchAvailable(t *testing.T) {
-	fakeClientset := fake.NewSimpleClientset() //nolint:staticcheck
+	fakeClientset := fake.NewClientset() //nolint:staticcheck
 	client := &k8s.Client{Clientset: fakeClientset}
 
 	scanner := &Scanner{k8sClient: client, kubeBenchAvailable: false}
@@ -74,7 +74,7 @@ func TestScanner_KubeBenchAvailable(t *testing.T) {
 // ---------- Test Score Calculation ----------
 
 func TestCalculateScore(t *testing.T) {
-	fakeClientset := fake.NewSimpleClientset() //nolint:staticcheck
+	fakeClientset := fake.NewClientset() //nolint:staticcheck
 	client := &k8s.Client{Clientset: fakeClientset}
 	scanner := &Scanner{k8sClient: client}
 
@@ -269,7 +269,7 @@ func TestCalculateScore(t *testing.T) {
 // ---------- Test Risk Level ----------
 
 func TestDetermineRiskLevel(t *testing.T) {
-	fakeClientset := fake.NewSimpleClientset() //nolint:staticcheck
+	fakeClientset := fake.NewClientset() //nolint:staticcheck
 	client := &k8s.Client{Clientset: fakeClientset}
 	scanner := &Scanner{k8sClient: client}
 
@@ -304,7 +304,7 @@ func TestDetermineRiskLevel(t *testing.T) {
 // ---------- Test Recommendations ----------
 
 func TestGenerateRecommendations(t *testing.T) {
-	fakeClientset := fake.NewSimpleClientset() //nolint:staticcheck
+	fakeClientset := fake.NewClientset() //nolint:staticcheck
 	client := &k8s.Client{Clientset: fakeClientset}
 	scanner := &Scanner{k8sClient: client}
 
@@ -1147,7 +1147,7 @@ func TestScanImages_ContextCancellation(t *testing.T) {
 }
 
 func TestScanImage_NoTrivy(t *testing.T) {
-	fakeClientset := fake.NewSimpleClientset() //nolint:staticcheck
+	fakeClientset := fake.NewClientset() //nolint:staticcheck
 	client := &k8s.Client{Clientset: fakeClientset}
 	scanner := &Scanner{k8sClient: client, trivyPath: ""}
 
@@ -1161,7 +1161,7 @@ func TestScanImage_NoTrivy(t *testing.T) {
 }
 
 func TestScanImage_InvalidBinary(t *testing.T) {
-	fakeClientset := fake.NewSimpleClientset() //nolint:staticcheck
+	fakeClientset := fake.NewClientset() //nolint:staticcheck
 	client := &k8s.Client{Clientset: fakeClientset}
 	scanner := &Scanner{k8sClient: client, trivyPath: "/nonexistent/trivy-binary"}
 
@@ -1852,7 +1852,7 @@ func TestQuickScan(t *testing.T) {
 	}
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "myapp"}}
 
-	fakeClientset := fake.NewSimpleClientset(ns, pod) //nolint:staticcheck
+	fakeClientset := fake.NewClientset(ns, pod) //nolint:staticcheck
 	client := &k8s.Client{Clientset: fakeClientset}
 	scanner := &Scanner{k8sClient: client}
 
@@ -1907,7 +1907,7 @@ func TestQuickScan_NamespaceFilter(t *testing.T) {
 		},
 	}
 
-	fakeClientset := fake.NewSimpleClientset(pod1, pod2) //nolint:staticcheck
+	fakeClientset := fake.NewClientset(pod1, pod2) //nolint:staticcheck
 	client := &k8s.Client{Clientset: fakeClientset}
 	scanner := &Scanner{k8sClient: client}
 
@@ -1950,7 +1950,7 @@ func TestPerformBasicCISChecks(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "default-deny", Namespace: "myapp"},
 	}
 
-	fakeClientset := fake.NewSimpleClientset(ns, pod, netpol) //nolint:staticcheck
+	fakeClientset := fake.NewClientset(ns, pod, netpol) //nolint:staticcheck
 	client := &k8s.Client{Clientset: fakeClientset}
 	scanner := &Scanner{k8sClient: client}
 
@@ -1987,7 +1987,7 @@ func TestPerformBasicCISChecks(t *testing.T) {
 // ---------- Test Scanner SetTrivyPath / GetTrivyPath ----------
 
 func TestScanner_SetGetTrivyPath(t *testing.T) {
-	fakeClientset := fake.NewSimpleClientset() //nolint:staticcheck
+	fakeClientset := fake.NewClientset() //nolint:staticcheck
 	client := &k8s.Client{Clientset: fakeClientset}
 	scanner := &Scanner{k8sClient: client}
 
@@ -2017,16 +2017,16 @@ func buildFakeClientsetFromPods(pods ...*corev1.Pod) *fake.Clientset {
 	}
 	switch len(objs) {
 	case 0:
-		return fake.NewSimpleClientset() //nolint:staticcheck
+		return fake.NewClientset() //nolint:staticcheck
 	case 1:
-		return fake.NewSimpleClientset(pods[0]) //nolint:staticcheck
+		return fake.NewClientset(pods[0]) //nolint:staticcheck
 	case 2:
-		return fake.NewSimpleClientset(pods[0], pods[1]) //nolint:staticcheck
+		return fake.NewClientset(pods[0], pods[1]) //nolint:staticcheck
 	case 3:
-		return fake.NewSimpleClientset(pods[0], pods[1], pods[2]) //nolint:staticcheck
+		return fake.NewClientset(pods[0], pods[1], pods[2]) //nolint:staticcheck
 	default:
 		// For larger sets, build incrementally
-		cs := fake.NewSimpleClientset(pods[0]) //nolint:staticcheck
+		cs := fake.NewClientset(pods[0]) //nolint:staticcheck
 		for _, p := range pods[1:] {
 			_, _ = cs.CoreV1().Pods(p.Namespace).Create(context.Background(), p, metav1.CreateOptions{})
 		}
@@ -2036,7 +2036,7 @@ func buildFakeClientsetFromPods(pods ...*corev1.Pod) *fake.Clientset {
 
 // buildFakeClientsetFromRBAC creates a fake clientset from RBAC objects.
 func buildFakeClientsetFromRBAC(crbs []*rbacv1.ClusterRoleBinding, crs []*rbacv1.ClusterRole) *fake.Clientset {
-	cs := fake.NewSimpleClientset() //nolint:staticcheck
+	cs := fake.NewClientset() //nolint:staticcheck
 	for _, crb := range crbs {
 		_, _ = cs.RbacV1().ClusterRoleBindings().Create(context.Background(), crb, metav1.CreateOptions{})
 	}
@@ -2053,7 +2053,7 @@ func buildFakeClientsetFromNetwork(
 	netPols []*networkingv1.NetworkPolicy,
 	services []*corev1.Service,
 ) *fake.Clientset {
-	cs := fake.NewSimpleClientset() //nolint:staticcheck
+	cs := fake.NewClientset() //nolint:staticcheck
 	for _, ns := range namespaces {
 		_, _ = cs.CoreV1().Namespaces().Create(context.Background(), ns, metav1.CreateOptions{})
 	}

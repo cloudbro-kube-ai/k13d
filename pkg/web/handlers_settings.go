@@ -18,7 +18,7 @@ import (
 
 func (s *Server) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 
@@ -105,7 +105,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&newSettings); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			WriteErrorSimple(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
@@ -119,7 +119,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 		// Save to YAML
 		if err := s.cfg.Save(); err != nil {
-			http.Error(w, "Failed to save settings", http.StatusInternalServerError)
+			WriteErrorSimple(w, http.StatusInternalServerError, "Failed to save settings")
 			return
 		}
 
@@ -147,7 +147,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
 
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
 }
 
@@ -183,18 +183,18 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 		// Add new model profile
 		var profile config.ModelProfile
 		if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			WriteErrorSimple(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
 		if profile.Name == "" || profile.Provider == "" || profile.Model == "" {
-			http.Error(w, "Name, provider, and model are required", http.StatusBadRequest)
+			WriteErrorSimple(w, http.StatusBadRequest, "Name, provider, and model are required")
 			return
 		}
 
 		s.cfg.AddModelProfile(profile)
 		if err := s.cfg.Save(); err != nil {
-			http.Error(w, "Failed to save config", http.StatusInternalServerError)
+			WriteErrorSimple(w, http.StatusInternalServerError, "Failed to save config")
 			return
 		}
 
@@ -213,17 +213,17 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 		// Delete model profile
 		name := r.URL.Query().Get("name")
 		if name == "" {
-			http.Error(w, "Model name required", http.StatusBadRequest)
+			WriteErrorSimple(w, http.StatusBadRequest, "Model name required")
 			return
 		}
 
 		if !s.cfg.RemoveModelProfile(name) {
-			http.Error(w, "Model not found", http.StatusNotFound)
+			WriteErrorSimple(w, http.StatusNotFound, "Model not found")
 			return
 		}
 
 		if err := s.cfg.Save(); err != nil {
-			http.Error(w, "Failed to save config", http.StatusInternalServerError)
+			WriteErrorSimple(w, http.StatusInternalServerError, "Failed to save config")
 			return
 		}
 
@@ -239,7 +239,7 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
 
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
 }
 
@@ -251,7 +251,7 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		profile := s.cfg.GetActiveModelProfile()
 		if profile == nil {
-			http.Error(w, "No active model", http.StatusNotFound)
+			WriteErrorSimple(w, http.StatusNotFound, "No active model")
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -266,14 +266,14 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 			Name string `json:"name"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			WriteErrorSimple(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
 		s.aiMu.Lock()
 		if !s.cfg.SetActiveModel(req.Name) {
 			s.aiMu.Unlock()
-			http.Error(w, "Model not found", http.StatusNotFound)
+			WriteErrorSimple(w, http.StatusNotFound, "Model not found")
 			return
 		}
 
@@ -281,7 +281,7 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 		newClient, err := ai.NewClient(&s.cfg.LLM)
 		if err != nil {
 			s.aiMu.Unlock()
-			http.Error(w, fmt.Sprintf("Failed to create AI client: %v", err), http.StatusInternalServerError)
+			WriteErrorSimple(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create AI client: %v", err))
 			return
 		}
 		s.aiClient = newClient
@@ -293,7 +293,7 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := s.cfg.Save(); err != nil {
-			http.Error(w, "Failed to save config", http.StatusInternalServerError)
+			WriteErrorSimple(w, http.StatusInternalServerError, "Failed to save config")
 			return
 		}
 
@@ -309,7 +309,7 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "switched", "active_model": req.Name})
 
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
 }
 
@@ -344,18 +344,18 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 		// Add new MCP server
 		var server config.MCPServer
 		if err := json.NewDecoder(r.Body).Decode(&server); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			WriteErrorSimple(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
 		if server.Name == "" || server.Command == "" {
-			http.Error(w, "Name and command are required", http.StatusBadRequest)
+			WriteErrorSimple(w, http.StatusBadRequest, "Name and command are required")
 			return
 		}
 
 		s.cfg.AddMCPServer(server)
 		if err := s.cfg.Save(); err != nil {
-			http.Error(w, "Failed to save config", http.StatusInternalServerError)
+			WriteErrorSimple(w, http.StatusInternalServerError, "Failed to save config")
 			return
 		}
 
@@ -392,14 +392,14 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 			Action string `json:"action"` // "enable", "disable", "reconnect"
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			WriteErrorSimple(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
 		switch req.Action {
 		case "enable":
 			if !s.cfg.ToggleMCPServer(req.Name, true) {
-				http.Error(w, "Server not found", http.StatusNotFound)
+				WriteErrorSimple(w, http.StatusNotFound, "Server not found")
 				return
 			}
 			// Try to connect
@@ -423,7 +423,7 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 
 		case "disable":
 			if !s.cfg.ToggleMCPServer(req.Name, false) {
-				http.Error(w, "Server not found", http.StatusNotFound)
+				WriteErrorSimple(w, http.StatusNotFound, "Server not found")
 				return
 			}
 			// Disconnect and unregister tools
@@ -444,7 +444,7 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 					ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 					if err := s.mcpClient.Connect(ctx, srv); err != nil {
 						cancel()
-						http.Error(w, fmt.Sprintf("Failed to reconnect: %v", err), http.StatusInternalServerError)
+						WriteErrorSimple(w, http.StatusInternalServerError, fmt.Sprintf("Failed to reconnect: %v", err))
 						return
 					}
 					cancel()
@@ -454,12 +454,12 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 			}
 
 		default:
-			http.Error(w, "Invalid action (use: enable, disable, reconnect)", http.StatusBadRequest)
+			WriteErrorSimple(w, http.StatusBadRequest, "Invalid action (use: enable, disable, reconnect)")
 			return
 		}
 
 		if err := s.cfg.Save(); err != nil {
-			http.Error(w, "Failed to save config", http.StatusInternalServerError)
+			WriteErrorSimple(w, http.StatusInternalServerError, "Failed to save config")
 			return
 		}
 
@@ -478,7 +478,7 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 		// Delete MCP server
 		name := r.URL.Query().Get("name")
 		if name == "" {
-			http.Error(w, "Server name required", http.StatusBadRequest)
+			WriteErrorSimple(w, http.StatusBadRequest, "Server name required")
 			return
 		}
 
@@ -489,12 +489,12 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !s.cfg.RemoveMCPServer(name) {
-			http.Error(w, "Server not found", http.StatusNotFound)
+			WriteErrorSimple(w, http.StatusNotFound, "Server not found")
 			return
 		}
 
 		if err := s.cfg.Save(); err != nil {
-			http.Error(w, "Failed to save config", http.StatusInternalServerError)
+			WriteErrorSimple(w, http.StatusInternalServerError, "Failed to save config")
 			return
 		}
 
@@ -510,14 +510,14 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
 
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
 	}
 }
 
 // handleMCPTools returns available tools from MCP servers
 func (s *Server) handleMCPTools(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
 		return
 	}
 

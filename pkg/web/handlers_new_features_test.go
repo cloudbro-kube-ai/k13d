@@ -28,7 +28,7 @@ func setupNewFeaturesTestServer(t *testing.T) *Server {
 	proto := corev1.ProtocolTCP
 	port80 := intstr.FromInt32(80)
 
-	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		// RBAC: RoleBinding
 		&rbacv1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
@@ -882,8 +882,9 @@ func TestGetNestedSlice(t *testing.T) {
 	}
 
 	result2 := getNestedSlice(obj, "nonexistent")
-	if result2 != nil {
-		t.Errorf("expected nil for nonexistent path, got %v", result2)
+	// len(nil) is 0, so checking len(result2) is sufficient.
+	if len(result2) != 0 {
+		t.Errorf("expected empty slice for nonexistent path, got %v", result2)
 	}
 }
 
@@ -1015,7 +1016,7 @@ func TestMapResourceName(t *testing.T) {
 func setupRBACDetailTestServer(t *testing.T) *Server {
 	t.Helper()
 
-	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		&rbacv1.Role{
 			ObjectMeta: metav1.ObjectMeta{Name: "editor", Namespace: "default"},
 			Rules: []rbacv1.PolicyRule{
@@ -1165,7 +1166,7 @@ func TestHandleRBACSubjectDetail_NoBindings(t *testing.T) {
 		t.Fatalf("failed to decode: %v", err)
 	}
 
-	if resp.Bindings != nil && len(resp.Bindings) != 0 {
+	if len(resp.Bindings) != 0 {
 		t.Errorf("expected 0 bindings, got %d", len(resp.Bindings))
 	}
 }
@@ -1177,7 +1178,7 @@ func TestHandleRBACSubjectDetail_NoBindings(t *testing.T) {
 func setupResourceRefsTestServer(t *testing.T) *Server {
 	t.Helper()
 
-	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		&corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "web-pod", Namespace: "default"},
 			Spec: corev1.PodSpec{
@@ -1335,7 +1336,7 @@ func TestHandleResourceReferences_NoReferences(t *testing.T) {
 		t.Fatalf("failed to decode: %v", err)
 	}
 
-	if resp.References != nil && len(resp.References) != 0 {
+	if len(resp.References) != 0 {
 		t.Errorf("expected 0 references, got %d", len(resp.References))
 	}
 }
@@ -1348,7 +1349,7 @@ func TestBuildTopology_WithNetworkPolicy(t *testing.T) {
 	proto := corev1.ProtocolTCP
 	port80 := intstr.FromInt32(80)
 
-	fakeClientset := fake.NewSimpleClientset( //nolint:staticcheck
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		&corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "web-pod", Namespace: "default", Labels: map[string]string{"app": "web"}},
 			Status:     corev1.PodStatus{Phase: corev1.PodRunning},
@@ -1423,7 +1424,7 @@ func TestBuildTopology_WithNetworkPolicy(t *testing.T) {
 }
 
 func TestHandleTopology_IncludeNetPolParam(t *testing.T) {
-	fakeClientset := fake.NewSimpleClientset() //nolint:staticcheck
+	fakeClientset := fake.NewClientset() //nolint:staticcheck
 	cfg := &config.Config{Language: "en"}
 	authConfig := &AuthConfig{Enabled: false, SessionDuration: time.Hour, AuthMode: "local", Quiet: true}
 	server := &Server{

@@ -106,7 +106,7 @@ func TestReaderContract(t *testing.T) {
 		&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "sa-1", Namespace: "default"}},
 	}
 
-	client := &Client{Clientset: fake.NewSimpleClientset(objects...)} //nolint:staticcheck // SA1019: migrating to NewClientset requires generated apply configurations
+	client := &Client{Clientset: fake.NewClientset(objects...)} //nolint:staticcheck // SA1019: migrating to NewClientset requires generated apply configurations
 	ctx := context.Background()
 
 	// Use Reader interface - this is what consumers should depend on
@@ -158,7 +158,7 @@ func TestReaderContract(t *testing.T) {
 
 // TestReaderEmptyResults validates behavior when no resources exist.
 func TestReaderEmptyResults(t *testing.T) {
-	client := &Client{Clientset: fake.NewSimpleClientset()} //nolint:staticcheck // SA1019: migrating to NewClientset requires generated apply configurations
+	client := &Client{Clientset: fake.NewClientset()} //nolint:staticcheck // SA1019: migrating to NewClientset requires generated apply configurations
 	ctx := context.Background()
 	var reader Reader = client
 
@@ -181,7 +181,7 @@ func TestReaderNamespaceIsolation(t *testing.T) {
 		fix.pod("pod-default", "default"),
 		fix.pod("pod-kube", "kube-system"),
 	}
-	client := &Client{Clientset: fake.NewSimpleClientset(objects...)} //nolint:staticcheck
+	client := &Client{Clientset: fake.NewClientset(objects...)} //nolint:staticcheck
 	ctx := context.Background()
 	var reader Reader = client
 
@@ -405,7 +405,7 @@ func TestGetPodMetricsFromRequests(t *testing.T) {
 		podWithResources("pod-2", "default", "node-1", 500, 256),
 		podWithResources("pod-3", "kube-system", "node-2", 100, 64),
 	}
-	client := &Client{Clientset: fake.NewSimpleClientset(objects...)} //nolint:staticcheck
+	client := &Client{Clientset: fake.NewClientset(objects...)} //nolint:staticcheck
 	ctx := context.Background()
 
 	// Test namespace-scoped query
@@ -446,7 +446,7 @@ func TestGetPodMetricsFromRequests_SkipsNonRunning(t *testing.T) {
 	running := podWithResources("running-pod", "default", "node-1", 200, 128)
 
 	objects := []runtime.Object{pending, failed, running}
-	client := &Client{Clientset: fake.NewSimpleClientset(objects...)} //nolint:staticcheck
+	client := &Client{Clientset: fake.NewClientset(objects...)} //nolint:staticcheck
 	ctx := context.Background()
 
 	res, err := client.GetPodMetricsFromRequests(ctx, "default")
@@ -468,7 +468,7 @@ func TestGetPodMetricsFromRequests_NoRequests(t *testing.T) {
 	pod.Status.Phase = corev1.PodRunning
 	pod.Spec.Containers = []corev1.Container{{Name: "main", Image: "test:latest"}}
 
-	client := &Client{Clientset: fake.NewSimpleClientset(pod)} //nolint:staticcheck
+	client := &Client{Clientset: fake.NewClientset(pod)} //nolint:staticcheck
 	ctx := context.Background()
 
 	res, err := client.GetPodMetricsFromRequests(ctx, "default")
@@ -492,7 +492,7 @@ func TestGetNodeMetricsFromPodRequests(t *testing.T) {
 		podWithResources("pod-1b", "default", "node-1", 150, 64),
 		podWithResources("pod-2a", "kube-system", "node-2", 500, 256),
 	}
-	client := &Client{Clientset: fake.NewSimpleClientset(objects...)} //nolint:staticcheck
+	client := &Client{Clientset: fake.NewClientset(objects...)} //nolint:staticcheck
 	ctx := context.Background()
 
 	res, err := client.GetNodeMetricsFromPodRequests(ctx)
@@ -526,7 +526,7 @@ func TestGetNodeMetricsFromPodRequests_SkipsUnscheduled(t *testing.T) {
 	unscheduled := podWithResources("unscheduled", "default", "", 300, 256)
 
 	objects := []runtime.Object{scheduled, unscheduled}
-	client := &Client{Clientset: fake.NewSimpleClientset(objects...)} //nolint:staticcheck
+	client := &Client{Clientset: fake.NewClientset(objects...)} //nolint:staticcheck
 	ctx := context.Background()
 
 	res, err := client.GetNodeMetricsFromPodRequests(ctx)
@@ -542,7 +542,7 @@ func TestGetNodeMetricsFromPodRequests_SkipsUnscheduled(t *testing.T) {
 }
 
 func TestGetNodeMetricsFromPodRequests_Empty(t *testing.T) {
-	client := &Client{Clientset: fake.NewSimpleClientset()} //nolint:staticcheck
+	client := &Client{Clientset: fake.NewClientset()} //nolint:staticcheck
 	ctx := context.Background()
 
 	res, err := client.GetNodeMetricsFromPodRequests(ctx)

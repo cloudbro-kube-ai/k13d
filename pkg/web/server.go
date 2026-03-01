@@ -529,8 +529,8 @@ func requestLoggingMiddleware(next http.Handler) http.Handler {
 		// Process request
 		next.ServeHTTP(rw, r)
 
-		// Log request (exclude health checks to reduce noise)
-		if r.URL.Path != "/api/health" {
+		// Log request (exclude health checks and successful GETs to reduce noise)
+		if r.URL.Path != "/api/health" && (r.Method != http.MethodGet || rw.statusCode >= 400) {
 			duration := time.Since(start)
 			username := r.Header.Get("X-Username")
 			if username == "" {
