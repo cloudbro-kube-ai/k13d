@@ -24,7 +24,7 @@
 let currentResource = 'pods';
 let currentNamespace = '';
 let isLoading = false;
-let authToken = localStorage.getItem('k13d_token');
+var authToken = localStorage.getItem('k13d_token');
 let currentUser = null;
 let sidebarCollapsed = localStorage.getItem('k13d_sidebar_collapsed') === 'true';
 let debugMode = localStorage.getItem('k13d_debug_mode') === 'true';
