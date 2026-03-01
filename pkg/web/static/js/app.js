@@ -720,14 +720,6 @@ async function logout() {
     location.reload();
 }
 
-) {
-    const headers = { ...options.headers };
-    if (authToken && authToken !== 'anonymous') {
-        headers['Authorization'] = `Bearer ${authToken}`;
-    }
-    return fetch(url, { ...options, headers });
-}
-
 async function loadNamespaces() {
     try {
         const resp = await fetchWithAuth('/api/k8s/namespaces');
