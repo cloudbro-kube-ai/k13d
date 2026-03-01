@@ -874,11 +874,19 @@ func (s *Server) Start() error {
 			}
 			if indexData != nil {
 				authMode := s.authManager.GetAuthMode()
+				html := string(indexData)
+				// Inject auth mode as JS variable
 				injection := fmt.Sprintf(`<script>window.__AUTH_MODE__=%q;</script>`, authMode)
-				modified := strings.Replace(string(indexData), "</head>", injection+"</head>", 1)
+				html = strings.Replace(html, "</head>", injection+"</head>", 1)
+				// Directly show the correct login form via inline style (no JS dependency)
+				if authMode == "local" {
+					html = strings.Replace(html, `id="password-login-form" class="login-form"`, `id="password-login-form" class="login-form" style="display:block"`, 1)
+				} else {
+					html = strings.Replace(html, `id="token-login-form" class="login-form"`, `id="token-login-form" class="login-form" style="display:block"`, 1)
+				}
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-				w.Write([]byte(modified))
+				w.Write([]byte(html))
 				return
 			}
 		}
