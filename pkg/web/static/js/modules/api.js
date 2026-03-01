@@ -16,8 +16,11 @@ async function fetchWithAuth(url, options = {}) {
         // Handle common API HTTP errors globally
         if (!response.ok) {
             if (response.status === 401) {
-                console.warn('[API] Unauthorized access or token expired. Logging out.');
-                if (typeof logout === 'function') {
+                // Only auto-logout if we're not already on the login page
+                const loginPage = document.getElementById('login-page');
+                const isOnLoginPage = loginPage && loginPage.style.display !== 'none';
+                if (!isOnLoginPage && typeof logout === 'function') {
+                    console.warn('[API] Unauthorized access or token expired. Logging out.');
                     logout();
                 }
             } else if (response.status === 403) {

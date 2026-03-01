@@ -610,6 +610,7 @@ function showApp() {
         document.getElementById('debug-toggle').style.background = 'var(--accent-purple)';
     }
     loadNamespaces();
+    loadClusterContexts();
     switchResource('pods');
     initMobileNavSections();
     setupResizeHandle();
@@ -10926,4 +10927,3 @@ async function loadNotificationHistory() {
 
 // Init
 init();
-loadClusterContexts();
