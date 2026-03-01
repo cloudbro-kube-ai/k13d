@@ -482,7 +482,13 @@ async function showLogin() {
     document.getElementById('login-page').style.display = 'flex';
     document.getElementById('app').classList.remove('active');
 
-    // Fetch auth status to determine environment and auth mode
+    // Use server-injected auth mode if available (instant, no fetch needed)
+    if (window.__AUTH_MODE__) {
+        updateLoginPageForAuthMode({ auth_mode: window.__AUTH_MODE__ });
+        return;
+    }
+
+    // Fallback: fetch auth status from API
     try {
         const status = await fetch('/api/auth/status').then(r => r.json());
         updateLoginPageForAuthMode(status);

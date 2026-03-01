@@ -98,6 +98,7 @@
             text-align: center;
             margin-bottom: 8px;
             white-space: pre;
+            overflow: hidden;
             text-shadow: 0 0 20px rgba(122, 162, 247, 0.5);
             animation: logoGlow 3s ease-in-out infinite;
         }
