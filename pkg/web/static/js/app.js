@@ -369,7 +369,7 @@ function clearAllColumnFilters() {
 // Render current page of items (Virtual Scrolling)
 function renderCurrentPage() {
     const totalItems = filteredItems.length;
-    
+
     // Hide pagination UI since we are virtual scrolling
     const paginationContainer = document.getElementById('pagination-container');
     if (paginationContainer) paginationContainer.style.display = 'none';
@@ -389,13 +389,6 @@ function renderCurrentPage() {
         // Fallback
         document.getElementById('table-body').innerHTML = filteredItems.slice(0, 100).map((item, index) => generateRowHTML(currentResource, item, index)).join('');
     }
-}
-
-    // Render table body
-    renderTableBody(currentResource, pageItems);
-
-    // Update pagination info
-    updatePaginationUI(totalItems, totalPages);
 }
 
 // Update pagination UI
@@ -496,8 +489,8 @@ async function showLogin() {
     } catch (e) {
         console.error('Failed to fetch auth status:', e);
         // Default to showing token form
-        document.getElementById('token-login-form').style.display = 'block';
-        document.getElementById('password-login-form').style.display = 'none';
+        document.getElementById('token-login-form').classList.add('active');
+        document.getElementById('password-login-form').classList.remove('active');
     }
 }
 
@@ -513,8 +506,8 @@ function updateLoginPageForAuthMode(status) {
         // Token authentication mode - show token form only
         authModeEl.className = 'auth-mode-indicator token-mode';
         authModeEl.innerHTML = '🔐 Kubernetes Token 인증 모드';
-        tokenForm.style.display = 'block';
-        passwordForm.style.display = 'none';
+        tokenForm.classList.add('active');
+        passwordForm.classList.remove('active');
 
         // Focus on token input
         setTimeout(() => {
@@ -524,8 +517,8 @@ function updateLoginPageForAuthMode(status) {
         // Local authentication mode - show password form only
         authModeEl.className = 'auth-mode-indicator local-mode';
         authModeEl.innerHTML = '👤 로컬 계정 인증 모드';
-        tokenForm.style.display = 'none';
-        passwordForm.style.display = 'block';
+        tokenForm.classList.remove('active');
+        passwordForm.classList.add('active');
 
         // Focus on username input
         setTimeout(() => {
@@ -534,8 +527,8 @@ function updateLoginPageForAuthMode(status) {
     } else {
         // Default or mixed mode - show token form
         authModeEl.style.display = 'none';
-        tokenForm.style.display = 'block';
-        passwordForm.style.display = 'none';
+        tokenForm.classList.add('active');
+        passwordForm.classList.remove('active');
     }
 }
 
@@ -1274,11 +1267,11 @@ function updateResourceSummary(resource, items) {
 }
 
 function renderTable(resource, items) {
-        switch (resource) {
-            case 'pods':
-                const containers = item.containers || ['default'];
-                const containersJson = JSON.stringify(containers).replace(/'/g, "\\'");
-                return `<tr data-index="${index}" data-containers='${containersJson}'>
+    switch (resource) {
+        case 'pods':
+            const containers = item.containers || ['default'];
+            const containersJson = JSON.stringify(containers).replace(/'/g, "\\'");
+            return `<tr data-index="${index}" data-containers='${containersJson}'>
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.ready}</td>
@@ -1293,8 +1286,8 @@ function renderTable(resource, items) {
                                 <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Pod', '${item.name}', '${item.namespace}')">Topo</button>
                             </td>
                         </tr>`;
-            case 'deployments':
-                return `<tr data-index="${index}">
+        case 'deployments':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.ready}</td>
@@ -1306,8 +1299,8 @@ function renderTable(resource, items) {
                                 <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Deployment', '${item.name}', '${item.namespace}')">Topo</button>
                             </td>
                         </tr>`;
-            case 'daemonsets':
-                return `<tr data-index="${index}">
+        case 'daemonsets':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.desired || '-'}</td>
@@ -1319,8 +1312,8 @@ function renderTable(resource, items) {
                                 <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('DaemonSet', '${item.name}', '${item.namespace}')">Topo</button>
                             </td>
                         </tr>`;
-            case 'statefulsets':
-                return `<tr data-index="${index}">
+        case 'statefulsets':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.ready || '-'}</td>
@@ -1330,8 +1323,8 @@ function renderTable(resource, items) {
                                 <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('StatefulSet', '${item.name}', '${item.namespace}')">Topo</button>
                             </td>
                         </tr>`;
-            case 'replicasets':
-                return `<tr data-index="${index}">
+        case 'replicasets':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.desired || '-'}</td>
@@ -1343,16 +1336,16 @@ function renderTable(resource, items) {
                                 <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('ReplicaSet', '${item.name}', '${item.namespace}')">Topo</button>
                             </td>
                         </tr>`;
-            case 'jobs':
-                return `<tr data-index="${index}">
+        case 'jobs':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.completions || '-'}</td>
                             <td>${item.duration || '-'}</td>
                             <td>${item.age}</td>
                         </tr>`;
-            case 'cronjobs':
-                return `<tr data-index="${index}">
+        case 'cronjobs':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.schedule || '-'}</td>
@@ -1360,8 +1353,8 @@ function renderTable(resource, items) {
                             <td>${item.active || 0}</td>
                             <td>${item.lastSchedule || '-'}</td>
                         </tr>`;
-            case 'services':
-                return `<tr data-index="${index}">
+        case 'services':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.type}</td>
@@ -1372,8 +1365,8 @@ function renderTable(resource, items) {
                                 <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Service', '${item.name}', '${item.namespace}')">Topo</button>
                             </td>
                         </tr>`;
-            case 'ingresses':
-                return `<tr data-index="${index}">
+        case 'ingresses':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.class || item.ingressClass || '-'}</td>
@@ -1384,37 +1377,37 @@ function renderTable(resource, items) {
                                 <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Ingress', '${item.name}', '${item.namespace}')">Topo</button>
                             </td>
                         </tr>`;
-            case 'networkpolicies':
-                return `<tr data-index="${index}">
+        case 'networkpolicies':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.podSelector || '-'}</td>
                             <td>${item.age}</td>
                         </tr>`;
-            case 'configmaps':
-                return `<tr data-index="${index}">
+        case 'configmaps':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.data || item.dataCount || 0}</td>
                             <td>${item.age}</td>
                         </tr>`;
-            case 'secrets':
-                return `<tr data-index="${index}">
+        case 'secrets':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.type || '-'}</td>
                             <td>${item.data || item.dataCount || 0}</td>
                             <td>${item.age}</td>
                         </tr>`;
-            case 'serviceaccounts':
-                return `<tr data-index="${index}">
+        case 'serviceaccounts':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.secrets || 0}</td>
                             <td>${item.age}</td>
                         </tr>`;
-            case 'persistentvolumes':
-                return `<tr data-index="${index}">
+        case 'persistentvolumes':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.capacity || '-'}</td>
                             <td>${item.accessModes || '-'}</td>
@@ -1422,8 +1415,8 @@ function renderTable(resource, items) {
                             <td class="status-${(item.status || '').toLowerCase()}">${item.status || '-'}</td>
                             <td>${item.claim || '-'}</td>
                         </tr>`;
-            case 'persistentvolumeclaims':
-                return `<tr data-index="${index}">
+        case 'persistentvolumeclaims':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td class="status-${(item.status || '').toLowerCase()}">${item.status || '-'}</td>
@@ -1431,22 +1424,22 @@ function renderTable(resource, items) {
                             <td>${item.capacity || '-'}</td>
                             <td>${item.accessModes || '-'}</td>
                         </tr>`;
-            case 'nodes':
-                return `<tr data-index="${index}">
+        case 'nodes':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td class="status-${(item.status || '').toLowerCase()}">${item.status}</td>
                             <td>${item.roles}</td>
                             <td>${item.version}</td>
                             <td>${item.age}</td>
                         </tr>`;
-            case 'namespaces':
-                return `<tr data-index="${index}">
+        case 'namespaces':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td class="status-active">${item.status}</td>
                             <td>${item.age}</td>
                         </tr>`;
-            case 'events':
-                return `<tr data-index="${index}">
+        case 'events':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.type}</td>
                             <td>${item.reason}</td>
@@ -1454,64 +1447,64 @@ function renderTable(resource, items) {
                             <td>${item.count}</td>
                             <td>${item.lastSeen}</td>
                         </tr>`;
-            case 'roles':
-                return `<tr data-index="${index}">
+        case 'roles':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.age}</td>
                         </tr>`;
-            case 'rolebindings':
-                return `<tr data-index="${index}">
+        case 'rolebindings':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.namespace}</td>
                             <td>${item.role || item.roleRef || '-'}</td>
                             <td>${item.age}</td>
                         </tr>`;
-            case 'clusterroles':
-                return `<tr data-index="${index}">
+        case 'clusterroles':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.age}</td>
                         </tr>`;
-            case 'clusterrolebindings':
-                return `<tr data-index="${index}">
+        case 'clusterrolebindings':
+            return `<tr data-index="${index}">
                             <td>${item.name}</td>
                             <td>${item.role || item.roleRef || '-'}</td>
                             <td>${item.age}</td>
                         </tr>`;
-            default:
-                // Handle Custom Resources (crd:xxx format) and unknown types
-                if (resource.startsWith('crd:')) {
-                    const crdInfo = currentCRD;
-                    const extra = item.extra || {};
-                    const extraCols = crdInfo?._extraColumns || [];
-                    const extraCells = extraCols.map(col => {
-                        const key = col.toLowerCase().replace(/[- ]/g, '_');
-                        return `<td>${escapeHtml(extra[key] || '-')}</td>`;
-                    }).join('');
-                    const statusVal = item.status || '-';
-                    const statusClass = statusVal.toLowerCase().includes('ready') || statusVal.toLowerCase() === 'true' ? 'status-running' :
-                        statusVal.toLowerCase().includes('failed') || statusVal.toLowerCase() === 'false' ? 'status-failed' : '';
-                    if (crdInfo && crdInfo.namespaced) {
-                        return `<tr data-index="${index}" onclick="showCRDetail('${crdInfo.name}', '${item.namespace || ''}', '${item.name}')">
+        default:
+            // Handle Custom Resources (crd:xxx format) and unknown types
+            if (resource.startsWith('crd:')) {
+                const crdInfo = currentCRD;
+                const extra = item.extra || {};
+                const extraCols = crdInfo?._extraColumns || [];
+                const extraCells = extraCols.map(col => {
+                    const key = col.toLowerCase().replace(/[- ]/g, '_');
+                    return `<td>${escapeHtml(extra[key] || '-')}</td>`;
+                }).join('');
+                const statusVal = item.status || '-';
+                const statusClass = statusVal.toLowerCase().includes('ready') || statusVal.toLowerCase() === 'true' ? 'status-running' :
+                    statusVal.toLowerCase().includes('failed') || statusVal.toLowerCase() === 'false' ? 'status-failed' : '';
+                if (crdInfo && crdInfo.namespaced) {
+                    return `<tr data-index="${index}" onclick="showCRDetail('${crdInfo.name}', '${item.namespace || ''}', '${item.name}')">
                                     <td>${item.name}</td>
                                     <td>${item.namespace || '-'}</td>
                                     ${extraCells}
                                     <td class="${statusClass}">${escapeHtml(statusVal)}</td>
                                     <td>${item.age || '-'}</td>
                                 </tr>`;
-                    } else {
-                        return `<tr data-index="${index}" onclick="showCRDetail('${crdInfo?.name || ''}', '', '${item.name}')">
+                } else {
+                    return `<tr data-index="${index}" onclick="showCRDetail('${crdInfo?.name || ''}', '', '${item.name}')">
                                     <td>${item.name}</td>
                                     ${extraCells}
                                     <td class="${statusClass}">${escapeHtml(statusVal)}</td>
                                     <td>${item.age || '-'}</td>
                                 </tr>`;
-                    }
                 }
-                // Generic fallback for unknown resource types
-                const defaultHeaders = tableHeaders[resource] || ['NAME'];
-                return `<tr data-index="${index}">${defaultHeaders.map(h => `<td>${item[h.toLowerCase().replace(/[- ]/g, '')] || item.name || '-'}</td>`).join('')}</tr>`;
-        }
+            }
+            // Generic fallback for unknown resource types
+            const defaultHeaders = tableHeaders[resource] || ['NAME'];
+            return `<tr data-index="${index}">${defaultHeaders.map(h => `<td>${item[h.toLowerCase().replace(/[- ]/g, '')] || item.name || '-'}</td>`).join('')}</tr>`;
+    }
 }
 
 // Show Custom Resource detail using the shared detail-modal
