@@ -2156,7 +2156,7 @@ async function sendMessageAgentic(message) {
     div.id = 'streaming-message';
     div.innerHTML = `<div class="message-content"><span class="cursor">▊</span></div>`;
     container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
+    aiForceScrollToBottom();
 
     const contentEl = div.querySelector('.message-content');
     let fullContent = '';
@@ -2266,7 +2266,7 @@ async function sendMessageAgentic(message) {
                     formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
                     formatted = formatted.replace(/\n/g, '<br>');
                     contentEl.innerHTML = formatted + '<span class="cursor">▊</span>';
-                    container.scrollTop = container.scrollHeight;
+                    aiScrollToBottom();
 
                     currentEventType = null;
                 }
@@ -2352,8 +2352,7 @@ ${escapeHtml(execInfo.result)}</div>
 
     // Insert tool execution before the content element (AI response text)
     messageDiv.insertBefore(execDiv, contentEl);
-    const container = document.getElementById('ai-messages');
-    container.scrollTop = container.scrollHeight;
+    aiScrollToBottom();
 
     // Log to debug panel
     addDebugLog('tool', 'Tool Executed', {
@@ -2463,7 +2462,7 @@ async function respondToApproval(approved) {
             ? `<span class="tool-name">✓ Approved:</span> Command execution proceeding...`
             : `<span class="tool-name" style="color: var(--accent-red)">✕ Rejected:</span> Command was cancelled by user.`;
         container.appendChild(statusDiv);
-        container.scrollTop = container.scrollHeight;
+        aiScrollToBottom();
 
         // Auto-remove the status message after 5 seconds
         setTimeout(() => {
@@ -2495,7 +2494,11 @@ function addMessage(content, isUser = false) {
 
     div.innerHTML = `<div class="message-content">${formatted}</div>`;
     container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
+    if (isUser) {
+        aiForceScrollToBottom();
+    } else {
+        aiScrollToBottom();
+    }
 }
 
 function addLoadingMessage() {
@@ -2505,13 +2508,66 @@ function addLoadingMessage() {
     div.id = 'loading-message';
     div.innerHTML = `<div class="message-content"><div class="loading-dots"><span></span><span></span><span></span></div></div>`;
     container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
+    aiScrollToBottom();
 }
 
 function removeLoadingMessage() {
     const loading = document.getElementById('loading-message');
     if (loading) loading.remove();
 }
+
+// AI messages auto-scroll state
+let aiAutoScroll = true;
+const AI_SCROLL_STEP = 60; // pixels per arrow key press
+
+function aiScrollToBottom() {
+    if (!aiAutoScroll) return;
+    const container = document.getElementById('ai-messages');
+    if (container) container.scrollTop = container.scrollHeight;
+}
+
+function aiForceScrollToBottom() {
+    const container = document.getElementById('ai-messages');
+    if (container) {
+        container.scrollTop = container.scrollHeight;
+        aiAutoScroll = true;
+    }
+}
+
+// Detect manual scroll to toggle auto-scroll
+(function initAiScrollListener() {
+    const container = document.getElementById('ai-messages');
+    if (!container) return;
+    container.addEventListener('scroll', () => {
+        const atBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 30;
+        aiAutoScroll = atBottom;
+    });
+    // Arrow key scrolling on the messages container
+    container.setAttribute('tabindex', '-1');
+    container.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            container.scrollTop -= AI_SCROLL_STEP;
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            container.scrollTop += AI_SCROLL_STEP;
+        } else if (e.key === 'PageUp') {
+            e.preventDefault();
+            container.scrollTop -= container.clientHeight;
+        } else if (e.key === 'PageDown') {
+            e.preventDefault();
+            container.scrollTop += container.clientHeight;
+        } else if (e.key === 'Home') {
+            e.preventDefault();
+            container.scrollTop = 0;
+            aiAutoScroll = false;
+        } else if (e.key === 'End') {
+            e.preventDefault();
+            container.scrollTop = container.scrollHeight;
+            aiAutoScroll = true;
+        }
+    });
+})();
 
 // AI input query history
 let aiQueryHistory = JSON.parse(localStorage.getItem('k13d_query_history') || '[]');
@@ -3238,6 +3294,7 @@ async function loadModelProfiles() {
                             <div style="font-weight:bold;display:flex;align-items:center;gap:8px;">
                                 ${escapeHtml(m.name)}
                                 ${m.is_active ? '<span style="background:var(--accent-green);color:var(--bg-primary);padding:2px 8px;border-radius:4px;font-size:10px;">ACTIVE</span>' : ''}
+                                ${m.skip_tls_verify ? '<span style="background:var(--accent-yellow);color:var(--bg-primary);padding:2px 6px;border-radius:4px;font-size:10px;">TLS Skip</span>' : ''}
                             </div>
                             <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
                                 ${escapeHtml(m.provider)} / ${escapeHtml(m.model)} ${m.description ? '- ' + escapeHtml(m.description) : ''}
@@ -3292,6 +3349,7 @@ function hideAddModelForm() {
     document.getElementById('new-model-endpoint').value = '';
     document.getElementById('new-model-apikey').value = '';
     document.getElementById('new-model-description').value = '';
+    document.getElementById('new-model-skip-tls').checked = false;
 }
 
 async function addModelProfile() {
@@ -3301,7 +3359,8 @@ async function addModelProfile() {
         model: document.getElementById('new-model-model').value.trim(),
         endpoint: document.getElementById('new-model-endpoint').value.trim(),
         api_key: document.getElementById('new-model-apikey').value,
-        description: document.getElementById('new-model-description').value.trim()
+        description: document.getElementById('new-model-description').value.trim(),
+        skip_tls_verify: document.getElementById('new-model-skip-tls').checked
     };
 
     if (!profile.name || !profile.model) {
@@ -6685,7 +6744,11 @@ function addMessageToDOM(content, isUser, scroll = true) {
     container.appendChild(div);
 
     if (scroll) {
-        container.scrollTop = container.scrollHeight;
+        if (isUser) {
+            aiForceScrollToBottom();
+        } else {
+            aiScrollToBottom();
+        }
     }
 }
 

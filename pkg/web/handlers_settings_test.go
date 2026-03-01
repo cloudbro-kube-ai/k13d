@@ -387,6 +387,66 @@ func TestActiveModel_PUT_NotFound(t *testing.T) {
 	}
 }
 
+func TestActiveModel_PUT_Success(t *testing.T) {
+	s := setupSettingsTestServer(t)
+
+	// Init SQLite for DB sync test
+	tmpDir, err := os.MkdirTemp("", "k13d-test-db-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	dbPath := filepath.Join(tmpDir, "test.db")
+	if err := db.Init(dbPath); err != nil {
+		t.Fatalf("db.Init() error = %v", err)
+	}
+	defer db.Close()
+
+	// Verify initial state
+	if s.cfg.ActiveModel != "gpt-4" {
+		t.Fatalf("Initial ActiveModel = %s, want gpt-4", s.cfg.ActiveModel)
+	}
+
+	// Switch to claude-3
+	body := `{"name":"claude-3"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/models/active", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	s.handleActiveModel(w, req)
+
+	// ai.NewClient may fail without real provider, but config should still be updated
+	// If it returns 500 (client creation failure), that's ok for this test —
+	// we just need to verify the SetActiveModel + DB sync logic
+	if w.Code == http.StatusOK {
+		// Verify config was updated
+		if s.cfg.ActiveModel != "claude-3" {
+			t.Errorf("ActiveModel = %s, want claude-3", s.cfg.ActiveModel)
+		}
+		if s.cfg.LLM.Provider != "anthropic" {
+			t.Errorf("LLM.Provider = %s, want anthropic", s.cfg.LLM.Provider)
+		}
+
+		// Verify DB was synced
+		settings, err := db.GetWebSettingsWithPrefix("llm.")
+		if err != nil {
+			t.Fatalf("GetWebSettingsWithPrefix() error = %v", err)
+		}
+		if settings["llm.provider"] != "anthropic" {
+			t.Errorf("DB llm.provider = %s, want anthropic", settings["llm.provider"])
+		}
+		if settings["llm.model"] != "claude-3-opus" {
+			t.Errorf("DB llm.model = %s, want claude-3-opus", settings["llm.model"])
+		}
+	} else {
+		// Even if AI client creation fails, SetActiveModel should have updated config
+		if s.cfg.ActiveModel != "claude-3" {
+			t.Errorf("After failed client creation, ActiveModel = %s, want claude-3", s.cfg.ActiveModel)
+		}
+		if s.cfg.LLM.Provider != "anthropic" {
+			t.Errorf("After failed client creation, LLM.Provider = %s, want anthropic", s.cfg.LLM.Provider)
+		}
+	}
+}
+
 func TestActiveModel_MethodNotAllowed(t *testing.T) {
 	s := setupSettingsTestServer(t)
 

@@ -790,7 +790,7 @@
                         <span style="font-size: 11px; color: var(--text-secondary);">Context: Click resources to
                             add</span>
                     </div>
-                    <div class="ai-messages" id="ai-messages">
+                    <div class="ai-messages" id="ai-messages" tabindex="-1">
                         <div class="message assistant">
                             <div class="message-content">
                                 Welcome to k13d! I can help you manage your Kubernetes cluster.
@@ -1091,6 +1091,12 @@
                         <div class="form-group">
                             <label>Description (optional)</label>
                             <input type="text" id="new-model-description" placeholder="Fast model for quick tasks">
+                        </div>
+                        <div class="form-group">
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="checkbox" id="new-model-skip-tls">
+                                Skip TLS Verification (for self-signed certificates)
+                            </label>
                         </div>
                         <div style="display:flex;gap:8px;margin-top:12px;">
                             <button class="btn btn-primary" onclick="addModelProfile()">Add Profile</button>

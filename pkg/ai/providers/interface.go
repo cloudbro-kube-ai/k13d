@@ -66,6 +66,31 @@ type FunctionCall struct {
 	Arguments string `json:"arguments"`
 }
 
+// MarshalJSON ensures Arguments is serialized as a raw JSON object (not a quoted string).
+// This is needed because Ollama expects "arguments" to be a JSON object, but the Go
+// string field would otherwise be double-escaped (e.g., "{\"command\":\"get pods\"}").
+func (f FunctionCall) MarshalJSON() ([]byte, error) {
+	type Alias struct {
+		Name      string          `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
+	}
+	a := Alias{Name: f.Name}
+	if f.Arguments != "" {
+		// If Arguments is already valid JSON, use it as raw JSON
+		if json.Valid([]byte(f.Arguments)) {
+			a.Arguments = json.RawMessage(f.Arguments)
+		} else {
+			// Fallback: marshal as a JSON string
+			b, err := json.Marshal(f.Arguments)
+			if err != nil {
+				return nil, err
+			}
+			a.Arguments = b
+		}
+	}
+	return json.Marshal(a)
+}
+
 // UnmarshalJSON handles both string and object formats for FunctionCall arguments
 func (f *FunctionCall) UnmarshalJSON(data []byte) error {
 	type Alias FunctionCall

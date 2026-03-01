@@ -203,7 +203,8 @@ type ModelProfile struct {
 	APIKey          string `yaml:"api_key" json:"-"`                   // API key (never exposed in JSON)
 	Region          string `yaml:"region" json:"region,omitempty"`     // For AWS Bedrock
 	AzureDeployment string `yaml:"azure_deployment" json:"azure_deployment,omitempty"`
-	Description     string `yaml:"description" json:"description,omitempty"` // User description
+	SkipTLSVerify   bool   `yaml:"skip_tls_verify" json:"skip_tls_verify,omitempty"` // For self-signed certs
+	Description     string `yaml:"description" json:"description,omitempty"`         // User description
 }
 
 // MCPConfig holds MCP server configurations
@@ -384,6 +385,7 @@ func (c *Config) SetActiveModel(name string) bool {
 			c.LLM.APIKey = m.APIKey
 			c.LLM.Region = m.Region
 			c.LLM.AzureDeployment = m.AzureDeployment
+			c.LLM.SkipTLSVerify = m.SkipTLSVerify
 			return true
 		}
 	}

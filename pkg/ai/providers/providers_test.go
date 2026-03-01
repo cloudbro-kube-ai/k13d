@@ -2241,6 +2241,713 @@ var (
 	_ ToolProvider = (*retryProvider)(nil)
 )
 
+// ===========================================================================
+// Provider AskWithTools Round-Trip Tests
+// ===========================================================================
+
+func TestOpenAIProvider_AskWithTools_WithFunctionCall(t *testing.T) {
+	var callCount int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count := atomic.AddInt32(&callCount, 1)
+
+		body, _ := io.ReadAll(r.Body)
+		r.Body.Close()
+		var reqBody openAIChatRequest
+		_ = json.Unmarshal(body, &reqBody)
+
+		switch count {
+		case 1:
+			// First call: return a tool call (non-streaming)
+			resp := openAIChatResponse{
+				ID: "chatcmpl-tool-1",
+				Choices: []struct {
+					Message struct {
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"message"`
+					Delta struct {
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"delta"`
+					FinishReason string `json:"finish_reason"`
+				}{
+					{
+						Message: struct {
+							Content   string     `json:"content"`
+							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+						}{
+							ToolCalls: []ToolCall{
+								{
+									ID:   "call_123",
+									Type: "function",
+									Function: FunctionCall{
+										Name:      "kubectl",
+										Arguments: `{"command":"kubectl get pods"}`,
+									},
+								},
+							},
+						},
+						FinishReason: "tool_calls",
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+
+		case 2:
+			// Second call: no more tool calls (non-streaming, with tool result in messages)
+			resp := openAIChatResponse{
+				ID: "chatcmpl-tool-2",
+				Choices: []struct {
+					Message struct {
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"message"`
+					Delta struct {
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"delta"`
+					FinishReason string `json:"finish_reason"`
+				}{
+					{
+						Message: struct {
+							Content   string     `json:"content"`
+							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+						}{Content: ""},
+						FinishReason: "stop",
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+
+		case 3:
+			// Third call: streamFinalResponse (SSE streaming)
+			w.Header().Set("Content-Type", "text/event-stream")
+			w.WriteHeader(http.StatusOK)
+			chunk := openAIChatResponse{
+				ID: "chatcmpl-stream-final",
+				Choices: []struct {
+					Message struct {
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"message"`
+					Delta struct {
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"delta"`
+					FinishReason string `json:"finish_reason"`
+				}{
+					{
+						Delta: struct {
+							Content   string     `json:"content"`
+							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+						}{Content: "Found 3 running pods."},
+					},
+				},
+			}
+			data, _ := json.Marshal(chunk)
+			fmt.Fprintf(w, "data: %s\n\n", data)
+			fmt.Fprint(w, "data: [DONE]\n\n")
+		}
+	}))
+	defer srv.Close()
+
+	p, _ := NewOpenAIProvider(&ProviderConfig{
+		Provider: "openai",
+		Model:    "gpt-4",
+		APIKey:   "test-key",
+		Endpoint: srv.URL,
+	})
+
+	toolCalled := false
+	var callbackContent string
+	err := p.(ToolProvider).AskWithTools(
+		context.Background(),
+		"list pods",
+		[]ToolDefinition{{
+			Type: "function",
+			Function: FunctionDef{
+				Name:        "kubectl",
+				Description: "Execute kubectl commands",
+				Parameters:  map[string]interface{}{"type": "object"},
+			},
+		}},
+		func(s string) { callbackContent += s },
+		func(call ToolCall) ToolResult {
+			toolCalled = true
+			if call.Function.Name != "kubectl" {
+				t.Errorf("tool name = %q, want 'kubectl'", call.Function.Name)
+			}
+			if call.ID != "call_123" {
+				t.Errorf("tool call ID = %q, want 'call_123'", call.ID)
+			}
+			return ToolResult{
+				ToolCallID: call.ID,
+				Content:    "NAME   READY   STATUS\npod1   1/1     Running\npod2   1/1     Running\npod3   1/1     Running",
+			}
+		},
+	)
+	if err != nil {
+		t.Fatalf("AskWithTools: %v", err)
+	}
+	if !toolCalled {
+		t.Error("tool callback should have been called")
+	}
+	if !strings.Contains(callbackContent, "Found 3 running pods.") {
+		t.Errorf("callback should contain final streamed response, got %q", callbackContent)
+	}
+	if atomic.LoadInt32(&callCount) != 3 {
+		t.Errorf("expected 3 server calls (tool call + no-tool + stream), got %d", callCount)
+	}
+}
+
+func TestOllamaProvider_AskWithTools_WithFunctionCall(t *testing.T) {
+	// This test verifies the MarshalJSON fix: Ollama returns arguments as JSON objects,
+	// and when we send tool results back, the arguments must remain as objects, not double-escaped strings.
+	var callCount int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count := atomic.AddInt32(&callCount, 1)
+
+		// Verify Ollama endpoint path
+		if r.URL.Path != "/api/chat" {
+			t.Errorf("expected path /api/chat, got %s", r.URL.Path)
+		}
+
+		body, _ := io.ReadAll(r.Body)
+		r.Body.Close()
+
+		// On second call, verify the tool result message is properly formatted
+		if count == 2 {
+			var reqBody map[string]interface{}
+			_ = json.Unmarshal(body, &reqBody)
+			messages, _ := reqBody["messages"].([]interface{})
+			// Check that the assistant message's tool_calls arguments are JSON objects, not strings
+			for _, msg := range messages {
+				m, _ := msg.(map[string]interface{})
+				if m["role"] == "assistant" {
+					toolCalls, _ := m["tool_calls"].([]interface{})
+					for _, tc := range toolCalls {
+						tcMap, _ := tc.(map[string]interface{})
+						fn, _ := tcMap["function"].(map[string]interface{})
+						args := fn["arguments"]
+						// args must be a map (JSON object), not a string
+						if _, isStr := args.(string); isStr {
+							t.Errorf("arguments was sent as a string %q, expected JSON object (MarshalJSON fix broken)", args)
+						}
+					}
+				}
+			}
+		}
+
+		switch count {
+		case 1:
+			// First call: return a tool call with arguments as JSON object (Ollama style)
+			resp := ollamaChatResponse{Done: false}
+			resp.Message.ToolCalls = []ToolCall{
+				{
+					ID:   "ollama-call-1",
+					Type: "function",
+					Function: FunctionCall{
+						Name:      "kubectl",
+						Arguments: `{"command":"kubectl get namespaces"}`,
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+
+		case 2:
+			// Second call: return text response (no more tool calls)
+			resp := ollamaChatResponse{Done: true}
+			resp.Message.Content = "You have 4 namespaces: default, kube-system, kube-public, kube-node-lease."
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+		}
+	}))
+	defer srv.Close()
+
+	p, _ := NewOllamaProvider(&ProviderConfig{
+		Provider: "ollama",
+		Model:    "llama3.1",
+		Endpoint: srv.URL,
+	})
+
+	toolCalled := false
+	var callbackContent string
+	err := p.(ToolProvider).AskWithTools(
+		context.Background(),
+		"list namespaces",
+		[]ToolDefinition{{
+			Type: "function",
+			Function: FunctionDef{
+				Name:        "kubectl",
+				Description: "Execute kubectl commands",
+				Parameters:  map[string]interface{}{"type": "object"},
+			},
+		}},
+		func(s string) { callbackContent += s },
+		func(call ToolCall) ToolResult {
+			toolCalled = true
+			if call.Function.Name != "kubectl" {
+				t.Errorf("tool name = %q, want 'kubectl'", call.Function.Name)
+			}
+			// Verify arguments is valid JSON string (parsed from Ollama's object format)
+			var args map[string]interface{}
+			if err := json.Unmarshal([]byte(call.Function.Arguments), &args); err != nil {
+				t.Errorf("arguments should be valid JSON: %v (got %q)", err, call.Function.Arguments)
+			}
+			return ToolResult{
+				ToolCallID: call.ID,
+				Content:    "NAME              STATUS   AGE\ndefault           Active   90d\nkube-system       Active   90d",
+			}
+		},
+	)
+	if err != nil {
+		t.Fatalf("AskWithTools: %v", err)
+	}
+	if !toolCalled {
+		t.Error("tool callback should have been called")
+	}
+	if !strings.Contains(callbackContent, "4 namespaces") {
+		t.Errorf("callback should contain final answer, got %q", callbackContent)
+	}
+}
+
+func TestAzureOpenAIProvider_AskWithTools_WithFunctionCall(t *testing.T) {
+	var callCount int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count := atomic.AddInt32(&callCount, 1)
+
+		// Verify Azure-specific auth header
+		if apiKey := r.Header.Get("api-key"); apiKey != "test-azure-key" {
+			t.Errorf("expected api-key 'test-azure-key', got %q", apiKey)
+		}
+
+		switch count {
+		case 1:
+			// First call: return a tool call
+			resp := azureOpenAIChatResponse{
+				Choices: []struct {
+					Message struct {
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"message"`
+					FinishReason string `json:"finish_reason"`
+				}{
+					{
+						Message: struct {
+							Content   string     `json:"content"`
+							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+						}{
+							ToolCalls: []ToolCall{
+								{
+									ID:   "az-call-1",
+									Type: "function",
+									Function: FunctionCall{
+										Name:      "kubectl",
+										Arguments: `{"command":"kubectl get services"}`,
+									},
+								},
+							},
+						},
+						FinishReason: "tool_calls",
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+
+		case 2:
+			// Second call: return text response
+			resp := azureOpenAIChatResponse{
+				Choices: []struct {
+					Message struct {
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"message"`
+					FinishReason string `json:"finish_reason"`
+				}{
+					{
+						Message: struct {
+							Content   string     `json:"content"`
+							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+						}{Content: "Found 2 services in the cluster."},
+						FinishReason: "stop",
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+		}
+	}))
+	defer srv.Close()
+
+	p, _ := NewAzureOpenAIProvider(&ProviderConfig{
+		Provider:        "azopenai",
+		AzureDeployment: "gpt-4",
+		APIKey:          "test-azure-key",
+		Endpoint:        srv.URL,
+	})
+
+	toolCalled := false
+	var callbackContent string
+	err := p.(*AzureOpenAIProvider).AskWithTools(
+		context.Background(),
+		"list services",
+		[]ToolDefinition{{
+			Type: "function",
+			Function: FunctionDef{
+				Name:        "kubectl",
+				Description: "Execute kubectl commands",
+				Parameters:  map[string]interface{}{"type": "object"},
+			},
+		}},
+		func(s string) { callbackContent += s },
+		func(call ToolCall) ToolResult {
+			toolCalled = true
+			if call.Function.Name != "kubectl" {
+				t.Errorf("tool name = %q, want 'kubectl'", call.Function.Name)
+			}
+			return ToolResult{
+				ToolCallID: call.ID,
+				Content:    "NAME         TYPE        CLUSTER-IP\nkubernetes   ClusterIP   10.96.0.1\nnginx        NodePort    10.96.0.2",
+			}
+		},
+	)
+	if err != nil {
+		t.Fatalf("AskWithTools: %v", err)
+	}
+	if !toolCalled {
+		t.Error("tool callback should have been called")
+	}
+	if !strings.Contains(callbackContent, "Found 2 services") {
+		t.Errorf("callback should contain final answer, got %q", callbackContent)
+	}
+}
+
+func TestEmbeddedProvider_AskWithTools_NativeToolCall(t *testing.T) {
+	var callCount int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count := atomic.AddInt32(&callCount, 1)
+
+		switch count {
+		case 1:
+			// First call: return a native tool call via ToolCalls field
+			resp := embeddedChatResponse{
+				ID:    "emb-tool-1",
+				Model: "qwen2.5",
+				Choices: []struct {
+					Index   int `json:"index"`
+					Message struct {
+						Role      string     `json:"role"`
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"message"`
+					Delta struct {
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"delta"`
+					FinishReason string `json:"finish_reason"`
+				}{
+					{
+						Message: struct {
+							Role      string     `json:"role"`
+							Content   string     `json:"content"`
+							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+						}{
+							Role: "assistant",
+							ToolCalls: []ToolCall{
+								{
+									ID:   "emb-tc-1",
+									Type: "function",
+									Function: FunctionCall{
+										Name:      "kubectl",
+										Arguments: `{"command":"kubectl get nodes"}`,
+									},
+								},
+							},
+						},
+						FinishReason: "tool_calls",
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+
+		case 2:
+			// Second call: return text (no tool calls)
+			resp := embeddedChatResponse{
+				ID:    "emb-tool-2",
+				Model: "qwen2.5",
+				Choices: []struct {
+					Index   int `json:"index"`
+					Message struct {
+						Role      string     `json:"role"`
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"message"`
+					Delta struct {
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"delta"`
+					FinishReason string `json:"finish_reason"`
+				}{
+					{
+						Message: struct {
+							Role      string     `json:"role"`
+							Content   string     `json:"content"`
+							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+						}{
+							Role:    "assistant",
+							Content: "Cluster has 3 nodes, all in Ready state.",
+						},
+						FinishReason: "stop",
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+		}
+	}))
+	defer srv.Close()
+
+	p, _ := NewEmbeddedProvider(&ProviderConfig{
+		Provider: "embedded",
+		Model:    "qwen2.5",
+		Endpoint: srv.URL,
+	})
+
+	toolCalled := false
+	var callbackContent string
+	err := p.(ToolProvider).AskWithTools(
+		context.Background(),
+		"list nodes",
+		[]ToolDefinition{{
+			Type: "function",
+			Function: FunctionDef{
+				Name:        "kubectl",
+				Description: "Execute kubectl commands",
+				Parameters:  map[string]interface{}{"type": "object"},
+			},
+		}},
+		func(s string) { callbackContent += s },
+		func(call ToolCall) ToolResult {
+			toolCalled = true
+			if call.Function.Name != "kubectl" {
+				t.Errorf("tool name = %q, want 'kubectl'", call.Function.Name)
+			}
+			return ToolResult{
+				ToolCallID: call.ID,
+				Content:    "NAME    STATUS   ROLES    AGE\nnode1   Ready    master   30d\nnode2   Ready    worker   30d\nnode3   Ready    worker   30d",
+			}
+		},
+	)
+	if err != nil {
+		t.Fatalf("AskWithTools: %v", err)
+	}
+	if !toolCalled {
+		t.Error("tool callback should have been called")
+	}
+	if !strings.Contains(callbackContent, "3 nodes") {
+		t.Errorf("callback should contain final answer, got %q", callbackContent)
+	}
+}
+
+func TestEmbeddedProvider_AskWithTools_TextFallback(t *testing.T) {
+	// Test the text-based tool call parsing fallback for small models
+	// that output tool calls as JSON text instead of using the API properly
+	var callCount int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		count := atomic.AddInt32(&callCount, 1)
+
+		switch count {
+		case 1:
+			// First call: return text content with embedded JSON tool call (no native ToolCalls)
+			resp := embeddedChatResponse{
+				ID:    "emb-text-1",
+				Model: "qwen2.5-0.5b",
+				Choices: []struct {
+					Index   int `json:"index"`
+					Message struct {
+						Role      string     `json:"role"`
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"message"`
+					Delta struct {
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"delta"`
+					FinishReason string `json:"finish_reason"`
+				}{
+					{
+						Message: struct {
+							Role      string     `json:"role"`
+							Content   string     `json:"content"`
+							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+						}{
+							Role:    "assistant",
+							Content: `{"name": "kubectl", "arguments": {"command": "kubectl get deployments"}}`,
+						},
+						FinishReason: "stop",
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+
+		case 2:
+			// Second call: return final text
+			resp := embeddedChatResponse{
+				ID:    "emb-text-2",
+				Model: "qwen2.5-0.5b",
+				Choices: []struct {
+					Index   int `json:"index"`
+					Message struct {
+						Role      string     `json:"role"`
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"message"`
+					Delta struct {
+						Content   string     `json:"content"`
+						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+					} `json:"delta"`
+					FinishReason string `json:"finish_reason"`
+				}{
+					{
+						Message: struct {
+							Role      string     `json:"role"`
+							Content   string     `json:"content"`
+							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+						}{
+							Role:    "assistant",
+							Content: "There are 2 deployments running.",
+						},
+						FinishReason: "stop",
+					},
+				},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+		}
+	}))
+	defer srv.Close()
+
+	p, _ := NewEmbeddedProvider(&ProviderConfig{
+		Provider: "embedded",
+		Model:    "qwen2.5-0.5b",
+		Endpoint: srv.URL,
+	})
+
+	toolCalled := false
+	var callbackContent string
+	err := p.(ToolProvider).AskWithTools(
+		context.Background(),
+		"list deployments",
+		[]ToolDefinition{{
+			Type: "function",
+			Function: FunctionDef{
+				Name:        "kubectl",
+				Description: "Execute kubectl commands",
+				Parameters:  map[string]interface{}{"type": "object"},
+			},
+		}},
+		func(s string) { callbackContent += s },
+		func(call ToolCall) ToolResult {
+			toolCalled = true
+			if call.Function.Name != "kubectl" {
+				t.Errorf("tool name = %q, want 'kubectl'", call.Function.Name)
+			}
+			return ToolResult{
+				ToolCallID: call.ID,
+				Content:    "NAME     READY   UP-TO-DATE   AVAILABLE\nnginx    1/1     1            1\nredis    1/1     1            1",
+			}
+		},
+	)
+	if err != nil {
+		t.Fatalf("AskWithTools: %v", err)
+	}
+	if !toolCalled {
+		t.Error("tool callback should have been called (text fallback parsing)")
+	}
+	if !strings.Contains(callbackContent, "2 deployments") {
+		t.Errorf("callback should contain final answer, got %q", callbackContent)
+	}
+}
+
+func TestFunctionCall_MarshalJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		fc   FunctionCall
+		want string
+	}{
+		{
+			name: "object arguments round-trip (Ollama format)",
+			fc:   FunctionCall{Name: "kubectl", Arguments: `{"command":"cluster-info"}`},
+			want: `{"name":"kubectl","arguments":{"command":"cluster-info"}}`,
+		},
+		{
+			name: "empty arguments produces null",
+			fc:   FunctionCall{Name: "kubectl", Arguments: ""},
+			want: `{"name":"kubectl","arguments":null}`,
+		},
+		{
+			name: "non-JSON arguments marshaled as string",
+			fc:   FunctionCall{Name: "kubectl", Arguments: "plain text"},
+			want: `{"name":"kubectl","arguments":"plain text"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := json.Marshal(tt.fc)
+			if err != nil {
+				t.Fatalf("MarshalJSON() error = %v", err)
+			}
+			if string(got) != tt.want {
+				t.Errorf("MarshalJSON() = %s, want %s", string(got), tt.want)
+			}
+		})
+	}
+}
+
+func TestFunctionCall_RoundTrip(t *testing.T) {
+	// Simulate the Ollama flow: unmarshal from Ollama response, then marshal back
+	ollamaResponse := `{"name":"kubectl","arguments":{"namespace":"default","command":"get pods"}}`
+	var fc FunctionCall
+	if err := json.Unmarshal([]byte(ollamaResponse), &fc); err != nil {
+		t.Fatalf("UnmarshalJSON() error = %v", err)
+	}
+
+	marshaled, err := json.Marshal(fc)
+	if err != nil {
+		t.Fatalf("MarshalJSON() error = %v", err)
+	}
+
+	// The round-trip should produce a valid JSON object for arguments, not a quoted string
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(marshaled, &parsed); err != nil {
+		t.Fatalf("failed to parse marshaled output: %v", err)
+	}
+
+	args, ok := parsed["arguments"]
+	if !ok {
+		t.Fatal("marshaled output missing 'arguments' field")
+	}
+
+	// arguments must be an object, not a string
+	if _, isString := args.(string); isString {
+		t.Errorf("arguments was marshaled as a string %q, expected JSON object", args)
+	}
+	argsMap, ok := args.(map[string]interface{})
+	if !ok {
+		t.Fatalf("arguments is not a map, got %T", args)
+	}
+	if argsMap["command"] != "get pods" {
+		t.Errorf("arguments.command = %v, want 'get pods'", argsMap["command"])
+	}
+}
+
 func TestFunctionCall_UnmarshalJSON(t *testing.T) {
 	tests := []struct {
 		name    string

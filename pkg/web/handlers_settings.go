@@ -10,6 +10,7 @@ import (
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/pkg/i18n"
 )
 
 // ==========================================
@@ -117,6 +118,9 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		s.cfg.LogLevel = newSettings.LogLevel
 		s.aiMu.Unlock()
 
+		// Apply language change to i18n system
+		i18n.SetLanguage(newSettings.Language)
+
 		// Save to YAML
 		if err := s.cfg.Save(); err != nil {
 			WriteErrorSimple(w, http.StatusInternalServerError, "Failed to save settings")
@@ -165,13 +169,14 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 		models := make([]map[string]interface{}, len(s.cfg.Models))
 		for i, m := range s.cfg.Models {
 			models[i] = map[string]interface{}{
-				"name":        m.Name,
-				"provider":    m.Provider,
-				"model":       m.Model,
-				"endpoint":    m.Endpoint,
-				"description": m.Description,
-				"has_api_key": m.APIKey != "",
-				"is_active":   m.Name == s.cfg.ActiveModel,
+				"name":            m.Name,
+				"provider":        m.Provider,
+				"model":           m.Model,
+				"endpoint":        m.Endpoint,
+				"description":     m.Description,
+				"has_api_key":     m.APIKey != "",
+				"is_active":       m.Name == s.cfg.ActiveModel,
+				"skip_tls_verify": m.SkipTLSVerify,
 			}
 		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -295,6 +300,19 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 		if err := s.cfg.Save(); err != nil {
 			WriteErrorSimple(w, http.StatusInternalServerError, "Failed to save config")
 			return
+		}
+
+		// Also persist LLM settings to SQLite so DB stays in sync after restart
+		llmDBSettings := map[string]string{
+			"llm.provider": s.cfg.LLM.Provider,
+			"llm.model":    s.cfg.LLM.Model,
+			"llm.endpoint": s.cfg.LLM.Endpoint,
+		}
+		if s.cfg.LLM.APIKey != "" {
+			llmDBSettings["llm.api_key"] = s.cfg.LLM.APIKey
+		}
+		if err := db.SaveWebSettings(llmDBSettings); err != nil {
+			fmt.Printf("Warning: failed to save model switch to SQLite: %v\n", err)
 		}
 
 		// Record audit

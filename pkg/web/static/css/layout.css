@@ -383,6 +383,7 @@
     overflow-y: auto;
     padding: 18px;
     background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.1) 100%);
+    outline: none;
 }
 
 .ai-messages::-webkit-scrollbar {

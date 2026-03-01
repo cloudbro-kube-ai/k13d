@@ -149,6 +149,16 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			s.cfg.LLM.ReasoningEffort = llmSettings.ReasoningEffort
 		}
 
+		// Sync changes back to the active model profile so they persist across profile switches
+		if profile := s.cfg.GetActiveModelProfile(); profile != nil {
+			profile.Provider = s.cfg.LLM.Provider
+			profile.Model = s.cfg.LLM.Model
+			profile.Endpoint = s.cfg.LLM.Endpoint
+			if llmSettings.APIKey != "" {
+				profile.APIKey = s.cfg.LLM.APIKey
+			}
+		}
+
 		// Recreate AI client
 		newClient, err := ai.NewClient(&s.cfg.LLM)
 		if err != nil {
