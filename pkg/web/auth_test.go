@@ -392,6 +392,42 @@ func TestAuthMiddleware_Disabled(t *testing.T) {
 	}
 }
 
+func TestAuthMiddleware_Disabled_SetsAdminHeaders(t *testing.T) {
+	am := NewAuthManager(&AuthConfig{
+		Quiet:           true,
+		Enabled:         false,
+		SessionDuration: time.Hour,
+	})
+	defer am.StopCleanup()
+
+	var capturedHeaders http.Header
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		capturedHeaders = r.Header.Clone()
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+	w := httptest.NewRecorder()
+
+	middleware := am.AuthMiddleware(testHandler)
+	middleware.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+
+	// Verify admin role headers are set when auth is disabled
+	if got := capturedHeaders.Get("X-User-ID"); got != "anonymous" {
+		t.Errorf("X-User-ID = %q, want %q", got, "anonymous")
+	}
+	if got := capturedHeaders.Get("X-Username"); got != "anonymous" {
+		t.Errorf("X-Username = %q, want %q", got, "anonymous")
+	}
+	if got := capturedHeaders.Get("X-User-Role"); got != "admin" {
+		t.Errorf("X-User-Role = %q, want %q", got, "admin")
+	}
+}
+
 func TestAuthManager_ChangePassword(t *testing.T) {
 	am := NewAuthManager(&AuthConfig{
 		Quiet:           true,

@@ -187,10 +187,12 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 		respEndpoint := s.aiClient.GetEndpoint()
 		respReady := s.aiClient.IsReady()
 		respSupportsTools := s.aiClient.SupportsTools()
+
+		// Save config while still under lock to prevent concurrent mutation
+		saveErr := s.cfg.Save()
 		s.aiMu.Unlock()
 
-		// Save to YAML
-		if err := s.cfg.Save(); err != nil {
+		if saveErr != nil {
 			WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to save settings"))
 			return
 		}
@@ -265,12 +267,13 @@ func (s *Server) handleLLMTest(w http.ResponseWriter, r *http.Request) {
 			}
 			client, err := ai.NewClient(&tempConfig)
 			if err != nil {
+				log.Warnf("LLM connection test failed: %v", err)
 				_ = json.NewEncoder(w).Encode(map[string]interface{}{
 					"connected":    false,
 					"provider":     testConfig.Provider,
 					"model":        testConfig.Model,
 					"endpoint":     testConfig.Endpoint,
-					"error":        fmt.Sprintf("Failed to create client: %v", err),
+					"error":        "Failed to create client with provided settings",
 					"message":      "Check your provider settings and API key",
 					"capabilities": LLMCapabilities{},
 				})

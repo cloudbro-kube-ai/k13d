@@ -296,6 +296,13 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.aiClient = newClient
+
+		// Capture config values under lock before releasing
+		activeModel := s.cfg.ActiveModel
+		llmProvider := s.cfg.LLM.Provider
+		llmModel := s.cfg.LLM.Model
+		llmEndpoint := s.cfg.LLM.Endpoint
+		llmAPIKey := s.cfg.LLM.APIKey
 		s.aiMu.Unlock()
 
 		// Re-register MCP tools
@@ -310,13 +317,13 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 
 		// Also persist LLM settings to SQLite so DB stays in sync after restart
 		llmDBSettings := map[string]string{
-			"llm.active_model": s.cfg.ActiveModel,
-			"llm.provider":     s.cfg.LLM.Provider,
-			"llm.model":        s.cfg.LLM.Model,
-			"llm.endpoint":     s.cfg.LLM.Endpoint,
+			"llm.active_model": activeModel,
+			"llm.provider":     llmProvider,
+			"llm.model":        llmModel,
+			"llm.endpoint":     llmEndpoint,
 		}
-		if s.cfg.LLM.APIKey != "" {
-			llmDBSettings["llm.api_key"] = s.cfg.LLM.APIKey
+		if llmAPIKey != "" {
+			llmDBSettings["llm.api_key"] = llmAPIKey
 		}
 		if err := db.SaveWebSettings(llmDBSettings); err != nil {
 			log.Warnf("Failed to save model switch to SQLite: %v", err)
