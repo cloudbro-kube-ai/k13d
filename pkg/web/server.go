@@ -383,6 +383,11 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 	}
 	fmt.Printf("  Security Scanner: Ready (%s)\n", scannerInfo)
 
+	// Set MCP reconnect callback to re-register tools when connection is restored
+	server.mcpClient.OnReconnect = func(serverName string) {
+		server.registerMCPTools(serverName)
+	}
+
 	// Initialize MCP servers
 	server.initMCPServers()
 

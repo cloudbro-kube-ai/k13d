@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+// ToolNameInstruction is prepended when MCP tools are present.
+// MCP tools (pods_list, namespaces_list, etc.) have specific names that LLMs may guess incorrectly.
+// Not used for kubectl/bash only - those names are standard and unlikely to be hallucinated.
+const ToolNameInstruction = "CRITICAL: Use ONLY the exact tool names from the function schema. Never invent, guess, or abbreviate tool names (e.g. do not use pod_list if the schema says pods_list).\n\n"
+
 // ToolType represents the type of tool
 type ToolType string
 
@@ -236,7 +241,7 @@ func (r *Registry) Execute(ctx context.Context, call *ToolCall) *ToolResult {
 	if !ok {
 		return &ToolResult{
 			ToolCallID: call.ID,
-			Content:    fmt.Sprintf("Unknown tool: %s", call.Function.Name),
+			Content:    fmt.Sprintf("Unknown tool: %s. Use only the exact tool names from the function schema. Retry with the correct name.", call.Function.Name),
 			IsError:    true,
 		}
 	}

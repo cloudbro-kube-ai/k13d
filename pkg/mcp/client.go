@@ -2,8 +2,10 @@ package mcp
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,25 +16,28 @@ import (
 	"time"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
+	"github.com/cloudbro-kube-ai/k13d/pkg/log"
 )
 
 // Client manages MCP server connections
 type Client struct {
-	servers map[string]*ServerConnection
-	mu      sync.RWMutex
+	servers     map[string]*ServerConnection
+	mu          sync.RWMutex
+	OnReconnect func(serverName string) // called after successful reconnect; used to re-register tools
 }
 
 // ServerConnection represents a connection to an MCP server
 type ServerConnection struct {
-	config  config.MCPServer
-	cmd     *exec.Cmd
-	stdin   io.WriteCloser
-	stdout  io.ReadCloser
-	scanner *bufio.Scanner
-	reqID   atomic.Int64
-	mu      sync.Mutex
-	tools   []Tool
-	ready   bool
+	config    config.MCPServer
+	cmd       *exec.Cmd
+	stdin     io.WriteCloser
+	stdout    io.ReadCloser
+	scanner   *bufio.Scanner
+	stderrBuf *bytes.Buffer // captures MCP server stderr for debugging crashes
+	reqID     atomic.Int64
+	mu        sync.Mutex
+	tools     []Tool
+	ready     bool
 }
 
 // Tool represents an MCP tool definition
@@ -43,10 +48,18 @@ type Tool struct {
 	ServerName  string                 `json:"-"` // Which server provides this tool
 }
 
-// JSONRPCRequest represents a JSON-RPC 2.0 request
+// JSONRPCRequest represents a JSON-RPC 2.0 request (must include id)
 type JSONRPCRequest struct {
 	JSONRPC string      `json:"jsonrpc"`
 	ID      int64       `json:"id"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params,omitempty"`
+}
+
+// JSONRPCNotification represents a JSON-RPC 2.0 notification (no id field).
+// Per the spec, notifications are one-way messages that must NOT include an id.
+type JSONRPCNotification struct {
+	JSONRPC string      `json:"jsonrpc"`
 	Method  string      `json:"method"`
 	Params  interface{} `json:"params,omitempty"`
 }
@@ -96,7 +109,7 @@ type ListToolsResult struct {
 // CallToolParams represents parameters for tools/call
 type CallToolParams struct {
 	Name      string                 `json:"name"`
-	Arguments map[string]interface{} `json:"arguments,omitempty"`
+	Arguments map[string]interface{} `json:"arguments"`
 }
 
 // CallToolResult represents the result of tools/call
@@ -153,10 +166,14 @@ func (c *Client) Connect(ctx context.Context, serverCfg config.MCPServer) error 
 func (c *Client) startServer(ctx context.Context, serverCfg config.MCPServer) (*ServerConnection, error) {
 	cmd := exec.CommandContext(ctx, serverCfg.Command, serverCfg.Args...)
 
-	// Set environment variables
+	// Set environment variables: inherit system env, then overlay non-empty
+	// config values. Empty config values are skipped so that system-level
+	// env vars (e.g. tokens set in .zshrc) are not accidentally overridden.
 	cmd.Env = os.Environ()
 	for k, v := range serverCfg.Env {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+		if v != "" {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+		}
 	}
 
 	stdin, err := cmd.StdinPipe()
@@ -170,6 +187,9 @@ func (c *Client) startServer(ctx context.Context, serverCfg config.MCPServer) (*
 		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
 
+	stderrBuf := &bytes.Buffer{}
+	cmd.Stderr = stderrBuf
+
 	if err := cmd.Start(); err != nil {
 		stdin.Close()
 		stdout.Close()
@@ -181,12 +201,13 @@ func (c *Client) startServer(ctx context.Context, serverCfg config.MCPServer) (*
 	scanner.Buffer(make([]byte, 0, 10*1024*1024), 10*1024*1024)
 
 	conn := &ServerConnection{
-		config:  serverCfg,
-		cmd:     cmd,
-		stdin:   stdin,
-		stdout:  stdout,
-		scanner: scanner,
-		tools:   make([]Tool, 0),
+		config:    serverCfg,
+		cmd:       cmd,
+		stdin:     stdin,
+		stdout:    stdout,
+		scanner:   scanner,
+		stderrBuf: stderrBuf,
+		tools:     make([]Tool, 0),
 	}
 
 	return conn, nil
@@ -230,12 +251,68 @@ func (c *Client) GetAllTools() []Tool {
 	return allTools
 }
 
+// isConnectionError returns true if the error indicates a broken connection (e.g. broken pipe)
+func isConnectionError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.Contains(s, "broken pipe") ||
+		strings.Contains(s, "connection reset") ||
+		strings.Contains(s, "connection refused") ||
+		errors.Is(err, io.ErrClosedPipe)
+}
+
 // CallTool executes a tool on the appropriate server
 func (c *Client) CallTool(ctx context.Context, toolName string, args map[string]interface{}) (*CallToolResult, error) {
+	result, err := c.callToolOnce(ctx, toolName, args)
+	if err == nil {
+		return result, nil
+	}
+
+	// On connection error, try to reconnect and retry once
+	if isConnectionError(err) {
+		c.mu.Lock()
+		var serverName string
+		var serverCfg config.MCPServer
+		for name, conn := range c.servers {
+			for _, tool := range conn.tools {
+				if tool.Name == toolName {
+					serverName = name
+					serverCfg = conn.config
+					break
+				}
+			}
+			if serverName != "" {
+				break
+			}
+		}
+		if serverName != "" {
+			if conn, exists := c.servers[serverName]; exists {
+				conn.Close()
+				delete(c.servers, serverName)
+			}
+		}
+		c.mu.Unlock()
+
+		if serverName != "" {
+			if reconnectErr := c.Connect(ctx, serverCfg); reconnectErr == nil {
+				if c.OnReconnect != nil {
+					c.OnReconnect(serverName)
+				}
+				return c.callToolOnce(ctx, toolName, args)
+			}
+		}
+	}
+
+	return nil, err
+}
+
+// callToolOnce executes a tool on the appropriate server (no retry)
+func (c *Client) callToolOnce(ctx context.Context, toolName string, args map[string]interface{}) (*CallToolResult, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	// Find which server has this tool
 	for _, conn := range c.servers {
 		for _, tool := range conn.tools {
 			if tool.Name == toolName {
@@ -319,25 +396,58 @@ func (conn *ServerConnection) sendRequest(ctx context.Context, method string, pa
 		return nil, fmt.Errorf("failed to write request: %w", err)
 	}
 
-	// Read response — goroutine will eventually unblock when connection closes.
-	// Channels are buffered so the goroutine can write and exit even if select returns first.
+	// Read response — skip notifications (messages with "method" but no "id") and
+	// only return the matching JSON-RPC response. Some MCP servers (e.g. kubernetes-mcp-server)
+	// send notifications like tools/list_changed which would otherwise be mistaken for responses.
 	responseChan := make(chan *JSONRPCResponse, 1)
 	errChan := make(chan error, 1)
 
 	go func() {
-		if conn.scanner.Scan() {
+		for {
+			if !conn.scanner.Scan() {
+				if err := conn.scanner.Err(); err != nil {
+					errChan <- fmt.Errorf("scanner error: %w", err)
+				} else {
+					msg := "connection closed"
+					if conn.stderrBuf != nil && conn.stderrBuf.Len() > 0 {
+						stderr := strings.TrimSpace(conn.stderrBuf.String())
+						msg = fmt.Sprintf("connection closed (MCP server stderr: %s)", stderr)
+						// Always print to stderr so user sees it in terminal
+						fmt.Fprintf(os.Stderr, "[k13d] MCP server %s exited unexpectedly. stderr:\n%s\n", conn.config.Name, stderr)
+						log.Debugf("MCP server %s exited, stderr: %s", conn.config.Name, stderr)
+					} else {
+						fmt.Fprintf(os.Stderr, "[k13d] MCP server %s connection closed (no stderr output)\n", conn.config.Name)
+					}
+					errChan <- fmt.Errorf("%s", msg)
+				}
+				return
+			}
+			line := conn.scanner.Bytes()
+
+			// Check if it's a notification (has "method" but no "id") — skip it
+			var raw map[string]json.RawMessage
+			if err := json.Unmarshal(line, &raw); err != nil {
+				errChan <- fmt.Errorf("failed to unmarshal: %w", err)
+				return
+			}
+			if _, hasMethod := raw["method"]; hasMethod {
+				if _, hasID := raw["id"]; !hasID {
+					continue // notification — skip and read next
+				}
+			}
+
+			// Parse as response and verify ID matches
 			var resp JSONRPCResponse
-			if err := json.Unmarshal(conn.scanner.Bytes(), &resp); err != nil {
+			if err := json.Unmarshal(line, &resp); err != nil {
 				errChan <- fmt.Errorf("failed to unmarshal response: %w", err)
 				return
 			}
-			responseChan <- &resp
-		} else {
-			if err := conn.scanner.Err(); err != nil {
-				errChan <- fmt.Errorf("scanner error: %w", err)
-			} else {
-				errChan <- fmt.Errorf("connection closed")
+			if resp.ID == reqID {
+				responseChan <- &resp
+				return
 			}
+			// ID mismatch — skip (could be stray message) and continue
+			continue
 		}
 	}()
 
@@ -377,7 +487,7 @@ func (conn *ServerConnection) initialize(ctx context.Context) error {
 
 	// Send initialized notification (acquire lock since sendRequest released it)
 	conn.mu.Lock()
-	notif := JSONRPCRequest{
+	notif := JSONRPCNotification{
 		JSONRPC: "2.0",
 		Method:  "notifications/initialized",
 	}
@@ -418,6 +528,12 @@ func (conn *ServerConnection) listTools(ctx context.Context) error {
 
 // callTool executes a tool on this server
 func (conn *ServerConnection) callTool(ctx context.Context, name string, args map[string]interface{}) (*CallToolResult, error) {
+	// Some MCP servers crash when "arguments" is missing/null for no-arg tools.
+	// Always send an object ({} at minimum).
+	if args == nil {
+		args = map[string]interface{}{}
+	}
+
 	params := CallToolParams{
 		Name:      name,
 		Arguments: args,

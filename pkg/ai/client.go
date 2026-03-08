@@ -299,6 +299,12 @@ func (c *Client) AskWithToolsAndExecution(ctx context.Context, prompt string, ca
 		}
 	}
 
+	// When MCP tools are available: add strict name instruction (avoids pod_list vs pods_list etc.)
+	// and preference hint. Skip when only kubectl/bash - no extra tokens, no performance impact.
+	if len(c.toolRegistry.GetMCPTools()) > 0 {
+		prompt = tools.ToolNameInstruction + "When the user explicitly requests a specific tool, use that tool. When MCP tools are available and match the task, prefer them.\n\n" + prompt
+	}
+
 	return toolProvider.AskWithTools(ctx, prompt, toolDefs, callback, toolCallback)
 }
 
