@@ -5,6 +5,16 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-rc.1] - 2026-03-09
+
+### Added
+- **System Stability**: Added global panic handler in the TUI to gracefully restore terminal state on crash.
+- **Code Modularity**: Massively refactored large monoline files (`pkg/ui/app.go` and `pkg/web/reports.go`) into smaller, modular domain-specific files (`app_layout.go`, `app_events.go`, `reports_security.go`, etc.) to improve long-term maintainability.
+- **Health Check**: Validated and improved the `/api/health` system status endpoint in Web UI for better uptime monitoring readiness.
+
+### Changed
+- **Testing**: Improved test coverage across `pkg/ui` and `pkg/web` packages. Codebase is completely passing all unit and integration tests under `-short` mode.
+
 ## [0.9.7] - 2026-03-08
 
 ### Fixed
