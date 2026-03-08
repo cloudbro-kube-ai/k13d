@@ -2,9 +2,12 @@ package web
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-ldap/ldap/v3"
 )
@@ -332,4 +335,114 @@ func (p *LDAPProvider) GetConfig() *LDAPConfig {
 		EmailAttr:         p.config.EmailAttr,
 		DisplayNameAttr:   p.config.DisplayNameAttr,
 	}
+}
+
+func (am *AuthManager) AuthenticateLDAP(username, password string) (*Session, error) {
+	if am.ldapProvider == nil || !am.ldapProvider.IsEnabled() {
+		return nil, fmt.Errorf("LDAP authentication is not enabled")
+	}
+
+	am.mu.Lock()
+	defer am.mu.Unlock()
+
+	ldapUser, err := am.ldapProvider.Authenticate(username, password)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create or update local user cache
+	user, exists := am.users[username]
+	if !exists {
+		user = &User{
+			ID:          generateSessionID()[:16],
+			Username:    ldapUser.Username,
+			Email:       ldapUser.Email,
+			DisplayName: ldapUser.DisplayName,
+			Role:        ldapUser.Role,
+			Source:      "ldap",
+			CreatedAt:   time.Now(),
+		}
+		am.users[username] = user
+	} else {
+		user.Email = ldapUser.Email
+		user.DisplayName = ldapUser.DisplayName
+		user.Role = ldapUser.Role
+		user.Source = "ldap"
+	}
+	user.LastLogin = time.Now()
+
+	session := &Session{
+		ID:        generateSessionID(),
+		UserID:    user.ID,
+		Username:  user.Username,
+		Role:      user.Role,
+		Source:    "ldap",
+		CreatedAt: time.Now(),
+		ExpiresAt: time.Now().Add(am.config.SessionDuration),
+	}
+	am.sessions[session.ID] = session
+
+	return session, nil
+}
+
+// IsLDAPEnabled returns whether LDAP is enabled
+func (am *AuthManager) IsLDAPEnabled() bool {
+	return am.ldapProvider != nil && am.ldapProvider.IsEnabled()
+}
+
+// TestLDAPConnection tests the LDAP connection
+func (am *AuthManager) TestLDAPConnection() error {
+	if am.ldapProvider == nil {
+		return fmt.Errorf("LDAP is not configured")
+	}
+	return am.ldapProvider.TestConnection()
+}
+
+// GetLDAPConfig returns the LDAP configuration (without sensitive data)
+func (am *AuthManager) GetLDAPConfig() *LDAPConfig {
+	if am.ldapProvider == nil {
+		return nil
+	}
+	return am.ldapProvider.GetConfig()
+}
+
+// HandleLDAPStatus returns LDAP configuration status
+func (am *AuthManager) HandleLDAPStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if !am.IsLDAPEnabled() {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"enabled": false,
+		})
+		return
+	}
+
+	ldapConfig := am.GetLDAPConfig()
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"enabled":      true,
+		"host":         ldapConfig.Host,
+		"port":         ldapConfig.Port,
+		"use_tls":      ldapConfig.UseTLS,
+		"base_dn":      ldapConfig.BaseDN,
+		"admin_groups": ldapConfig.AdminGroups,
+		"user_groups":  ldapConfig.UserGroups,
+	})
+}
+
+// HandleLDAPTest tests the LDAP connection
+func (am *AuthManager) HandleLDAPTest(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := am.TestLDAPConnection(); err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "error",
+			"error":  err.Error(),
+		})
+		return
+	}
+
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "ok",
+	})
 }

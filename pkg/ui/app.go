@@ -327,17 +327,17 @@ func (a *App) Run() error {
 			if a.Application != nil {
 				a.Application.Stop()
 			}
-			
+
 			// Log panic details
 			stack := string(debug.Stack())
 			fmt.Fprintf(os.Stderr, "\n[FATAL ERROR] k13d encountered a panic and had to exit.\n")
 			fmt.Fprintf(os.Stderr, "Error: %v\n", r)
 			fmt.Fprintf(os.Stderr, "\nPlease report this issue with the following stack trace:\n%s\n", stack)
-			
+
 			if a.logger != nil {
 				a.logger.Error("GLOBAL TUI PANIC", "error", r, "stack", stack)
 			}
-			
+
 			os.Exit(1)
 		}
 	}()

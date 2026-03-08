@@ -593,7 +593,7 @@ func (a *App) selectNamespaceByNumber(num int) {
 type filterMode int
 
 const (
-	filterModeText  filterMode = iota
+	filterModeText filterMode = iota
 	filterModeFuzzy
 	filterModeLabel
 )

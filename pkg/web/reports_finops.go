@@ -3,9 +3,9 @@ package web
 import (
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	"sort"
 	"strings"
-	corev1 "k8s.io/api/core/v1"
 )
 
 func (rg *ReportGenerator) generateFinOpsAnalysis(ctx context.Context, namespaces []corev1.Namespace, report *ComprehensiveReport) FinOpsAnalysis {

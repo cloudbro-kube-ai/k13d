@@ -3,12 +3,11 @@ package web
 import (
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	"sort"
 	"strings"
 	"time"
-	corev1 "k8s.io/api/core/v1"
 )
-
 
 // AllSections returns ReportSections with everything enabled.
 func AllSections() *ReportSections {
