@@ -86,7 +86,7 @@ func (s *Server) handleAgentSettings(w http.ResponseWriter, r *http.Request) {
 
 		// Save to YAML config
 		if err := s.cfg.Save(); err != nil {
-			fmt.Printf("Warning: failed to save agent settings to YAML: %v\n", err)
+			log.Warnf("Failed to save agent settings to YAML: %v", err)
 		}
 
 		// Persist to SQLite for web UI persistence
@@ -96,7 +96,7 @@ func (s *Server) handleAgentSettings(w http.ResponseWriter, r *http.Request) {
 			"agent.temperature":      fmt.Sprintf("%.2f", req.Temperature),
 			"agent.max_tokens":       fmt.Sprintf("%d", req.MaxTokens),
 		}); err != nil {
-			fmt.Printf("Warning: failed to save agent settings to SQLite: %v\n", err)
+			log.Warnf("Failed to save agent settings to SQLite: %v", err)
 		}
 
 		// Record audit
@@ -121,6 +121,12 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPut:
+		// Block changes when embedded LLM is active
+		if s.embeddedLLM {
+			WriteErrorSimple(w, http.StatusForbidden, "LLM settings are locked while embedded LLM is active")
+			return
+		}
+
 		var llmSettings struct {
 			Provider        string `json:"provider"`
 			Model           string `json:"model"`
@@ -132,6 +138,12 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 
 		if err := json.NewDecoder(r.Body).Decode(&llmSettings); err != nil {
 			WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
+			return
+		}
+
+		// Validate required fields
+		if llmSettings.Provider == "" || llmSettings.Model == "" {
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Provider and model are required"))
 			return
 		}
 
@@ -168,6 +180,13 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.aiClient = newClient
+
+		// Capture values under lock for the response
+		respProvider := s.cfg.LLM.Provider
+		respModel := s.cfg.LLM.Model
+		respEndpoint := s.aiClient.GetEndpoint()
+		respReady := s.aiClient.IsReady()
+		respSupportsTools := s.aiClient.SupportsTools()
 		s.aiMu.Unlock()
 
 		// Save to YAML
@@ -188,7 +207,7 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			llmDBSettings["llm.api_key"] = llmSettings.APIKey
 		}
 		if err := db.SaveWebSettings(llmDBSettings); err != nil {
-			fmt.Printf("Warning: failed to save LLM settings to SQLite: %v\n", err)
+			log.Warnf("Failed to save LLM settings to SQLite: %v", err)
 		}
 
 		// Record audit
@@ -203,11 +222,11 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":         "ok",
 			"message":        "LLM settings updated successfully",
-			"provider":       s.cfg.LLM.Provider,
-			"model":          s.cfg.LLM.Model,
-			"endpoint":       s.aiClient.GetEndpoint(),
-			"ready":          s.aiClient.IsReady(),
-			"supports_tools": s.aiClient.SupportsTools(),
+			"provider":       respProvider,
+			"model":          respModel,
+			"endpoint":       respEndpoint,
+			"ready":          respReady,
+			"supports_tools": respSupportsTools,
 		})
 
 	default:

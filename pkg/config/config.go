@@ -409,9 +409,13 @@ func (c *Config) RemoveModelProfile(name string) bool {
 	for i, m := range c.Models {
 		if m.Name == name {
 			c.Models = append(c.Models[:i], c.Models[i+1:]...)
-			// If removed active model, switch to first available
-			if c.ActiveModel == name && len(c.Models) > 0 {
-				c.SetActiveModel(c.Models[0].Name)
+			// If removed active model, switch to first available or clear
+			if c.ActiveModel == name {
+				if len(c.Models) > 0 {
+					c.SetActiveModel(c.Models[0].Name)
+				} else {
+					c.ActiveModel = ""
+				}
 			}
 			return true
 		}

@@ -11,6 +11,7 @@ import (
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 	"github.com/cloudbro-kube-ai/k13d/pkg/i18n"
+	"github.com/cloudbro-kube-ai/k13d/pkg/log"
 )
 
 // ==========================================
@@ -136,7 +137,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			dbSettings["general.timezone"] = newSettings.Timezone
 		}
 		if err := db.SaveWebSettings(dbSettings); err != nil {
-			fmt.Printf("Warning: failed to save settings to SQLite: %v\n", err)
+			log.Warnf("Failed to save settings to SQLite: %v", err)
 		}
 
 		// Record audit
@@ -232,6 +233,11 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Sync deletion to SQLite
+		if err := db.DeleteModelProfile(name); err != nil {
+			log.Warnf("Failed to delete model profile from SQLite: %v", err)
+		}
+
 		// Record audit
 		username := r.Header.Get("X-Username")
 		_ = db.RecordAudit(db.AuditEntry{
@@ -313,7 +319,11 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 			llmDBSettings["llm.api_key"] = s.cfg.LLM.APIKey
 		}
 		if err := db.SaveWebSettings(llmDBSettings); err != nil {
-			fmt.Printf("Warning: failed to save model switch to SQLite: %v\n", err)
+			log.Warnf("Failed to save model switch to SQLite: %v", err)
+		}
+		// Update active flag in model_profiles table
+		if err := db.SetActiveModelProfile(req.Name); err != nil {
+			log.Warnf("Failed to update active model profile in SQLite: %v", err)
 		}
 
 		// Record audit

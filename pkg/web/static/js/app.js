@@ -2992,6 +2992,9 @@ async function testLLMConnection() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(testConfig)
         });
+        if (!resp.ok) {
+            throw new Error(`Server error (${resp.status})`);
+        }
         const status = await resp.json();
 
         if (status.connected) {
@@ -3129,7 +3132,7 @@ function disableLLMSettings(disabled, message) {
     }
 }
 
-function updateEndpointPlaceholder() {
+function updateEndpointPlaceholder(setDefaults = true) {
     const provider = document.getElementById('setting-llm-provider').value;
     const endpointInput = document.getElementById('setting-llm-endpoint');
     const hint = document.getElementById('endpoint-hint');
@@ -3148,18 +3151,17 @@ function updateEndpointPlaceholder() {
     endpointInput.placeholder = config.placeholder;
     hint.textContent = config.hint;
 
-    // Update model value and placeholder when switching providers
+    // Update model placeholder; only overwrite value when user switches provider
     const modelInput = document.getElementById('setting-llm-model');
     if (modelInput) {
         modelInput.placeholder = config.model || '';
-        // Always set model to provider default when switching
-        if (config.model) {
+        if (setDefaults && config.model) {
             modelInput.value = config.model;
         }
     }
 
-    // Always set endpoint to provider default when switching
-    if (config.placeholder) {
+    // Only overwrite endpoint value when user switches provider
+    if (setDefaults && config.placeholder) {
         endpointInput.value = config.placeholder;
     }
 
@@ -3313,27 +3315,42 @@ async function loadModelProfiles() {
 
 async function switchModel(name) {
     try {
-        await fetchWithAuth('/api/models/active', {
+        const resp = await fetchWithAuth('/api/models/active', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name })
         });
+        if (!resp.ok) {
+            const errData = await resp.json().catch(() => ({}));
+            showToast(errData.error || 'Failed to switch model', 'error');
+            return;
+        }
+        // Reload both profile list AND LLM form fields to stay in sync
         loadModelProfiles();
-        alert('Switched to model: ' + name);
+        loadSettings();
+        showToast('Switched to model: ' + name, 'success');
     } catch (e) {
-        alert('Failed to switch model: ' + e.message);
+        showToast('Failed to switch model: ' + e.message, 'error');
     }
 }
 
 async function deleteModel(name) {
     if (!confirm('Delete model profile "' + name + '"?')) return;
     try {
-        await fetchWithAuth('/api/models?name=' + encodeURIComponent(name), {
+        const resp = await fetchWithAuth('/api/models?name=' + encodeURIComponent(name), {
             method: 'DELETE'
         });
+        if (!resp.ok) {
+            const errData = await resp.json().catch(() => ({}));
+            showToast(errData.error || 'Failed to delete model', 'error');
+            return;
+        }
+        // Reload profiles and settings (active model may have changed)
         loadModelProfiles();
+        loadSettings();
+        showToast('Deleted model: ' + name, 'success');
     } catch (e) {
-        alert('Failed to delete model: ' + e.message);
+        showToast('Failed to delete model: ' + e.message, 'error');
     }
 }
 
@@ -3364,20 +3381,26 @@ async function addModelProfile() {
     };
 
     if (!profile.name || !profile.model) {
-        alert('Name and Model are required');
+        showToast('Name and Model are required', 'error');
         return;
     }
 
     try {
-        await fetchWithAuth('/api/models', {
+        const resp = await fetchWithAuth('/api/models', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(profile)
         });
+        if (!resp.ok) {
+            const errData = await resp.json().catch(() => ({}));
+            showToast(errData.error || 'Failed to add model', 'error');
+            return;
+        }
         hideAddModelForm();
         loadModelProfiles();
+        showToast('Added model: ' + profile.name, 'success');
     } catch (e) {
-        alert('Failed to add model: ' + e.message);
+        showToast('Failed to add model: ' + e.message, 'error');
     }
 }
 
@@ -3977,8 +4000,8 @@ async function loadSettings() {
             const defaults = {
                 'upstage': { model: 'solar-pro2', endpoint: 'https://api.upstage.ai/v1' },
                 'openai': { model: 'gpt-4', endpoint: 'https://api.openai.com/v1' },
-                'ollama': { model: 'qwen2.5:3b', endpoint: 'http://localhost:11434' },
-                'gemini': { model: 'gemini-pro', endpoint: 'https://generativelanguage.googleapis.com/v1beta' },
+                'ollama': { model: 'llama3', endpoint: 'http://localhost:11434' },
+                'gemini': { model: 'gemini-2.5-flash', endpoint: 'https://generativelanguage.googleapis.com/v1beta' },
                 'anthropic': { model: 'claude-3-opus', endpoint: 'https://api.anthropic.com' }
             };
             const providerDefaults = defaults[provider] || { model: '', endpoint: '' };
@@ -3999,8 +4022,8 @@ async function loadSettings() {
             document.getElementById('setting-llm-endpoint').value = 'https://api.upstage.ai/v1';
             currentLLMModel = 'solar-pro2';
         }
-        // Update endpoint placeholder based on current provider
-        updateEndpointPlaceholder();
+        // Update endpoint placeholder/hints without overwriting loaded values
+        updateEndpointPlaceholder(false);
         // Load local settings
         updateSettingsUI();
         // Update AI panel status
@@ -7109,7 +7132,7 @@ function useOllamaModel() {
     document.getElementById('setting-llm-endpoint').value = 'http://localhost:11434';
     document.getElementById('setting-llm-apikey').value = '';
 
-    updateEndpointPlaceholder();
+    updateEndpointPlaceholder(false);
     showToast(`Configured to use Ollama model: ${selectedOllamaModel}`, 'success');
 }
 

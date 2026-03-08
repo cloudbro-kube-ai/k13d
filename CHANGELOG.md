@@ -5,6 +5,23 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.7] - 2026-03-08
+
+### Fixed
+- **Web UI: Settings revert bug**: Fixed `updateEndpointPlaceholder()` overwriting saved provider/model/endpoint values when reopening Settings modal or selecting Ollama model from Quick Setup
+- **Web UI: Model profile switch sync**: `switchModel()` now reloads LLM form fields after switching, keeping Settings form in sync with active profile
+- **Web UI: Model deletion sync**: `deleteModel()` now reloads Settings form and uses toast notifications instead of browser alerts
+- **Web UI: Consistent error feedback**: Replaced `alert()` with `showToast()` in `addModelProfile()` and `deleteModel()` for consistent UX
+- **Web UI: Response validation**: Added `resp.ok` checks in `switchModel()`, `deleteModel()`, `addModelProfile()`, and `testLLMConnection()` to properly handle server errors
+- **Web UI: Default values mismatch**: Unified fallback defaults between `loadSettings()` and `updateEndpointPlaceholder()` (ollama model, gemini model)
+- **Backend: LLM settings validation**: Added required field validation for provider/model in `handleLLMSettings` to prevent config corruption from empty values
+- **Backend: Embedded LLM protection**: `handleLLMSettings` now returns 403 when embedded LLM is active, preventing settings changes that would break the embedded server
+- **Backend: Race condition in LLM response**: Response values in `handleLLMSettings` are now captured under mutex before unlock, preventing data races with concurrent model switches
+- **Backend: Model deletion DB sync**: `handleModels` DELETE now calls `db.DeleteModelProfile()` to keep SQLite in sync with YAML config
+- **Backend: Active model DB sync**: `handleActiveModel` PUT now calls `db.SetActiveModelProfile()` to update the `is_active` flag in SQLite
+- **Backend: Last model deletion**: `RemoveModelProfile()` now clears `ActiveModel` when the last profile is deleted, instead of leaving a stale reference
+- **Backend: Consistent logging**: Replaced `fmt.Printf("Warning: ...")` with `log.Warnf()` across settings handlers for proper structured logging
+
 ## [0.9.6] - 2026-03-01
 
 ### Added

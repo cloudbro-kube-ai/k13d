@@ -62,7 +62,7 @@ body:
     attributes:
       label: k13d Version
       description: Output of `k13d --version` or the Docker image tag.
-      placeholder: v0.9.6
+      placeholder: v0.9.7
     validations:
       required: true
 
