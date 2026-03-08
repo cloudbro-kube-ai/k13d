@@ -634,6 +634,11 @@ func (am *AuthManager) DeleteUser(username string) error {
 func (am *AuthManager) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !am.config.Enabled {
+			// Set admin role headers so downstream handlers (RBAC, feature gates)
+			// treat the anonymous user as admin when auth is disabled.
+			r.Header.Set("X-User-ID", "anonymous")
+			r.Header.Set("X-Username", "anonymous")
+			r.Header.Set("X-User-Role", "admin")
 			next(w, r)
 			return
 		}
