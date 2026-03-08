@@ -13,7 +13,7 @@
 # - Set imagePullPolicy: IfNotPresent or Never
 # - Configure LLM endpoint to internal Ollama/vLLM server
 
-ARG GO_VERSION=1.25.5
+ARG GO_VERSION=1.25.8
 ARG ALPINE_VERSION=3.21
 
 FROM golang:${GO_VERSION}-alpine AS builder

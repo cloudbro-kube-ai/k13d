@@ -43,7 +43,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.7'
+          go-version: '1.25.8'
           cache: true
 
       - name: Run govulncheck
@@ -59,7 +59,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.7'
+          go-version: '1.25.8'
           cache: true
 
       - name: Run gosec
