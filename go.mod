@@ -13,7 +13,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
-	github.com/lib/pq v1.10.9
+	github.com/lib/pq v1.11.2
 	github.com/rivo/tview v0.42.0
 	golang.org/x/crypto v0.45.0
 	gopkg.in/yaml.v2 v2.4.0
