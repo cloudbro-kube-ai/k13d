@@ -5,7 +5,7 @@
 #   1. Build binary locally: go build -o k13d ./cmd/kube-ai-dashboard-cli/main.go
 #   2. Build Docker image: docker build -f Dockerfile.prebuilt -t k13d:latest .
 
-FROM alpine:3.21
+FROM alpine:3.23
 
 # Install runtime dependencies, create non-root user, and set up directories
 # - ca-certificates: For HTTPS connections
