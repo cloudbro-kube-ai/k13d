@@ -667,10 +667,12 @@ func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 				dw.mu.Lock()
 				dw.timedOut = true
 				headerSent := dw.headerSent
-				dw.mu.Unlock()
 				if !headerSent && ctx.Err() == context.DeadlineExceeded {
-					WriteError(w, NewAPIError(ErrCodeTimeout, "Request timed out"))
+					dw.ResponseWriter.Header().Set("Content-Type", "application/json")
+					dw.ResponseWriter.WriteHeader(http.StatusGatewayTimeout)
+					_ = json.NewEncoder(dw.ResponseWriter).Encode(NewAPIError(ErrCodeTimeout, "Request timed out"))
 				}
+				dw.mu.Unlock()
 			}
 		})
 	}
