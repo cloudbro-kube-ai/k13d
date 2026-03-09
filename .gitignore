@@ -38,6 +38,10 @@ report-*.html
 node_modules/
 package-lock.json
 
+# Generated frontend bundles
+pkg/web/static/bundle.css
+pkg/web/static/bundle.js
+
 # Benchmark results
 .build/
 k13d_test

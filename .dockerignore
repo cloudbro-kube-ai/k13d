@@ -25,6 +25,11 @@ Thumbs.db
 testdata/
 tests/
 
+# Development source code (not needed for main k13d binary)
+cmd/bench/
+cmd/eval/
+cmd/kubectl-k13d/
+
 # Documentation (keep README for reference)
 *.md
 !README.md

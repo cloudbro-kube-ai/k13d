@@ -40,7 +40,7 @@ PLATFORMS := \
 all: clean deps test build
 
 # Build for current platform
-build:
+build: frontend-build
 	@echo "Building $(APP_NAME) for current platform..."
 	@mkdir -p $(BUILD_DIR)
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME) ./cmd/kube-ai-dashboard-cli/main.go
