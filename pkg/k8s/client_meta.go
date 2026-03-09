@@ -47,7 +47,7 @@ func (c *Client) GetCurrentNamespace() string {
 }
 
 func (c *Client) GetServerVersion() (string, error) {
-	version, err := c.Clientset.Discovery().ServerVersion()
+	version, err := c.clientset().Discovery().ServerVersion()
 	if err != nil {
 		return "", err
 	}
@@ -61,7 +61,7 @@ func (c *Client) ListNamespaces(ctx context.Context) ([]corev1.Namespace, error)
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	ns, err := c.Clientset.CoreV1().Namespaces().List(ctxWithTimeout, metav1.ListOptions{})
+	ns, err := c.clientset().CoreV1().Namespaces().List(ctxWithTimeout, metav1.ListOptions{})
 	if err != nil {
 		log.Errorf("ListNamespaces: ERROR: %v", err)
 		return nil, err
@@ -72,7 +72,7 @@ func (c *Client) ListNamespaces(ctx context.Context) ([]corev1.Namespace, error)
 }
 
 func (c *Client) ListNodes(ctx context.Context) ([]corev1.Node, error) {
-	nodes, err := c.Clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	nodes, err := c.clientset().CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (c *Client) DrainNode(ctx context.Context, nodeName string, gracePeriod int
 	}
 
 	// Get all pods on the node
-	pods, err := c.Clientset.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+	pods, err := c.clientset().CoreV1().Pods("").List(ctx, metav1.ListOptions{
 		FieldSelector: fmt.Sprintf("spec.nodeName=%s", nodeName),
 	})
 	if err != nil {
@@ -133,7 +133,7 @@ func (c *Client) DrainNode(ctx context.Context, nodeName string, gracePeriod int
 		if gracePeriod > 0 {
 			deleteOptions.GracePeriodSeconds = &gracePeriod
 		}
-		err := c.Clientset.CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, deleteOptions)
+		err := c.clientset().CoreV1().Pods(pod.Namespace).Delete(ctx, pod.Name, deleteOptions)
 		if err != nil {
 			log.Errorf("Failed to delete pod %s/%s: %v", pod.Namespace, pod.Name, err)
 		}
@@ -145,14 +145,14 @@ func (c *Client) DrainNode(ctx context.Context, nodeName string, gracePeriod int
 // CordonNode marks a node as unschedulable
 func (c *Client) CordonNode(ctx context.Context, nodeName string) error {
 	payload := []byte(`{"spec":{"unschedulable":true}}`)
-	_, err := c.Clientset.CoreV1().Nodes().Patch(ctx, nodeName, types.MergePatchType, payload, metav1.PatchOptions{})
+	_, err := c.clientset().CoreV1().Nodes().Patch(ctx, nodeName, types.MergePatchType, payload, metav1.PatchOptions{})
 	return err
 }
 
 // UncordonNode marks a node as schedulable
 func (c *Client) UncordonNode(ctx context.Context, nodeName string) error {
 	payload := []byte(`{"spec":{"unschedulable":false}}`)
-	_, err := c.Clientset.CoreV1().Nodes().Patch(ctx, nodeName, types.MergePatchType, payload, metav1.PatchOptions{})
+	_, err := c.clientset().CoreV1().Nodes().Patch(ctx, nodeName, types.MergePatchType, payload, metav1.PatchOptions{})
 	return err
 }
 
@@ -319,7 +319,7 @@ type APIResource struct {
 // GetAPIResources returns all available API resources from the cluster
 func (c *Client) GetAPIResources(ctx context.Context) ([]APIResource, error) {
 	// Use discovery client to get server resources
-	_, resourceLists, err := c.Clientset.Discovery().ServerGroupsAndResources()
+	_, resourceLists, err := c.clientset().Discovery().ServerGroupsAndResources()
 	if err != nil {
 		// Partial failure is OK - some resources might not be accessible
 		log.Warnf("Partial error getting API resources: %v", err)

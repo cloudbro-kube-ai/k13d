@@ -884,7 +884,7 @@ func (a *App) runPlugin(name string, plugin config.PluginConfig, ctx *config.Plu
 
 	// Foreground execution - suspend TUI
 	a.flashMsg(fmt.Sprintf("Running plugin '%s'...", name), false)
-	a.Suspend(func() {
+	a.safeSuspend(func() {
 		if err := plugin.Execute(a.getAppContext(), ctx); err != nil {
 			fmt.Fprintf(os.Stderr, "Plugin '%s' error: %v\n", name, err)
 		}

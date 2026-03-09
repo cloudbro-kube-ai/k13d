@@ -165,7 +165,7 @@ func (a *App) execShell() {
 
 // runShellForPod suspends the TUI and opens a shell into the given pod
 func (a *App) runShellForPod(ns, name string) {
-	a.Suspend(func() {
+	a.safeSuspend(func() {
 		// Try bash first, fall back to sh
 		cmd := exec.Command("kubectl", "exec", "-it", "-n", ns, name, "--", "/bin/bash")
 		cmd.Stdin = os.Stdin
@@ -499,7 +499,7 @@ func (a *App) attachContainer() {
 	name := a.getTableCellText(row, 1)
 
 	// Suspend TUI and run kubectl attach
-	a.Suspend(func() {
+	a.safeSuspend(func() {
 		cmd := exec.Command("kubectl", "attach", "-it", "-n", ns, name)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout

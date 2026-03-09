@@ -92,10 +92,44 @@ func (c *Client) SwitchContext(contextName string) error {
 	return nil
 }
 
+// clientset returns the Kubernetes clientset with read-lock protection.
+// This must be used instead of directly accessing c.Clientset from methods
+// that may run concurrently with SwitchContext.
+func (c *Client) clientset() kubernetes.Interface {
+	c.mu.RLock()
+	cs := c.Clientset
+	c.mu.RUnlock()
+	return cs
+}
+
+// dynamicClient returns the dynamic client with read-lock protection.
+func (c *Client) dynamicClient() dynamic.Interface {
+	c.mu.RLock()
+	d := c.Dynamic
+	c.mu.RUnlock()
+	return d
+}
+
+// restConfig returns the REST config with read-lock protection.
+func (c *Client) restConfig() *rest.Config {
+	c.mu.RLock()
+	cfg := c.Config
+	c.mu.RUnlock()
+	return cfg
+}
+
+// metricsClient returns the metrics client with read-lock protection.
+func (c *Client) metricsClient() *metricsv1beta1.MetricsV1beta1Client {
+	c.mu.RLock()
+	m := c.Metrics
+	c.mu.RUnlock()
+	return m
+}
+
 // GetRestConfig returns the REST config for the client
 func (c *Client) GetRestConfig() (*rest.Config, error) {
-	if c.Config != nil {
-		return c.Config, nil
+	if cfg := c.restConfig(); cfg != nil {
+		return cfg, nil
 	}
 	// Fallback: load from default config
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()

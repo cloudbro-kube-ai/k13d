@@ -91,6 +91,17 @@ func (a *App) recordTUIAudit(action, resource, details string, success bool, err
 	_ = db.RecordAudit(entry)
 }
 
+// safeSuspend wraps tview.Application.Suspend with a guard for SimulationScreen.
+// SimulationScreen does not support Suspend (calling Fini on it panics with
+// "close of closed channel"), so in test mode we just run fn directly.
+func (a *App) safeSuspend(fn func()) {
+	if a.useSimScreen {
+		fn()
+		return
+	}
+	a.Application.Suspend(fn)
+}
+
 // showModal adds a modal page with a full terminal sync to prevent ghosting
 func (a *App) showModal(name string, p tview.Primitive, resize bool) {
 	a.pages.AddPage(name, p, resize, true)

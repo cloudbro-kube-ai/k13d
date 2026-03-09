@@ -23,7 +23,7 @@ import (
 )
 
 func (c *Client) ListServices(ctx context.Context, namespace string) ([]corev1.Service, error) {
-	svcs, err := c.Clientset.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	svcs, err := c.clientset().CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func (c *Client) ListServices(ctx context.Context, namespace string) ([]corev1.S
 }
 
 func (c *Client) ListConfigMaps(ctx context.Context, namespace string) ([]corev1.ConfigMap, error) {
-	cms, err := c.Clientset.CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
+	cms, err := c.clientset().CoreV1().ConfigMaps(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func (c *Client) ListConfigMaps(ctx context.Context, namespace string) ([]corev1
 }
 
 func (c *Client) ListSecrets(ctx context.Context, namespace string) ([]corev1.Secret, error) {
-	secrets, err := c.Clientset.CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
+	secrets, err := c.clientset().CoreV1().Secrets(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (c *Client) ListSecrets(ctx context.Context, namespace string) ([]corev1.Se
 }
 
 func (c *Client) ListIngresses(ctx context.Context, namespace string) ([]networkingv1.Ingress, error) {
-	ings, err := c.Clientset.NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
+	ings, err := c.clientset().NetworkingV1().Ingresses(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (c *Client) ListIngresses(ctx context.Context, namespace string) ([]network
 }
 
 func (c *Client) ListEvents(ctx context.Context, namespace string) ([]corev1.Event, error) {
-	events, err := c.Clientset.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{})
+	events, err := c.clientset().CoreV1().Events(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (c *Client) ListEvents(ctx context.Context, namespace string) ([]corev1.Eve
 }
 
 func (c *Client) ListRoles(ctx context.Context, namespace string) ([]rbacv1.Role, error) {
-	roles, err := c.Clientset.RbacV1().Roles(namespace).List(ctx, metav1.ListOptions{})
+	roles, err := c.clientset().RbacV1().Roles(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (c *Client) ListRoles(ctx context.Context, namespace string) ([]rbacv1.Role
 }
 
 func (c *Client) ListRoleBindings(ctx context.Context, namespace string) ([]rbacv1.RoleBinding, error) {
-	rb, err := c.Clientset.RbacV1().RoleBindings(namespace).List(ctx, metav1.ListOptions{})
+	rb, err := c.clientset().RbacV1().RoleBindings(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (c *Client) ListRoleBindings(ctx context.Context, namespace string) ([]rbac
 }
 
 func (c *Client) ListClusterRoles(ctx context.Context) ([]rbacv1.ClusterRole, error) {
-	roles, err := c.Clientset.RbacV1().ClusterRoles().List(ctx, metav1.ListOptions{})
+	roles, err := c.clientset().RbacV1().ClusterRoles().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (c *Client) ListClusterRoles(ctx context.Context) ([]rbacv1.ClusterRole, er
 }
 
 func (c *Client) ListClusterRoleBindings(ctx context.Context) ([]rbacv1.ClusterRoleBinding, error) {
-	crb, err := c.Clientset.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
+	crb, err := c.clientset().RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (c *Client) ListClusterRoleBindings(ctx context.Context) ([]rbacv1.ClusterR
 }
 
 func (c *Client) ListPersistentVolumes(ctx context.Context) ([]corev1.PersistentVolume, error) {
-	pv, err := c.Clientset.CoreV1().PersistentVolumes().List(ctx, metav1.ListOptions{})
+	pv, err := c.clientset().CoreV1().PersistentVolumes().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +103,7 @@ func (c *Client) ListPersistentVolumes(ctx context.Context) ([]corev1.Persistent
 }
 
 func (c *Client) ListPersistentVolumeClaims(ctx context.Context, namespace string) ([]corev1.PersistentVolumeClaim, error) {
-	pvc, err := c.Clientset.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{})
+	pvc, err := c.clientset().CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (c *Client) ListPersistentVolumeClaims(ctx context.Context, namespace strin
 }
 
 func (c *Client) ListStorageClasses(ctx context.Context) ([]storagev1.StorageClass, error) {
-	sc, err := c.Clientset.StorageV1().StorageClasses().List(ctx, metav1.ListOptions{})
+	sc, err := c.clientset().StorageV1().StorageClasses().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (c *Client) ListStorageClasses(ctx context.Context) ([]storagev1.StorageCla
 }
 
 func (c *Client) ListServiceAccounts(ctx context.Context, namespace string) ([]corev1.ServiceAccount, error) {
-	sa, err := c.Clientset.CoreV1().ServiceAccounts(namespace).List(ctx, metav1.ListOptions{})
+	sa, err := c.clientset().CoreV1().ServiceAccounts(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (c *Client) ListServiceAccounts(ctx context.Context, namespace string) ([]c
 }
 
 func (c *Client) ListHorizontalPodAutoscalers(ctx context.Context, namespace string) ([]autoscalingv2.HorizontalPodAutoscaler, error) {
-	hpas, err := c.Clientset.AutoscalingV2().HorizontalPodAutoscalers(namespace).List(ctx, metav1.ListOptions{})
+	hpas, err := c.clientset().AutoscalingV2().HorizontalPodAutoscalers(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (c *Client) ListHorizontalPodAutoscalers(ctx context.Context, namespace str
 }
 
 func (c *Client) ListNetworkPolicies(ctx context.Context, namespace string) ([]networkingv1.NetworkPolicy, error) {
-	netpols, err := c.Clientset.NetworkingV1().NetworkPolicies(namespace).List(ctx, metav1.ListOptions{})
+	netpols, err := c.clientset().NetworkingV1().NetworkPolicies(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -151,14 +151,14 @@ func (c *Client) DeleteResource(ctx context.Context, gvr schema.GroupVersionReso
 	if c.Dynamic == nil {
 		return fmt.Errorf("dynamic client not initialized")
 	}
-	return c.Dynamic.Resource(gvr).Namespace(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	return c.dynamicClient().Resource(gvr).Namespace(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 }
 
 func (c *Client) GetResourceYAML(ctx context.Context, namespace, name string, gvr schema.GroupVersionResource) (string, error) {
 	if c.Dynamic == nil {
 		return "", fmt.Errorf("dynamic client not initialized")
 	}
-	obj, err := c.Dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+	obj, err := c.dynamicClient().Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -229,77 +229,77 @@ func (c *Client) WatchResource(ctx context.Context, resource, namespace string) 
 	switch strings.ToLower(resource) {
 	// Core resources
 	case "pods":
-		return c.Clientset.CoreV1().Pods(namespace).Watch(ctx, opts)
+		return c.clientset().CoreV1().Pods(namespace).Watch(ctx, opts)
 	case "services":
-		return c.Clientset.CoreV1().Services(namespace).Watch(ctx, opts)
+		return c.clientset().CoreV1().Services(namespace).Watch(ctx, opts)
 	case "nodes":
-		return c.Clientset.CoreV1().Nodes().Watch(ctx, opts)
+		return c.clientset().CoreV1().Nodes().Watch(ctx, opts)
 	case "namespaces":
-		return c.Clientset.CoreV1().Namespaces().Watch(ctx, opts)
+		return c.clientset().CoreV1().Namespaces().Watch(ctx, opts)
 	case "events":
-		return c.Clientset.CoreV1().Events(namespace).Watch(ctx, opts)
+		return c.clientset().CoreV1().Events(namespace).Watch(ctx, opts)
 	case "configmaps":
-		return c.Clientset.CoreV1().ConfigMaps(namespace).Watch(ctx, opts)
+		return c.clientset().CoreV1().ConfigMaps(namespace).Watch(ctx, opts)
 	case "secrets":
-		return c.Clientset.CoreV1().Secrets(namespace).Watch(ctx, opts)
+		return c.clientset().CoreV1().Secrets(namespace).Watch(ctx, opts)
 	case "persistentvolumes":
-		return c.Clientset.CoreV1().PersistentVolumes().Watch(ctx, opts)
+		return c.clientset().CoreV1().PersistentVolumes().Watch(ctx, opts)
 	case "persistentvolumeclaims":
-		return c.Clientset.CoreV1().PersistentVolumeClaims(namespace).Watch(ctx, opts)
+		return c.clientset().CoreV1().PersistentVolumeClaims(namespace).Watch(ctx, opts)
 	case "serviceaccounts":
-		return c.Clientset.CoreV1().ServiceAccounts(namespace).Watch(ctx, opts)
+		return c.clientset().CoreV1().ServiceAccounts(namespace).Watch(ctx, opts)
 	case "endpoints":
-		return c.Clientset.CoreV1().Endpoints(namespace).Watch(ctx, opts)
+		return c.clientset().CoreV1().Endpoints(namespace).Watch(ctx, opts)
 	case "limitranges":
-		return c.Clientset.CoreV1().LimitRanges(namespace).Watch(ctx, opts)
+		return c.clientset().CoreV1().LimitRanges(namespace).Watch(ctx, opts)
 	case "resourcequotas":
-		return c.Clientset.CoreV1().ResourceQuotas(namespace).Watch(ctx, opts)
+		return c.clientset().CoreV1().ResourceQuotas(namespace).Watch(ctx, opts)
 	case "replicationcontrollers":
-		return c.Clientset.CoreV1().ReplicationControllers(namespace).Watch(ctx, opts)
+		return c.clientset().CoreV1().ReplicationControllers(namespace).Watch(ctx, opts)
 
 	// Apps resources
 	case "deployments":
-		return c.Clientset.AppsV1().Deployments(namespace).Watch(ctx, opts)
+		return c.clientset().AppsV1().Deployments(namespace).Watch(ctx, opts)
 	case "statefulsets":
-		return c.Clientset.AppsV1().StatefulSets(namespace).Watch(ctx, opts)
+		return c.clientset().AppsV1().StatefulSets(namespace).Watch(ctx, opts)
 	case "daemonsets":
-		return c.Clientset.AppsV1().DaemonSets(namespace).Watch(ctx, opts)
+		return c.clientset().AppsV1().DaemonSets(namespace).Watch(ctx, opts)
 	case "replicasets":
-		return c.Clientset.AppsV1().ReplicaSets(namespace).Watch(ctx, opts)
+		return c.clientset().AppsV1().ReplicaSets(namespace).Watch(ctx, opts)
 
 	// Batch resources
 	case "jobs":
-		return c.Clientset.BatchV1().Jobs(namespace).Watch(ctx, opts)
+		return c.clientset().BatchV1().Jobs(namespace).Watch(ctx, opts)
 	case "cronjobs":
-		return c.Clientset.BatchV1().CronJobs(namespace).Watch(ctx, opts)
+		return c.clientset().BatchV1().CronJobs(namespace).Watch(ctx, opts)
 
 	// Networking resources
 	case "ingresses":
-		return c.Clientset.NetworkingV1().Ingresses(namespace).Watch(ctx, opts)
+		return c.clientset().NetworkingV1().Ingresses(namespace).Watch(ctx, opts)
 	case "networkpolicies":
-		return c.Clientset.NetworkingV1().NetworkPolicies(namespace).Watch(ctx, opts)
+		return c.clientset().NetworkingV1().NetworkPolicies(namespace).Watch(ctx, opts)
 
 	// RBAC resources
 	case "roles":
-		return c.Clientset.RbacV1().Roles(namespace).Watch(ctx, opts)
+		return c.clientset().RbacV1().Roles(namespace).Watch(ctx, opts)
 	case "rolebindings":
-		return c.Clientset.RbacV1().RoleBindings(namespace).Watch(ctx, opts)
+		return c.clientset().RbacV1().RoleBindings(namespace).Watch(ctx, opts)
 	case "clusterroles":
-		return c.Clientset.RbacV1().ClusterRoles().Watch(ctx, opts)
+		return c.clientset().RbacV1().ClusterRoles().Watch(ctx, opts)
 	case "clusterrolebindings":
-		return c.Clientset.RbacV1().ClusterRoleBindings().Watch(ctx, opts)
+		return c.clientset().RbacV1().ClusterRoleBindings().Watch(ctx, opts)
 
 	// Storage resources
 	case "storageclasses":
-		return c.Clientset.StorageV1().StorageClasses().Watch(ctx, opts)
+		return c.clientset().StorageV1().StorageClasses().Watch(ctx, opts)
 
 	// Policy resources
 	case "poddisruptionbudgets":
-		return c.Clientset.PolicyV1().PodDisruptionBudgets(namespace).Watch(ctx, opts)
+		return c.clientset().PolicyV1().PodDisruptionBudgets(namespace).Watch(ctx, opts)
 
 	// Autoscaling resources
 	case "horizontalpodautoscalers":
-		return c.Clientset.AutoscalingV2().HorizontalPodAutoscalers(namespace).Watch(ctx, opts)
+		return c.clientset().AutoscalingV2().HorizontalPodAutoscalers(namespace).Watch(ctx, opts)
 
 	default:
 		return nil, fmt.Errorf("watch not supported for resource: %s", resource)
@@ -370,9 +370,9 @@ func (c *Client) ApplyYAML(ctx context.Context, yamlContent string, defaultNames
 	// Try to get existing resource first (for apply semantics)
 	var resourceClient dynamic.ResourceInterface
 	if namespaced {
-		resourceClient = c.Dynamic.Resource(gvr).Namespace(namespace)
+		resourceClient = c.dynamicClient().Resource(gvr).Namespace(namespace)
 	} else {
-		resourceClient = c.Dynamic.Resource(gvr)
+		resourceClient = c.dynamicClient().Resource(gvr)
 	}
 
 	existing, err := resourceClient.Get(ctx, name, metav1.GetOptions{})
@@ -412,9 +412,9 @@ func (c *Client) ListDynamicResource(ctx context.Context, gvr schema.GroupVersio
 	var err error
 
 	if namespace == "" {
-		uList, err = c.Dynamic.Resource(gvr).List(ctx, metav1.ListOptions{})
+		uList, err = c.dynamicClient().Resource(gvr).List(ctx, metav1.ListOptions{})
 	} else {
-		uList, err = c.Dynamic.Resource(gvr).Namespace(namespace).List(ctx, metav1.ListOptions{})
+		uList, err = c.dynamicClient().Resource(gvr).Namespace(namespace).List(ctx, metav1.ListOptions{})
 	}
 	if err != nil {
 		return nil, err
@@ -442,9 +442,9 @@ func (c *Client) ListCustomResources(ctx context.Context, crdInfo *CRDInfo, name
 	var err error
 
 	if crdInfo.Namespaced && namespace != "" {
-		list, err = c.Dynamic.Resource(gvr).Namespace(namespace).List(ctx, metav1.ListOptions{})
+		list, err = c.dynamicClient().Resource(gvr).Namespace(namespace).List(ctx, metav1.ListOptions{})
 	} else {
-		list, err = c.Dynamic.Resource(gvr).List(ctx, metav1.ListOptions{})
+		list, err = c.dynamicClient().Resource(gvr).List(ctx, metav1.ListOptions{})
 	}
 
 	if err != nil {
@@ -466,9 +466,9 @@ func (c *Client) GetCustomResource(ctx context.Context, crdInfo *CRDInfo, namesp
 	}
 
 	if crdInfo.Namespaced && namespace != "" {
-		return c.Dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+		return c.dynamicClient().Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	}
-	return c.Dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+	return c.dynamicClient().Resource(gvr).Get(ctx, name, metav1.GetOptions{})
 }
 
 // GetCustomResourceYAML returns the YAML representation of a custom resource
@@ -495,7 +495,7 @@ func (c *Client) ListCRDs(ctx context.Context) ([]apiextv1.CustomResourceDefinit
 		Version:  "v1",
 		Resource: "customresourcedefinitions",
 	}
-	list, err := c.Dynamic.Resource(gvr).List(ctx, metav1.ListOptions{})
+	list, err := c.dynamicClient().Resource(gvr).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -540,7 +540,7 @@ func (c *Client) GetCRDInfo(ctx context.Context, crdName string) (*CRDInfo, erro
 		Resource: "customresourcedefinitions",
 	}
 
-	obj, err := c.Dynamic.Resource(gvr).Get(ctx, crdName, metav1.GetOptions{})
+	obj, err := c.dynamicClient().Resource(gvr).Get(ctx, crdName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -612,7 +612,7 @@ func (c *Client) ListCRDsDetailed(ctx context.Context) ([]CRDInfo, error) {
 		Resource: "customresourcedefinitions",
 	}
 
-	list, err := c.Dynamic.Resource(gvr).List(ctx, metav1.ListOptions{})
+	list, err := c.dynamicClient().Resource(gvr).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -822,13 +822,13 @@ func resolvePathRecursive(current interface{}, path string) interface{} {
 func (c *Client) ListReplicationControllers(ctx context.Context, namespace string) ([]corev1.ReplicationController, error) {
 	opts := metav1.ListOptions{}
 	if namespace == "" {
-		list, err := c.Clientset.CoreV1().ReplicationControllers("").List(ctx, opts)
+		list, err := c.clientset().CoreV1().ReplicationControllers("").List(ctx, opts)
 		if err != nil {
 			return nil, err
 		}
 		return list.Items, nil
 	}
-	list, err := c.Clientset.CoreV1().ReplicationControllers(namespace).List(ctx, opts)
+	list, err := c.clientset().CoreV1().ReplicationControllers(namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -838,13 +838,13 @@ func (c *Client) ListReplicationControllers(ctx context.Context, namespace strin
 func (c *Client) ListEndpoints(ctx context.Context, namespace string) ([]corev1.Endpoints, error) { //nolint:staticcheck
 	opts := metav1.ListOptions{}
 	if namespace == "" {
-		list, err := c.Clientset.CoreV1().Endpoints("").List(ctx, opts)
+		list, err := c.clientset().CoreV1().Endpoints("").List(ctx, opts)
 		if err != nil {
 			return nil, err
 		}
 		return list.Items, nil
 	}
-	list, err := c.Clientset.CoreV1().Endpoints(namespace).List(ctx, opts)
+	list, err := c.clientset().CoreV1().Endpoints(namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -854,13 +854,13 @@ func (c *Client) ListEndpoints(ctx context.Context, namespace string) ([]corev1.
 func (c *Client) ListPodDisruptionBudgets(ctx context.Context, namespace string) ([]policyv1.PodDisruptionBudget, error) {
 	opts := metav1.ListOptions{}
 	if namespace == "" {
-		list, err := c.Clientset.PolicyV1().PodDisruptionBudgets("").List(ctx, opts)
+		list, err := c.clientset().PolicyV1().PodDisruptionBudgets("").List(ctx, opts)
 		if err != nil {
 			return nil, err
 		}
 		return list.Items, nil
 	}
-	list, err := c.Clientset.PolicyV1().PodDisruptionBudgets(namespace).List(ctx, opts)
+	list, err := c.clientset().PolicyV1().PodDisruptionBudgets(namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -870,13 +870,13 @@ func (c *Client) ListPodDisruptionBudgets(ctx context.Context, namespace string)
 func (c *Client) ListLimitRanges(ctx context.Context, namespace string) ([]corev1.LimitRange, error) {
 	opts := metav1.ListOptions{}
 	if namespace == "" {
-		list, err := c.Clientset.CoreV1().LimitRanges("").List(ctx, opts)
+		list, err := c.clientset().CoreV1().LimitRanges("").List(ctx, opts)
 		if err != nil {
 			return nil, err
 		}
 		return list.Items, nil
 	}
-	list, err := c.Clientset.CoreV1().LimitRanges(namespace).List(ctx, opts)
+	list, err := c.clientset().CoreV1().LimitRanges(namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -886,13 +886,13 @@ func (c *Client) ListLimitRanges(ctx context.Context, namespace string) ([]corev
 func (c *Client) ListResourceQuotas(ctx context.Context, namespace string) ([]corev1.ResourceQuota, error) {
 	opts := metav1.ListOptions{}
 	if namespace == "" {
-		list, err := c.Clientset.CoreV1().ResourceQuotas("").List(ctx, opts)
+		list, err := c.clientset().CoreV1().ResourceQuotas("").List(ctx, opts)
 		if err != nil {
 			return nil, err
 		}
 		return list.Items, nil
 	}
-	list, err := c.Clientset.CoreV1().ResourceQuotas(namespace).List(ctx, opts)
+	list, err := c.clientset().CoreV1().ResourceQuotas(namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -902,13 +902,13 @@ func (c *Client) ListResourceQuotas(ctx context.Context, namespace string) ([]co
 func (c *Client) ListHPAs(ctx context.Context, namespace string) ([]autoscalingv2.HorizontalPodAutoscaler, error) {
 	opts := metav1.ListOptions{}
 	if namespace == "" {
-		list, err := c.Clientset.AutoscalingV2().HorizontalPodAutoscalers("").List(ctx, opts)
+		list, err := c.clientset().AutoscalingV2().HorizontalPodAutoscalers("").List(ctx, opts)
 		if err != nil {
 			return nil, err
 		}
 		return list.Items, nil
 	}
-	list, err := c.Clientset.AutoscalingV2().HorizontalPodAutoscalers(namespace).List(ctx, opts)
+	list, err := c.clientset().AutoscalingV2().HorizontalPodAutoscalers(namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -921,7 +921,7 @@ func (c *Client) DescribeResource(ctx context.Context, resource, namespace, name
 
 	switch resource {
 	case "pods":
-		pod, err := c.Clientset.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+		pod, err := c.clientset().CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return "", err
 		}
@@ -951,7 +951,7 @@ func (c *Client) DescribeResource(ctx context.Context, resource, namespace, name
 			result.WriteString(fmt.Sprintf("  Type: %s, Status: %s\n", cond.Type, cond.Status))
 		}
 		result.WriteString("\nEvents:\n")
-		events, _ := c.Clientset.CoreV1().Events(namespace).List(ctx, metav1.ListOptions{
+		events, _ := c.clientset().CoreV1().Events(namespace).List(ctx, metav1.ListOptions{
 			FieldSelector: fmt.Sprintf("involvedObject.name=%s,involvedObject.kind=Pod", name),
 		})
 		if events != nil && len(events.Items) > 0 {
@@ -963,7 +963,7 @@ func (c *Client) DescribeResource(ctx context.Context, resource, namespace, name
 		}
 
 	case "deployments":
-		dep, err := c.Clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+		dep, err := c.clientset().AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return "", err
 		}
@@ -996,7 +996,7 @@ func (c *Client) DescribeResource(ctx context.Context, resource, namespace, name
 		}
 
 	case "services":
-		svc, err := c.Clientset.CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
+		svc, err := c.clientset().CoreV1().Services(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return "", err
 		}
@@ -1019,7 +1019,7 @@ func (c *Client) DescribeResource(ctx context.Context, resource, namespace, name
 		}
 
 	case "nodes":
-		node, err := c.Clientset.CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
+		node, err := c.clientset().CoreV1().Nodes().Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return "", err
 		}
@@ -1058,13 +1058,13 @@ func (c *Client) DescribeResource(ctx context.Context, resource, namespace, name
 		}
 		var obj interface{}
 		if namespace != "" {
-			unstructured, err := c.Dynamic.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+			unstructured, err := c.dynamicClient().Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				return "", err
 			}
 			obj = unstructured.Object
 		} else {
-			unstructured, err := c.Dynamic.Resource(gvr).Get(ctx, name, metav1.GetOptions{})
+			unstructured, err := c.dynamicClient().Resource(gvr).Get(ctx, name, metav1.GetOptions{})
 			if err != nil {
 				return "", err
 			}

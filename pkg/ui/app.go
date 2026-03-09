@@ -183,6 +183,7 @@ type App struct {
 
 	// Test mode flags
 	skipBriefing bool // Skip briefing panel in test mode to prevent pulse animation blocking
+	useSimScreen bool // True when using SimulationScreen (Suspend not supported)
 
 	// Extensibility configs (k9s pattern)
 	customAliases *config.AliasConfig // User-defined resource aliases

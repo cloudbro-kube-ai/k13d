@@ -177,7 +177,7 @@ func (a *App) editResource() {
 	}
 
 	// Suspend TUI and run kubectl edit
-	a.Suspend(func() {
+	a.safeSuspend(func() {
 		var cmd *exec.Cmd
 		if ns != "" {
 			cmd = exec.Command("kubectl", "edit", resource, name, "-n", ns)

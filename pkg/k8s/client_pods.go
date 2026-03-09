@@ -23,8 +23,8 @@ func (c *Client) ListPods(ctx context.Context, namespace string) ([]corev1.Pod, 
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	log.Infof("ListPods: calling c.Clientset.CoreV1().Pods(%s).List", namespace)
-	pods, err := c.Clientset.CoreV1().Pods(namespace).List(ctxWithTimeout, metav1.ListOptions{})
+	log.Infof("ListPods: calling c.clientset().CoreV1().Pods(%s).List", namespace)
+	pods, err := c.clientset().CoreV1().Pods(namespace).List(ctxWithTimeout, metav1.ListOptions{})
 	if err != nil {
 		log.Errorf("ListPods: ERROR: %v", err)
 		return nil, err
@@ -41,7 +41,7 @@ func (c *Client) GetPodLogs(ctx context.Context, namespace, name, container stri
 	if tailLines > 0 {
 		opts.TailLines = &tailLines
 	}
-	req := c.Clientset.CoreV1().Pods(namespace).GetLogs(name, opts)
+	req := c.clientset().CoreV1().Pods(namespace).GetLogs(name, opts)
 	podLogs, err := req.Stream(ctx)
 	if err != nil {
 		return "", err
@@ -57,7 +57,7 @@ func (c *Client) GetPodLogs(ctx context.Context, namespace, name, container stri
 }
 
 func (c *Client) GetPodLogsStream(ctx context.Context, namespace, name string) (io.ReadCloser, error) {
-	req := c.Clientset.CoreV1().Pods(namespace).GetLogs(name, &corev1.PodLogOptions{Follow: true})
+	req := c.clientset().CoreV1().Pods(namespace).GetLogs(name, &corev1.PodLogOptions{Follow: true})
 	return req.Stream(ctx)
 }
 
@@ -71,7 +71,7 @@ func (c *Client) GetPodLogsPrevious(ctx context.Context, namespace, name, contai
 	if tailLines > 0 {
 		opts.TailLines = &tailLines
 	}
-	req := c.Clientset.CoreV1().Pods(namespace).GetLogs(name, opts)
+	req := c.clientset().CoreV1().Pods(namespace).GetLogs(name, opts)
 	podLogs, err := req.Stream(ctx)
 	if err != nil {
 		return "", err
@@ -87,20 +87,21 @@ func (c *Client) GetPodLogsPrevious(ctx context.Context, namespace, name, contai
 }
 
 func (c *Client) PortForward(ctx context.Context, namespace, podName string, localPort, podPort int, stopCh, readyCh chan struct{}) error {
-	roundTripper, upgrader, err := spdy.RoundTripperFor(c.Config)
+	cfg := c.restConfig()
+	roundTripper, upgrader, err := spdy.RoundTripperFor(cfg)
 	if err != nil {
 		return err
 	}
 
 	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward", namespace, podName)
 	// Use url.Parse to correctly extract the host, rather than TrimLeft which strips a character set
-	parsedURL, parseErr := url.Parse(c.Config.Host)
+	parsedURL, parseErr := url.Parse(cfg.Host)
 	var hostIP string
 	if parseErr == nil && parsedURL.Host != "" {
 		hostIP = parsedURL.Host
 	} else {
 		// Fallback: strip common prefixes
-		hostIP = strings.TrimPrefix(strings.TrimPrefix(c.Config.Host, "https://"), "http://")
+		hostIP = strings.TrimPrefix(strings.TrimPrefix(cfg.Host, "https://"), "http://")
 	}
 	serverURL := url.URL{Scheme: "https", Path: path, Host: hostIP}
 
@@ -118,19 +119,19 @@ func (c *Client) PortForward(ctx context.Context, namespace, podName string, loc
 // StartPortForward starts port forwarding to a pod
 func (c *Client) StartPortForward(namespace, podName string, localPort, remotePort int, stopChan chan struct{}) error {
 	// Get the pod to verify it exists
-	_, err := c.Clientset.CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+	_, err := c.clientset().CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get pod: %w", err)
 	}
 
 	// Create the URL for the pod exec endpoint
-	req := c.Clientset.CoreV1().RESTClient().Post().
+	req := c.clientset().CoreV1().RESTClient().Post().
 		Resource("pods").
 		Namespace(namespace).
 		Name(podName).
 		SubResource("portforward")
 
-	transport, upgrader, err := spdy.RoundTripperFor(c.Config)
+	transport, upgrader, err := spdy.RoundTripperFor(c.restConfig())
 	if err != nil {
 		return fmt.Errorf("failed to create round tripper: %w", err)
 	}
@@ -177,14 +178,14 @@ func (c *Client) DeletePodForce(ctx context.Context, namespace, name string) err
 	deleteOptions := metav1.DeleteOptions{
 		GracePeriodSeconds: &gracePeriod,
 	}
-	return c.Clientset.CoreV1().Pods(namespace).Delete(ctx, name, deleteOptions)
+	return c.clientset().CoreV1().Pods(namespace).Delete(ctx, name, deleteOptions)
 }
 
 func (c *Client) GetPodMetrics(ctx context.Context, namespace string) (map[string][]int64, error) {
 	if c.Metrics == nil {
 		return nil, fmt.Errorf("metrics client not initialized")
 	}
-	podMetrics, err := c.Metrics.PodMetricses(namespace).List(ctx, metav1.ListOptions{})
+	podMetrics, err := c.metricsClient().PodMetricses(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +204,7 @@ func (c *Client) GetPodMetrics(ctx context.Context, namespace string) (map[strin
 // GetPodMetricsFromRequests estimates pod resource usage from container resource requests.
 // Used as a fallback when metrics-server is unavailable.
 func (c *Client) GetPodMetricsFromRequests(ctx context.Context, namespace string) (map[string][]int64, error) {
-	pods, err := c.Clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	pods, err := c.clientset().CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +231,7 @@ func (c *Client) GetNodeMetrics(ctx context.Context) (map[string][]int64, error)
 	if c.Metrics == nil {
 		return nil, fmt.Errorf("metrics client not initialized")
 	}
-	nodeMetrics, err := c.Metrics.NodeMetricses().List(ctx, metav1.ListOptions{})
+	nodeMetrics, err := c.metricsClient().NodeMetricses().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +248,7 @@ func (c *Client) GetNodeMetrics(ctx context.Context) (map[string][]int64, error)
 // resource requests of all running pods scheduled on each node.
 // Used as a fallback when metrics-server is unavailable.
 func (c *Client) GetNodeMetricsFromPodRequests(ctx context.Context) (map[string][]int64, error) {
-	pods, err := c.Clientset.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+	pods, err := c.clientset().CoreV1().Pods("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

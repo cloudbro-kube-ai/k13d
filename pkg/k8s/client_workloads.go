@@ -14,7 +14,7 @@ import (
 )
 
 func (c *Client) ListDeployments(ctx context.Context, namespace string) ([]appsv1.Deployment, error) {
-	deps, err := c.Clientset.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
+	deps, err := c.clientset().AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +22,7 @@ func (c *Client) ListDeployments(ctx context.Context, namespace string) ([]appsv
 }
 
 func (c *Client) ListStatefulSets(ctx context.Context, namespace string) ([]appsv1.StatefulSet, error) {
-	stses, err := c.Clientset.AppsV1().StatefulSets(namespace).List(ctx, metav1.ListOptions{})
+	stses, err := c.clientset().AppsV1().StatefulSets(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func (c *Client) ListStatefulSets(ctx context.Context, namespace string) ([]apps
 }
 
 func (c *Client) ListDaemonSets(ctx context.Context, namespace string) ([]appsv1.DaemonSet, error) {
-	dss, err := c.Clientset.AppsV1().DaemonSets(namespace).List(ctx, metav1.ListOptions{})
+	dss, err := c.clientset().AppsV1().DaemonSets(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (c *Client) ListDaemonSets(ctx context.Context, namespace string) ([]appsv1
 }
 
 func (c *Client) ListJobs(ctx context.Context, namespace string) ([]batchv1.Job, error) {
-	jobs, err := c.Clientset.BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
+	jobs, err := c.clientset().BatchV1().Jobs(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (c *Client) ListJobs(ctx context.Context, namespace string) ([]batchv1.Job,
 }
 
 func (c *Client) ListCronJobs(ctx context.Context, namespace string) ([]batchv1.CronJob, error) {
-	cjs, err := c.Clientset.BatchV1().CronJobs(namespace).List(ctx, metav1.ListOptions{})
+	cjs, err := c.clientset().BatchV1().CronJobs(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -56,13 +56,13 @@ func (c *Client) ListCronJobs(ctx context.Context, namespace string) ([]batchv1.
 func (c *Client) ListReplicaSets(ctx context.Context, namespace string) ([]appsv1.ReplicaSet, error) {
 	opts := metav1.ListOptions{}
 	if namespace == "" {
-		list, err := c.Clientset.AppsV1().ReplicaSets("").List(ctx, opts)
+		list, err := c.clientset().AppsV1().ReplicaSets("").List(ctx, opts)
 		if err != nil {
 			return nil, err
 		}
 		return list.Items, nil
 	}
-	list, err := c.Clientset.AppsV1().ReplicaSets(namespace).List(ctx, opts)
+	list, err := c.clientset().AppsV1().ReplicaSets(namespace).List(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (c *Client) ScaleResource(ctx context.Context, gvr schema.GroupVersionResou
 	if err != nil {
 		return fmt.Errorf("failed to marshal scale patch: %w", err)
 	}
-	_, err = c.Dynamic.Resource(gvr).Namespace(namespace).Patch(ctx, name, types.MergePatchType, payload, metav1.PatchOptions{})
+	_, err = c.dynamicClient().Resource(gvr).Namespace(namespace).Patch(ctx, name, types.MergePatchType, payload, metav1.PatchOptions{})
 	return err
 }
 
@@ -108,14 +108,14 @@ func (c *Client) RolloutRestart(ctx context.Context, gvr schema.GroupVersionReso
 	if err != nil {
 		return fmt.Errorf("failed to marshal restart patch: %w", err)
 	}
-	_, err = c.Dynamic.Resource(gvr).Namespace(namespace).Patch(ctx, name, types.MergePatchType, payload, metav1.PatchOptions{})
+	_, err = c.dynamicClient().Resource(gvr).Namespace(namespace).Patch(ctx, name, types.MergePatchType, payload, metav1.PatchOptions{})
 	return err
 }
 
 // RollbackDeployment rolls back a deployment to a previous revision
 func (c *Client) RollbackDeployment(ctx context.Context, namespace, name string, revision int64) error {
 	// Get deployment
-	deployment, err := c.Clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+	deployment, err := c.clientset().AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get deployment: %w", err)
 	}
@@ -126,7 +126,7 @@ func (c *Client) RollbackDeployment(ctx context.Context, namespace, name string,
 		return fmt.Errorf("failed to parse selector: %w", err)
 	}
 
-	rsList, err := c.Clientset.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{
+	rsList, err := c.clientset().AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: selector.String(),
 	})
 	if err != nil {
@@ -159,7 +159,7 @@ func (c *Client) RollbackDeployment(ctx context.Context, namespace, name string,
 	deployment.Spec.Template = targetRS.Spec.Template
 
 	// Update the deployment
-	_, err = c.Clientset.AppsV1().Deployments(namespace).Update(ctx, deployment, metav1.UpdateOptions{})
+	_, err = c.clientset().AppsV1().Deployments(namespace).Update(ctx, deployment, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to update deployment: %w", err)
 	}
@@ -170,20 +170,20 @@ func (c *Client) RollbackDeployment(ctx context.Context, namespace, name string,
 // PauseDeployment pauses a deployment's rollout
 func (c *Client) PauseDeployment(ctx context.Context, namespace, name string) error {
 	payload := []byte(`{"spec":{"paused":true}}`)
-	_, err := c.Clientset.AppsV1().Deployments(namespace).Patch(ctx, name, types.MergePatchType, payload, metav1.PatchOptions{})
+	_, err := c.clientset().AppsV1().Deployments(namespace).Patch(ctx, name, types.MergePatchType, payload, metav1.PatchOptions{})
 	return err
 }
 
 // ResumeDeployment resumes a paused deployment
 func (c *Client) ResumeDeployment(ctx context.Context, namespace, name string) error {
 	payload := []byte(`{"spec":{"paused":false}}`)
-	_, err := c.Clientset.AppsV1().Deployments(namespace).Patch(ctx, name, types.MergePatchType, payload, metav1.PatchOptions{})
+	_, err := c.clientset().AppsV1().Deployments(namespace).Patch(ctx, name, types.MergePatchType, payload, metav1.PatchOptions{})
 	return err
 }
 
 // GetDeploymentReplicaSets returns all ReplicaSets for a deployment with revision info
 func (c *Client) GetDeploymentReplicaSets(ctx context.Context, namespace, name string) ([]map[string]interface{}, error) {
-	deployment, err := c.Clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+	deployment, err := c.clientset().AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +193,7 @@ func (c *Client) GetDeploymentReplicaSets(ctx context.Context, namespace, name s
 		return nil, err
 	}
 
-	rsList, err := c.Clientset.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{
+	rsList, err := c.clientset().AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: selector.String(),
 	})
 	if err != nil {
@@ -222,7 +222,7 @@ func (c *Client) GetDeploymentReplicaSets(ctx context.Context, namespace, name s
 
 // TriggerCronJob creates a Job from a CronJob (manual trigger)
 func (c *Client) TriggerCronJob(ctx context.Context, namespace, name string) (*batchv1.Job, error) {
-	cronJob, err := c.Clientset.BatchV1().CronJobs(namespace).Get(ctx, name, metav1.GetOptions{})
+	cronJob, err := c.clientset().BatchV1().CronJobs(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cronjob: %w", err)
 	}
@@ -240,5 +240,5 @@ func (c *Client) TriggerCronJob(ctx context.Context, namespace, name string) (*b
 		Spec: cronJob.Spec.JobTemplate.Spec,
 	}
 
-	return c.Clientset.BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
+	return c.clientset().BatchV1().Jobs(namespace).Create(ctx, job, metav1.CreateOptions{})
 }

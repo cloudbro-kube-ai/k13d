@@ -87,6 +87,7 @@ func NewTestApp(cfg TestAppConfig) *App {
 		cancelLock:          sync.Mutex{},
 		watchMu:             sync.Mutex{},
 		skipBriefing:        cfg.SkipBriefing, // Disable briefing to prevent pulse animation blocking
+		useSimScreen:        cfg.UseSimulationScreen,
 		styles:              config.DefaultStyles(),
 	}
 
