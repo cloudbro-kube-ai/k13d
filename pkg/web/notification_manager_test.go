@@ -321,7 +321,7 @@ func TestNotificationManagerLifecycle(t *testing.T) {
 func TestDispatchSlack(t *testing.T) {
 	var receivedBody map[string]interface{}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&receivedBody)
+		_ = json.NewDecoder(r.Body).Decode(&receivedBody)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
@@ -363,7 +363,7 @@ func TestDispatchSlack(t *testing.T) {
 func TestDispatchDiscord(t *testing.T) {
 	var receivedBody map[string]interface{}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&receivedBody)
+		_ = json.NewDecoder(r.Body).Decode(&receivedBody)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
@@ -401,7 +401,7 @@ func TestDispatchDiscord(t *testing.T) {
 func TestDispatchTeams(t *testing.T) {
 	var receivedBody map[string]interface{}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&receivedBody)
+		_ = json.NewDecoder(r.Body).Decode(&receivedBody)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
@@ -438,7 +438,7 @@ func TestDispatchTeams(t *testing.T) {
 func TestDispatchCustomWebhook(t *testing.T) {
 	var receivedBody map[string]interface{}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&receivedBody)
+		_ = json.NewDecoder(r.Body).Decode(&receivedBody)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()

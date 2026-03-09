@@ -1,0 +1,104 @@
+name: Bug Report
+description: Report a bug in k13d
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug!
+        Please fill out the sections below so we can reproduce and fix it.
+
+  - type: dropdown
+    id: interface
+    attributes:
+      label: Interface
+      description: Which interface were you using?
+      options:
+        - TUI (terminal)
+        - Web UI
+        - CLI flags / startup
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear description of what the bug is.
+      placeholder: When I press 'y' on a Pod, the YAML viewer shows an empty screen...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to reproduce the behavior.
+      placeholder: |
+        1. Run `k13d -web -port 8080`
+        2. Navigate to Pods view
+        3. Select a pod and press 'y'
+        4. See empty YAML viewer
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Screenshots
+      description: Paste any relevant logs (`k13d --debug`) or screenshots.
+      render: text
+
+  - type: input
+    id: version
+    attributes:
+      label: k13d Version
+      description: Output of `k13d --version` or the Docker image tag.
+      placeholder: v0.9.7
+    validations:
+      required: true
+
+  - type: input
+    id: k8s-version
+    attributes:
+      label: Kubernetes Version
+      description: Output of `kubectl version --short`.
+      placeholder: v1.31.0
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: OS
+      options:
+        - macOS (arm64)
+        - macOS (amd64)
+        - Linux (amd64)
+        - Linux (arm64)
+        - Windows (WSL)
+        - Docker
+        - Kubernetes Pod
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ai-provider
+    attributes:
+      label: AI Provider (if relevant)
+      description: Select if the bug involves the AI assistant.
+      options:
+        - N/A
+        - OpenAI
+        - Ollama
+        - Anthropic
+        - Azure OpenAI
+        - AWS Bedrock
+        - Google Gemini
+        - Embedded LLM

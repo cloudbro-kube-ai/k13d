@@ -121,11 +121,11 @@ func (term *Terminal) GetContent() string {
 	var content strings.Builder
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
-			r, _, _, _ := term.screen.GetContent(x, y)
-			if r == 0 {
+			str, _, _ := term.screen.Get(x, y)
+			if str == "" || str == "\x00" {
 				content.WriteRune(' ')
 			} else {
-				content.WriteRune(r)
+				content.WriteString(str)
 			}
 		}
 		content.WriteRune('\n')

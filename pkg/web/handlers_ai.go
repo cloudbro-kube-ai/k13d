@@ -38,7 +38,7 @@ func (s *Server) handleAgentSettings(w http.ResponseWriter, r *http.Request) {
 			"max_tokens":       s.cfg.LLM.MaxTokens,
 		}
 		s.aiMu.RUnlock()
-		json.NewEncoder(w).Encode(settings)
+		_ = json.NewEncoder(w).Encode(settings)
 
 	case http.MethodPut:
 		role := r.Header.Get("X-User-Role")
@@ -86,7 +86,7 @@ func (s *Server) handleAgentSettings(w http.ResponseWriter, r *http.Request) {
 
 		// Save to YAML config
 		if err := s.cfg.Save(); err != nil {
-			fmt.Printf("Warning: failed to save agent settings to YAML: %v\n", err)
+			log.Warnf("Failed to save agent settings to YAML: %v", err)
 		}
 
 		// Persist to SQLite for web UI persistence
@@ -96,19 +96,19 @@ func (s *Server) handleAgentSettings(w http.ResponseWriter, r *http.Request) {
 			"agent.temperature":      fmt.Sprintf("%.2f", req.Temperature),
 			"agent.max_tokens":       fmt.Sprintf("%d", req.MaxTokens),
 		}); err != nil {
-			fmt.Printf("Warning: failed to save agent settings to SQLite: %v\n", err)
+			log.Warnf("Failed to save agent settings to SQLite: %v", err)
 		}
 
 		// Record audit
 		username := r.Header.Get("X-Username")
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:     username,
 			Action:   "update_agent_settings",
 			Resource: "settings",
 			Details:  fmt.Sprintf("MaxIterations: %d, Temperature: %.2f, MaxTokens: %d, ReasoningEffort: %s", req.MaxIterations, req.Temperature, req.MaxTokens, req.ReasoningEffort),
 		})
 
-		json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
 
 	default:
 		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -121,6 +121,12 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPut:
+		// Block changes when embedded LLM is active
+		if s.embeddedLLM {
+			WriteErrorSimple(w, http.StatusForbidden, "LLM settings are locked while embedded LLM is active")
+			return
+		}
+
 		var llmSettings struct {
 			Provider        string `json:"provider"`
 			Model           string `json:"model"`
@@ -132,6 +138,12 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 
 		if err := json.NewDecoder(r.Body).Decode(&llmSettings); err != nil {
 			WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
+			return
+		}
+
+		// Validate required fields
+		if llmSettings.Provider == "" || llmSettings.Model == "" {
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Provider and model are required"))
 			return
 		}
 
@@ -149,6 +161,16 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			s.cfg.LLM.ReasoningEffort = llmSettings.ReasoningEffort
 		}
 
+		// Sync changes back to the active model profile so they persist across profile switches
+		if profile := s.cfg.GetActiveModelProfile(); profile != nil {
+			profile.Provider = s.cfg.LLM.Provider
+			profile.Model = s.cfg.LLM.Model
+			profile.Endpoint = s.cfg.LLM.Endpoint
+			if llmSettings.APIKey != "" {
+				profile.APIKey = s.cfg.LLM.APIKey
+			}
+		}
+
 		// Recreate AI client
 		newClient, err := ai.NewClient(&s.cfg.LLM)
 		if err != nil {
@@ -158,10 +180,19 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.aiClient = newClient
+
+		// Capture values under lock for the response
+		respProvider := s.cfg.LLM.Provider
+		respModel := s.cfg.LLM.Model
+		respEndpoint := s.aiClient.GetEndpoint()
+		respReady := s.aiClient.IsReady()
+		respSupportsTools := s.aiClient.SupportsTools()
+
+		// Save config while still under lock to prevent concurrent mutation
+		saveErr := s.cfg.Save()
 		s.aiMu.Unlock()
 
-		// Save to YAML
-		if err := s.cfg.Save(); err != nil {
+		if saveErr != nil {
 			WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to save settings"))
 			return
 		}
@@ -178,26 +209,26 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			llmDBSettings["llm.api_key"] = llmSettings.APIKey
 		}
 		if err := db.SaveWebSettings(llmDBSettings); err != nil {
-			fmt.Printf("Warning: failed to save LLM settings to SQLite: %v\n", err)
+			log.Warnf("Failed to save LLM settings to SQLite: %v", err)
 		}
 
 		// Record audit
 		username := r.Header.Get("X-Username")
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:     username,
 			Action:   "update_llm_settings",
 			Resource: "settings",
 			Details:  fmt.Sprintf("Provider: %s, Model: %s, JSONMode: %v", llmSettings.Provider, llmSettings.Model, llmSettings.UseJSONMode),
 		})
 
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":         "ok",
 			"message":        "LLM settings updated successfully",
-			"provider":       s.cfg.LLM.Provider,
-			"model":          s.cfg.LLM.Model,
-			"endpoint":       s.aiClient.GetEndpoint(),
-			"ready":          s.aiClient.IsReady(),
-			"supports_tools": s.aiClient.SupportsTools(),
+			"provider":       respProvider,
+			"model":          respModel,
+			"endpoint":       respEndpoint,
+			"ready":          respReady,
+			"supports_tools": respSupportsTools,
 		})
 
 	default:
@@ -236,12 +267,13 @@ func (s *Server) handleLLMTest(w http.ResponseWriter, r *http.Request) {
 			}
 			client, err := ai.NewClient(&tempConfig)
 			if err != nil {
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				log.Warnf("LLM connection test failed: %v", err)
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
 					"connected":    false,
 					"provider":     testConfig.Provider,
 					"model":        testConfig.Model,
 					"endpoint":     testConfig.Endpoint,
-					"error":        fmt.Sprintf("Failed to create client: %v", err),
+					"error":        "Failed to create client with provided settings",
 					"message":      "Check your provider settings and API key",
 					"capabilities": LLMCapabilities{},
 				})
@@ -255,7 +287,7 @@ func (s *Server) handleLLMTest(w http.ResponseWriter, r *http.Request) {
 	// Fall back to saved server client if no form values provided
 	if testClient == nil {
 		if s.aiClient == nil {
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"connected":    false,
 				"provider":     s.cfg.LLM.Provider,
 				"model":        s.cfg.LLM.Model,
@@ -306,14 +338,14 @@ func (s *Server) handleLLMTest(w http.ResponseWriter, r *http.Request) {
 	if !status.Connected {
 		resultText = fmt.Sprintf("failed: %s", status.Error)
 	}
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "llm_connection_test",
 		Resource: "llm",
 		Details:  fmt.Sprintf("Provider: %s, Model: %s, Result: %s, ToolCalling: %v", status.Provider, status.Model, resultText, capabilities.ToolCalling),
 	})
 
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // handleLLMStatus returns the current LLM configuration status without testing
@@ -359,7 +391,7 @@ func (s *Server) handleLLMStatus(w http.ResponseWriter, r *http.Request) {
 		status["capabilities"] = getLLMCapabilities(s.aiClient, s.cfg.LLM.Provider)
 	}
 
-	json.NewEncoder(w).Encode(status)
+	_ = json.NewEncoder(w).Encode(status)
 }
 
 // handleAgenticChat handles AI chat with tool calling (Decision Required flow)
@@ -427,7 +459,10 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 	toolApprovalCallback := func(toolName string, argsJSON string) bool {
 		// Parse arguments to get the command
 		var args map[string]interface{}
-		json.Unmarshal([]byte(argsJSON), &args)
+		if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
+			// If JSON parsing fails, proceed with empty args
+			args = make(map[string]interface{})
+		}
 
 		command := ""
 		if cmd, ok := args["command"].(string); ok {
@@ -465,7 +500,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			"command":   command,
 			"category":  category,
 		})
-		sse.WriteEvent("approval", string(approvalJSON))
+		_ = sse.WriteEvent("approval", string(approvalJSON))
 
 		// Wait for approval with timeout
 		select {
@@ -499,7 +534,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			delete(s.pendingApprovals, approvalID)
 			s.pendingApprovalMutex.Unlock()
 
-			sse.WriteEvent("approval_timeout", approvalID)
+			_ = sse.WriteEvent("approval_timeout", approvalID)
 			return false
 
 		case <-r.Context().Done():
@@ -520,7 +555,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			"result":   result,
 			"is_error": isError,
 		})
-		sse.WriteEvent("tool_execution", string(execJSON))
+		_ = sse.WriteEvent("tool_execution", string(execJSON))
 
 		// Record tool execution in audit log
 		actionType := db.ActionTypeLLM
@@ -580,7 +615,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 				currentSessionID = newSession.ID
 				// Send session ID to client
 				sessionJSON, _ := json.Marshal(map[string]string{"session_id": currentSessionID})
-				sse.WriteEvent("session", string(sessionJSON))
+				_ = sse.WriteEvent("session", string(sessionJSON))
 				log.Debugf("[Session] Sent session ID to client: %s", currentSessionID)
 			}
 		}
@@ -611,12 +646,32 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 	err := s.aiClient.AskWithToolsAndExecution(r.Context(), message, func(text string) {
 		responseBuilder.WriteString(text)
 		escaped := strings.ReplaceAll(text, "\n", "\\n")
-		sse.Write(escaped)
+		_ = sse.Write(escaped)
 	}, toolApprovalCallback, toolExecutionCallback)
 
 	if err != nil {
-		apiErr := ParseLLMError(err, s.cfg.LLM.Provider)
-		sse.Write(fmt.Sprintf("[ERROR] %s - %s", apiErr.Message, apiErr.Suggestion))
+		errStr := err.Error()
+		// If the model doesn't support tools, fall back to simple chat mode
+		if strings.Contains(errStr, "does not support tools") || strings.Contains(errStr, "not support function") || strings.Contains(errStr, "tool_use is not supported") {
+			// Retry with simple chat mode (no tool calling)
+			responseBuilder.Reset()
+			simpleErr := s.aiClient.Ask(r.Context(), message, func(text string) {
+				responseBuilder.WriteString(text)
+				escaped := strings.ReplaceAll(text, "\n", "\\n")
+				_ = sse.Write(escaped)
+			})
+			if simpleErr != nil {
+				apiErr := ParseLLMError(simpleErr, s.cfg.LLM.Provider)
+				_ = sse.Write(fmt.Sprintf("[ERROR] %s - %s", apiErr.Message, apiErr.Suggestion))
+			}
+		} else {
+			apiErr := ParseLLMError(err, s.cfg.LLM.Provider)
+			detail := ""
+			if apiErr.Detail != "" {
+				detail = fmt.Sprintf(" (%s)", apiErr.Detail)
+			}
+			_ = sse.Write(fmt.Sprintf("[ERROR] %s%s - %s", apiErr.Message, detail, apiErr.Suggestion))
+		}
 	}
 
 	// Save assistant response to session
@@ -630,7 +685,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("[Session] Saved assistant message to session %s (len=%d, err=%v)", currentSessionID, len(responseContent), err)
 	}
 
-	sse.Write("[DONE]")
+	_ = sse.Write("[DONE]")
 }
 
 // handleAgenticChatJSONMode handles AI chat using JSON mode fallback for models without tool calling
@@ -682,8 +737,8 @@ IMPORTANT: Your response must be valid JSON only. No markdown, no extra text.`, 
 	response, err := s.aiClient.AskNonStreaming(r.Context(), jsonModePrompt)
 	if err != nil {
 		apiErr := ParseLLMError(err, s.cfg.LLM.Provider)
-		sse.Write(fmt.Sprintf("[ERROR] %s - %s", apiErr.Message, apiErr.Suggestion))
-		sse.Write("[DONE]")
+		_ = sse.Write(fmt.Sprintf("[ERROR] %s - %s", apiErr.Message, apiErr.Suggestion))
+		_ = sse.Write("[DONE]")
 		return
 	}
 
@@ -705,16 +760,16 @@ IMPORTANT: Your response must be valid JSON only. No markdown, no extra text.`, 
 
 	if err := json.Unmarshal([]byte(cleanResponse), &jsonResponse); err != nil {
 		// If JSON parsing fails, just return the response as-is (plain text)
-		sse.Write(response)
-		sse.Write("[DONE]")
+		_ = sse.Write(response)
+		_ = sse.Write("[DONE]")
 		return
 	}
 
 	// Handle different response formats
 	// Format 1: {thought, answer} - extract just the answer
 	if jsonResponse.Answer != "" && jsonResponse.Action == "" {
-		sse.Write(jsonResponse.Answer)
-		sse.Write("[DONE]")
+		_ = sse.Write(jsonResponse.Answer)
+		_ = sse.Write("[DONE]")
 		return
 	}
 
@@ -725,10 +780,10 @@ IMPORTANT: Your response must be valid JSON only. No markdown, no extra text.`, 
 
 		if category == "read-only" {
 			// Auto-execute read-only commands
-			sse.Write(fmt.Sprintf("[Executing] %s\n", jsonResponse.Command))
+			_ = sse.Write(fmt.Sprintf("[Executing] %s\n", jsonResponse.Command))
 			// In a real implementation, you would execute the command here
 			// For now, we just inform the user
-			sse.Write(fmt.Sprintf("[Note] JSON mode cannot execute commands automatically. Please run: %s\n", jsonResponse.Command))
+			_ = sse.Write(fmt.Sprintf("[Note] JSON mode cannot execute commands automatically. Please run: %s\n", jsonResponse.Command))
 		} else {
 			// Require approval for write commands
 			approvalJSON, _ := json.Marshal(map[string]interface{}{
@@ -738,23 +793,23 @@ IMPORTANT: Your response must be valid JSON only. No markdown, no extra text.`, 
 				"explanation": jsonResponse.Explanation,
 				"note":        "JSON mode: Command execution requires manual approval. Please copy and run the command if you approve.",
 			})
-			sse.WriteEvent("json_command", string(approvalJSON))
-			sse.Write(fmt.Sprintf("\n**Suggested Command (%s):**\n```\n%s\n```\n%s", category, jsonResponse.Command, jsonResponse.Explanation))
+			_ = sse.WriteEvent("json_command", string(approvalJSON))
+			_ = sse.Write(fmt.Sprintf("\n**Suggested Command (%s):**\n```\n%s\n```\n%s", category, jsonResponse.Command, jsonResponse.Explanation))
 		}
 
 	case "direct_answer":
-		sse.Write(jsonResponse.Answer)
+		_ = sse.Write(jsonResponse.Answer)
 
 	default:
 		// Unknown action - if there's an answer field, use it; otherwise return original
 		if jsonResponse.Answer != "" {
-			sse.Write(jsonResponse.Answer)
+			_ = sse.Write(jsonResponse.Answer)
 		} else {
-			sse.Write(response)
+			_ = sse.Write(response)
 		}
 	}
 
-	sse.Write("[DONE]")
+	_ = sse.Write("[DONE]")
 }
 
 // handleToolApprove handles user approval/rejection of tool calls
@@ -799,15 +854,15 @@ When suggesting commands, format them clearly so users can copy and paste them.`
 
 	// Use streaming if available
 	err := s.aiClient.Ask(r.Context(), fullPrompt, func(chunk string) {
-		sse.Write(chunk)
+		_ = sse.Write(chunk)
 	})
 
 	if err != nil {
 		apiErr := ParseLLMError(err, s.cfg.LLM.Provider)
-		sse.Write(fmt.Sprintf("\n\n[ERROR] %s", apiErr.Message))
+		_ = sse.Write(fmt.Sprintf("\n\n[ERROR] %s", apiErr.Message))
 	}
 
-	sse.Write("[DONE]")
+	_ = sse.Write("[DONE]")
 }
 
 func (s *Server) handleToolApprove(w http.ResponseWriter, r *http.Request) {
@@ -839,7 +894,7 @@ func (s *Server) handleToolApprove(w http.ResponseWriter, r *http.Request) {
 	select {
 	case approval.Response <- req.Approved:
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	default:
 		WriteError(w, NewAPIError(ErrCodeConflict, "Approval already processed"))
 	}
@@ -904,6 +959,14 @@ func getLLMCapabilities(client *ai.Client, provider string) LLMCapabilities {
 		} else {
 			caps.Recommendation = "Azure OpenAI capabilities depend on the deployed model"
 		}
+	case "solar", "upstage":
+		caps.JSONMode = true
+		caps.MaxTokens = 32000
+		if caps.ToolCalling {
+			caps.Recommendation = "Full agentic AI features available with Solar/Upstage tool calling"
+		} else {
+			caps.Recommendation = "Consider using Solar Pro models for tool calling support"
+		}
 	default:
 		caps.JSONMode = false
 		caps.Recommendation = "Unknown provider - capabilities may be limited"
@@ -957,7 +1020,10 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var client *ai.Client
-	if provider != "" && apiKey != "" {
+	// Create temporary client if provider is specified
+	// For Ollama and embedded providers, API key is not required
+	noKeyProviders := map[string]bool{"ollama": true, "embedded": true}
+	if provider != "" && (apiKey != "" || noKeyProviders[provider]) {
 		// Create temporary client with provided config
 		tempConfig := config.LLMConfig{
 			Provider: provider,
@@ -968,7 +1034,7 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 		var err error
 		client, err = ai.NewClient(&tempConfig)
 		if err != nil {
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"models": []string{},
 				"error":  fmt.Sprintf("Failed to create client: %v", err),
 			})
@@ -977,7 +1043,7 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 	} else if s.aiClient != nil {
 		client = s.aiClient
 	} else {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"models": []string{},
 			"error":  "No AI client configured",
 		})
@@ -989,7 +1055,7 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 
 	models, err := client.ListModels(ctx)
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"models": []string{},
 			"error":  fmt.Sprintf("Failed to list models: %v", err),
 		})
@@ -1007,7 +1073,7 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 		models = filtered
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"models": models,
 	})
 }
@@ -1023,7 +1089,7 @@ func (s *Server) handleAIPing(w http.ResponseWriter, r *http.Request) {
 
 	// Simple ping - just check if the client exists and is configured
 	// A more thorough check could send a minimal request to the LLM
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":   "ok",
 		"provider": s.cfg.LLM.Provider,
 		"model":    s.cfg.LLM.Model,
@@ -1072,7 +1138,7 @@ func (s *Server) handleOllamaStatus(w http.ResponseWriter, r *http.Request) {
 	resp, err := client.Get(ollamaEndpoint + "/api/tags")
 
 	if err != nil {
-		json.NewEncoder(w).Encode(OllamaStatusResponse{
+		_ = json.NewEncoder(w).Encode(OllamaStatusResponse{
 			Running: false,
 			Error:   "Ollama not running or not accessible",
 		})
@@ -1081,7 +1147,7 @@ func (s *Server) handleOllamaStatus(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		json.NewEncoder(w).Encode(OllamaStatusResponse{
+		_ = json.NewEncoder(w).Encode(OllamaStatusResponse{
 			Running: false,
 			Error:   fmt.Sprintf("Ollama returned status %d", resp.StatusCode),
 		})
@@ -1093,7 +1159,7 @@ func (s *Server) handleOllamaStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&tagsResponse); err != nil {
-		json.NewEncoder(w).Encode(OllamaStatusResponse{
+		_ = json.NewEncoder(w).Encode(OllamaStatusResponse{
 			Running: true,
 			Models:  []map[string]interface{}{},
 			Error:   "Failed to parse model list",
@@ -1101,7 +1167,7 @@ func (s *Server) handleOllamaStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(OllamaStatusResponse{
+	_ = json.NewEncoder(w).Encode(OllamaStatusResponse{
 		Running: true,
 		Models:  tagsResponse.Models,
 	})
@@ -1123,14 +1189,14 @@ func (s *Server) handleOllamaPull(w http.ResponseWriter, r *http.Request) {
 
 	var req OllamaPullRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": "Invalid request body",
 		})
 		return
 	}
 
 	if req.Model == "" {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": "Model name is required",
 		})
 		return
@@ -1151,7 +1217,7 @@ func (s *Server) handleOllamaPull(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := client.Post(ollamaEndpoint+"/api/pull", "application/json", strings.NewReader(string(pullBody)))
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": fmt.Sprintf("Failed to connect to Ollama: %v", err),
 		})
 		return
@@ -1159,7 +1225,7 @@ func (s *Server) handleOllamaPull(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": fmt.Sprintf("Ollama returned status %d", resp.StatusCode),
 		})
 		return
@@ -1169,7 +1235,7 @@ func (s *Server) handleOllamaPull(w http.ResponseWriter, r *http.Request) {
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		// Even if we can't parse, the pull might have succeeded
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"message": fmt.Sprintf("Model %s pull initiated", req.Model),
 		})
@@ -1177,13 +1243,13 @@ func (s *Server) handleOllamaPull(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if errMsg, ok := result["error"].(string); ok && errMsg != "" {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": errMsg,
 		})
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": fmt.Sprintf("Model %s pulled successfully", req.Model),
 	})
@@ -1231,7 +1297,7 @@ func (s *Server) handleSafetyAnalysis(w http.ResponseWriter, r *http.Request) {
 	// Analyze the command
 	response := analyzeK8sSafety(req)
 
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // analyzeK8sSafety performs comprehensive K8s safety analysis
@@ -1438,7 +1504,7 @@ func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, NewAPIError(ErrCodeInternalError, fmt.Sprintf("Failed to list sessions: %v", err)))
 			return
 		}
-		json.NewEncoder(w).Encode(sessions)
+		_ = json.NewEncoder(w).Encode(sessions)
 
 	case http.MethodPost:
 		// Create new session
@@ -1447,7 +1513,7 @@ func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, NewAPIError(ErrCodeInternalError, fmt.Sprintf("Failed to create session: %v", err)))
 			return
 		}
-		json.NewEncoder(w).Encode(newSession)
+		_ = json.NewEncoder(w).Encode(newSession)
 
 	case http.MethodDelete:
 		// Clear all sessions
@@ -1455,7 +1521,7 @@ func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, NewAPIError(ErrCodeInternalError, fmt.Sprintf("Failed to clear sessions: %v", err)))
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]string{"status": "cleared"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "cleared"})
 
 	default:
 		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
@@ -1486,7 +1552,7 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, NewAPIError(ErrCodeNotFound, fmt.Sprintf("Session not found: %v", err)))
 			return
 		}
-		json.NewEncoder(w).Encode(sess)
+		_ = json.NewEncoder(w).Encode(sess)
 
 	case http.MethodDelete:
 		// Delete session
@@ -1494,7 +1560,7 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, NewAPIError(ErrCodeNotFound, fmt.Sprintf("Failed to delete session: %v", err)))
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "deleted"})
 
 	case http.MethodPut:
 		// Update session title
@@ -1509,7 +1575,7 @@ func (s *Server) handleSession(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, NewAPIError(ErrCodeNotFound, fmt.Sprintf("Failed to update session: %v", err)))
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
 
 	default:
 		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")

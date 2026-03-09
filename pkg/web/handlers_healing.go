@@ -149,7 +149,7 @@ func (s *Server) handleHealingRules(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		rules := s.healingStore.GetRules()
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"rules": rules,
 		})
 
@@ -165,7 +165,7 @@ func (s *Server) handleHealingRules(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(created)
+		_ = json.NewEncoder(w).Encode(created)
 
 	case http.MethodPut:
 		id := r.URL.Query().Get("id")
@@ -183,7 +183,7 @@ func (s *Server) handleHealingRules(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		rule.ID = id
-		json.NewEncoder(w).Encode(rule)
+		_ = json.NewEncoder(w).Encode(rule)
 
 	case http.MethodDelete:
 		id := r.URL.Query().Get("id")
@@ -218,7 +218,7 @@ func (s *Server) handleHealingEvents(w http.ResponseWriter, r *http.Request) {
 	events := s.healingStore.GetEvents(limit)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"events": events,
 	})
 }

@@ -20,7 +20,7 @@ func TestInit_SQLite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	if DB == nil {
 		t.Error("DB should not be nil after Init")
@@ -51,7 +51,7 @@ func TestInitWithConfig_SQLite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InitWithConfig() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	if GetDBType() != DBTypeSQLite {
 		t.Errorf("GetDBType() = %v, want %v", GetDBType(), DBTypeSQLite)
@@ -74,7 +74,7 @@ func TestInitWithConfig_DefaultType(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InitWithConfig() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	if GetDBType() != DBTypeSQLite {
 		t.Errorf("GetDBType() = %v, want %v", GetDBType(), DBTypeSQLite)
@@ -89,7 +89,7 @@ func TestInitWithConfig_UnsupportedType(t *testing.T) {
 	err := InitWithConfig(cfg)
 	if err == nil {
 		t.Error("InitWithConfig() should return error for unsupported type")
-		Close()
+		_ = Close()
 	}
 }
 
@@ -168,7 +168,7 @@ func TestCreateTables_SQLite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	// Verify audit_logs table
 	rows, err := DB.Query("PRAGMA table_info(audit_logs)")
@@ -274,7 +274,7 @@ func TestInit_DefaultPath(t *testing.T) {
 		t.Logf("Init with default path: %v (may be expected)", err)
 		return
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	if DB == nil {
 		t.Error("DB should not be nil after Init with default path")
@@ -324,14 +324,14 @@ func TestMigrateAuditLogsTable(t *testing.T) {
 		t.Fatalf("Failed to insert test record: %v", err)
 	}
 
-	Close()
+	_ = Close()
 
 	// Re-initialize - this should trigger migration
 	err = Init(dbPath)
 	if err != nil {
 		t.Fatalf("Re-Init() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	// Verify new columns exist by querying them
 	rows, err := DB.Query("PRAGMA table_info(audit_logs)")
@@ -382,7 +382,7 @@ func TestRecordAudit_FullFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	// Record an audit entry with all fields
 	entry := AuditEntry{
@@ -454,7 +454,7 @@ func TestGetAuditLogsFiltered_Filters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	// Insert multiple entries with different properties
 	entries := []AuditEntry{
@@ -562,7 +562,7 @@ func TestRecordAudit_SkipsViewActions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Init() error = %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	// Ensure view actions are not included by default
 	SetAuditConfig(AuditConfig{IncludeViews: false})

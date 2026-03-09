@@ -310,14 +310,17 @@ func (s *Store) Clear() error {
 		return fmt.Errorf("failed to read session directory: %w", err)
 	}
 
+	var firstErr error
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".json") {
 			path := filepath.Join(s.baseDir, entry.Name())
-			os.Remove(path)
+			if err := os.Remove(path); err != nil && firstErr == nil {
+				firstErr = fmt.Errorf("failed to remove session file %s: %w", entry.Name(), err)
+			}
 		}
 	}
 
-	return nil
+	return firstErr
 }
 
 // UpdateTitle updates the session title

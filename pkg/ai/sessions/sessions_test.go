@@ -61,7 +61,9 @@ func TestMemoryStore(t *testing.T) {
 	}
 
 	// Test Clear
-	store.Save(session)
+	if err := store.Save(session); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
 	if err := store.Clear(); err != nil {
 		t.Fatalf("Clear() error = %v", err)
 	}

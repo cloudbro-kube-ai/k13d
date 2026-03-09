@@ -20,7 +20,7 @@ func (s *Server) handleToolApprovalSettings(w http.ResponseWriter, r *http.Reque
 		policy := s.cfg.Authorization.ToolApproval
 		s.aiMu.RUnlock()
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(policy)
+		_ = json.NewEncoder(w).Encode(policy)
 
 	case http.MethodPut:
 		// Check admin role
@@ -73,7 +73,7 @@ func (s *Server) handleToolApprovalSettings(w http.ResponseWriter, r *http.Reque
 
 		// Record audit
 		username := r.Header.Get("X-Username")
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:     username,
 			Action:   "update_tool_approval_settings",
 			Resource: "settings",
@@ -81,7 +81,7 @@ func (s *Server) handleToolApprovalSettings(w http.ResponseWriter, r *http.Reque
 		})
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)

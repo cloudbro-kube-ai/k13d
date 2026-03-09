@@ -172,7 +172,7 @@ func (r *Runner) Run(ctx context.Context) (*BenchmarkSummary, error) {
 			results <- result
 
 			// Save individual result
-			r.saveResult(result)
+			_ = r.saveResult(result)
 		}(item.task, item.llmConfig)
 	}
 
@@ -244,7 +244,7 @@ func (r *Runner) evaluateTask(ctx context.Context, task *Task, llmCfg LLMConfig)
 		result.Duration = result.EndTime.Sub(result.StartTime)
 		return result
 	}
-	defer r.deleteNamespace(context.Background(), kubeconfigPath, namespace) // Cleanup even if task fails
+	defer func() { _ = r.deleteNamespace(context.Background(), kubeconfigPath, namespace) }() // Cleanup even if task fails
 
 	// Run setup script
 	if task.Setup != "" {

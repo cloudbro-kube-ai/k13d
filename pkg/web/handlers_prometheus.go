@@ -128,7 +128,7 @@ func (s *Server) handlePrometheusMetrics(w http.ResponseWriter, r *http.Request)
 		sb.WriteString(fmt.Sprintf("k13d_metrics_collector_running %d\n", running))
 	}
 
-	w.Write([]byte(sb.String()))
+	_, _ = w.Write([]byte(sb.String()))
 }
 
 // handlePrometheusSettings handles Prometheus configuration
@@ -138,7 +138,7 @@ func (s *Server) handlePrometheusSettings(w http.ResponseWriter, r *http.Request
 
 	switch r.Method {
 	case http.MethodGet:
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"expose_metrics":      s.cfg.Prometheus.ExposeMetrics,
 			"external_url":        s.cfg.Prometheus.ExternalURL,
 			"has_auth":            s.cfg.Prometheus.Username != "",
@@ -179,7 +179,7 @@ func (s *Server) handlePrometheusSettings(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -217,7 +217,7 @@ func (s *Server) handlePrometheusTest(w http.ResponseWriter, r *http.Request) {
 
 	httpReq, err := http.NewRequestWithContext(r.Context(), "GET", testURL, nil)
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
 			"error":   err.Error(),
 		})
@@ -231,7 +231,7 @@ func (s *Server) handlePrometheusTest(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(httpReq)
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
 			"error":   err.Error(),
 		})
@@ -241,7 +241,7 @@ func (s *Server) handlePrometheusTest(w http.ResponseWriter, r *http.Request) {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
 			"error":   fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body)),
 		})
@@ -257,14 +257,14 @@ func (s *Server) handlePrometheusTest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&promResp); err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"version": "unknown",
 		})
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"version": promResp.Data.Version,
 	})
@@ -317,5 +317,5 @@ func (s *Server) handlePrometheusQuery(w http.ResponseWriter, r *http.Request) {
 
 	// Forward response
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+	_, _ = io.Copy(w, resp.Body)
 }

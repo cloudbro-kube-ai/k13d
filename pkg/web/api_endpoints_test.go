@@ -42,7 +42,7 @@ func setupAPITestServer(t *testing.T) *Server {
 	authManager := NewAuthManager(authConfig)
 
 	// Create fake k8s client
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 		&corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pod", Namespace: "default"},
@@ -280,7 +280,7 @@ func TestAPIResponseFormat(t *testing.T) {
 		{"/api/health", []string{"status"}, "Health check response"},
 		{"/api/llm/status", []string{"configured"}, "LLM status response"},
 		{"/api/llm/usage", []string{"items", "count"}, "LLM usage response"},
-		{"/api/llm/usage/stats", []string{"stats"}, "LLM usage stats response"},
+		{"/api/llm/usage/stats", []string{"total_requests", "total_tokens", "minutes"}, "LLM usage stats response"},
 		{"/api/models", []string{"models"}, "Models list response"},
 		{"/api/security/scans", []string{"scans"}, "Security scans response"},
 		{"/api/portforward/list", []string{"items"}, "Port forward list response"},
@@ -381,11 +381,9 @@ func TestMethodNotAllowed(t *testing.T) {
 
 			mux.ServeHTTP(w, req)
 
-			// Should return 405 Method Not Allowed
-			if w.Code != http.StatusMethodNotAllowed {
-				// Some handlers may accept any method gracefully
-				// This is OK as long as they don't crash
-			}
+			// Should return 405 Method Not Allowed, but some handlers may
+			// accept any method gracefully - this is OK as long as they don't crash.
+			_ = w.Code
 		})
 	}
 }

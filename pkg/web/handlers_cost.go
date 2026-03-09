@@ -176,7 +176,7 @@ func (s *Server) handleCostEstimate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 // calcEfficiency computes used/requested * 100. Returns -1 if metrics unavailable.

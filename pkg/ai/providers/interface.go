@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"encoding/json"
 )
 
 // Provider defines the interface for LLM providers.
@@ -63,6 +64,60 @@ type ToolCall struct {
 type FunctionCall struct {
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`
+}
+
+// MarshalJSON ensures Arguments is serialized as a raw JSON object (not a quoted string).
+// This is needed because Ollama expects "arguments" to be a JSON object, but the Go
+// string field would otherwise be double-escaped (e.g., "{\"command\":\"get pods\"}").
+func (f FunctionCall) MarshalJSON() ([]byte, error) {
+	type Alias struct {
+		Name      string          `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
+	}
+	a := Alias{Name: f.Name}
+	if f.Arguments != "" {
+		// If Arguments is already valid JSON, use it as raw JSON
+		if json.Valid([]byte(f.Arguments)) {
+			a.Arguments = json.RawMessage(f.Arguments)
+		} else {
+			// Fallback: marshal as a JSON string
+			b, err := json.Marshal(f.Arguments)
+			if err != nil {
+				return nil, err
+			}
+			a.Arguments = b
+		}
+	}
+	return json.Marshal(a)
+}
+
+// UnmarshalJSON handles both string and object formats for FunctionCall arguments
+func (f *FunctionCall) UnmarshalJSON(data []byte) error {
+	type Alias FunctionCall
+	aux := &struct {
+		Arguments json.RawMessage `json:"arguments"`
+		*Alias
+	}{
+		Alias: (*Alias)(f),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	if len(aux.Arguments) > 0 {
+		if aux.Arguments[0] == '"' {
+			var strArgs string
+			if err := json.Unmarshal(aux.Arguments, &strArgs); err != nil {
+				return err
+			}
+			f.Arguments = strArgs
+		} else {
+			f.Arguments = string(aux.Arguments)
+		}
+	}
+
+	return nil
 }
 
 // ToolResult represents the result of executing a tool

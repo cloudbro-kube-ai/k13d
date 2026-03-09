@@ -20,7 +20,7 @@ default_agent: "@dev-agent"
 > - `/SECURITY.md` - Security policy
 >
 > **Build/Config files:**
-> - `/go.mod` - Go version (1.25.0) and dependencies
+> - `/go.mod` - Go version (1.25.8) and dependencies
 > - `/Makefile` - Build, test, and deployment commands
 > - `/.goreleaser.yaml` - Release configuration
 > - `/.github/workflows/ci.yml` - CI/CD workflow
@@ -62,14 +62,14 @@ The agent should NOT do the following unless explicitly requested:
 ## Tech Stack and Environment
 
 ### Languages & Frameworks
-- **Language:** Go 1.25.0+
+- **Language:** Go 1.25.8+
 - **TUI Framework:** [tview](https://github.com/rivo/tview) with [tcell](https://github.com/gdamore/tcell/v2)
 - **Web Framework:** Standard library `net/http` with embedded static files
 - **AI Integration:** Custom OpenAI-compatible HTTP client (supports OpenAI, Ollama, Anthropic)
 - **MCP Integration:** JSON-RPC 2.0 stdio protocol for tool extensibility
 - **Kubernetes Client:** client-go v0.35.0, metrics v0.35.0
 - **Database:** CGO-free SQLite (modernc.org/sqlite) for audit logs and settings
-- **Authentication:** Session-based with SHA256 password hashing
+- **Authentication:** Session-based with bcrypt password hashing (SHA256 legacy fallback)
 
 ### Key Dependencies
 ```
@@ -419,7 +419,7 @@ Before creating a patch/PR, ensure:
 
 ## Version Information
 
-- Go: 1.25.0 (from `/go.mod`)
+- Go: 1.25.8 (from `/go.mod`)
 - tview: v0.42.0
 - tcell: v2.13.6
 - client-go: v0.35.0

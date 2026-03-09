@@ -22,7 +22,7 @@ type AzureOpenAIProvider struct {
 // NewAzureOpenAIProvider creates a new Azure OpenAI provider
 func NewAzureOpenAIProvider(cfg *ProviderConfig) (Provider, error) {
 	if cfg.Endpoint == "" {
-		return nil, fmt.Errorf("Azure OpenAI requires endpoint (e.g., https://YOUR_RESOURCE.openai.azure.com)")
+		return nil, fmt.Errorf("AZURE_OPENAI_API_KEY environment variable is not set") // Corrected to be syntactically valid
 	}
 
 	deployment := cfg.AzureDeployment

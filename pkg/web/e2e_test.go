@@ -47,7 +47,7 @@ func setupTestServer(t *testing.T) (*Server, *AuthManager) {
 	authManager := NewAuthManager(authConfig)
 
 	// Create fake k8s client
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 		&corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -280,13 +280,13 @@ func TestE2E_UserManagement(t *testing.T) {
 	_, authManager := setupTestServer(t)
 
 	// Create a new user
-	err := authManager.CreateUser("testuser", "testpass123", "user")
+	err := authManager.CreateUser("testuser", "testpass12345", "user")
 	if err != nil {
 		t.Fatalf("failed to create user: %v", err)
 	}
 
 	// Login with new user
-	session, err := authManager.Authenticate("testuser", "testpass123")
+	session, err := authManager.Authenticate("testuser", "testpass12345")
 	if err != nil {
 		t.Fatalf("failed to login with new user: %v", err)
 	}
@@ -296,7 +296,7 @@ func TestE2E_UserManagement(t *testing.T) {
 	}
 
 	// Change password
-	err = authManager.ChangePassword("testuser", "testpass123", "newpass456")
+	err = authManager.ChangePassword("testuser", "testpass12345", "newpass456")
 	if err != nil {
 		t.Fatalf("failed to change password: %v", err)
 	}
@@ -308,7 +308,7 @@ func TestE2E_UserManagement(t *testing.T) {
 	}
 
 	// Old password should fail
-	_, err = authManager.Authenticate("testuser", "testpass123")
+	_, err = authManager.Authenticate("testuser", "testpass12345")
 	if err == nil {
 		t.Error("old password should not work")
 	}
@@ -492,9 +492,9 @@ func TestE2E_AgenticChatRequiresToolSupport(t *testing.T) {
 		flusher, _ := w.(http.Flusher)
 
 		resp := `{"id":"test","choices":[{"delta":{"content":"AI Response"},"finish_reason":"stop"}]}`
-		w.Write([]byte("data: " + resp + "\n\n"))
+		_, _ = w.Write([]byte("data: " + resp + "\n\n"))
 		flusher.Flush()
-		w.Write([]byte("data: [DONE]\n\n"))
+		_, _ = w.Write([]byte("data: [DONE]\n\n"))
 		flusher.Flush()
 	}))
 	defer mockAIServer.Close()
@@ -1097,7 +1097,7 @@ func TestE2E_FullMiddlewareChain(t *testing.T) {
 	mux.HandleFunc("/api/test", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
 
 	handler := securityHeadersMiddleware(corsMiddleware(authManager.CSRFMiddleware(mux)))

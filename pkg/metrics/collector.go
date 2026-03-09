@@ -79,7 +79,11 @@ func (c *Collector) Start() {
 	log.Infof("Starting metrics collector (interval: %s, retention: %s)", c.config.Interval, c.config.Retention)
 
 	// Initial collection
-	go c.collectOnce()
+	go func() {
+		if err := c.collectOnce(); err != nil {
+			log.Warnf("Initial metrics collection failed: %v", err)
+		}
+	}()
 
 	// Start periodic collection
 	go c.runCollector()
@@ -238,15 +242,18 @@ func (c *Collector) collectClusterMetrics(ctx context.Context, contextName strin
 		}
 	}
 
-	// Get resource usage from metrics-server
+	// Get resource usage from metrics-server, fall back to pod resource requests
 	nodeMetrics, err := c.k8sClient.GetNodeMetrics(ctx)
 	if err != nil {
-		log.Warnf("Metrics-server unavailable (cluster CPU/Memory will be 0): %v", err)
-	} else {
-		for _, usage := range nodeMetrics {
-			metrics.UsedCPUMillis += usage[0]
-			metrics.UsedMemoryMB += usage[1]
+		log.Warnf("Metrics-server unavailable, falling back to pod resource requests: %v", err)
+		nodeMetrics, err = c.k8sClient.GetNodeMetricsFromPodRequests(ctx)
+		if err != nil {
+			log.Warnf("Pod request fallback also failed: %v", err)
 		}
+	}
+	for _, usage := range nodeMetrics {
+		metrics.UsedCPUMillis += usage[0]
+		metrics.UsedMemoryMB += usage[1]
 	}
 
 	// Get deployments
@@ -269,10 +276,14 @@ func (c *Collector) collectNodeMetrics(ctx context.Context, contextName string, 
 		return err
 	}
 
-	// Get metrics from metrics-server
+	// Get metrics from metrics-server, fall back to pod resource requests
 	nodeMetricsMap, err := c.k8sClient.GetNodeMetrics(ctx)
 	if err != nil {
-		log.Warnf("Metrics-server unavailable (node CPU/Memory will be 0): %v", err)
+		log.Warnf("Metrics-server unavailable, falling back to pod resource requests: %v", err)
+		nodeMetricsMap, err = c.k8sClient.GetNodeMetricsFromPodRequests(ctx)
+		if err != nil {
+			log.Warnf("Pod request fallback also failed: %v", err)
+		}
 	}
 
 	// Count pods per node
@@ -334,10 +345,14 @@ func (c *Collector) collectPodMetrics(ctx context.Context, contextName string, t
 		return err
 	}
 
-	// Get metrics from metrics-server
+	// Get metrics from metrics-server, fall back to pod resource requests
 	podMetricsMap, err := c.k8sClient.GetPodMetrics(ctx, c.config.Namespace)
 	if err != nil {
-		log.Warnf("Metrics-server unavailable (pod CPU/Memory will be 0): %v", err)
+		log.Warnf("Metrics-server unavailable, falling back to pod resource requests: %v", err)
+		podMetricsMap, err = c.k8sClient.GetPodMetricsFromRequests(ctx, c.config.Namespace)
+		if err != nil {
+			log.Warnf("Pod request fallback also failed: %v", err)
+		}
 	}
 
 	// Collect all pod metrics into a batch

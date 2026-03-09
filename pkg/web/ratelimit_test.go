@@ -77,7 +77,7 @@ func TestRateLimitMiddleware_APIEndpoint(t *testing.T) {
 	handler := RateLimitMiddleware(apiLimiter, authLimiter)(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("success"))
+			_, _ = w.Write([]byte("success"))
 		}),
 	)
 
@@ -121,7 +121,7 @@ func TestRateLimitMiddleware_AuthEndpoint(t *testing.T) {
 	handler := RateLimitMiddleware(apiLimiter, authLimiter)(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("success"))
+			_, _ = w.Write([]byte("success"))
 		}),
 	)
 
@@ -157,7 +157,7 @@ func TestRateLimitMiddleware_StaticFiles(t *testing.T) {
 	handler := RateLimitMiddleware(apiLimiter, authLimiter)(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("static content"))
+			_, _ = w.Write([]byte("static content"))
 		}),
 	)
 

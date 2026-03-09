@@ -12,7 +12,7 @@ func TestModelProfilesCRUD(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init db: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	ctx := context.Background()
 
@@ -91,7 +91,7 @@ func TestSetActiveModelProfile(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init db: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	ctx := context.Background()
 
@@ -109,8 +109,8 @@ func TestSetActiveModelProfile(t *testing.T) {
 		IsActive: false,
 	}
 
-	SaveModelProfile(profile1)
-	SaveModelProfile(profile2)
+	_ = SaveModelProfile(profile1)
+	_ = SaveModelProfile(profile2)
 
 	// Set profile2 as active
 	if err := SetActiveModelProfile("profile2"); err != nil {
@@ -139,7 +139,7 @@ func TestModelProfileWithStats(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init db: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	ctx := context.Background()
 
@@ -150,7 +150,7 @@ func TestModelProfileWithStats(t *testing.T) {
 		Model:    "gpt-4",
 		IsActive: true,
 	}
-	SaveModelProfile(profile)
+	_ = SaveModelProfile(profile)
 
 	// Record some usage
 	for i := 0; i < 3; i++ {

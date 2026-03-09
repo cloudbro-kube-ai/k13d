@@ -351,7 +351,7 @@ func (s *Server) downloadBinary() error {
 				libsCopied++
 				// Make library executable on Unix
 				if runtime.GOOS != "windows" {
-					os.Chmod(destPath, 0755)
+					_ = os.Chmod(destPath, 0755)
 				}
 			}
 		}
@@ -424,7 +424,7 @@ func unzip(src, dest string) error {
 		}
 
 		if f.FileInfo().IsDir() {
-			os.MkdirAll(fpath, os.ModePerm)
+			_ = os.MkdirAll(fpath, os.ModePerm)
 			continue
 		}
 
@@ -587,7 +587,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	// Wait for server to be ready
 	if err := s.waitForReady(ctx, 30*time.Second); err != nil {
-		s.Stop()
+		_ = s.Stop()
 		return fmt.Errorf("server failed to start: %w", err)
 	}
 

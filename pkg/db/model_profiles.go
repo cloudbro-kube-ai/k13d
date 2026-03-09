@@ -264,7 +264,7 @@ func SetActiveModelProfile(name string) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Deactivate all profiles
 	_, err = tx.Exec("UPDATE model_profiles SET is_active = 0")

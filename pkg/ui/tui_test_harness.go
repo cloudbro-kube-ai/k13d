@@ -363,11 +363,12 @@ func (tt *TUITester) GetContent() string {
 
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
-			mainc, _, _, _ := tt.Screen.GetContent(x, y)
-			if mainc == 0 {
-				mainc = ' '
+			str, _, _ := tt.Screen.Get(x, y)
+			if len(str) == 0 {
+				sb.WriteRune(' ')
+			} else {
+				sb.WriteString(str)
 			}
-			sb.WriteRune(mainc)
 		}
 		sb.WriteRune('\n')
 	}
@@ -402,11 +403,12 @@ func (tt *TUITester) GetLine(lineNum int) string {
 
 // GetCellAt returns the character at a specific position.
 func (tt *TUITester) GetCellAt(x, y int) rune {
-	mainc, _, _, _ := tt.Screen.GetContent(x, y)
-	if mainc == 0 {
+	str, _, _ := tt.Screen.Get(x, y)
+	if len(str) == 0 {
 		return ' '
 	}
-	return mainc
+	r := []rune(str)
+	return r[0]
 }
 
 // GetRegion returns a rectangular region of the screen.
@@ -414,11 +416,12 @@ func (tt *TUITester) GetRegion(x, y, width, height int) string {
 	var sb strings.Builder
 	for row := y; row < y+height; row++ {
 		for col := x; col < x+width; col++ {
-			mainc, _, _, _ := tt.Screen.GetContent(col, row)
-			if mainc == 0 {
-				mainc = ' '
+			str, _, _ := tt.Screen.Get(col, row)
+			if len(str) == 0 {
+				sb.WriteRune(' ')
+			} else {
+				sb.WriteString(str)
 			}
-			sb.WriteRune(mainc)
 		}
 		if row < y+height-1 {
 			sb.WriteRune('\n')
