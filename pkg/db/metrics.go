@@ -218,7 +218,7 @@ func (s *MetricsStore) SaveNodeMetricsBatch(ctx context.Context, metrics []NodeM
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	stmt, err := tx.PrepareContext(ctx,
 		`INSERT INTO node_metrics
@@ -264,7 +264,7 @@ func (s *MetricsStore) SavePodMetricsBatch(ctx context.Context, metrics []PodMet
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	stmt, err := tx.PrepareContext(ctx,
 		`INSERT INTO pod_metrics

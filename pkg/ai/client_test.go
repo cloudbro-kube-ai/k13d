@@ -160,7 +160,7 @@ func TestClient_AskNonStreaming(t *testing.T) {
 
 		// Return mock response in OpenAI format
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"id":"test-123","choices":[{"message":{"content":"Hello from AI"},"finish_reason":"stop"}]}`))
+		_, _ = w.Write([]byte(`{"id":"test-123","choices":[{"message":{"content":"Hello from AI"},"finish_reason":"stop"}]}`))
 	}))
 	defer server.Close()
 
@@ -187,7 +187,7 @@ func TestClient_AskNonStreaming_Error(t *testing.T) {
 	// Create a mock server that returns an error
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal server error"))
+		_, _ = w.Write([]byte("internal server error"))
 	}))
 	defer server.Close()
 
@@ -216,11 +216,11 @@ func TestClient_Ask_Streaming(t *testing.T) {
 		resp1 := `{"id":"test","choices":[{"delta":{"content":"Hello"},"finish_reason":null}]}`
 		resp2 := `{"id":"test","choices":[{"delta":{"content":" World"},"finish_reason":null}]}`
 
-		w.Write([]byte("data: " + resp1 + "\n\n"))
+		_, _ = w.Write([]byte("data: " + resp1 + "\n\n"))
 		flusher.Flush()
-		w.Write([]byte("data: " + resp2 + "\n\n"))
+		_, _ = w.Write([]byte("data: " + resp2 + "\n\n"))
 		flusher.Flush()
-		w.Write([]byte("data: [DONE]\n\n"))
+		_, _ = w.Write([]byte("data: [DONE]\n\n"))
 		flusher.Flush()
 	}))
 	defer server.Close()
@@ -252,7 +252,7 @@ func TestClient_TestConnection_Success(t *testing.T) {
 	// Create a mock server that returns OK
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"id":"test-123","choices":[{"message":{"content":"OK"},"finish_reason":"stop"}]}`))
+		_, _ = w.Write([]byte(`{"id":"test-123","choices":[{"message":{"content":"OK"},"finish_reason":"stop"}]}`))
 	}))
 	defer server.Close()
 
@@ -287,7 +287,7 @@ func TestClient_TestConnection_Failure(t *testing.T) {
 	// Create a mock server that returns an error
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"error": {"message": "Invalid API key"}}`))
+		_, _ = w.Write([]byte(`{"error": {"message": "Invalid API key"}}`))
 	}))
 	defer server.Close()
 

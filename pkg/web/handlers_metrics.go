@@ -30,14 +30,17 @@ func (s *Server) handlePodMetrics(w http.ResponseWriter, r *http.Request) {
 	namespace := r.URL.Query().Get("namespace")
 	w.Header().Set("Content-Type", "application/json")
 
-	// Try to get metrics from metrics-server
+	// Try to get metrics from metrics-server, fall back to pod resource requests
 	metricsMap, err := s.k8sClient.GetPodMetrics(r.Context(), namespace)
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"error": "Metrics server not available: " + err.Error(),
-			"items": []PodMetricItem{},
-		})
-		return
+		metricsMap, err = s.k8sClient.GetPodMetricsFromRequests(r.Context(), namespace)
+		if err != nil {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Metrics not available: " + err.Error(),
+				"items": []PodMetricItem{},
+			})
+			return
+		}
 	}
 
 	// Convert map to slice
@@ -53,7 +56,7 @@ func (s *Server) handlePodMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"items": items,
 	})
 }
@@ -66,13 +69,17 @@ func (s *Server) handleNodeMetrics(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
+	// Try metrics-server, fall back to pod resource requests per node
 	metricsMap, err := s.k8sClient.GetNodeMetrics(r.Context())
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"error": "Metrics server not available: " + err.Error(),
-			"items": []interface{}{},
-		})
-		return
+		metricsMap, err = s.k8sClient.GetNodeMetricsFromPodRequests(r.Context())
+		if err != nil {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": "Metrics not available: " + err.Error(),
+				"items": []interface{}{},
+			})
+			return
+		}
 	}
 
 	// Convert map to slice
@@ -87,7 +94,7 @@ func (s *Server) handleNodeMetrics(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"items": items,
 	})
 }
@@ -105,7 +112,7 @@ func (s *Server) handleClusterMetricsHistory(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Content-Type", "application/json")
 
 	if s.metricsCollector == nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": "Metrics collector not initialized",
 			"items": []interface{}{},
 		})
@@ -115,15 +122,15 @@ func (s *Server) handleClusterMetricsHistory(w http.ResponseWriter, r *http.Requ
 	// Parse query parameters - support both minutes and hours
 	minutes := 5 // Default to 5 minutes
 	if m := r.URL.Query().Get("minutes"); m != "" {
-		fmt.Sscanf(m, "%d", &minutes)
+		_, _ = fmt.Sscanf(m, "%d", &minutes)
 	} else if h := r.URL.Query().Get("hours"); h != "" {
 		var hours int
-		fmt.Sscanf(h, "%d", &hours)
+		_, _ = fmt.Sscanf(h, "%d", &hours)
 		minutes = hours * 60
 	}
 	limit := 1000
 	if l := r.URL.Query().Get("limit"); l != "" {
-		fmt.Sscanf(l, "%d", &limit)
+		_, _ = fmt.Sscanf(l, "%d", &limit)
 	}
 
 	contextName, _ := s.k8sClient.GetCurrentContext()
@@ -141,7 +148,7 @@ func (s *Server) handleClusterMetricsHistory(w http.ResponseWriter, r *http.Requ
 		var err error
 		metrics, err = s.metricsCollector.GetStore().GetClusterMetrics(r.Context(), contextName, start, end, limit)
 		if err != nil {
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error": err.Error(),
 				"items": []interface{}{},
 			})
@@ -149,7 +156,7 @@ func (s *Server) handleClusterMetricsHistory(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"items":   metrics,
 		"context": contextName,
 		"start":   start,
@@ -166,7 +173,7 @@ func (s *Server) handleNodeMetricsHistory(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 
 	if s.metricsCollector == nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": "Metrics collector not initialized",
 			"items": []interface{}{},
 		})
@@ -182,15 +189,15 @@ func (s *Server) handleNodeMetricsHistory(w http.ResponseWriter, r *http.Request
 	// Parse query parameters - support both minutes and hours
 	minutes := 5 // Default to 5 minutes
 	if m := r.URL.Query().Get("minutes"); m != "" {
-		fmt.Sscanf(m, "%d", &minutes)
+		_, _ = fmt.Sscanf(m, "%d", &minutes)
 	} else if h := r.URL.Query().Get("hours"); h != "" {
 		var hours int
-		fmt.Sscanf(h, "%d", &hours)
+		_, _ = fmt.Sscanf(h, "%d", &hours)
 		minutes = hours * 60
 	}
 	limit := 1000
 	if l := r.URL.Query().Get("limit"); l != "" {
-		fmt.Sscanf(l, "%d", &limit)
+		_, _ = fmt.Sscanf(l, "%d", &limit)
 	}
 
 	contextName, _ := s.k8sClient.GetCurrentContext()
@@ -207,7 +214,7 @@ func (s *Server) handleNodeMetricsHistory(w http.ResponseWriter, r *http.Request
 		var err error
 		metrics, err = s.metricsCollector.GetStore().GetNodeMetricsHistory(r.Context(), contextName, nodeName, start, end, limit)
 		if err != nil {
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error": err.Error(),
 				"items": []interface{}{},
 			})
@@ -215,7 +222,7 @@ func (s *Server) handleNodeMetricsHistory(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"items":   metrics,
 		"context": contextName,
 		"node":    nodeName,
@@ -233,7 +240,7 @@ func (s *Server) handlePodMetricsHistory(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 
 	if s.metricsCollector == nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": "Metrics collector not initialized",
 			"items": []interface{}{},
 		})
@@ -253,15 +260,15 @@ func (s *Server) handlePodMetricsHistory(w http.ResponseWriter, r *http.Request)
 	// Parse query parameters - support both minutes and hours
 	minutes := 5 // Default to 5 minutes
 	if m := r.URL.Query().Get("minutes"); m != "" {
-		fmt.Sscanf(m, "%d", &minutes)
+		_, _ = fmt.Sscanf(m, "%d", &minutes)
 	} else if h := r.URL.Query().Get("hours"); h != "" {
 		var hours int
-		fmt.Sscanf(h, "%d", &hours)
+		_, _ = fmt.Sscanf(h, "%d", &hours)
 		minutes = hours * 60
 	}
 	limit := 1000
 	if l := r.URL.Query().Get("limit"); l != "" {
-		fmt.Sscanf(l, "%d", &limit)
+		_, _ = fmt.Sscanf(l, "%d", &limit)
 	}
 
 	contextName, _ := s.k8sClient.GetCurrentContext()
@@ -278,7 +285,7 @@ func (s *Server) handlePodMetricsHistory(w http.ResponseWriter, r *http.Request)
 		var err error
 		metrics, err = s.metricsCollector.GetStore().GetPodMetricsHistory(r.Context(), contextName, namespace, podName, start, end, limit)
 		if err != nil {
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"error": err.Error(),
 				"items": []interface{}{},
 			})
@@ -286,7 +293,7 @@ func (s *Server) handlePodMetricsHistory(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"items":     metrics,
 		"context":   contextName,
 		"namespace": namespace,
@@ -305,7 +312,7 @@ func (s *Server) handleMetricsSummary(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if s.metricsCollector == nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error":      "Metrics collector not initialized",
 			"enabled":    false,
 			"collecting": false,
@@ -317,7 +324,7 @@ func (s *Server) handleMetricsSummary(w http.ResponseWriter, r *http.Request) {
 
 	summary, err := s.metricsCollector.GetStore().GetMetricsSummary(r.Context(), contextName)
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error":   err.Error(),
 			"enabled": true,
 		})
@@ -328,7 +335,7 @@ func (s *Server) handleMetricsSummary(w http.ResponseWriter, r *http.Request) {
 	summary["collecting"] = s.metricsCollector.IsRunning()
 	summary["context"] = contextName
 
-	json.NewEncoder(w).Encode(summary)
+	_ = json.NewEncoder(w).Encode(summary)
 }
 
 func (s *Server) handleAggregatedMetrics(w http.ResponseWriter, r *http.Request) {
@@ -340,7 +347,7 @@ func (s *Server) handleAggregatedMetrics(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 
 	if s.metricsCollector == nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": "Metrics collector not initialized",
 			"items": []interface{}{},
 		})
@@ -350,10 +357,10 @@ func (s *Server) handleAggregatedMetrics(w http.ResponseWriter, r *http.Request)
 	// Parse query parameters - support both minutes and hours
 	minutes := 5 // Default to 5 minutes
 	if m := r.URL.Query().Get("minutes"); m != "" {
-		fmt.Sscanf(m, "%d", &minutes)
+		_, _ = fmt.Sscanf(m, "%d", &minutes)
 	} else if h := r.URL.Query().Get("hours"); h != "" {
 		var hours int
-		fmt.Sscanf(h, "%d", &hours)
+		_, _ = fmt.Sscanf(h, "%d", &hours)
 		minutes = hours * 60
 	}
 	interval := r.URL.Query().Get("interval")
@@ -374,14 +381,14 @@ func (s *Server) handleAggregatedMetrics(w http.ResponseWriter, r *http.Request)
 
 	metrics, err := s.metricsCollector.GetStore().GetAggregatedClusterMetrics(r.Context(), contextName, start, end, interval)
 	if err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": err.Error(),
 			"items": []interface{}{},
 		})
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"items":    metrics,
 		"context":  contextName,
 		"interval": interval,
@@ -399,7 +406,7 @@ func (s *Server) handleMetricsCollectNow(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 
 	if s.metricsCollector == nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
 			"error":   "Metrics collector not initialized",
 		})
@@ -407,14 +414,14 @@ func (s *Server) handleMetricsCollectNow(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := s.metricsCollector.CollectNow(); err != nil {
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": false,
 			"error":   err.Error(),
 		})
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":   true,
 		"message":   "Metrics collection triggered",
 		"timestamp": time.Now(),

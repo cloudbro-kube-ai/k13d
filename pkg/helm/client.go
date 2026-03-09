@@ -446,7 +446,7 @@ func (c *Client) UpdateRepositories() error {
 			continue // Skip failed repos
 		}
 		r.CachePath = cacheDir
-		r.DownloadIndexFile()
+		_, _ = r.DownloadIndexFile()
 	}
 
 	return nil

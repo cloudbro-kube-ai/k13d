@@ -47,7 +47,7 @@ func (s *Server) handleContexts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(ContextsResponse{
+	_ = json.NewEncoder(w).Encode(ContextsResponse{
 		Contexts:       contexts,
 		CurrentContext: config.CurrentContext,
 	})
@@ -89,10 +89,17 @@ func (s *Server) handleContextSwitch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Verify connectivity to the new context
+	reachable := true
+	if _, err := s.k8sClient.GetServerVersion(); err != nil {
+		reachable = false
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"context": req.Context,
-		"message": "Switched to context: " + req.Context,
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":   true,
+		"context":   req.Context,
+		"reachable": reachable,
+		"message":   "Switched to context: " + req.Context,
 	})
 }

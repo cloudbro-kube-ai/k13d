@@ -129,7 +129,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: Failed to start embedded LLM: %v\n", err)
 			os.Exit(1)
 		}
-		defer embeddedServer.Stop()
+		defer func() {
+			if err := embeddedServer.Stop(); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: error stopping embedded LLM: %v\n", err)
+			}
+		}()
 
 		cfg.LLM.Provider = "embedded"
 		cfg.LLM.Endpoint = embeddedServer.Endpoint()

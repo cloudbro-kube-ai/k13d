@@ -133,7 +133,7 @@ func RecordAudit(entry AuditEntry) error {
 	}
 
 	// Also skip if action is literally "view" (backward compatibility)
-	if strings.ToLower(entry.Action) == "view" && !auditConfig.IncludeViews {
+	if strings.EqualFold(entry.Action, "view") && !auditConfig.IncludeViews {
 		return nil
 	}
 

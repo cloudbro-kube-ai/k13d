@@ -5,11 +5,26 @@ Deploy k13d using Docker for quick setup and consistent environments.
 ## Quick Start
 
 ```bash
-# Run with kubeconfig mounted
+# Run with local auth (simplest for desktop/dev use)
 docker run -d \
   --name k13d \
   -p 8080:8080 \
   -v ~/.kube:/root/.kube:ro \
+  cloudbro/k13d:latest \
+  -web -auth-mode local -port 8080
+# Open http://localhost:8080 — Default login: admin / admin
+```
+
+With custom credentials and an AI provider:
+
+```bash
+docker run -d \
+  --name k13d \
+  -p 8080:8080 \
+  -v ~/.kube:/root/.kube:ro \
+  -e K13D_AUTH_MODE=local \
+  -e K13D_USERNAME=admin \
+  -e K13D_PASSWORD=mysecurepassword \
   -e OPENAI_API_KEY=$OPENAI_API_KEY \
   cloudbro/k13d:latest \
   -web -port 8080
@@ -71,8 +86,10 @@ services:
       - ~/.kube:/root/.kube:ro
       - k13d-data:/root/.config/k13d
     environment:
+      - K13D_AUTH_MODE=local
+      - K13D_USERNAME=${K13D_USERNAME:-admin}
+      - K13D_PASSWORD=${K13D_PASSWORD:-admin}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - K13D_PASSWORD=${K13D_PASSWORD}
     command: ["-web", "-port", "8080"]
     restart: unless-stopped
 

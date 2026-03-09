@@ -293,5 +293,5 @@ func (s *Server) send(resp *JSONRPCResponse) {
 	if err != nil {
 		return
 	}
-	s.stdout.Write(append(data, '\n'))
+	_, _ = s.stdout.Write(append(data, '\n'))
 }

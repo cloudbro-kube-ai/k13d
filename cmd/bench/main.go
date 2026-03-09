@@ -100,7 +100,10 @@ func main() {
 
 	switch os.Args[1] {
 	case "run":
-		runCmd.Parse(os.Args[2:])
+		if err := runCmd.Parse(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing run flags: %v\n", err)
+			os.Exit(1)
+		}
 		if err := executeRun(runCmd, runConfig{
 			taskDir:           *runTaskDir,
 			taskPattern:       *runTaskPattern,
@@ -138,7 +141,10 @@ func main() {
 		}
 
 	case "dryrun", "dry-run":
-		dryrunCmd.Parse(os.Args[2:])
+		if err := dryrunCmd.Parse(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing dryrun flags: %v\n", err)
+			os.Exit(1)
+		}
 		if err := executeDryRun(dryrunConfig{
 			taskDir:     *dryrunTaskDir,
 			taskPattern: *dryrunTaskPattern,
@@ -160,14 +166,20 @@ func main() {
 		}
 
 	case "analyze":
-		analyzeCmd.Parse(os.Args[2:])
+		if err := analyzeCmd.Parse(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing analyze flags: %v\n", err)
+			os.Exit(1)
+		}
 		if err := executeAnalyze(*analyzeInputDir, *analyzeOutputFormat, *analyzeOutputFile, *analyzeShowFailures); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
 	case "list":
-		listCmd.Parse(os.Args[2:])
+		if err := listCmd.Parse(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "Error parsing list flags: %v\n", err)
+			os.Exit(1)
+		}
 		if err := executeList(*listTaskDir, *listDifficulty, *listCategories, *listTags); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)

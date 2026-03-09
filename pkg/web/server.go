@@ -168,27 +168,39 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 
 	fmt.Printf("Starting k13d web server...\n")
 
-	// Load LLM settings from SQLite if available (web UI takes precedence over YAML)
+	// Load LLM settings from SQLite if available
+	// If user edited config.yaml's active_model, YAML takes precedence;
+	// otherwise DB settings (from Web UI) take precedence.
 	if llmSettings, dbErr := db.GetWebSettingsWithPrefix("llm."); dbErr == nil && len(llmSettings) > 0 {
-		if v, ok := llmSettings["llm.provider"]; ok && v != "" {
-			cfg.LLM.Provider = v
+		dbActiveModel := llmSettings["llm.active_model"]
+
+		if dbActiveModel != "" && dbActiveModel != cfg.ActiveModel {
+			// User changed active_model in config.yaml → YAML wins
+			// Re-apply the profile from YAML (already done by config.Load → SetActiveModel)
+			fmt.Printf("  LLM Settings: active_model changed in config.yaml (%s → %s), using YAML\n",
+				dbActiveModel, cfg.ActiveModel)
+		} else {
+			// DB matches YAML or no active_model in DB → use DB overrides
+			if v, ok := llmSettings["llm.provider"]; ok && v != "" {
+				cfg.LLM.Provider = v
+			}
+			if v, ok := llmSettings["llm.model"]; ok && v != "" {
+				cfg.LLM.Model = v
+			}
+			if v, ok := llmSettings["llm.endpoint"]; ok && v != "" {
+				cfg.LLM.Endpoint = v
+			}
+			if v, ok := llmSettings["llm.api_key"]; ok && v != "" {
+				cfg.LLM.APIKey = v
+			}
+			if v, ok := llmSettings["llm.use_json_mode"]; ok {
+				cfg.LLM.UseJSONMode = v == "true"
+			}
+			if v, ok := llmSettings["llm.reasoning_effort"]; ok && v != "" {
+				cfg.LLM.ReasoningEffort = v
+			}
+			fmt.Printf("  LLM Settings: Loaded from SQLite\n")
 		}
-		if v, ok := llmSettings["llm.model"]; ok && v != "" {
-			cfg.LLM.Model = v
-		}
-		if v, ok := llmSettings["llm.endpoint"]; ok && v != "" {
-			cfg.LLM.Endpoint = v
-		}
-		if v, ok := llmSettings["llm.api_key"]; ok && v != "" {
-			cfg.LLM.APIKey = v
-		}
-		if v, ok := llmSettings["llm.use_json_mode"]; ok {
-			cfg.LLM.UseJSONMode = v == "true"
-		}
-		if v, ok := llmSettings["llm.reasoning_effort"]; ok && v != "" {
-			cfg.LLM.ReasoningEffort = v
-		}
-		fmt.Printf("  LLM Settings: Loaded from SQLite\n")
 	}
 
 	// Load tool approval settings from SQLite if available
@@ -371,6 +383,11 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 	}
 	fmt.Printf("  Security Scanner: Ready (%s)\n", scannerInfo)
 
+	// Set MCP reconnect callback to re-register tools when connection is restored
+	server.mcpClient.OnReconnect = func(serverName string) {
+		server.registerMCPTools(serverName)
+	}
+
 	// Initialize MCP servers
 	server.initMCPServers()
 
@@ -466,7 +483,7 @@ func recoveryMiddleware(next http.Handler) http.Handler {
 					if username == "" {
 						username = "anonymous"
 					}
-					db.RecordAudit(db.AuditEntry{
+					_ = db.RecordAudit(db.AuditEntry{
 						User:       username,
 						Action:     "http_panic",
 						Resource:   r.URL.Path,
@@ -499,7 +516,7 @@ func withRecovery(handler http.HandlerFunc) http.HandlerFunc {
 					if username == "" {
 						username = "anonymous"
 					}
-					db.RecordAudit(db.AuditEntry{
+					_ = db.RecordAudit(db.AuditEntry{
 						User:       username,
 						Action:     "http_panic",
 						Resource:   r.URL.Path,
@@ -529,8 +546,8 @@ func requestLoggingMiddleware(next http.Handler) http.Handler {
 		// Process request
 		next.ServeHTTP(rw, r)
 
-		// Log request (exclude health checks to reduce noise)
-		if r.URL.Path != "/api/health" {
+		// Log request (exclude health checks and successful GETs to reduce noise)
+		if r.URL.Path != "/api/health" && (r.Method != http.MethodGet || rw.statusCode >= 400) {
 			duration := time.Since(start)
 			username := r.Header.Get("X-Username")
 			if username == "" {
@@ -728,7 +745,6 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/search", s.authManager.AuthMiddleware(s.handleGlobalSearch))
 	mux.HandleFunc("/api/safety/analyze", s.authManager.AuthMiddleware(s.handleSafetyAnalysis))
 	mux.HandleFunc("/api/settings/tool-approval", s.authManager.AuthMiddleware(s.handleToolApprovalSettings))
-	mux.HandleFunc("/api/validate", s.authManager.AuthMiddleware(s.handleValidate))
 	mux.HandleFunc("/api/pulse", s.authManager.AuthMiddleware(s.handlePulse))
 	mux.HandleFunc("/api/xray", s.authManager.AuthMiddleware(s.handleXRay))
 
@@ -738,16 +754,16 @@ func (s *Server) Start() error {
 
 	// RBAC visualization
 	mux.HandleFunc("/api/rbac/visualization", s.authManager.AuthMiddleware(s.handleRBACVisualization))
+	mux.HandleFunc("/api/rbac/subject/detail", s.authManager.AuthMiddleware(s.handleRBACSubjectDetail))
+
+	// Resource references (Secret/ConfigMap "Referenced By")
+	mux.HandleFunc("/api/resource/references", s.authManager.AuthMiddleware(s.handleResourceReferences))
 
 	// Network Policy visualization
 	mux.HandleFunc("/api/netpol/visualization", s.authManager.AuthMiddleware(s.handleNetworkPolicyVisualization))
 
 	// GitOps status (ArgoCD / Flux)
 	mux.HandleFunc("/api/gitops/status", s.authManager.AuthMiddleware(s.handleGitOpsStatus))
-
-	// Resource templates (feature-gated)
-	mux.HandleFunc("/api/templates", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureTemplates)(s.handleTemplates)))
-	mux.HandleFunc("/api/templates/apply", s.authManager.AuthMiddleware(s.authorizer.FeatureMiddleware(FeatureTemplates)(s.authorizer.AuthzMiddleware("*", ActionApply)(s.handleTemplateApply))))
 
 	// Notification webhook configuration
 	mux.HandleFunc("/api/notifications/config", s.authManager.AuthMiddleware(s.authorizer.AuthzMiddleware("*", ActionEdit)(s.handleNotificationConfig)))
@@ -856,13 +872,43 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/access/approve/", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.accessRequestManager.HandleApproveAccessRequest)))
 	mux.HandleFunc("/api/access/deny/", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.accessRequestManager.HandleDenyAccessRequest)))
 
-	// Static files
+	// Static files - serve index.html with auth mode injected
 	staticFS, err := fs.Sub(staticFiles, "static")
+	var staticHandler http.Handler
 	if err != nil {
-		mux.Handle("/", http.FileServer(http.Dir("pkg/web/static")))
+		staticHandler = http.FileServer(http.Dir("pkg/web/static"))
 	} else {
-		mux.Handle("/", http.FileServer(http.FS(staticFS)))
+		staticHandler = http.FileServer(http.FS(staticFS))
 	}
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// For index.html (root path), inject auth mode as inline script
+		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+			var indexData []byte
+			if err != nil {
+				indexData, _ = os.ReadFile("pkg/web/static/index.html")
+			} else {
+				indexData, _ = fs.ReadFile(staticFiles, "static/index.html")
+			}
+			if indexData != nil {
+				authMode := s.authManager.GetAuthMode()
+				html := string(indexData)
+				// Inject auth mode as JS variable
+				injection := fmt.Sprintf(`<script>window.__AUTH_MODE__=%q;</script>`, authMode)
+				html = strings.Replace(html, "</head>", injection+"</head>", 1)
+				// Directly show the correct login form via inline style (no JS dependency)
+				if authMode == "local" {
+					html = strings.Replace(html, `id="password-login-form" class="login-form"`, `id="password-login-form" class="login-form" style="display:block"`, 1)
+				} else {
+					html = strings.Replace(html, `id="token-login-form" class="login-form"`, `id="token-login-form" class="login-form" style="display:block"`, 1)
+				}
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+				_, _ = w.Write([]byte(html))
+				return
+			}
+		}
+		staticHandler.ServeHTTP(w, r)
+	})
 
 	// Apply middleware chain: recovery -> request logging -> rate limiting -> body limit -> timeout -> security headers -> CORS -> CSRF -> handler
 	handler := recoveryMiddleware(
@@ -912,6 +958,16 @@ func (s *Server) Stop() error {
 	}
 	if s.authRateLimiter != nil {
 		s.authRateLimiter.Stop()
+	}
+
+	// Stop brute-force protector cleanup goroutine
+	if s.authManager != nil && s.authManager.bruteForce != nil {
+		s.authManager.bruteForce.Stop()
+	}
+
+	// Stop CSRF/session cleanup goroutine
+	if s.authManager != nil {
+		s.authManager.StopCleanup()
 	}
 
 	// Disconnect all MCP servers
@@ -1039,7 +1095,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status)
+	_ = json.NewEncoder(w).Encode(status)
 }
 
 func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
@@ -1063,7 +1119,7 @@ func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(info)
+	_ = json.NewEncoder(w).Encode(info)
 }
 
 // parseIntSafe parses a string to int, returning defaultVal on error.

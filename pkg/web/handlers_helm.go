@@ -31,7 +31,7 @@ func (s *Server) handleHelmReleases(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"items": releases,
 	})
 }
@@ -66,7 +66,7 @@ func (s *Server) handleHelmRelease(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Failed to get release: %v", err), http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(release)
+		_ = json.NewEncoder(w).Encode(release)
 
 	case "history":
 		history, err := s.helmClient.GetReleaseHistory(r.Context(), name, namespace)
@@ -74,7 +74,7 @@ func (s *Server) handleHelmRelease(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Failed to get release history: %v", err), http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"items": history,
 		})
 
@@ -85,7 +85,7 @@ func (s *Server) handleHelmRelease(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Failed to get release values: %v", err), http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(values)
+		_ = json.NewEncoder(w).Encode(values)
 
 	case "manifest":
 		manifest, err := s.helmClient.GetReleaseManifest(r.Context(), name, namespace)
@@ -94,7 +94,7 @@ func (s *Server) handleHelmRelease(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "text/yaml")
-		w.Write([]byte(manifest))
+		_, _ = w.Write([]byte(manifest))
 
 	case "notes":
 		notes, err := s.helmClient.GetReleaseNotes(r.Context(), name, namespace)
@@ -103,7 +103,7 @@ func (s *Server) handleHelmRelease(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(notes))
+		_, _ = w.Write([]byte(notes))
 
 	default:
 		http.Error(w, "Unknown action", http.StatusBadRequest)
@@ -153,7 +153,7 @@ func (s *Server) handleHelmInstall(w http.ResponseWriter, r *http.Request) {
 
 	// Record audit
 	username := r.Header.Get("X-Username")
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "helm_install",
 		Resource: "helm",
@@ -161,7 +161,7 @@ func (s *Server) handleHelmInstall(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(release)
+	_ = json.NewEncoder(w).Encode(release)
 }
 
 // handleHelmUpgrade upgrades a Helm release
@@ -209,7 +209,7 @@ func (s *Server) handleHelmUpgrade(w http.ResponseWriter, r *http.Request) {
 
 	// Record audit
 	username := r.Header.Get("X-Username")
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "helm_upgrade",
 		Resource: "helm",
@@ -217,7 +217,7 @@ func (s *Server) handleHelmUpgrade(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(release)
+	_ = json.NewEncoder(w).Encode(release)
 }
 
 // handleHelmUninstall uninstalls a Helm release
@@ -255,7 +255,7 @@ func (s *Server) handleHelmUninstall(w http.ResponseWriter, r *http.Request) {
 
 	// Record audit
 	username := r.Header.Get("X-Username")
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "helm_uninstall",
 		Resource: "helm",
@@ -263,7 +263,7 @@ func (s *Server) handleHelmUninstall(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "uninstalled"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "uninstalled"})
 }
 
 // handleHelmRollback rolls back a Helm release
@@ -301,7 +301,7 @@ func (s *Server) handleHelmRollback(w http.ResponseWriter, r *http.Request) {
 
 	// Record audit
 	username := r.Header.Get("X-Username")
-	db.RecordAudit(db.AuditEntry{
+	_ = db.RecordAudit(db.AuditEntry{
 		User:     username,
 		Action:   "helm_rollback",
 		Resource: "helm",
@@ -309,7 +309,7 @@ func (s *Server) handleHelmRollback(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "rolled back"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "rolled back"})
 }
 
 // handleHelmRepos manages Helm repositories
@@ -323,7 +323,7 @@ func (s *Server) handleHelmRepos(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Failed to list repositories: %v", err), http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"items": repos,
 		})
 
@@ -349,14 +349,14 @@ func (s *Server) handleHelmRepos(w http.ResponseWriter, r *http.Request) {
 
 		// Record audit
 		username := r.Header.Get("X-Username")
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:     username,
 			Action:   "helm_repo_add",
 			Resource: "helm",
 			Details:  fmt.Sprintf("Added repository %s (%s)", req.Name, req.URL),
 		})
 
-		json.NewEncoder(w).Encode(map[string]string{"status": "added"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "added"})
 
 	case http.MethodPut:
 		// Update (refresh) all repositories
@@ -364,7 +364,7 @@ func (s *Server) handleHelmRepos(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Failed to update repositories: %v", err), http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
 
 	case http.MethodDelete:
 		name := r.URL.Query().Get("name")
@@ -380,14 +380,14 @@ func (s *Server) handleHelmRepos(w http.ResponseWriter, r *http.Request) {
 
 		// Record audit
 		username := r.Header.Get("X-Username")
-		db.RecordAudit(db.AuditEntry{
+		_ = db.RecordAudit(db.AuditEntry{
 			User:     username,
 			Action:   "helm_repo_remove",
 			Resource: "helm",
 			Details:  fmt.Sprintf("Removed repository %s", name),
 		})
 
-		json.NewEncoder(w).Encode(map[string]string{"status": "removed"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "removed"})
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -414,7 +414,7 @@ func (s *Server) handleHelmSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"items": results,
 	})
 }

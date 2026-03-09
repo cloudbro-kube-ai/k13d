@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -106,7 +107,7 @@ func TestServerPaths(t *testing.T) {
 
 	// ModelPath should be within dataDir
 	modelPath := server.ModelPath()
-	if !filepath.HasPrefix(modelPath, dataDir) {
+	if !strings.HasPrefix(modelPath, dataDir) {
 		t.Errorf("model path %s should be within data dir %s", modelPath, dataDir)
 	}
 

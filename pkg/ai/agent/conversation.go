@@ -177,12 +177,17 @@ func (a *Agent) callLLM() error {
 	if toolProvider != nil && toolRegistry != nil {
 		// Use tool-enabled asking
 		toolDefs := a.buildToolDefinitions()
+		prompt := anonymizedPrompt
+		// When MCP tools exist: add strict name instruction. Skip for kubectl/bash only.
+		if len(toolRegistry.GetMCPTools()) > 0 {
+			prompt = tools.ToolNameInstruction + prompt
+		}
 
 		toolCallback := func(call providers.ToolCall) providers.ToolResult {
 			return a.handleToolCall(call)
 		}
 
-		err := toolProvider.AskWithTools(a.ctx, anonymizedPrompt, toolDefs, streamCallback, toolCallback)
+		err := toolProvider.AskWithTools(a.ctx, prompt, toolDefs, streamCallback, toolCallback)
 		if err != nil {
 			return err
 		}

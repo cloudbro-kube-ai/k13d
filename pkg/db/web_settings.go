@@ -136,7 +136,7 @@ func SaveWebSettings(settings map[string]string) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	stmt, err := tx.Prepare(`
 		INSERT INTO web_settings (key, value, updated_at)

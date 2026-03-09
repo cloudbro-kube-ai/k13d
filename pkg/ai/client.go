@@ -130,6 +130,26 @@ func (c *Client) TestConnection(ctx context.Context) *ConnectionStatus {
 		return status
 	}
 
+	// Validate tool calling capability as explicitly requested
+	if c.SupportsTools() {
+		// Run a simple query with tools to see if the model/API accepts it
+		toolErr := c.AskWithToolsAndExecution(ctx, "Say 'OK' without using any tools.", func(s string) {}, func(toolName string, args string) bool {
+			return false
+		}, nil)
+
+		if toolErr != nil {
+			status.Connected = false
+			status.Error = "tool calling 모델이 필요함"
+			status.Message = fmt.Sprintf("Model %s successfully generated text but failed tool calling test: %v", status.Model, toolErr)
+			return status
+		}
+	} else {
+		status.Connected = false
+		status.Error = "tool calling 모델이 필요함"
+		status.Message = fmt.Sprintf("Provider %s does not support tool calling", status.Provider)
+		return status
+	}
+
 	status.Connected = true
 	status.Message = fmt.Sprintf("Successfully connected to %s (%s)", status.Provider, status.Model)
 	return status
@@ -235,7 +255,7 @@ func (c *Client) AskWithToolsAndExecution(ctx context.Context, prompt string, ca
 	toolCallback := func(call providers.ToolCall) providers.ToolResult {
 		// Extract command from arguments
 		var args map[string]interface{}
-		json.Unmarshal([]byte(call.Function.Arguments), &args)
+		_ = json.Unmarshal([]byte(call.Function.Arguments), &args)
 		command := ""
 		if cmd, ok := args["command"].(string); ok {
 			command = cmd
@@ -277,6 +297,12 @@ func (c *Client) AskWithToolsAndExecution(ctx context.Context, prompt string, ca
 			Content:    result.Content,
 			IsError:    result.IsError,
 		}
+	}
+
+	// When MCP tools are available: add strict name instruction (avoids pod_list vs pods_list etc.)
+	// and preference hint. Skip when only kubectl/bash - no extra tokens, no performance impact.
+	if len(c.toolRegistry.GetMCPTools()) > 0 {
+		prompt = tools.ToolNameInstruction + "When the user explicitly requests a specific tool, use that tool. When MCP tools are available and match the task, prefer them.\n\n" + prompt
 	}
 
 	return toolProvider.AskWithTools(ctx, prompt, toolDefs, callback, toolCallback)

@@ -5,6 +5,77 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-rc.1] - 2026-03-09
+
+### Added
+- **System Stability**: Added global panic handler in the TUI to gracefully restore terminal state on crash.
+- **Code Modularity**: Massively refactored large monoline files (`pkg/ui/app.go` and `pkg/web/reports.go`) into smaller, modular domain-specific files (`app_layout.go`, `app_events.go`, `reports_security.go`, etc.) to improve long-term maintainability.
+- **Health Check**: Validated and improved the `/api/health` system status endpoint in Web UI for better uptime monitoring readiness.
+
+### Changed
+- **Testing**: Improved test coverage across `pkg/ui` and `pkg/web` packages. Codebase is completely passing all unit and integration tests under `-short` mode.
+
+## [0.9.7] - 2026-03-08
+
+### Fixed
+- **Web UI: Settings revert bug**: Fixed `updateEndpointPlaceholder()` overwriting saved provider/model/endpoint values when reopening Settings modal or selecting Ollama model from Quick Setup
+- **Web UI: Model profile switch sync**: `switchModel()` now reloads LLM form fields after switching, keeping Settings form in sync with active profile
+- **Web UI: Model deletion sync**: `deleteModel()` now reloads Settings form and uses toast notifications instead of browser alerts
+- **Web UI: Consistent error feedback**: Replaced `alert()` with `showToast()` in `addModelProfile()` and `deleteModel()` for consistent UX
+- **Web UI: Response validation**: Added `resp.ok` checks in `switchModel()`, `deleteModel()`, `addModelProfile()`, and `testLLMConnection()` to properly handle server errors
+- **Web UI: Default values mismatch**: Unified fallback defaults between `loadSettings()` and `updateEndpointPlaceholder()` (ollama model, gemini model)
+- **Backend: LLM settings validation**: Added required field validation for provider/model in `handleLLMSettings` to prevent config corruption from empty values
+- **Backend: Embedded LLM protection**: `handleLLMSettings` now returns 403 when embedded LLM is active, preventing settings changes that would break the embedded server
+- **Backend: Race condition in LLM response**: Response values in `handleLLMSettings` are now captured under mutex before unlock, preventing data races with concurrent model switches
+- **Backend: Model deletion DB sync**: `handleModels` DELETE now calls `db.DeleteModelProfile()` to keep SQLite in sync with YAML config
+- **Backend: Active model DB sync**: `handleActiveModel` PUT now calls `db.SetActiveModelProfile()` to update the `is_active` flag in SQLite
+- **Backend: Last model deletion**: `RemoveModelProfile()` now clears `ActiveModel` when the last profile is deleted, instead of leaving a stale reference
+- **Backend: Consistent logging**: Replaced `fmt.Printf("Warning: ...")` with `log.Warnf()` across settings handlers for proper structured logging
+
+## [0.9.6] - 2026-03-01
+
+### Added
+- **Web UI: Application Detail Modal**: Clicking an app card now opens a detail modal showing status badge, version, component, pod count, and a resource table grouped by kind (Name/Namespace/Status)
+- **Web UI: i18n Support**: Added `data-i18n` attributes to ~40 sidebar nav items, section headers, and view titles — changing language in Settings now updates the entire UI in real-time (English, Korean, Chinese, Japanese)
+- **i18n: New Translation Keys**: Added translations for all nav items (Overview, Topology, Applications, RBAC Viewer, Net Policy Map, Event Timeline, Metrics, Audit Logs, Reports, NetworkPolicies, ServiceAccounts, Roles, RoleBindings, ClusterRoles, ClusterRoleBindings), section headers (RBAC, Visualization, Monitoring), and application view messages
+
+### Tests
+- Added `TestHandleApplications_MultiResourceTypes`: Verifies StatefulSet, DaemonSet, Ingress, Service grouping under same `app.kubernetes.io/name` label
+- Added `TestHandleApplications_HealthStatus`: Verifies healthy/degraded/failing status calculation based on pod readiness
+- Added `TestHandleApplications_NamespaceFilter`: Verifies `?namespace=X` query parameter correctly filters applications
+
+## [0.9.5] - 2026-03-01
+
+### Fixed
+- **Web UI: Login form visibility**: Fixed login form input fields not visible due to CSS specificity conflict between inline `style.display` and class-based `.active` rules — unified all form toggling to use `classList`
+- **Web UI: Auth mode form selection**: Correct login form (password vs token) now displayed based on `-auth-mode` flag via server-side HTML injection of `window.__AUTH_MODE__` and inline `style="display:block"`
+- **Web UI: Login page layout**: Fixed K13D ASCII logo being pushed to the right by adding `overflow: hidden` to `.login-ascii-logo`
+- **Web UI: JS syntax error**: Removed orphan code fragment (`") {"` with duplicate `fetchWithAuth` body) at line 723 that prevented all JavaScript from executing
+- **Web UI: renderTableBody undefined**: Defined missing `generateRowHTML()` and `renderTableBody()` functions that were referenced but never implemented, causing `ReferenceError` on resource table rendering
+- **Web UI: Infinite reload loop**: Fixed `loadClusterContexts()` being called at global scope before authentication, triggering 401 → `logout()` → `location.reload()` cycle. Moved into `showApp()` and added login page detection in `fetchWithAuth` to prevent auto-logout during login
+- **AI Client: Lint error**: Fixed unchecked `w.Write` error return in `pkg/ai/client.go`
+- **Web Server: Lint error**: Fixed unchecked `w.Write` error return in server-side HTML injection handler
+
+## [0.8.6] - 2026-02-22
+
+### Security
+- **Auth: Session ID generation**: Proper error handling for `crypto/rand.Read` failures with secure fallback
+- **Auth: Path traversal prevention**: Validate username extracted from URL path in user update/delete endpoints
+- **Auth: CSRF/session cleanup**: Periodic goroutine cleans up expired CSRF tokens and sessions to prevent memory leaks
+- **Auth: Token session cleanup**: Expired K8s token sessions now garbage-collected automatically
+
+### Fixed
+- **Web UI: Dark mode contrast**: Improved `--text-muted` color from `#565f89` to `#737aa2` for WCAG AA compliance (~4.5:1 ratio)
+- **Web UI: Form accessibility**: Added `<label>` elements and `aria-label` attributes to login form inputs
+- **Web UI: Debug logging**: Removed `console.log('[DEBUG]')` from production JavaScript
+- **Web UI: Autocomplete**: Added proper `autocomplete` attributes to login form inputs
+- **Docker: Reproducible builds**: Pinned Go version in `Dockerfile.bench` to `1.25.5` (was unpinned `1.25`)
+
+### Tests
+- Added tests for CSRF token cleanup, expired session cleanup, and path traversal prevention
+- Added `defer am.StopCleanup()` to all auth tests to prevent goroutine leaks under race detector
+- Added user creation validation tests (username length, characters, password length)
+
 ## [0.8.5] - 2026-02-16
 
 ### Added

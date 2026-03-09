@@ -99,7 +99,7 @@ func (s *Server) handleResourceDiff(w http.ResponseWriter, r *http.Request) {
 	resourceName := mapResourceName(req.Resource, gvr)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(DiffResponse{
+	_ = json.NewEncoder(w).Encode(DiffResponse{
 		Resource:    resourceName,
 		Name:        req.Name,
 		Namespace:   req.Namespace,

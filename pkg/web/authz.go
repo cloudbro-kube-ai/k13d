@@ -37,7 +37,6 @@ const (
 	FeatureAIAssistant      Feature = "ai_assistant"
 	FeatureTerminal         Feature = "terminal"
 	FeatureReports          Feature = "reports"
-	FeatureTemplates        Feature = "templates"
 	FeatureEventTimeline    Feature = "event_timeline"
 	FeatureAuditLogs        Feature = "audit_logs"
 	FeaturePortForward      Feature = "port_forward"
@@ -57,7 +56,7 @@ func AllFeatures() []Feature {
 	return []Feature{
 		FeatureDashboard, FeatureTopology, FeatureMetrics,
 		FeatureHelmManagement, FeatureSecurityScan, FeatureAIAssistant,
-		FeatureTerminal, FeatureReports, FeatureTemplates,
+		FeatureTerminal, FeatureReports,
 		FeatureEventTimeline, FeatureAuditLogs, FeaturePortForward,
 		FeatureGitOps, FeatureVelero, FeatureCostEstimate,
 		FeatureNetworkPolicy, FeatureRBACViz,
@@ -260,7 +259,7 @@ func (az *Authorizer) FeatureMiddleware(feature Feature) func(http.HandlerFunc) 
 
 			if !az.IsFeatureAllowed(role, feature) {
 				username := r.Header.Get("X-Username")
-				db.RecordAudit(db.AuditEntry{
+				_ = db.RecordAudit(db.AuditEntry{
 					User:       username,
 					Action:     "feature_denied",
 					Resource:   string(feature),
@@ -392,7 +391,7 @@ func (az *Authorizer) AuthzMiddleware(resource string, action Action) func(http.
 			allowed, reason := az.IsAllowed(role, resource, action, namespace)
 			if !allowed {
 				// Record authorization denial in audit log
-				db.RecordAudit(db.AuditEntry{
+				_ = db.RecordAudit(db.AuditEntry{
 					User:            username,
 					Action:          "authz_denied",
 					Resource:        resource,

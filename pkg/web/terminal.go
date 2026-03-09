@@ -96,7 +96,7 @@ func (t *TerminalSession) Read(p []byte) (int, error) {
 
 	switch msg.Type {
 	case "input":
-		return copy(p, []byte(msg.Data)), nil
+		return copy(p, msg.Data), nil
 	case "resize":
 		t.sizeChan <- remotecommand.TerminalSize{
 			Width:  msg.Cols,
@@ -157,7 +157,7 @@ func (t *TerminalSession) SendError(err error) {
 	if marshalErr != nil {
 		return
 	}
-	t.conn.WriteMessage(websocket.TextMessage, data)
+	_ = t.conn.WriteMessage(websocket.TextMessage, data)
 }
 
 // TerminalHandler handles WebSocket terminal connections

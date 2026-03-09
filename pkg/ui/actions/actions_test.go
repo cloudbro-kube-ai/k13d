@@ -40,7 +40,7 @@ func TestAddAndGet(t *testing.T) {
 
 	// Execute action
 	if got.Action != nil {
-		got.Action(context.Background())
+		_ = got.Action(context.Background())
 	}
 	if !called {
 		t.Error("Action was not called")

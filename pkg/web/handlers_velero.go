@@ -52,7 +52,7 @@ func (s *Server) handleVeleroBackups(w http.ResponseWriter, r *http.Request) {
 	list, err := s.k8sClient.Dynamic.Resource(backupGVR).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(VeleroResponse{
+		_ = json.NewEncoder(w).Encode(VeleroResponse{
 			Installed: false,
 			Message:   "Velero not found in cluster",
 		})
@@ -84,7 +84,7 @@ func (s *Server) handleVeleroBackups(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(VeleroResponse{
+	_ = json.NewEncoder(w).Encode(VeleroResponse{
 		Installed: true,
 		Items:     backups,
 	})
@@ -107,7 +107,7 @@ func (s *Server) handleVeleroSchedules(w http.ResponseWriter, r *http.Request) {
 	list, err := s.k8sClient.Dynamic.Resource(scheduleGVR).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(VeleroResponse{
+		_ = json.NewEncoder(w).Encode(VeleroResponse{
 			Installed: false,
 			Message:   "Velero not found in cluster",
 		})
@@ -131,7 +131,7 @@ func (s *Server) handleVeleroSchedules(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(VeleroResponse{
+	_ = json.NewEncoder(w).Encode(VeleroResponse{
 		Installed: true,
 		Items:     schedules,
 	})

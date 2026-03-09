@@ -67,7 +67,7 @@ func (s *Server) handleNotificationConfig(w http.ResponseWriter, r *http.Request
 				UseTLS:   smtpCfg.UseTLS,
 			}
 		}
-		json.NewEncoder(w).Encode(safeConfig)
+		_ = json.NewEncoder(w).Encode(safeConfig)
 
 	case http.MethodPost:
 		var cfg NotificationConfig
@@ -134,7 +134,7 @@ func (s *Server) handleNotificationConfig(w http.ResponseWriter, r *http.Request
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"message": "Notification config saved",
 		})
@@ -170,7 +170,7 @@ func (s *Server) handleNotificationTest(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"success": true,
 			"message": "Test email sent successfully",
 		})
@@ -202,7 +202,7 @@ func (s *Server) handleNotificationTest(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"success": true,
 		"message": "Test notification sent successfully",
 	})
@@ -215,10 +215,10 @@ func (s *Server) handleNotificationHistory(w http.ResponseWriter, r *http.Reques
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if s.notifManager == nil {
-		json.NewEncoder(w).Encode([]NotificationHistoryEntry{})
+		_ = json.NewEncoder(w).Encode([]NotificationHistoryEntry{})
 		return
 	}
-	json.NewEncoder(w).Encode(s.notifManager.GetHistory())
+	_ = json.NewEncoder(w).Encode(s.notifManager.GetHistory())
 }
 
 func (s *Server) handleNotificationStatus(w http.ResponseWriter, r *http.Request) {
@@ -233,7 +233,7 @@ func (s *Server) handleNotificationStatus(w http.ResponseWriter, r *http.Request
 		dedupCount = s.notifManager.DedupCount()
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"running":     running,
 		"dedup_count": dedupCount,
 	})

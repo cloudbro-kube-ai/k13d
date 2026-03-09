@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 func TestNewDefaultConfig(t *testing.T) {
@@ -141,7 +143,7 @@ func TestSetActiveModel(t *testing.T) {
 		ActiveModel: "gpt-4",
 		Models: []ModelProfile{
 			{Name: "gpt-4", Provider: "openai", Model: "gpt-4", Endpoint: "https://api.openai.com"},
-			{Name: "claude", Provider: "anthropic", Model: "claude-3", APIKey: "test-key"},
+			{Name: "claude", Provider: "anthropic", Model: "claude-3", APIKey: "test-key", SkipTLSVerify: true},
 		},
 		LLM: LLMConfig{},
 	}
@@ -162,13 +164,24 @@ func TestSetActiveModel(t *testing.T) {
 	if cfg.LLM.APIKey != "test-key" {
 		t.Errorf("LLM.APIKey = %s, want test-key", cfg.LLM.APIKey)
 	}
+	if !cfg.LLM.SkipTLSVerify {
+		t.Error("LLM.SkipTLSVerify should be true after switching to claude profile")
+	}
+
+	// Test switching back resets SkipTLSVerify
+	if !cfg.SetActiveModel("gpt-4") {
+		t.Error("SetActiveModel('gpt-4') returned false")
+	}
+	if cfg.LLM.SkipTLSVerify {
+		t.Error("LLM.SkipTLSVerify should be false after switching to gpt-4 profile")
+	}
 
 	// Test switching to non-existent model
 	if cfg.SetActiveModel("nonexistent") {
 		t.Error("SetActiveModel('nonexistent') should return false")
 	}
-	if cfg.ActiveModel != "claude" {
-		t.Errorf("ActiveModel should remain claude, got %s", cfg.ActiveModel)
+	if cfg.ActiveModel != "gpt-4" {
+		t.Errorf("ActiveModel should remain gpt-4, got %s", cfg.ActiveModel)
 	}
 }
 
@@ -439,5 +452,231 @@ func TestLoadConfig(t *testing.T) {
 	// Should have default values
 	if cfg.LLM.Provider == "" {
 		t.Error("LoadConfig() should return default provider")
+	}
+}
+
+func TestModelProfileYAMLRoundTrip(t *testing.T) {
+	// Test that ModelProfile with all fields survives YAML marshal/unmarshal
+	original := Config{
+		ActiveModel: "ollama-local",
+		LLM: LLMConfig{
+			Provider:      "ollama",
+			Model:         "qwen2.5:3b",
+			Endpoint:      "https://ollama.internal:11434",
+			SkipTLSVerify: true,
+			Temperature:   0.7,
+			MaxTokens:     4096,
+			MaxIterations: 10,
+		},
+		Models: []ModelProfile{
+			{
+				Name:          "ollama-local",
+				Provider:      "ollama",
+				Model:         "qwen2.5:3b",
+				Endpoint:      "https://ollama.internal:11434",
+				SkipTLSVerify: true,
+				Description:   "Local Ollama with self-signed cert",
+			},
+			{
+				Name:     "openai-prod",
+				Provider: "openai",
+				Model:    "gpt-4",
+				APIKey:   "sk-test-key",
+			},
+		},
+	}
+
+	// Marshal to YAML
+	data, err := yaml.Marshal(original)
+	if err != nil {
+		t.Fatalf("yaml.Marshal() error = %v", err)
+	}
+
+	// Unmarshal back
+	var loaded Config
+	if err := yaml.Unmarshal(data, &loaded); err != nil {
+		t.Fatalf("yaml.Unmarshal() error = %v", err)
+	}
+
+	// Verify all profiles survived
+	if len(loaded.Models) != 2 {
+		t.Fatalf("len(Models) = %d, want 2", len(loaded.Models))
+	}
+
+	// Verify SkipTLSVerify survived round-trip
+	if !loaded.Models[0].SkipTLSVerify {
+		t.Error("Models[0].SkipTLSVerify should be true after YAML round-trip")
+	}
+	if loaded.Models[1].SkipTLSVerify {
+		t.Error("Models[1].SkipTLSVerify should be false after YAML round-trip")
+	}
+
+	// Verify ActiveModel and LLM survived
+	if loaded.ActiveModel != "ollama-local" {
+		t.Errorf("ActiveModel = %s, want ollama-local", loaded.ActiveModel)
+	}
+	if loaded.LLM.SkipTLSVerify != true {
+		t.Error("LLM.SkipTLSVerify should survive YAML round-trip")
+	}
+}
+
+func TestSetActiveModelAppliesAllFields(t *testing.T) {
+	// Verify that switching between profiles correctly applies ALL fields,
+	// including that switching from a profile with SkipTLSVerify=true to one
+	// with SkipTLSVerify=false properly resets the value.
+	cfg := &Config{
+		ActiveModel: "default",
+		Models: []ModelProfile{
+			{
+				Name:          "internal-ollama",
+				Provider:      "ollama",
+				Model:         "llama3.2",
+				Endpoint:      "https://internal.example.com:11434",
+				SkipTLSVerify: true,
+				Region:        "",
+			},
+			{
+				Name:            "azure-prod",
+				Provider:        "azopenai",
+				Model:           "gpt-4",
+				Endpoint:        "https://myazure.openai.azure.com",
+				APIKey:          "az-key",
+				AzureDeployment: "prod-gpt4",
+				Region:          "eastus",
+				SkipTLSVerify:   false,
+			},
+			{
+				Name:     "openai-simple",
+				Provider: "openai",
+				Model:    "gpt-4o",
+				APIKey:   "sk-key",
+			},
+		},
+		LLM: LLMConfig{},
+	}
+
+	// Switch to internal Ollama with TLS skip
+	cfg.SetActiveModel("internal-ollama")
+	if cfg.LLM.Provider != "ollama" {
+		t.Errorf("Provider = %s, want ollama", cfg.LLM.Provider)
+	}
+	if cfg.LLM.Endpoint != "https://internal.example.com:11434" {
+		t.Errorf("Endpoint = %s, want internal endpoint", cfg.LLM.Endpoint)
+	}
+	if !cfg.LLM.SkipTLSVerify {
+		t.Error("SkipTLSVerify should be true for internal-ollama")
+	}
+
+	// Switch to Azure — SkipTLSVerify must reset, Azure fields must apply
+	cfg.SetActiveModel("azure-prod")
+	if cfg.LLM.Provider != "azopenai" {
+		t.Errorf("Provider = %s, want azopenai", cfg.LLM.Provider)
+	}
+	if cfg.LLM.AzureDeployment != "prod-gpt4" {
+		t.Errorf("AzureDeployment = %s, want prod-gpt4", cfg.LLM.AzureDeployment)
+	}
+	if cfg.LLM.Region != "eastus" {
+		t.Errorf("Region = %s, want eastus", cfg.LLM.Region)
+	}
+	if cfg.LLM.SkipTLSVerify {
+		t.Error("SkipTLSVerify should be false for azure-prod")
+	}
+	if cfg.LLM.APIKey != "az-key" {
+		t.Errorf("APIKey = %s, want az-key", cfg.LLM.APIKey)
+	}
+
+	// Switch to simple OpenAI — stale fields from Azure must be cleared
+	cfg.SetActiveModel("openai-simple")
+	if cfg.LLM.Provider != "openai" {
+		t.Errorf("Provider = %s, want openai", cfg.LLM.Provider)
+	}
+	if cfg.LLM.AzureDeployment != "" {
+		t.Errorf("AzureDeployment = %s, want empty (cleared from previous)", cfg.LLM.AzureDeployment)
+	}
+	if cfg.LLM.Region != "" {
+		t.Errorf("Region = %s, want empty (cleared from previous)", cfg.LLM.Region)
+	}
+	if cfg.LLM.Endpoint != "" {
+		t.Errorf("Endpoint = %s, want empty (cleared from previous)", cfg.LLM.Endpoint)
+	}
+}
+
+func TestConfigSaveLoadRoundTrip(t *testing.T) {
+	// Test that saving and loading config preserves model profiles
+	tmpDir, err := os.MkdirTemp("", "k13d-config-roundtrip")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	tmpPath := filepath.Join(tmpDir, "config.yaml")
+
+	cfg := NewDefaultConfig()
+	cfg.ActiveModel = "custom-ollama"
+	cfg.Models = append(cfg.Models, ModelProfile{
+		Name:          "custom-ollama",
+		Provider:      "ollama",
+		Model:         "mistral:7b",
+		Endpoint:      "https://ml.internal:11434",
+		SkipTLSVerify: true,
+		Description:   "Custom Ollama with TLS skip",
+	})
+	cfg.SetActiveModel("custom-ollama")
+
+	// Marshal and write
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		t.Fatalf("yaml.Marshal() error = %v", err)
+	}
+	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	// Read back and unmarshal
+	readData, err := os.ReadFile(tmpPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	var loaded Config
+	if err := yaml.Unmarshal(readData, &loaded); err != nil {
+		t.Fatalf("yaml.Unmarshal() error = %v", err)
+	}
+
+	// Verify model profiles persisted
+	if loaded.ActiveModel != "custom-ollama" {
+		t.Errorf("ActiveModel = %s, want custom-ollama", loaded.ActiveModel)
+	}
+	if loaded.LLM.Provider != "ollama" {
+		t.Errorf("LLM.Provider = %s, want ollama", loaded.LLM.Provider)
+	}
+	if loaded.LLM.SkipTLSVerify != true {
+		t.Error("LLM.SkipTLSVerify should be true after save/load")
+	}
+
+	// Find the custom profile
+	found := false
+	for _, m := range loaded.Models {
+		if m.Name == "custom-ollama" {
+			found = true
+			if m.Endpoint != "https://ml.internal:11434" {
+				t.Errorf("Profile endpoint = %s, want https://ml.internal:11434", m.Endpoint)
+			}
+			if !m.SkipTLSVerify {
+				t.Error("Profile SkipTLSVerify should be true")
+			}
+		}
+	}
+	if !found {
+		t.Error("custom-ollama profile not found in loaded config")
+	}
+
+	// Verify switching model on loaded config works
+	loaded.SetActiveModel("solar-pro2")
+	if loaded.LLM.Provider != "upstage" {
+		t.Errorf("After switch, LLM.Provider = %s, want upstage", loaded.LLM.Provider)
+	}
+	if loaded.LLM.SkipTLSVerify {
+		t.Error("After switch to solar-pro2, SkipTLSVerify should be false")
 	}
 }

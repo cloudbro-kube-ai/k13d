@@ -52,3 +52,14 @@ scripts/
 # Node modules (test dependencies)
 node_modules/
 package-lock.json
+
+# Build/release config
+.goreleaser.yaml
+Makefile
+
+# Additional docs
+CONTRIBUTING.md
+CLAUDE.md
+
+# Compiled test binaries
+*.test

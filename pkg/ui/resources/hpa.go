@@ -63,7 +63,7 @@ func GetHPAView(ctx context.Context, client *k8s.Client, namespace, filter strin
 		maxPods := fmt.Sprintf("%d", hpa.Spec.MaxReplicas)
 
 		replicas := fmt.Sprintf("%d", hpa.Status.CurrentReplicas)
-		replicasColor := tcell.ColorWhite
+		var replicasColor tcell.Color
 		if hpa.Status.CurrentReplicas >= hpa.Spec.MaxReplicas {
 			replicasColor = tcell.ColorYellow
 		} else if hpa.Status.CurrentReplicas == 0 {

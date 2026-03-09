@@ -50,19 +50,20 @@ func (s *Server) handleTopology(w http.ResponseWriter, r *http.Request) {
 	}
 
 	namespace := r.URL.Query().Get("namespace")
+	includeNetPol := r.URL.Query().Get("include_netpol") == "true"
 	ctx := r.Context()
 
-	resp, err := s.buildTopology(ctx, namespace)
+	resp, err := s.buildTopology(ctx, namespace, includeNetPol)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
-func (s *Server) buildTopology(ctx context.Context, namespace string) (*TopologyResponse, error) {
+func (s *Server) buildTopology(ctx context.Context, namespace string, includeNetPol bool) (*TopologyResponse, error) {
 	var (
 		mu    sync.Mutex
 		wg    sync.WaitGroup
@@ -102,13 +103,18 @@ func (s *Server) buildTopology(ctx context.Context, namespace string) (*Topology
 		secrets      []corev1.Secret
 		pvcs         []corev1.PersistentVolumeClaim
 		hpas         []autoscalingv2.HorizontalPodAutoscaler
+		netpols      []networkingv1.NetworkPolicy
 	)
 
 	type fetchResult struct {
 		name string
 		err  error
 	}
-	errCh := make(chan fetchResult, 13)
+	fetchCount := 13
+	if includeNetPol {
+		fetchCount = 14
+	}
+	errCh := make(chan fetchResult, fetchCount)
 
 	fetch := func(name string, fn func() error) {
 		wg.Add(1)
@@ -185,6 +191,13 @@ func (s *Server) buildTopology(ctx context.Context, namespace string) (*Topology
 		hpas, err = s.k8sClient.ListHorizontalPodAutoscalers(ctx, namespace)
 		return err
 	})
+	if includeNetPol {
+		fetch("networkpolicies", func() error {
+			var err error
+			netpols, err = s.k8sClient.ListNetworkPolicies(ctx, namespace)
+			return err
+		})
+	}
 
 	wg.Wait()
 	close(errCh)
@@ -545,7 +558,253 @@ func (s *Server) buildTopology(ctx context.Context, namespace string) (*Topology
 		}
 	}
 
+	// --- Add NetworkPolicy nodes + edges ---
+	if includeNetPol {
+		for _, np := range netpols {
+			npID := nodeID("NetworkPolicy", np.Namespace, np.Name)
+			selector := formatLabelsMap(np.Spec.PodSelector.MatchLabels)
+			addNode(TopologyNode{
+				ID: npID, Kind: "NetworkPolicy", Name: np.Name, Namespace: np.Namespace,
+				Status: "active",
+				Info: map[string]string{
+					"podSelector": selector,
+					"ingress":     fmt.Sprintf("%d rules", len(np.Spec.Ingress)),
+					"egress":      fmt.Sprintf("%d rules", len(np.Spec.Egress)),
+				},
+			})
+
+			// NetworkPolicy selects pods via podSelector
+			for _, p := range pods {
+				if p.Namespace != np.Namespace {
+					continue
+				}
+				if labelsMatch(np.Spec.PodSelector.MatchLabels, p.Labels) {
+					podID := nodeID("Pod", p.Namespace, p.Name)
+					addEdge(TopologyEdge{Source: npID, Target: podID, Type: "netpol-select"})
+				}
+			}
+
+			// Ingress: from sources → NetworkPolicy
+			for _, ingress := range np.Spec.Ingress {
+				for _, from := range ingress.From {
+					if from.PodSelector != nil {
+						srcPods := filterPods(pods, from.PodSelector.MatchLabels, np.Namespace)
+						for _, sp := range srcPods {
+							srcID := nodeID("Pod", sp.Namespace, sp.Name)
+							addEdge(TopologyEdge{Source: srcID, Target: npID, Type: "netpol-ingress"})
+						}
+					}
+					if from.NamespaceSelector != nil {
+						nsLabel := formatLabelsMap(from.NamespaceSelector.MatchLabels)
+						nsNodeID := nodeID("Namespace", "", nsLabel)
+						addNode(TopologyNode{
+							ID: nsNodeID, Kind: "Namespace", Name: nsLabel, Namespace: "",
+							Status: "running",
+						})
+						addEdge(TopologyEdge{Source: nsNodeID, Target: npID, Type: "netpol-ingress"})
+					}
+				}
+			}
+
+			// Egress: NetworkPolicy → to destinations
+			for _, egress := range np.Spec.Egress {
+				for _, to := range egress.To {
+					if to.PodSelector != nil {
+						dstPods := filterPods(pods, to.PodSelector.MatchLabels, np.Namespace)
+						for _, dp := range dstPods {
+							dstID := nodeID("Pod", dp.Namespace, dp.Name)
+							addEdge(TopologyEdge{Source: npID, Target: dstID, Type: "netpol-egress"})
+						}
+					}
+					if to.NamespaceSelector != nil {
+						nsLabel := formatLabelsMap(to.NamespaceSelector.MatchLabels)
+						nsNodeID := nodeID("Namespace", "", nsLabel)
+						addNode(TopologyNode{
+							ID: nsNodeID, Kind: "Namespace", Name: nsLabel, Namespace: "",
+							Status: "running",
+						})
+						addEdge(TopologyEdge{Source: npID, Target: nsNodeID, Type: "netpol-egress"})
+					}
+					if to.IPBlock != nil {
+						extID := nodeID("External", "", to.IPBlock.CIDR)
+						addNode(TopologyNode{
+							ID: extID, Kind: "External", Name: to.IPBlock.CIDR, Namespace: "",
+							Status: "running",
+						})
+						addEdge(TopologyEdge{Source: npID, Target: extID, Type: "netpol-egress"})
+					}
+				}
+			}
+		}
+	}
+
 	return &TopologyResponse{Nodes: nodes, Edges: edges}, nil
+}
+
+// filterPods returns pods matching the given labels in the specified namespace.
+func filterPods(pods []corev1.Pod, selector map[string]string, namespace string) []corev1.Pod {
+	var matched []corev1.Pod
+	for _, p := range pods {
+		if namespace != "" && p.Namespace != namespace {
+			continue
+		}
+		if labelsMatch(selector, p.Labels) {
+			matched = append(matched, p)
+		}
+	}
+	return matched
+}
+
+// formatLabelsMap formats a label map as a compact string.
+func formatLabelsMap(labels map[string]string) string {
+	if len(labels) == 0 {
+		return "*"
+	}
+	parts := make([]string, 0, len(labels))
+	for k, v := range labels {
+		parts = append(parts, k+"="+v)
+	}
+	return strings.Join(parts, ",")
+}
+
+// ResourceReference represents a resource that references a Secret or ConfigMap.
+type ResourceReference struct {
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+	RefType   string `json:"ref_type"` // "volume", "envFrom", "env"
+}
+
+// ResourceReferencesResponse is the API response for the resource references endpoint.
+type ResourceReferencesResponse struct {
+	Kind       string              `json:"kind"`
+	Name       string              `json:"name"`
+	Namespace  string              `json:"namespace"`
+	References []ResourceReference `json:"references"`
+}
+
+func (s *Server) handleResourceReferences(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	kind := r.URL.Query().Get("kind")
+	name := r.URL.Query().Get("name")
+	namespace := r.URL.Query().Get("namespace")
+	if kind == "" || name == "" || namespace == "" {
+		http.Error(w, "kind, name, and namespace are required", http.StatusBadRequest)
+		return
+	}
+	if kind != "Secret" && kind != "ConfigMap" {
+		http.Error(w, "kind must be Secret or ConfigMap", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	var refs []ResourceReference
+	seen := make(map[string]bool) // dedup "Kind/ns/name"
+
+	addRef := func(refKind, refName, refNS, refType string) {
+		key := fmt.Sprintf("%s/%s/%s", refKind, refNS, refName)
+		if !seen[key] {
+			seen[key] = true
+			refs = append(refs, ResourceReference{
+				Kind:      refKind,
+				Name:      refName,
+				Namespace: refNS,
+				RefType:   refType,
+			})
+		}
+	}
+
+	// Scan a pod spec for references to the target resource
+	scanPodSpec := func(spec corev1.PodSpec, ownerKind, ownerName, ownerNS string) {
+		for _, vol := range spec.Volumes {
+			if kind == "ConfigMap" && vol.ConfigMap != nil && vol.ConfigMap.Name == name {
+				addRef(ownerKind, ownerName, ownerNS, "volume")
+			}
+			if kind == "Secret" && vol.Secret != nil && vol.Secret.SecretName == name {
+				addRef(ownerKind, ownerName, ownerNS, "volume")
+			}
+			if kind == "Secret" && vol.Projected != nil {
+				for _, src := range vol.Projected.Sources {
+					if src.Secret != nil && src.Secret.Name == name {
+						addRef(ownerKind, ownerName, ownerNS, "volume")
+					}
+				}
+			}
+		}
+		for _, c := range spec.Containers {
+			for _, envFrom := range c.EnvFrom {
+				if kind == "ConfigMap" && envFrom.ConfigMapRef != nil && envFrom.ConfigMapRef.Name == name {
+					addRef(ownerKind, ownerName, ownerNS, "envFrom")
+				}
+				if kind == "Secret" && envFrom.SecretRef != nil && envFrom.SecretRef.Name == name {
+					addRef(ownerKind, ownerName, ownerNS, "envFrom")
+				}
+			}
+			for _, env := range c.Env {
+				if env.ValueFrom == nil {
+					continue
+				}
+				if kind == "ConfigMap" && env.ValueFrom.ConfigMapKeyRef != nil && env.ValueFrom.ConfigMapKeyRef.Name == name {
+					addRef(ownerKind, ownerName, ownerNS, "env")
+				}
+				if kind == "Secret" && env.ValueFrom.SecretKeyRef != nil && env.ValueFrom.SecretKeyRef.Name == name {
+					addRef(ownerKind, ownerName, ownerNS, "env")
+				}
+			}
+		}
+	}
+
+	// Scan Pods
+	pods, err := s.k8sClient.ListPods(ctx, namespace)
+	if err == nil {
+		for _, pod := range pods {
+			scanPodSpec(pod.Spec, "Pod", pod.Name, pod.Namespace)
+		}
+	}
+
+	// Scan Deployments
+	deployments, err := s.k8sClient.ListDeployments(ctx, namespace)
+	if err == nil {
+		for _, d := range deployments {
+			scanPodSpec(d.Spec.Template.Spec, "Deployment", d.Name, d.Namespace)
+		}
+	}
+
+	// Scan StatefulSets
+	statefulSets, err := s.k8sClient.ListStatefulSets(ctx, namespace)
+	if err == nil {
+		for _, ss := range statefulSets {
+			scanPodSpec(ss.Spec.Template.Spec, "StatefulSet", ss.Name, ss.Namespace)
+		}
+	}
+
+	// Scan DaemonSets
+	daemonSets, err := s.k8sClient.ListDaemonSets(ctx, namespace)
+	if err == nil {
+		for _, ds := range daemonSets {
+			scanPodSpec(ds.Spec.Template.Spec, "DaemonSet", ds.Name, ds.Namespace)
+		}
+	}
+
+	// Scan CronJobs
+	cronJobs, err := s.k8sClient.ListCronJobs(ctx, namespace)
+	if err == nil {
+		for _, cj := range cronJobs {
+			scanPodSpec(cj.Spec.JobTemplate.Spec.Template.Spec, "CronJob", cj.Name, cj.Namespace)
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(ResourceReferencesResponse{
+		Kind:       kind,
+		Name:       name,
+		Namespace:  namespace,
+		References: refs,
+	})
 }
 
 // labelsMatch returns true if all selector labels are present in the resource labels.

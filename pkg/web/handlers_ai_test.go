@@ -134,7 +134,9 @@ func TestLLMStatus_DefaultEndpointHints(t *testing.T) {
 			s.handleLLMStatus(w, req)
 
 			var body map[string]interface{}
-			json.Unmarshal(w.Body.Bytes(), &body)
+			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+				t.Fatalf("Failed to parse response: %v", err)
+			}
 
 			if body["default_endpoint"] != p.expectedEndpoint {
 				t.Errorf("Expected default_endpoint=%q, got %v", p.expectedEndpoint, body["default_endpoint"])
@@ -242,7 +244,9 @@ func TestSessions_CreateAndList(t *testing.T) {
 	s.handleSessions(w, req)
 
 	var sessions []interface{}
-	json.Unmarshal(w.Body.Bytes(), &sessions)
+	if err := json.Unmarshal(w.Body.Bytes(), &sessions); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if len(sessions) != 1 {
 		t.Errorf("Expected 1 session, got %d", len(sessions))
@@ -270,7 +274,9 @@ func TestSessions_ClearAll(t *testing.T) {
 	}
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["status"] != "cleared" {
 		t.Errorf("Expected status=cleared, got %v", body["status"])
@@ -282,7 +288,9 @@ func TestSessions_ClearAll(t *testing.T) {
 	s.handleSessions(w, req)
 
 	var sessions []interface{}
-	json.Unmarshal(w.Body.Bytes(), &sessions)
+	if err := json.Unmarshal(w.Body.Bytes(), &sessions); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if len(sessions) != 0 {
 		t.Errorf("Expected 0 sessions after clear, got %d", len(sessions))
@@ -298,7 +306,9 @@ func TestSessions_NilStore(t *testing.T) {
 	s.handleSessions(w, req)
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["code"] != ErrCodeInternalError {
 		t.Errorf("Expected error code %s, got %v", ErrCodeInternalError, body["code"])
@@ -336,7 +346,9 @@ func TestSession_GetByID(t *testing.T) {
 	}
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["id"] != created.ID {
 		t.Errorf("Expected id=%s, got %v", created.ID, body["id"])
@@ -352,7 +364,9 @@ func TestSession_GetNotFound(t *testing.T) {
 	s.handleSession(w, req)
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["code"] != ErrCodeNotFound {
 		t.Errorf("Expected error code %s, got %v", ErrCodeNotFound, body["code"])
@@ -374,7 +388,9 @@ func TestSession_Delete(t *testing.T) {
 	}
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["status"] != "deleted" {
 		t.Errorf("Expected status=deleted, got %v", body["status"])
@@ -385,7 +401,9 @@ func TestSession_Delete(t *testing.T) {
 	w = httptest.NewRecorder()
 	s.handleSession(w, req)
 
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 	if body["code"] != ErrCodeNotFound {
 		t.Errorf("Expected NOT_FOUND after delete, got %v", body["code"])
 	}
@@ -426,7 +444,9 @@ func TestSession_EmptyID(t *testing.T) {
 	s.handleSession(w, req)
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["code"] != ErrCodeBadRequest {
 		t.Errorf("Expected error code %s, got %v", ErrCodeBadRequest, body["code"])
@@ -442,7 +462,9 @@ func TestSession_NilStore(t *testing.T) {
 	s.handleSession(w, req)
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["code"] != ErrCodeInternalError {
 		t.Errorf("Expected error code %s, got %v", ErrCodeInternalError, body["code"])
@@ -489,7 +511,9 @@ func TestToolApprove_ValidApproval(t *testing.T) {
 	}
 
 	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if resp["status"] != "ok" {
 		t.Errorf("Expected status=ok, got %v", resp["status"])
@@ -544,7 +568,9 @@ func TestToolApprove_InvalidBody(t *testing.T) {
 	s.handleToolApprove(w, req)
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["code"] != ErrCodeBadRequest {
 		t.Errorf("Expected error code %s, got %v", ErrCodeBadRequest, body["code"])
@@ -561,7 +587,9 @@ func TestToolApprove_NonExistentID(t *testing.T) {
 	s.handleToolApprove(w, req)
 
 	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if resp["code"] != ErrCodeNotFound {
 		t.Errorf("Expected error code %s, got %v", ErrCodeNotFound, resp["code"])
@@ -586,7 +614,9 @@ func TestToolApprove_AlreadyProcessed(t *testing.T) {
 	s.handleToolApprove(w, req)
 
 	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if resp["code"] != ErrCodeConflict {
 		t.Errorf("Expected error code %s, got %v", ErrCodeConflict, resp["code"])
@@ -685,7 +715,9 @@ func TestSafetyAnalysis_DangerousDelete(t *testing.T) {
 	}
 
 	var resp SafetyAnalysisResponse
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if resp.Safe {
 		t.Error("Expected 'kubectl delete deployment' to be unsafe")
@@ -714,7 +746,9 @@ func TestSafetyAnalysis_CriticalNamespaceDelete(t *testing.T) {
 	s.handleSafetyAnalysis(w, req)
 
 	var resp SafetyAnalysisResponse
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if resp.Safe {
 		t.Error("Expected namespace deletion to be unsafe")
@@ -737,7 +771,9 @@ func TestSafetyAnalysis_WarningCommand(t *testing.T) {
 	s.handleSafetyAnalysis(w, req)
 
 	var resp SafetyAnalysisResponse
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if resp.RiskLevel != "warning" {
 		t.Errorf("Expected risk_level=warning, got %s", resp.RiskLevel)
@@ -757,7 +793,9 @@ func TestSafetyAnalysis_SensitiveNamespace(t *testing.T) {
 	s.handleSafetyAnalysis(w, req)
 
 	var resp SafetyAnalysisResponse
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	// Operating on kube-system should escalate risk
 	if resp.RiskLevel == "safe" {
@@ -786,7 +824,9 @@ func TestSafetyAnalysis_ProductionIndicator(t *testing.T) {
 	s.handleSafetyAnalysis(w, req)
 
 	var resp SafetyAnalysisResponse
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if !resp.RequiresApproval {
 		t.Error("Expected approval required for production namespace")
@@ -814,7 +854,9 @@ func TestSafetyAnalysis_EmptyCommand(t *testing.T) {
 	s.handleSafetyAnalysis(w, req)
 
 	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if resp["code"] != ErrCodeBadRequest {
 		t.Errorf("Expected error code %s, got %v", ErrCodeBadRequest, resp["code"])
@@ -830,7 +872,9 @@ func TestSafetyAnalysis_InvalidBody(t *testing.T) {
 	s.handleSafetyAnalysis(w, req)
 
 	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if resp["code"] != ErrCodeBadRequest {
 		t.Errorf("Expected error code %s, got %v", ErrCodeBadRequest, resp["code"])
@@ -883,7 +927,9 @@ func TestLLMSettings_InvalidBody(t *testing.T) {
 	s.handleLLMSettings(w, req)
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["code"] != ErrCodeBadRequest {
 		t.Errorf("Expected error code %s, got %v", ErrCodeBadRequest, body["code"])
@@ -906,7 +952,9 @@ func TestLLMTest_NilClientWithoutBody(t *testing.T) {
 	}
 
 	var body map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &body)
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
 
 	if body["connected"] != false {
 		t.Errorf("Expected connected=false when aiClient is nil, got %v", body["connected"])

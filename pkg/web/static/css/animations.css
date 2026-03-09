@@ -34,10 +34,6 @@
     to { opacity: 1; }
 }
 
-@keyframes logoSpin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
 
 @keyframes pulse {
     0%, 100% { opacity: 1; }

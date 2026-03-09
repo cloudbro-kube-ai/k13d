@@ -12,7 +12,7 @@ func TestLLMUsageRecording(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	// Test recording LLM usage
 	record := LLMUsageRecord{
@@ -57,7 +57,7 @@ func TestGetLLMUsage(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	ctx := context.Background()
 
@@ -131,7 +131,7 @@ func TestGetLLMUsageStats(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	ctx := context.Background()
 
@@ -184,7 +184,7 @@ func TestLLMUsageWithEmptyDB(t *testing.T) {
 	if err := Init(dbPath); err != nil {
 		t.Fatalf("Failed to init DB: %v", err)
 	}
-	defer Close()
+	defer func() { _ = Close() }()
 
 	ctx := context.Background()
 

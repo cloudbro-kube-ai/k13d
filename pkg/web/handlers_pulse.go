@@ -86,7 +86,7 @@ func (s *Server) handlePulse(w http.ResponseWriter, r *http.Request) {
 	data.Timestamp = time.Now()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	_ = json.NewEncoder(w).Encode(data)
 }
 
 // fetchPulseData gathers cluster data, mirroring ui.PulseView.fetchData.

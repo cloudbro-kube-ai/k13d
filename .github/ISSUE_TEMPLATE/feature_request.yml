@@ -1,0 +1,55 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to make k13d better? We'd love to hear it!
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of k13d does this relate to?
+      options:
+        - TUI dashboard
+        - Web UI
+        - AI assistant
+        - MCP integration
+        - Kubernetes operations
+        - Configuration / setup
+        - Documentation
+        - CI / DevEx
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Motivation
+      description: What problem does this solve, or what use case does it enable?
+      placeholder: I often need to compare two deployments side-by-side, but currently...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe what you'd like to see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any other approaches you thought of.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Screenshots, mockups, links, or anything else that helps explain.

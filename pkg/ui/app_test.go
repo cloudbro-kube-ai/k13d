@@ -650,3 +650,43 @@ func TestResourceAliases(t *testing.T) {
 		}
 	}
 }
+
+// TestLoadingState tests the startLoading and stopLoading methods
+func TestLoadingState(t *testing.T) {
+	app := &App{}
+
+	// Initial state
+	if app.loadingCount != 0 {
+		t.Errorf("Expected initial loadingCount 0, got %d", app.loadingCount)
+	}
+
+	// Start loading
+	app.startLoading()
+	if app.loadingCount != 1 {
+		t.Errorf("Expected loadingCount 1 after startLoading, got %d", app.loadingCount)
+	}
+
+	// Start another
+	app.startLoading()
+	if app.loadingCount != 2 {
+		t.Errorf("Expected loadingCount 2 after second startLoading, got %d", app.loadingCount)
+	}
+
+	// Stop one
+	app.stopLoading()
+	if app.loadingCount != 1 {
+		t.Errorf("Expected loadingCount 1 after stopLoading, got %d", app.loadingCount)
+	}
+
+	// Stop another
+	app.stopLoading()
+	if app.loadingCount != 0 {
+		t.Errorf("Expected loadingCount 0 after second stopLoading, got %d", app.loadingCount)
+	}
+
+	// Stop below zero should not panic or go below zero
+	app.stopLoading()
+	if app.loadingCount < 0 {
+		t.Errorf("loadingCount should not go below 0, got %d", app.loadingCount)
+	}
+}

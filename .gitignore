@@ -87,3 +87,4 @@ kubeconfig.yaml
 # Temporary security scan results
 *.sarif
 gitleaks-report.*
+main

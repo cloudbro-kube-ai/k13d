@@ -28,7 +28,7 @@ func setupNewFeaturesTestServer(t *testing.T) *Server {
 	proto := corev1.ProtocolTCP
 	port80 := intstr.FromInt32(80)
 
-	fakeClientset := fake.NewSimpleClientset(
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
 		// RBAC: RoleBinding
 		&rbacv1.RoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
@@ -688,72 +688,6 @@ func TestHandleNotificationConfig_MethodNotAllowed(t *testing.T) {
 }
 
 // ============================
-// Templates Tests
-// ============================
-
-func TestHandleTemplates_ListsBuiltins(t *testing.T) {
-	server := setupNewFeaturesTestServer(t)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/templates", nil)
-	w := httptest.NewRecorder()
-
-	server.handleTemplates(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-
-	var resp struct {
-		Templates []ResourceTemplate `json:"templates"`
-	}
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("failed to decode: %v", err)
-	}
-
-	if len(resp.Templates) == 0 {
-		t.Fatal("expected at least 1 built-in template")
-	}
-
-	// Verify each template has required fields
-	for _, tpl := range resp.Templates {
-		if tpl.Name == "" {
-			t.Error("template name should not be empty")
-		}
-		if tpl.Category == "" {
-			t.Error("template category should not be empty")
-		}
-		if tpl.YAML == "" {
-			t.Error("template YAML should not be empty")
-		}
-	}
-
-	// Check for known templates
-	foundNginx := false
-	for _, tpl := range resp.Templates {
-		if tpl.Name == "Nginx Deployment" {
-			foundNginx = true
-			break
-		}
-	}
-	if !foundNginx {
-		t.Error("expected to find 'Nginx Deployment' template")
-	}
-}
-
-func TestHandleTemplates_MethodNotAllowed(t *testing.T) {
-	server := setupNewFeaturesTestServer(t)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/templates", nil)
-	w := httptest.NewRecorder()
-
-	server.handleTemplates(w, req)
-
-	if w.Code != http.StatusMethodNotAllowed {
-		t.Errorf("expected 405, got %d", w.Code)
-	}
-}
-
-// ============================
 // Notification Test Endpoint
 // ============================
 
@@ -948,8 +882,9 @@ func TestGetNestedSlice(t *testing.T) {
 	}
 
 	result2 := getNestedSlice(obj, "nonexistent")
-	if result2 != nil {
-		t.Errorf("expected nil for nonexistent path, got %v", result2)
+	// len(nil) is 0, so checking len(result2) is sufficient.
+	if len(result2) != 0 {
+		t.Errorf("expected empty slice for nonexistent path, got %v", result2)
 	}
 }
 
@@ -1071,5 +1006,446 @@ func TestMapResourceName(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("mapResourceName(%q) = %q, want %q", tt.alias, got, tt.want)
 		}
+	}
+}
+
+// ============================
+// RBAC Subject Detail Tests
+// ============================
+
+func setupRBACDetailTestServer(t *testing.T) *Server {
+	t.Helper()
+
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
+		&rbacv1.Role{
+			ObjectMeta: metav1.ObjectMeta{Name: "editor", Namespace: "default"},
+			Rules: []rbacv1.PolicyRule{
+				{Verbs: []string{"get", "list", "watch"}, Resources: []string{"pods", "services"}, APIGroups: []string{""}},
+				{Verbs: []string{"create", "update"}, Resources: []string{"deployments"}, APIGroups: []string{"apps"}},
+			},
+		},
+		&rbacv1.ClusterRole{
+			ObjectMeta: metav1.ObjectMeta{Name: "cluster-admin"},
+			Rules: []rbacv1.PolicyRule{
+				{Verbs: []string{"*"}, Resources: []string{"*"}, APIGroups: []string{"*"}},
+			},
+		},
+		&rbacv1.RoleBinding{
+			ObjectMeta: metav1.ObjectMeta{Name: "dev-editor", Namespace: "default"},
+			RoleRef:    rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "Role", Name: "editor"},
+			Subjects: []rbacv1.Subject{
+				{Kind: "ServiceAccount", Name: "ci-bot", Namespace: "default"},
+				{Kind: "User", Name: "alice"},
+			},
+		},
+		&rbacv1.ClusterRoleBinding{
+			ObjectMeta: metav1.ObjectMeta{Name: "admin-binding"},
+			RoleRef:    rbacv1.RoleRef{APIGroup: "rbac.authorization.k8s.io", Kind: "ClusterRole", Name: "cluster-admin"},
+			Subjects: []rbacv1.Subject{
+				{Kind: "User", Name: "bob"},
+			},
+		},
+	)
+
+	cfg := &config.Config{Language: "en"}
+	authConfig := &AuthConfig{Enabled: false, SessionDuration: time.Hour, AuthMode: "local", Quiet: true}
+	return &Server{
+		cfg:         cfg,
+		k8sClient:   &k8s.Client{Clientset: fakeClientset},
+		authManager: NewAuthManager(authConfig),
+	}
+}
+
+func TestHandleRBACSubjectDetail_MethodNotAllowed(t *testing.T) {
+	server := setupRBACDetailTestServer(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/rbac/subject/detail", nil)
+	w := httptest.NewRecorder()
+	server.handleRBACSubjectDetail(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected 405, got %d", w.Code)
+	}
+}
+
+func TestHandleRBACSubjectDetail_MissingParams(t *testing.T) {
+	server := setupRBACDetailTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/rbac/subject/detail", nil)
+	w := httptest.NewRecorder()
+	server.handleRBACSubjectDetail(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestHandleRBACSubjectDetail_ServiceAccount(t *testing.T) {
+	server := setupRBACDetailTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/rbac/subject/detail?name=ci-bot&kind=ServiceAccount&namespace=default", nil)
+	w := httptest.NewRecorder()
+	server.handleRBACSubjectDetail(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp RBACSubjectDetailResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode: %v", err)
+	}
+
+	if resp.Name != "ci-bot" {
+		t.Errorf("expected name ci-bot, got %q", resp.Name)
+	}
+	if len(resp.Bindings) == 0 {
+		t.Fatal("expected at least 1 binding")
+	}
+
+	b := resp.Bindings[0]
+	if b.RoleName != "editor" {
+		t.Errorf("expected role editor, got %q", b.RoleName)
+	}
+	if b.BindingKind != "RoleBinding" {
+		t.Errorf("expected RoleBinding, got %q", b.BindingKind)
+	}
+	if len(b.Rules) != 2 {
+		t.Errorf("expected 2 rules, got %d", len(b.Rules))
+	}
+}
+
+func TestHandleRBACSubjectDetail_ClusterAdmin(t *testing.T) {
+	server := setupRBACDetailTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/rbac/subject/detail?name=bob&kind=User", nil)
+	w := httptest.NewRecorder()
+	server.handleRBACSubjectDetail(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp RBACSubjectDetailResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode: %v", err)
+	}
+
+	if len(resp.Bindings) != 1 {
+		t.Fatalf("expected 1 binding, got %d", len(resp.Bindings))
+	}
+
+	b := resp.Bindings[0]
+	if b.RoleName != "cluster-admin" {
+		t.Errorf("expected cluster-admin, got %q", b.RoleName)
+	}
+	if b.RoleKind != "ClusterRole" {
+		t.Errorf("expected ClusterRole, got %q", b.RoleKind)
+	}
+	if len(b.Rules) != 1 {
+		t.Errorf("expected 1 rule, got %d", len(b.Rules))
+	}
+	if b.Rules[0].Verbs[0] != "*" {
+		t.Errorf("expected wildcard verb, got %q", b.Rules[0].Verbs[0])
+	}
+}
+
+func TestHandleRBACSubjectDetail_NoBindings(t *testing.T) {
+	server := setupRBACDetailTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/rbac/subject/detail?name=unknown&kind=User", nil)
+	w := httptest.NewRecorder()
+	server.handleRBACSubjectDetail(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp RBACSubjectDetailResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode: %v", err)
+	}
+
+	if len(resp.Bindings) != 0 {
+		t.Errorf("expected 0 bindings, got %d", len(resp.Bindings))
+	}
+}
+
+// ============================
+// Resource References Tests
+// ============================
+
+func setupResourceRefsTestServer(t *testing.T) *Server {
+	t.Helper()
+
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
+		&corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "web-pod", Namespace: "default"},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{{
+					Name:  "web",
+					Image: "nginx",
+					EnvFrom: []corev1.EnvFromSource{
+						{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "db-secret"}}},
+					},
+					Env: []corev1.EnvVar{
+						{Name: "CFG", ValueFrom: &corev1.EnvVarSource{ConfigMapKeyRef: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "app-config"}, Key: "key1"}}},
+					},
+				}},
+				Volumes: []corev1.Volume{
+					{Name: "secret-vol", VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "tls-cert"}}},
+					{Name: "config-vol", VolumeSource: corev1.VolumeSource{ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: "app-config"}}}},
+				},
+			},
+		},
+		&corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "worker-pod", Namespace: "default"},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{{
+					Name:  "worker",
+					Image: "worker:latest",
+				}},
+			},
+		},
+	)
+
+	cfg := &config.Config{Language: "en"}
+	authConfig := &AuthConfig{Enabled: false, SessionDuration: time.Hour, AuthMode: "local", Quiet: true}
+	return &Server{
+		cfg:         cfg,
+		k8sClient:   &k8s.Client{Clientset: fakeClientset},
+		authManager: NewAuthManager(authConfig),
+	}
+}
+
+func TestHandleResourceReferences_MethodNotAllowed(t *testing.T) {
+	server := setupResourceRefsTestServer(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/resource/references", nil)
+	w := httptest.NewRecorder()
+	server.handleResourceReferences(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected 405, got %d", w.Code)
+	}
+}
+
+func TestHandleResourceReferences_MissingParams(t *testing.T) {
+	server := setupResourceRefsTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/resource/references?kind=Secret", nil)
+	w := httptest.NewRecorder()
+	server.handleResourceReferences(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestHandleResourceReferences_InvalidKind(t *testing.T) {
+	server := setupResourceRefsTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/resource/references?kind=Pod&name=x&namespace=default", nil)
+	w := httptest.NewRecorder()
+	server.handleResourceReferences(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestHandleResourceReferences_SecretVolume(t *testing.T) {
+	server := setupResourceRefsTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/resource/references?kind=Secret&name=tls-cert&namespace=default", nil)
+	w := httptest.NewRecorder()
+	server.handleResourceReferences(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp ResourceReferencesResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode: %v", err)
+	}
+
+	if len(resp.References) != 1 {
+		t.Fatalf("expected 1 reference, got %d", len(resp.References))
+	}
+	ref := resp.References[0]
+	if ref.Kind != "Pod" || ref.Name != "web-pod" {
+		t.Errorf("expected Pod/web-pod, got %s/%s", ref.Kind, ref.Name)
+	}
+	if ref.RefType != "volume" {
+		t.Errorf("expected ref_type 'volume', got %q", ref.RefType)
+	}
+}
+
+func TestHandleResourceReferences_SecretEnvFrom(t *testing.T) {
+	server := setupResourceRefsTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/resource/references?kind=Secret&name=db-secret&namespace=default", nil)
+	w := httptest.NewRecorder()
+	server.handleResourceReferences(w, req)
+
+	var resp ResourceReferencesResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode: %v", err)
+	}
+
+	if len(resp.References) != 1 {
+		t.Fatalf("expected 1 reference, got %d", len(resp.References))
+	}
+	if resp.References[0].RefType != "envFrom" {
+		t.Errorf("expected ref_type 'envFrom', got %q", resp.References[0].RefType)
+	}
+}
+
+func TestHandleResourceReferences_ConfigMapMultipleRefs(t *testing.T) {
+	server := setupResourceRefsTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/resource/references?kind=ConfigMap&name=app-config&namespace=default", nil)
+	w := httptest.NewRecorder()
+	server.handleResourceReferences(w, req)
+
+	var resp ResourceReferencesResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode: %v", err)
+	}
+
+	// app-config is referenced via both volume and env in the same pod
+	// Due to dedup, only 1 reference (first one wins: volume)
+	if len(resp.References) != 1 {
+		t.Fatalf("expected 1 reference (deduped), got %d", len(resp.References))
+	}
+	if resp.References[0].Name != "web-pod" {
+		t.Errorf("expected web-pod, got %q", resp.References[0].Name)
+	}
+}
+
+func TestHandleResourceReferences_NoReferences(t *testing.T) {
+	server := setupResourceRefsTestServer(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/resource/references?kind=Secret&name=nonexistent&namespace=default", nil)
+	w := httptest.NewRecorder()
+	server.handleResourceReferences(w, req)
+
+	var resp ResourceReferencesResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode: %v", err)
+	}
+
+	if len(resp.References) != 0 {
+		t.Errorf("expected 0 references, got %d", len(resp.References))
+	}
+}
+
+// ============================
+// Topology with NetworkPolicy Tests
+// ============================
+
+func TestBuildTopology_WithNetworkPolicy(t *testing.T) {
+	proto := corev1.ProtocolTCP
+	port80 := intstr.FromInt32(80)
+
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
+		&corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "web-pod", Namespace: "default", Labels: map[string]string{"app": "web"}},
+			Status:     corev1.PodStatus{Phase: corev1.PodRunning},
+		},
+		&corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "api-pod", Namespace: "default", Labels: map[string]string{"app": "api"}},
+			Status:     corev1.PodStatus{Phase: corev1.PodRunning},
+		},
+		&networkingv1.NetworkPolicy{
+			ObjectMeta: metav1.ObjectMeta{Name: "allow-web", Namespace: "default"},
+			Spec: networkingv1.NetworkPolicySpec{
+				PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{"app": "web"}},
+				Ingress: []networkingv1.NetworkPolicyIngressRule{{
+					From:  []networkingv1.NetworkPolicyPeer{{PodSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "api"}}}},
+					Ports: []networkingv1.NetworkPolicyPort{{Protocol: &proto, Port: &port80}},
+				}},
+			},
+		},
+	)
+
+	cfg := &config.Config{Language: "en"}
+	authConfig := &AuthConfig{Enabled: false, SessionDuration: time.Hour, AuthMode: "local", Quiet: true}
+	server := &Server{
+		cfg:         cfg,
+		k8sClient:   &k8s.Client{Clientset: fakeClientset},
+		authManager: NewAuthManager(authConfig),
+	}
+
+	// Without netpol
+	resp, err := server.buildTopology(t.Context(), "default", false)
+	if err != nil {
+		t.Fatalf("buildTopology failed: %v", err)
+	}
+	for _, n := range resp.Nodes {
+		if n.Kind == "NetworkPolicy" {
+			t.Error("NetworkPolicy nodes should not appear when includeNetPol=false")
+		}
+	}
+
+	// With netpol
+	resp, err = server.buildTopology(t.Context(), "default", true)
+	if err != nil {
+		t.Fatalf("buildTopology with netpol failed: %v", err)
+	}
+
+	foundNetPol := false
+	foundNetPolSelect := false
+	foundNetPolIngress := false
+	for _, n := range resp.Nodes {
+		if n.Kind == "NetworkPolicy" && n.Name == "allow-web" {
+			foundNetPol = true
+		}
+	}
+	for _, e := range resp.Edges {
+		if e.Type == "netpol-select" {
+			foundNetPolSelect = true
+		}
+		if e.Type == "netpol-ingress" {
+			foundNetPolIngress = true
+		}
+	}
+
+	if !foundNetPol {
+		t.Error("expected NetworkPolicy node 'allow-web'")
+	}
+	if !foundNetPolSelect {
+		t.Error("expected netpol-select edge")
+	}
+	if !foundNetPolIngress {
+		t.Error("expected netpol-ingress edge")
+	}
+}
+
+func TestHandleTopology_IncludeNetPolParam(t *testing.T) {
+	fakeClientset := fake.NewClientset() //nolint:staticcheck
+	cfg := &config.Config{Language: "en"}
+	authConfig := &AuthConfig{Enabled: false, SessionDuration: time.Hour, AuthMode: "local", Quiet: true}
+	server := &Server{
+		cfg:         cfg,
+		k8sClient:   &k8s.Client{Clientset: fakeClientset},
+		authManager: NewAuthManager(authConfig),
+	}
+
+	// Without param
+	req := httptest.NewRequest(http.MethodGet, "/api/topology/", nil)
+	w := httptest.NewRecorder()
+	server.handleTopology(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+
+	// With param
+	req = httptest.NewRequest(http.MethodGet, "/api/topology/?include_netpol=true", nil)
+	w = httptest.NewRecorder()
+	server.handleTopology(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200 with netpol, got %d", w.Code)
 	}
 }

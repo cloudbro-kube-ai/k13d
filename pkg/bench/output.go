@@ -159,7 +159,7 @@ func (a *Analyzer) Analyze(results []*EvalResult) *BenchmarkSummary {
 	for _, llmSummary := range summary.LLMResults {
 		if llmSummary.TotalTasks > 0 {
 			llmSummary.PassRate = float64(llmSummary.SuccessCount) / float64(llmSummary.TotalTasks) * 100
-			llmSummary.AvgDuration = llmSummary.AvgDuration / time.Duration(llmSummary.TotalTasks)
+			llmSummary.AvgDuration /= time.Duration(llmSummary.TotalTasks)
 		}
 	}
 

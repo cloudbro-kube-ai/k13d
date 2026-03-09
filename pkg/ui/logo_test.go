@@ -233,7 +233,7 @@ func TestColoredSpinner(t *testing.T) {
 func TestNewSplashScreen(t *testing.T) {
 	splash := NewSplashScreen()
 	if splash == nil {
-		t.Error("NewSplashScreen should not return nil")
+		t.Fatal("NewSplashScreen should not return nil")
 	}
 	if splash.logo == nil {
 		t.Error("SplashScreen.logo should not be nil")
