@@ -40,7 +40,7 @@ PLATFORMS := \
 all: clean deps test build
 
 # Build for current platform
-build:
+build: frontend-build
 	@echo "Building $(APP_NAME) for current platform..."
 	@mkdir -p $(BUILD_DIR)
 	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME) ./cmd/kube-ai-dashboard-cli/main.go
@@ -112,28 +112,24 @@ package: build-all
 
 # Create offline bundle (includes dependencies)
 bundle-offline: deps
-	@echo "Creating offline bundle..."
+	@echo "Creating offline bundle (using Go module cache)..."
 	@mkdir -p $(DIST_DIR)/offline-bundle
-	@$(GOMOD) vendor
-	@cp -r vendor $(DIST_DIR)/offline-bundle/
 	@cp go.mod go.sum $(DIST_DIR)/offline-bundle/
 	@cp -r cmd pkg $(DIST_DIR)/offline-bundle/
 	@cp Makefile $(DIST_DIR)/offline-bundle/
 	@echo "# Offline Build Instructions" > $(DIST_DIR)/offline-bundle/BUILD.md
 	@echo "" >> $(DIST_DIR)/offline-bundle/BUILD.md
-	@echo "1. Copy this directory to your air-gapped environment" >> $(DIST_DIR)/offline-bundle/BUILD.md
-	@echo "2. Run: go build -mod=vendor -o k13d ./cmd/kube-ai-dashboard-cli/main.go" >> $(DIST_DIR)/offline-bundle/BUILD.md
-	@echo "" >> $(DIST_DIR)/offline-bundle/BUILD.md
-	@echo "Or use Makefile:" >> $(DIST_DIR)/offline-bundle/BUILD.md
-	@echo "  make build-offline" >> $(DIST_DIR)/offline-bundle/BUILD.md
+	@echo "1. Copy this directory to your environment" >> $(DIST_DIR)/offline-bundle/BUILD.md
+	@echo "2. Run: go build -o k13d ./cmd/kube-ai-dashboard-cli/main.go" >> $(DIST_DIR)/offline-bundle/BUILD.md
 	@tar -czvf $(DIST_DIR)/$(APP_NAME)-offline-bundle-$(VERSION).tar.gz -C $(DIST_DIR) offline-bundle
-	@rm -rf $(DIST_DIR)/offline-bundle vendor
+	@rm -rf $(DIST_DIR)/offline-bundle
 	@echo "Offline bundle created: $(DIST_DIR)/$(APP_NAME)-offline-bundle-$(VERSION).tar.gz"
 
-# Build from offline bundle (for air-gapped environments)
+# Build from offline bundle (using Go modules)
 build-offline:
-	@echo "Building from vendored dependencies..."
-	$(GOBUILD) -mod=vendor $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME) ./cmd/kube-ai-dashboard-cli/main.go
+	@echo "Building using Go modules..."
+	$(GOBUILD) $(LDFLAGS) -o $(BUILD_DIR)/$(APP_NAME) ./cmd/kube-ai-dashboard-cli/main.go
+
 
 # Docker build
 docker:
