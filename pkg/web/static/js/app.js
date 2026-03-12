@@ -2593,18 +2593,73 @@ function clearAiInput() {
 }
 
 function toggleAiExpand() {
-    const container = document.getElementById('ai-input-container');
+    const aiPanel = document.getElementById('ai-panel');
     const btn = document.getElementById('ai-expand-btn');
     const input = document.getElementById('ai-input');
-    container.classList.toggle('expanded');
-    if (container.classList.contains('expanded')) {
+    const inputContainer = document.getElementById('ai-input-container');
+    const contextChips = document.getElementById('context-chips');
+    const aiActions = inputContainer ? inputContainer.querySelector('.ai-actions') : null;
+    const aiHint = inputContainer ? inputContainer.querySelector('.ai-hint') : null;
+
+    aiPanel.classList.toggle('expanded');
+
+    if (aiPanel.classList.contains('expanded')) {
         btn.innerHTML = '&#x2716;'; // X to close
         btn.title = 'Exit fullscreen';
-        input.rows = 20;
+        input.rows = 8;
+
+        // Ensure panel children stretch to full width
+        aiPanel.style.alignItems = 'stretch';
+
+        // Use setAttribute on style to support !important
+        if (inputContainer) {
+            inputContainer.setAttribute('style',
+                'width: 100% !important;' +
+                'max-width: none !important;' +
+                'min-width: 0 !important;' +
+                'box-sizing: border-box !important;' +
+                'height: 30vh !important;' +
+                'padding: 24px 40px !important;' +
+                'display: flex !important;' +
+                'flex-direction: column !important;'
+            );
+        }
+        if (input) {
+            input.setAttribute('style',
+                'width: 100% !important;' +
+                'flex: 1 !important;' +
+                'font-size: 16px !important;' +
+                'box-sizing: border-box !important;' +
+                'height: auto !important;' +
+                'resize: none !important;'
+            );
+        }
+        if (contextChips) {
+            contextChips.setAttribute('style',
+                'width: 100% !important;' +
+                'box-sizing: border-box !important;'
+            );
+        }
+        // Right-align buttons, hide hint in fullscreen
+        if (aiActions) {
+            aiActions.style.justifyContent = 'flex-end';
+        }
+        if (aiHint) {
+            aiHint.style.display = 'none';
+        }
     } else {
         btn.innerHTML = '&#x26F6;'; // expand icon
-        btn.title = 'Expand input area';
+        btn.title = 'Expand AI panel';
         input.rows = 2;
+
+        // Clear all inline styles
+        aiPanel.style.alignItems = '';
+        if (inputContainer) inputContainer.removeAttribute('style');
+        if (input) input.removeAttribute('style');
+        if (contextChips) contextChips.removeAttribute('style');
+        // Restore actions
+        if (aiActions) aiActions.style.justifyContent = '';
+        if (aiHint) aiHint.style.display = '';
     }
     input.focus();
 }
@@ -2614,8 +2669,8 @@ document.getElementById('ai-input').addEventListener('keydown', (e) => {
         e.preventDefault();
         sendMessage();
     } else if (e.key === 'Escape') {
-        const container = document.getElementById('ai-input-container');
-        if (container.classList.contains('expanded')) {
+        const aiPanel = document.getElementById('ai-panel');
+        if (aiPanel.classList.contains('expanded')) {
             toggleAiExpand();
         }
     } else if (e.key === 'ArrowUp' && !e.shiftKey) {

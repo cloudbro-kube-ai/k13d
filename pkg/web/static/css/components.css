@@ -193,29 +193,51 @@
     border-color: var(--accent-blue);
 }
 
-/* AI Input Expanded State */
-.ai-input-container.expanded {
-    position: fixed;
+/* AI Panel Expanded State */
+.ai-panel.expanded {
+    position: fixed !important;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: var(--z-modal);
-    padding: 40px;
-    background: var(--bg-primary);
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    z-index: 999; /* Below --z-modal (1000) */
     display: flex;
     flex-direction: column;
 }
 
-.ai-input-container.expanded .ai-input {
-    flex: 1;
-    resize: vertical;
-    font-size: 15px;
-    line-height: 1.6;
+.ai-panel.expanded .ai-input-container {
+    height: 30vh;
+    padding: 30px 40px;
+    display: flex;
+    flex-direction: column;
+    width: 100% !important;
+    max-width: none !important;
 }
 
-.ai-input-container.expanded .ai-actions {
-    margin-top: 16px;
+.ai-panel.expanded .ai-input {
+    flex: 1;
+    font-size: 16px;
+    line-height: 1.6;
+    padding: 20px;
+    resize: none;
+}
+
+.ai-panel.expanded .context-chips {
+    padding: 16px 24px;
+    min-height: 60px;
+}
+
+.ai-panel.expanded .context-chips span[style*="font-size: 11px"] {
+    font-size: 14px !important;
+}
+
+.ai-panel.expanded .context-chip {
+    font-size: 14px;
+    padding: 8px 16px;
+    border-radius: 16px;
 }
 
 /* ==========================================
