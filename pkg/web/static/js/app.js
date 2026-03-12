@@ -3197,11 +3197,10 @@ function updateEndpointPlaceholder(setDefaults = true) {
     // Update reasoning effort UI visibility (only for Solar)
     updateReasoningEffortUI();
 
-    // Show/hide "Fetch Models" button based on provider
+    // Always show "Fetch Models" button; backend handles provider-specific logic.
     const fetchBtn = document.getElementById('fetch-models-btn');
-    const fetchableProviders = ['gemini', 'ollama'];
     if (fetchBtn) {
-        fetchBtn.style.display = fetchableProviders.includes(provider) ? 'inline' : 'none';
+        fetchBtn.style.display = 'inline';
     }
     // Hide model select and clear when switching providers
     const modelSelect2 = document.getElementById('setting-llm-model-select');
