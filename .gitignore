@@ -93,4 +93,4 @@ kubeconfig.yaml
 gitleaks-report.*
 main
 # 외부 라이브러리
-vendor
+# vendor
