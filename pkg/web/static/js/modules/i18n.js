@@ -101,6 +101,7 @@ const translations = {
         ai_thinking: 'AI is thinking...',
         ai_approval_required: 'Approval Required',
         ai_command: 'Command',
+        ai_hint: 'Enter send · Shift+Enter newline · ↑↓ history',
 
         // Settings
         settings_general: 'General',
@@ -233,6 +234,7 @@ const translations = {
         ai_thinking: 'AI가 생각 중입니다...',
         ai_approval_required: '승인 필요',
         ai_command: '명령어',
+        ai_hint: 'Enter 전송 · Shift+Enter 줄바꿈 · ↑↓ 히스토리',
 
         // Settings
         settings_general: '일반',
@@ -361,6 +363,7 @@ const translations = {
         ai_thinking: 'AI 正在思考...',
         ai_approval_required: '需要批准',
         ai_command: '命令',
+        ai_hint: 'Enter 发送 · Shift+Enter 换行 · ↑↓ 历史',
 
         // Settings
         settings_general: '常规',
@@ -489,6 +492,7 @@ const translations = {
         ai_thinking: 'AIが考え中...',
         ai_approval_required: '承認が必要',
         ai_command: 'コマンド',
+        ai_hint: 'Enter 送信 · Shift+Enter 改行 · ↑↓ 履歴',
 
         // Settings
         settings_general: '一般',
