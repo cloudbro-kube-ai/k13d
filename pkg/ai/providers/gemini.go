@@ -279,15 +279,54 @@ func (p *GeminiProvider) ListModels(ctx context.Context) ([]string, error) {
 	return models, nil
 }
 
+// sanitizeSchemaForGemini returns a copy of the schema with fields that Gemini API
+// does not accept removed ($schema, additionalProperties, default, minimum, maximum).
+func sanitizeSchemaForGemini(in map[string]interface{}) map[string]interface{} {
+	if in == nil {
+		return nil
+	}
+	disallowed := map[string]bool{
+		"$schema":              true,
+		"additionalProperties": true,
+		"default":              true,
+		"minimum":              true,
+		"maximum":              true,
+	}
+	out := make(map[string]interface{}, len(in))
+	for k, v := range in {
+		if disallowed[k] {
+			continue
+		}
+		out[k] = sanitizeSchemaValueForGemini(v)
+	}
+	return out
+}
+
+func sanitizeSchemaValueForGemini(v interface{}) interface{} {
+	switch t := v.(type) {
+	case map[string]interface{}:
+		return sanitizeSchemaForGemini(t)
+	case []interface{}:
+		arr := make([]interface{}, len(t))
+		for i, el := range t {
+			arr[i] = sanitizeSchemaValueForGemini(el)
+		}
+		return arr
+	default:
+		return v
+	}
+}
+
 // AskWithTools implements ToolProvider for Gemini using functionDeclarations/functionCall.
 func (p *GeminiProvider) AskWithTools(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
-	// Convert tools to Gemini format
+	// Convert tools to Gemini format (sanitize parameters so Gemini API accepts the schema)
 	var funcDecls []geminiFuncDecl
 	for _, tool := range tools {
+		params := sanitizeSchemaForGemini(tool.Function.Parameters)
 		funcDecls = append(funcDecls, geminiFuncDecl{
 			Name:        tool.Function.Name,
 			Description: tool.Function.Description,
-			Parameters:  tool.Function.Parameters,
+			Parameters:  params,
 		})
 	}
 
