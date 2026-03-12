@@ -29,6 +29,7 @@ func NewClient(cfg *config.LLMConfig) (*Client, error) {
 		AzureDeployment: cfg.AzureDeployment,
 		SkipTLSVerify:   cfg.SkipTLSVerify,
 		ReasoningEffort: cfg.ReasoningEffort,
+		Discovery:       cfg.Discovery,
 	}
 
 	factory := providers.GetFactory()

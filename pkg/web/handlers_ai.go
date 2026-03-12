@@ -1027,7 +1027,9 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 		// Create temporary client with provided config
 		tempConfig := config.LLMConfig{
 			Provider: provider,
-			Model:    "temp",
+			// Model left empty on purpose for discovery; providers may apply defaults.
+			Model:     "",
+			Discovery: true,
 			Endpoint: endpoint,
 			APIKey:   apiKey,
 		}

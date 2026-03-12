@@ -84,9 +84,12 @@ func NewGeminiProvider(cfg *ProviderConfig) (Provider, error) {
 		model = "gemini-2.5-flash"
 	}
 
-	// Validate Gemini model name format
-	if err := validateGeminiModel(model); err != nil {
-		return nil, err
+	// Validate Gemini model name format unless we're in discovery mode
+	// (used only for listing models via ListModels).
+	if !cfg.Discovery {
+		if err := validateGeminiModel(model); err != nil {
+			return nil, err
+		}
 	}
 
 	return &GeminiProvider{

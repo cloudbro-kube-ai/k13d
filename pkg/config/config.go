@@ -192,6 +192,9 @@ type LLMConfig struct {
 	Temperature     float64 `yaml:"temperature" json:"temperature"`           // LLM temperature (0.0-2.0)
 	MaxTokens       int     `yaml:"max_tokens" json:"max_tokens"`             // Max output tokens
 	MaxIterations   int     `yaml:"max_iterations" json:"max_iterations"`     // Agent loop max iterations (1-30)
+	// Discovery indicates this config is used for model discovery (ListModels).
+	// It is not persisted to disk or exposed via JSON APIs.
+	Discovery bool `yaml:"-" json:"-"`
 }
 
 // ModelProfile represents a saved LLM model configuration
