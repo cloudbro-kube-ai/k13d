@@ -209,8 +209,7 @@
 }
 
 .ai-panel.expanded .ai-input-container {
-    height: 30vh;
-    padding: 30px 40px;
+    padding: 24px 40px;
     display: flex;
     flex-direction: column;
     width: 100% !important;
@@ -218,11 +217,15 @@
 }
 
 .ai-panel.expanded .ai-input {
-    flex: 1;
     font-size: 16px;
     line-height: 1.6;
-    padding: 20px;
+    padding: 16px;
     resize: none;
+}
+
+.ai-panel.expanded .ai-hint {
+    font-size: 13px;
+    opacity: 0.6;
 }
 
 .ai-panel.expanded .context-chips {

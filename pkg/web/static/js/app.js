@@ -2606,7 +2606,6 @@ function toggleAiExpand() {
     if (aiPanel.classList.contains('expanded')) {
         btn.innerHTML = '&#x2716;'; // X to close
         btn.title = 'Exit fullscreen';
-        input.rows = 8;
 
         // Ensure panel children stretch to full width
         aiPanel.style.alignItems = 'stretch';
@@ -2618,7 +2617,6 @@ function toggleAiExpand() {
                 'max-width: none !important;' +
                 'min-width: 0 !important;' +
                 'box-sizing: border-box !important;' +
-                'height: 30vh !important;' +
                 'padding: 24px 40px !important;' +
                 'display: flex !important;' +
                 'flex-direction: column !important;'
@@ -2627,7 +2625,6 @@ function toggleAiExpand() {
         if (input) {
             input.setAttribute('style',
                 'width: 100% !important;' +
-                'flex: 1 !important;' +
                 'font-size: 16px !important;' +
                 'box-sizing: border-box !important;' +
                 'height: auto !important;' +
@@ -2640,13 +2637,6 @@ function toggleAiExpand() {
                 'box-sizing: border-box !important;'
             );
         }
-        // Right-align buttons, hide hint in fullscreen
-        if (aiActions) {
-            aiActions.style.justifyContent = 'flex-end';
-        }
-        if (aiHint) {
-            aiHint.style.display = 'none';
-        }
     } else {
         btn.innerHTML = '&#x26F6;'; // expand icon
         btn.title = 'Expand AI panel';
@@ -2657,9 +2647,6 @@ function toggleAiExpand() {
         if (inputContainer) inputContainer.removeAttribute('style');
         if (input) input.removeAttribute('style');
         if (contextChips) contextChips.removeAttribute('style');
-        // Restore actions
-        if (aiActions) aiActions.style.justifyContent = '';
-        if (aiHint) aiHint.style.display = '';
     }
     input.focus();
 }
