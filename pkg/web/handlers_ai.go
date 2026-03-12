@@ -1030,8 +1030,8 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 			// Model left empty on purpose for discovery; providers may apply defaults.
 			Model:     "",
 			Discovery: true,
-			Endpoint: endpoint,
-			APIKey:   apiKey,
+			Endpoint:  endpoint,
+			APIKey:    apiKey,
 		}
 		var err error
 		client, err = ai.NewClient(&tempConfig)
