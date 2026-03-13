@@ -2331,10 +2331,19 @@ function showToolExecution(execInfo, messageDiv, contentEl) {
     const uniqueId = 'tool-result-' + Date.now();
     const resultLength = execInfo.result ? execInfo.result.length : 0;
 
+    const toolLabelParts = [];
+    if (execInfo.tool) {
+        toolLabelParts.push(execInfo.tool);
+    }
+    if (execInfo.server) {
+        toolLabelParts.push(`(${execInfo.server})`);
+    }
+    const toolLabel = toolLabelParts.join(' ');
+
     execDiv.innerHTML = `
                 <div class="tool-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                     <span style="color: ${statusColor};">${statusIcon}</span>
-                    <span class="tool-name">${execInfo.tool}</span>
+                    <span class="tool-name">${toolLabel}</span>
                 </div>
                 <div class="tool-command" style="background: var(--bg-primary); padding: 8px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-bottom: 8px; word-break: break-all;">
                     $ ${escapeHtml(execInfo.command || 'N/A')}
@@ -2357,6 +2366,8 @@ ${escapeHtml(execInfo.result)}</div>
     // Log to debug panel
     addDebugLog('tool', 'Tool Executed', {
         tool: execInfo.tool,
+        tool_type: execInfo.tool_type,
+        server: execInfo.server,
         command: execInfo.command,
         result_length: resultLength,
         is_error: isError

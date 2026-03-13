@@ -547,13 +547,15 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Tool execution callback - sends tool execution info via SSE and records audit
-	toolExecutionCallback := func(toolName string, command string, result string, isError bool) {
+	toolExecutionCallback := func(toolName string, command string, result string, isError bool, toolType string, toolServerName string) {
 		execJSON, _ := json.Marshal(map[string]interface{}{
-			"type":     "tool_execution",
-			"tool":     toolName,
-			"command":  command,
-			"result":   result,
-			"is_error": isError,
+			"type":      "tool_execution",
+			"tool":      toolName,
+			"tool_type": toolType,
+			"server":    toolServerName,
+			"command":   command,
+			"result":    result,
+			"is_error":  isError,
 		})
 		_ = sse.WriteEvent("tool_execution", string(execJSON))
 
