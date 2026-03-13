@@ -215,9 +215,11 @@ func GetAvailableProviders() string {
 	return providers.GetFactory().ListProviders()
 }
 
-// ToolExecutionCallback is called when a tool is executed
-// It receives the tool name, command, and result
-type ToolExecutionCallback func(toolName string, command string, result string, isError bool)
+// ToolExecutionCallback is called when a tool is executed.
+// It receives the tool name, command, result, error flag, and optional metadata about the tool.
+// toolType is one of the ToolType string values (kubectl, bash, mcp, etc.).
+// toolServerName is populated for MCP tools to indicate which MCP server provided the tool.
+type ToolExecutionCallback func(toolName string, command string, result string, isError bool, toolType string, toolServerName string)
 
 // AskWithTools sends a prompt with tool calling support (agentic mode)
 // The toolApprovalCallback is called before executing each tool for user approval
@@ -266,7 +268,9 @@ func (c *Client) AskWithToolsAndExecution(ctx context.Context, prompt string, ca
 		if toolApprovalCallback != nil {
 			if !toolApprovalCallback(call.Function.Name, call.Function.Arguments) {
 				if toolExecutionCallback != nil {
-					toolExecutionCallback(call.Function.Name, command, "Tool execution cancelled by user", true)
+					// Best-effort lookup of tool metadata for callbacks
+					toolType, toolServerName := c.getToolMetadata(call.Function.Name)
+					toolExecutionCallback(call.Function.Name, command, "Tool execution cancelled by user", true, toolType, toolServerName)
 				}
 				return providers.ToolResult{
 					ToolCallID: call.ID,
@@ -290,7 +294,8 @@ func (c *Client) AskWithToolsAndExecution(ctx context.Context, prompt string, ca
 
 		// Notify about tool execution result
 		if toolExecutionCallback != nil {
-			toolExecutionCallback(call.Function.Name, command, result.Content, result.IsError)
+			toolType, toolServerName := c.getToolMetadata(call.Function.Name)
+			toolExecutionCallback(call.Function.Name, command, result.Content, result.IsError, toolType, toolServerName)
 		}
 
 		return providers.ToolResult{
@@ -307,6 +312,19 @@ func (c *Client) AskWithToolsAndExecution(ctx context.Context, prompt string, ca
 	}
 
 	return toolProvider.AskWithTools(ctx, prompt, toolDefs, callback, toolCallback)
+}
+
+// getToolMetadata returns lightweight metadata about a tool from the registry for callbacks.
+// It is best-effort and falls back to empty strings if the tool is unknown.
+func (c *Client) getToolMetadata(toolName string) (toolType string, toolServerName string) {
+	if c.toolRegistry == nil {
+		return "", ""
+	}
+	tool, ok := c.toolRegistry.Get(toolName)
+	if !ok || tool == nil {
+		return "", ""
+	}
+	return string(tool.Type), tool.ServerName
 }
 
 // SupportsTools returns true if the current provider supports tool calling
