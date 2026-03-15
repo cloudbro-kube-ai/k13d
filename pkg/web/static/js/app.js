@@ -2015,7 +2015,27 @@ function showDashboardActionNotification(message) {
 async function sendMessage() {
     const input = document.getElementById('ai-input');
     const message = input.value.trim();
-    if (!message || isLoading) return;
+    
+    // If it's already generation, skip validation to allow Stop button to work
+    if (isLoading) return;
+    
+    if (!message) {
+        const originalPlaceholder = input.placeholder;
+        input.placeholder = t('msg_enter_question') || '질문을 입력해 주세요.';
+        input.classList.add('error');
+        input.focus();
+        
+        // Remove error state when user types
+        const onInput = () => {
+            input.classList.remove('error');
+            input.placeholder = originalPlaceholder;
+            input.removeEventListener('input', onInput);
+        };
+        input.addEventListener('input', onInput);
+        return;
+    }
+    
+    if (isLoading) return;
 
     // Check guardrails (K8s safety analysis)
     const guardrailCheck = checkGuardrails(message);
@@ -8684,7 +8704,22 @@ const originalSendMessage = sendMessage;
 sendMessage = async function () {
     const input = document.getElementById('ai-input');
     let message = input.value.trim();
-    if (!message || isLoading) return;
+        if (isLoading) return;
+    if (!message) {
+        const originalPlaceholder = input.placeholder;
+        input.placeholder = t('msg_enter_question') || '질문을 입력해 주세요.';
+        input.classList.add('error');
+        input.focus();
+        
+        // Remove error state when user types
+        const onInput = () => {
+            input.classList.remove('error');
+            input.placeholder = originalPlaceholder;
+            input.removeEventListener('input', onInput);
+        };
+        input.addEventListener('input', onInput);
+        return;
+    }
 
     // Add context if available
     const contextStr = getContextForAI();

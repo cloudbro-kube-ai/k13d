@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Terminate any existing k13d processes
+killall k13d
+
 # Build the application
 make build
 

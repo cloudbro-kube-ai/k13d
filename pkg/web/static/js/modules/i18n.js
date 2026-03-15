@@ -95,6 +95,7 @@ const translations = {
         msg_connected: 'Connected',
         msg_disconnected: 'Disconnected',
         msg_settings_saved: 'Settings saved!',
+        msg_enter_question: 'Please enter your question.',
 
         // AI
         ai_placeholder: 'Ask AI anything about your cluster...',
@@ -228,6 +229,7 @@ const translations = {
         msg_connected: '연결됨',
         msg_disconnected: '연결 끊김',
         msg_settings_saved: '설정이 저장되었습니다!',
+        msg_enter_question: '질문을 입력해 주세요.',
 
         // AI
         ai_placeholder: '클러스터에 대해 AI에게 질문하세요...',
@@ -357,6 +359,7 @@ const translations = {
         msg_connected: '已连接',
         msg_disconnected: '已断开',
         msg_settings_saved: '设置已保存！',
+        msg_enter_question: '请输入您的问题。',
 
         // AI
         ai_placeholder: '向 AI 询问有关集群的任何问题...',
@@ -486,6 +489,7 @@ const translations = {
         msg_connected: '接続済み',
         msg_disconnected: '切断',
         msg_settings_saved: '設定を保存しました！',
+        msg_enter_question: '質問を入力してください。',
 
         // AI
         ai_placeholder: 'クラスターについてAIに質問...',
