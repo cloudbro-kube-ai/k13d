@@ -145,28 +145,33 @@ It bridges the gap between traditional cluster management and natural language A
 
 ## Quick Install
 
-=== "Binary"
+!!! warning "Current support status"
+    k13d currently recommends **local single-binary usage** for both the **TUI** and **Web UI**.
+    Docker, Docker Compose, Kubernetes, Helm, and other in-cluster deployment paths are still **Beta / in preparation** and are not officially supported yet.
+
+=== "TUI"
 
     ```bash
     git clone https://github.com/cloudbro-kube-ai/k13d.git
     cd k13d
     make build
-    ./k13d --web --port 8080
+    ./build/k13d
     ```
 
-=== "Docker"
+=== "Web UI"
 
     ```bash
-    docker run -d -p 8080:8080 \
-      -v ~/.kube/config:/home/k13d/.kube/config:ro \
-      cloudbro-kube-ai/k13d:latest
+    git clone https://github.com/cloudbro-kube-ai/k13d.git
+    cd k13d
+    make build
+    ./build/k13d --web --auth-mode local --port 8080
     ```
 
-=== "Kubernetes"
+=== "Deployment Docs (Beta)"
 
-    ```bash
-    kubectl apply -f deploy/kubernetes/deployment.yaml
-    kubectl port-forward -n k13d svc/k13d 8080:80
+    ```text
+    See Deployment > Docker / Kubernetes / Helm for roadmap and reference material.
+    Those paths are still being prepared and are not officially supported yet.
     ```
 
 ---
@@ -181,8 +186,7 @@ It bridges the gap between traditional cluster management and natural language A
 | **Google Gemini** | :white_check_mark: | Multimodal, fast responses |
 | **Azure OpenAI** | :white_check_mark: | Enterprise deployments |
 | **AWS Bedrock** | :white_check_mark: | AWS-hosted models |
-| **Ollama** | :white_check_mark: | Air-gapped, local models |
-| **Embedded LLM** | :warning: | Zero-dependency, limited capability |
+| **Ollama** | :white_check_mark: | Recommended local/private inference with a tools-capable model such as `gpt-oss:20b` |
 
 [:octicons-arrow-right-24: Full LLM Configuration](ai-llm/providers.md)
 

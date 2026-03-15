@@ -33,6 +33,10 @@ type TestAppConfig struct {
 	InitialNamespace string
 	// SkipBackgroundLoading prevents loadAPIResources and loadNamespaces goroutines
 	SkipBackgroundLoading bool
+	// EnableBackgroundLoading opt-ins to background discovery/loading goroutines.
+	// Tests default to hermetic fake-client behavior and should only enable this
+	// when they intentionally exercise those async paths.
+	EnableBackgroundLoading bool
 	// SkipBriefing disables the briefing panel to prevent pulse animation blocking in tests
 	SkipBriefing bool
 }
@@ -43,7 +47,12 @@ func NewTestApp(cfg TestAppConfig) *App {
 	fakeClientset := CreateFakeClientset()
 
 	k8sClient := &k8s.Client{
-		Clientset: fakeClientset,
+		Clientset:                fakeClientset,
+		ContextsOverride:         []string{"test-context", "staging-context", "prod-context"},
+		CurrentContextOverride:   "test-context",
+		CurrentClusterOverride:   "test-cluster",
+		CurrentUserOverride:      "test-user",
+		CurrentNamespaceOverride: cfg.InitialNamespace,
 	}
 
 	// Default values
@@ -79,13 +88,15 @@ func NewTestApp(cfg TestAppConfig) *App {
 		selectedRows:        make(map[int]bool),
 		sortColumn:          -1,
 		sortAscending:       true,
+		cmdHistoryIdx:       -1,
+		aiInputHistoryIdx:   -1,
 		pendingToolApproval: make(chan bool, 1),
 		logger:              logger,
 		mx:                  sync.RWMutex{},
 		navMx:               sync.Mutex{},
 		aiMx:                sync.RWMutex{},
 		cancelLock:          sync.Mutex{},
-		watchMu:             sync.Mutex{},
+		watchMu:             sync.RWMutex{},
 		skipBriefing:        cfg.SkipBriefing, // Disable briefing to prevent pulse animation blocking
 		useSimScreen:        cfg.UseSimulationScreen,
 		styles:              config.DefaultStyles(),
@@ -94,8 +105,9 @@ func NewTestApp(cfg TestAppConfig) *App {
 	app.setupUI()
 	app.setupKeybindings()
 
-	// Optionally skip background loading for faster tests
-	if !cfg.SkipBackgroundLoading {
+	// Keep test apps hermetic by default. Background discovery/loading touches
+	// local kubeconfig and adds noisy goroutines, so tests must opt in explicitly.
+	if cfg.EnableBackgroundLoading && !cfg.SkipBackgroundLoading {
 		go app.loadAPIResources()
 		go app.loadNamespaces()
 	}
@@ -468,11 +480,13 @@ func CreateMinimalTestApp() *App {
 		selectedRows:        make(map[int]bool),
 		sortColumn:          -1,
 		sortAscending:       true,
+		cmdHistoryIdx:       -1,
+		aiInputHistoryIdx:   -1,
 		mx:                  sync.RWMutex{},
 		navMx:               sync.Mutex{},
 		aiMx:                sync.RWMutex{},
 		cancelLock:          sync.Mutex{},
-		watchMu:             sync.Mutex{},
+		watchMu:             sync.RWMutex{},
 		pendingToolApproval: make(chan bool, 1),
 		logger:              slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}

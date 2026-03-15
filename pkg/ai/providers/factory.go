@@ -40,7 +40,6 @@ func GetFactory() *ProviderFactory {
 		defaultFactory.Register("anthropic", NewAnthropicProvider)
 		defaultFactory.Register("azopenai", NewAzureOpenAIProvider)
 		defaultFactory.Register("azure", NewAzureOpenAIProvider) // alias
-		defaultFactory.Register("embedded", NewEmbeddedProvider) // Local llama.cpp server
 	})
 	return defaultFactory
 }
@@ -55,6 +54,10 @@ func (f *ProviderFactory) Register(name string, constructor func(*ProviderConfig
 // Create creates a provider instance based on the configuration
 func (f *ProviderFactory) Create(cfg *ProviderConfig) (Provider, error) {
 	cfg = applyEnvFallbacks(cfg)
+
+	if strings.EqualFold(cfg.Provider, "embedded") {
+		return nil, fmt.Errorf("provider %q has been removed; use ollama or a remote provider instead", cfg.Provider)
+	}
 
 	f.mu.RLock()
 	constructor, ok := f.providers[strings.ToLower(cfg.Provider)]

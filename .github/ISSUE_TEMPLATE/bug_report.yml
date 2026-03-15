@@ -101,4 +101,4 @@ body:
         - Azure OpenAI
         - AWS Bedrock
         - Google Gemini
-        - Embedded LLM
+        - Embedded LLM (removed)

@@ -114,6 +114,7 @@ func initSQLite(dbPath string) (*sql.DB, error) {
 		"PRAGMA synchronous=NORMAL",
 		"PRAGMA busy_timeout=5000",
 		"PRAGMA cache_size=-64000",
+		"PRAGMA foreign_keys=ON",
 	}
 	for _, p := range pragmas {
 		if _, execErr := db.Exec(p); execErr != nil {
@@ -387,6 +388,11 @@ func createTables() error {
 	// Create custom_roles table for user-defined RBAC roles
 	if err := InitCustomRolesTable(); err != nil {
 		fmt.Printf("Warning: failed to create custom_roles table: %v\n", err)
+	}
+
+	// Create chat_sessions and chat_messages tables for AI conversation history
+	if err := InitChatSessionsTable(); err != nil {
+		fmt.Printf("Warning: failed to create chat_sessions tables: %v\n", err)
 	}
 
 	return nil

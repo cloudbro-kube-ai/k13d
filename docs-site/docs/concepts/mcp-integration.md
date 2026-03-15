@@ -915,7 +915,7 @@ type Report struct {
 
 ## Next Steps
 
-- [Configuration Guide](./CONFIGURATION_GUIDE.md)
-- [User Guide](./USER_GUIDE.md)
-- [Architecture Guide](./ARCHITECTURE.md)
+- [Configuration Guide](../getting-started/configuration.md)
+- [User Guide](../user-guide/tui.md)
+- [Architecture Guide](architecture.md)
 - [MCP Specification](https://modelcontextprotocol.io/docs)

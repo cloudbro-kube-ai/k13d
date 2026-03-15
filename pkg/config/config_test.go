@@ -44,13 +44,13 @@ func TestNewDefaultConfig(t *testing.T) {
 	}
 
 	// Verify all expected models are included
-	var hasSolar, hasQwen, hasGemma bool
+	var hasSolar, hasGPTOSS, hasGemma bool
 	for _, m := range cfg.Models {
 		if m.Name == "solar-pro2" && m.Provider == "upstage" {
 			hasSolar = true
 		}
-		if m.Name == "qwen2.5-local" && m.Provider == "ollama" {
-			hasQwen = true
+		if m.Name == "gpt-oss-local" && m.Provider == "ollama" && m.Model == DefaultOllamaModel {
+			hasGPTOSS = true
 		}
 		if m.Name == "gemma2-local" && m.Provider == "ollama" {
 			hasGemma = true
@@ -59,8 +59,8 @@ func TestNewDefaultConfig(t *testing.T) {
 	if !hasSolar {
 		t.Error("Default models should include solar-pro2")
 	}
-	if !hasQwen {
-		t.Error("Default models should include qwen2.5-local")
+	if !hasGPTOSS {
+		t.Error("Default models should include gpt-oss-local")
 	}
 	if !hasGemma {
 		t.Error("Default models should include gemma2-local")
@@ -365,51 +365,40 @@ func TestGetConfigDir(t *testing.T) {
 }
 
 func TestConfigSaveLoad(t *testing.T) {
-	// Create a temp directory for testing
-	tmpDir, err := os.MkdirTemp("", "k13d-config-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
+	tmpPath := filepath.Join(tmpDir, "config.yaml")
+	t.Setenv("K13D_CONFIG", tmpPath)
 
-	// Create config and save to temp location
 	cfg := NewDefaultConfig()
 	cfg.LLM.Provider = "test-provider"
 	cfg.LLM.Model = "test-model"
 	cfg.LLM.APIKey = "test-api-key"
 	cfg.Language = "ko"
 
-	// Save to temp file
-	tmpPath := filepath.Join(tmpDir, "config.yaml")
-	cfgDir := filepath.Dir(tmpPath)
-	if err := os.MkdirAll(cfgDir, 0755); err != nil {
-		t.Fatalf("Failed to create config dir: %v", err)
+	if err := cfg.Save(); err != nil {
+		t.Fatalf("Save() error = %v", err)
 	}
 
-	// Manually save since Save() uses GetConfigPath()
-	data, err := os.ReadFile(GetConfigPath())
-	if err == nil {
-		// If config exists, just verify Save() works
-		if err := cfg.Save(); err != nil {
-			t.Errorf("Save() error = %v", err)
-		}
-	}
-
-	// Test LoadConfig returns defaults when file doesn't exist
 	loadedCfg, err := LoadConfig()
 	if err != nil {
-		t.Errorf("LoadConfig() error = %v", err)
+		t.Fatalf("LoadConfig() error = %v", err)
 	}
 	if loadedCfg == nil {
 		t.Fatal("LoadConfig() returned nil")
 	}
 
-	// Verify it's a valid config (either loaded or default)
-	if loadedCfg.LLM.Provider == "" {
-		t.Error("LoadConfig() returned config with empty provider")
+	if loadedCfg.LLM.Provider != "test-provider" {
+		t.Errorf("LoadConfig().LLM.Provider = %s, want test-provider", loadedCfg.LLM.Provider)
 	}
-
-	_ = data // suppress unused variable warning
+	if loadedCfg.LLM.Model != "test-model" {
+		t.Errorf("LoadConfig().LLM.Model = %s, want test-model", loadedCfg.LLM.Model)
+	}
+	if loadedCfg.LLM.APIKey != "test-api-key" {
+		t.Errorf("LoadConfig().LLM.APIKey = %s, want test-api-key", loadedCfg.LLM.APIKey)
+	}
+	if loadedCfg.Language != "ko" {
+		t.Errorf("LoadConfig().Language = %s, want ko", loadedCfg.Language)
+	}
 }
 
 func TestLLMConfigFields(t *testing.T) {
@@ -487,7 +476,8 @@ func TestMCPServerFields(t *testing.T) {
 }
 
 func TestLoadConfig(t *testing.T) {
-	// Test loading config returns defaults when file doesn't exist
+	t.Setenv("K13D_CONFIG", filepath.Join(t.TempDir(), "missing-config.yaml"))
+
 	cfg, err := LoadConfig()
 	if err != nil {
 		t.Errorf("LoadConfig() error = %v", err)
@@ -499,6 +489,36 @@ func TestLoadConfig(t *testing.T) {
 	// Should have default values
 	if cfg.LLM.Provider == "" {
 		t.Error("LoadConfig() should return default provider")
+	}
+}
+
+func TestSaveCreatesMissingConfigDirAndFile(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "nested", "k13d", "config.yaml")
+	t.Setenv("K13D_CONFIG", configPath)
+
+	cfg := NewDefaultConfig()
+	cfg.LLM.Provider = "ollama"
+	cfg.LLM.Model = DefaultOllamaModel
+	cfg.LLM.Endpoint = DefaultOllamaEndpoint
+
+	if err := cfg.Save(); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	info, err := os.Stat(configPath)
+	if err != nil {
+		t.Fatalf("expected config file to exist: %v", err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Fatalf("config file mode = %o, want 0600", info.Mode().Perm())
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if len(data) == 0 {
+		t.Fatal("expected saved config file to be non-empty")
 	}
 }
 
@@ -546,7 +566,7 @@ func TestModelProfileYAMLRoundTrip(t *testing.T) {
 		ActiveModel: "ollama-local",
 		LLM: LLMConfig{
 			Provider:      "ollama",
-			Model:         "qwen2.5:3b",
+			Model:         DefaultOllamaModel,
 			Endpoint:      "https://ollama.internal:11434",
 			SkipTLSVerify: true,
 			Temperature:   0.7,
@@ -557,7 +577,7 @@ func TestModelProfileYAMLRoundTrip(t *testing.T) {
 			{
 				Name:          "ollama-local",
 				Provider:      "ollama",
-				Model:         "qwen2.5:3b",
+				Model:         DefaultOllamaModel,
 				Endpoint:      "https://ollama.internal:11434",
 				SkipTLSVerify: true,
 				Description:   "Local Ollama with self-signed cert",

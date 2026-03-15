@@ -204,6 +204,10 @@ Switch AI models on the fly:
 - Type `:model gpt-4o` to switch directly
 - Active model marked with `*` in selector
 
+Use `Shift+O` to edit the current active LLM connection from the TUI settings modal.
+
+For the exact file persistence behavior, including when TUI updates `llm`, when it syncs the active profile, and how `:model` rewrites `active_model`, see [Model Settings & Storage](../ai-llm/model-settings-storage.md).
+
 ### AI Actions on Resources
 
 | Key | Action | Description |

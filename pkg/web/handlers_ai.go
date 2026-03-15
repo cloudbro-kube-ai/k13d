@@ -111,12 +111,6 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPut:
-		// Block changes when embedded LLM is active
-		if s.embeddedLLM {
-			WriteErrorSimple(w, http.StatusForbidden, "LLM settings are locked while embedded LLM is active")
-			return
-		}
-
 		var llmSettings struct {
 			Provider        string `json:"provider"`
 			Model           string `json:"model"`
@@ -334,7 +328,6 @@ func (s *Server) handleLLMStatus(w http.ResponseWriter, r *http.Request) {
 		"endpoint":      s.cfg.LLM.Endpoint,
 		"has_api_key":   s.cfg.LLM.APIKey != "",
 		"use_json_mode": s.cfg.LLM.UseJSONMode,
-		"embedded_llm":  s.embeddedLLM,
 	}
 
 	// Add default endpoint hint if not configured
@@ -380,6 +373,10 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 	username := r.Header.Get("X-Username")
 	if username == "" {
 		username = "anonymous"
+	}
+	role := r.Header.Get("X-User-Role")
+	if role == "" {
+		role = "viewer"
 	}
 
 	// Record audit log with k8s context
@@ -437,6 +434,23 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 		command := ""
 		if cmd, ok := args["command"].(string); ok {
 			command = cmd
+		}
+
+		if allowed, reason := allowAIToolExecution(role, toolName, command); !allowed {
+			category := "restricted"
+			if command != "" {
+				category = classifyCommand(command)
+			}
+			blockedJSON, _ := json.Marshal(map[string]interface{}{
+				"type":      "approval_blocked",
+				"tool_name": toolName,
+				"command":   command,
+				"category":  category,
+				"reason":    reason,
+				"warnings":  []string{"This session is running in read-only AI mode."},
+			})
+			_ = sse.WriteEvent("approval", string(blockedJSON))
+			return false
 		}
 
 		decision := s.getToolApprovalDecision(command)
@@ -622,6 +636,9 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 		if langInstruction != "" {
 			message = langInstruction + "\n\n" + message
 		}
+	}
+	if restrictionPrompt := buildAIRestrictionPrompt(role); restrictionPrompt != "" {
+		message = restrictionPrompt + "\n\n" + message
 	}
 
 	// Collect response for session storage
@@ -928,7 +945,7 @@ func getLLMCapabilities(client *ai.Client, provider string) LLMCapabilities {
 		if caps.ToolCalling {
 			caps.Recommendation = "Full agentic AI features available. Ollama tool calling enabled"
 		} else {
-			caps.Recommendation = "Ollama models vary in capabilities. Try llama3, mistral, or qwen2.5 for tool calling support"
+			caps.Recommendation = ollamaToolSupportWarning(client.GetModel())
 		}
 	case "bedrock":
 		caps.JSONMode = true
@@ -1006,8 +1023,8 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 
 	var client *ai.Client
 	// Create temporary client if provider is specified
-	// For Ollama and embedded providers, API key is not required
-	noKeyProviders := map[string]bool{"ollama": true, "embedded": true}
+	// For Ollama, API key is not required
+	noKeyProviders := map[string]bool{"ollama": true}
 	if provider != "" && (apiKey != "" || noKeyProviders[provider]) {
 		// Create temporary client with provided config
 		tempConfig := config.LLMConfig{

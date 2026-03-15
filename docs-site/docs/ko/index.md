@@ -166,10 +166,14 @@ export OPENAI_API_KEY=sk-...
 ./k13d --web --auth-mode local
 
 # Ollama 사용 (로컬, 무료)
-ollama pull qwen2.5:3b && ollama serve
+ollama pull gpt-oss:20b && ollama serve
 ./k13d --web --auth-mode local
 # Settings > AI에서 Provider를 "ollama"로 변경
 ```
+
+중요: Ollama는 **tools/function calling** 을 지원하는 모델이어야 k13d AI Assistant가 정상 동작합니다. 텍스트만 생성하는 모델은 연결은 되어도 agentic 기능이 제대로 동작하지 않을 수 있습니다.
+
+Web UI와 TUI에서 모델을 어떻게 저장하고, `config.yaml` 에 어떤 식으로 반영되는지 자세히 보려면 [모델 설정 및 저장](ai-llm/model-settings-storage.md) 문서를 참고하세요.
 
 지원하는 LLM providers:
 
@@ -197,14 +201,16 @@ ollama pull qwen2.5:3b && ollama serve
 
 ---
 
-## Docker로 실행
+## 배포 상태 안내
 
-```bash
-docker run -d -p 8080:8080 \
-  -v ~/.kube/config:/home/k13d/.kube/config:ro \
-  cloudbro/k13d:latest \
-  --web --auth-mode local
-```
+현재 공식 지원 경로는 **로컬 바이너리 기반 TUI / Web UI** 입니다.
+
+- Docker
+- Docker Compose
+- Kubernetes
+- Helm
+
+위 배포 방식은 아직 **Beta / 준비중** 이며, 공식 퍼블릭 Docker 저장소도 아직 제공되지 않습니다.
 
 ---
 

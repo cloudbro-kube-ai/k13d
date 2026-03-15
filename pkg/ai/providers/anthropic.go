@@ -173,6 +173,8 @@ func (p *AnthropicProvider) ListModels(ctx context.Context) ([]string, error) {
 
 // AskWithTools implements ToolProvider for Anthropic with native tool calling
 func (p *AnthropicProvider) AskWithTools(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
+	tools = sortedToolDefinitions(tools)
+
 	// Convert tools to Anthropic format
 	anthropicTools := make([]anthropicTool, 0, len(tools))
 	for _, t := range tools {
@@ -183,15 +185,12 @@ func (p *AnthropicProvider) AskWithTools(ctx context.Context, prompt string, too
 		})
 	}
 
-	systemPrompt := `You are a Kubernetes expert assistant with DIRECT ACCESS to kubectl and bash tools.
-ALWAYS USE TOOLS to execute commands - NEVER just suggest commands.
-When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`
-
 	messages := []anthropicMessage{
 		{Role: "user", Content: prompt},
 	}
 
-	maxIterations := 10
+	maxIterations := effectiveMaxIterations(p.config)
+	systemPrompt := toolAgentSystemPrompt(maxIterations)
 	for i := 0; i < maxIterations; i++ {
 		reqBody := anthropicRequest{
 			Model:     p.config.Model,
@@ -283,7 +282,7 @@ When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`
 		})
 	}
 
-	return nil
+	return fmt.Errorf("exceeded maximum iterations (%d)", maxIterations)
 }
 
 // doRequest sends a non-streaming request and returns the parsed response

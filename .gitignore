@@ -1,5 +1,7 @@
 # Binaries for programs and plugins
 /k13d
+/kube-ai-dashboard-cli
+/kubectl-k13d
 /k13d_test
 k13d-bench
 k13d-eval

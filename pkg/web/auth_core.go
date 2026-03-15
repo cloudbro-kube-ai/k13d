@@ -79,7 +79,6 @@ type AuthOptions struct {
 	Disabled        bool   // Disable authentication entirely
 	DefaultAdmin    string // Default admin username for local mode
 	DefaultPassword string // Default admin password for local mode
-	EmbeddedLLM     bool   // Using embedded LLM server (disables LLM settings)
 }
 
 // NewAuthManager creates a new AuthManager

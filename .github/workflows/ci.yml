@@ -47,6 +47,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: lint
+    env:
+      CI: "true"
+      XDG_CONFIG_HOME: ${{ runner.temp }}/xdg-config
+      XDG_DATA_HOME: ${{ runner.temp }}/xdg-data
+      XDG_CACHE_HOME: ${{ runner.temp }}/xdg-cache
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -60,14 +65,63 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      - name: Prepare isolated XDG dirs
+        run: mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME"
+
       - name: Run tests
-        env:
-          CI: "true"
         run: go test -race -timeout 600s ./...
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      XDG_CONFIG_HOME: ${{ runner.temp }}/xdg-config
+      XDG_DATA_HOME: ${{ runner.temp }}/xdg-data
+      XDG_CACHE_HOME: ${{ runner.temp }}/xdg-cache
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.8'
+          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Prepare isolated XDG dirs
+        run: mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME"
+
+      - name: Set up kind cluster
+        uses: helm/kind-action@v1.12.0
+
+      - name: Verify cluster access
+        run: |
+          kubectl cluster-info
+          kubectl get nodes -o wide
+
+      - name: Run process E2E
+        env:
+          K13D_RUN_PROCESS_E2E: "1"
+        run: go test -v ./pkg/web -run 'TestProcessE2E_LocalAuth(LoginFlow|LoginFlow_NoConfigFile|FeatureSweep)' -count=1
+
+      - name: Run browser E2E
+        env:
+          K13D_RUN_BROWSER_E2E: "1"
+        run: go test -v ./pkg/web -run 'TestProcessE2E_LocalAuthBrowserFlow(_NoConfigFile)?' -count=1
 
   build:
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, e2e]
     strategy:
       matrix:
         goos: [linux, darwin]
@@ -94,7 +148,7 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, e2e]
     steps:
       - name: Checkout
         uses: actions/checkout@v6

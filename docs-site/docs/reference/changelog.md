@@ -148,7 +148,7 @@ All notable changes to k13d are documented here.
 ## [0.6.1] - 2024-01-05
 
 ### Added
-- Embedded LLM support (`--embedded-llm`)
+- Embedded LLM support (`--embedded-llm`, historical feature later removed)
 - llama.cpp integration
 - Offline operation capability
 

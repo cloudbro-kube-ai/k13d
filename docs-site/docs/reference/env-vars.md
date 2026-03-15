@@ -44,16 +44,12 @@ These variables override `config.yaml` values directly:
 | `K13D_LLM_ENDPOINT` | Custom API endpoint |
 | `K13D_LLM_API_KEY` | API key |
 
-## Embedded LLM
+## Embedded LLM Removal
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `K13D_EMBEDDED_LLM` | Start embedded llama.cpp server | `false` |
-| `K13D_EMBEDDED_LLM_PORT` | Embedded LLM port | `8081` |
-| `K13D_EMBEDDED_LLM_MODEL` | Custom GGUF model path | auto |
-| `K13D_EMBEDDED_LLM_CONTEXT` | Context size (`0` = auto) | `0` |
-| `K13D_DOWNLOAD_MODEL` | Download default model and exit | `false` |
-| `K13D_EMBEDDED_LLM_STATUS` | Print embedded LLM status and exit | `false` |
+Embedded LLM support has been removed from the runtime.
+
+- Use `K13D_LLM_PROVIDER=ollama` with `OLLAMA_HOST` for local inference.
+- Old `K13D_EMBEDDED_*` and `K13D_DOWNLOAD_MODEL` variables are no longer recognized.
 
 ## Provider-Specific Fallbacks
 
@@ -98,7 +94,7 @@ k13d --web --auth-mode local
 
 ```bash
 export K13D_LLM_PROVIDER=ollama
-export K13D_LLM_MODEL=qwen2.5:3b
+export K13D_LLM_MODEL=gpt-oss:20b
 export OLLAMA_HOST=localhost:11434
 k13d
 ```

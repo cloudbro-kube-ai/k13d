@@ -53,17 +53,6 @@ kubectl k13d [flags]
 | `--no-db` | `false` | Disable database-backed persistence |
 | `--storage-info` | `false` | Print storage paths and exit |
 
-### Embedded LLM
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--embedded-llm` | `false` | Start embedded llama.cpp server |
-| `--embedded-llm-port` | `8081` | Embedded LLM port |
-| `--embedded-llm-model` | auto | Custom GGUF model path |
-| `--embedded-llm-context` | `0` | Context size (`0` = auto) |
-| `--download-model` | `false` | Download default embedded model |
-| `--embedded-llm-status` | `false` | Print embedded LLM status and exit |
-
 ### Utility
 
 | Flag | Default | Description |
@@ -98,12 +87,12 @@ k13d --config /etc/k13d/config.yaml
 k13d --web --config ./config/dev.yaml
 ```
 
-### Embedded LLM
+### Local AI With Ollama
 
 ```bash
-k13d --download-model
-k13d --embedded-llm --web --auth-mode local
-k13d --embedded-llm-status
+ollama serve
+ollama pull gpt-oss:20b
+k13d --web --auth-mode local
 ```
 
 ### MCP Server
@@ -130,17 +119,12 @@ These environment variables are read directly by the CLI:
 | `K13D_PASSWORD` | `--admin-password` |
 | `K13D_DB_PATH` | `--db-path` |
 | `K13D_NO_DB` | `--no-db` |
-| `K13D_EMBEDDED_LLM` | `--embedded-llm` |
-| `K13D_EMBEDDED_LLM_PORT` | `--embedded-llm-port` |
-| `K13D_EMBEDDED_LLM_MODEL` | `--embedded-llm-model` |
-| `K13D_EMBEDDED_LLM_CONTEXT` | `--embedded-llm-context` |
-| `K13D_DOWNLOAD_MODEL` | `--download-model` |
-| `K13D_EMBEDDED_LLM_STATUS` | `--embedded-llm-status` |
 
 ## Notes
 
 - `KUBECONFIG` is supported through Kubernetes client-go loading rules.
 - `--auth-mode ldap` and `--auth-mode oidc` select those auth paths, but the stock binary does not yet expose every provider-specific LDAP/OIDC field as first-class CLI flags.
+- Embedded LLM flags were removed. For local inference, use Ollama instead.
 - There is no `--kubeconfig`, `--context`, `--debug`, `--host`, `--tls`, `--password`, `report`, or `bench` CLI in the current binary.
 - `config.yaml` is loaded first, then environment variables override it, then explicit CLI flags override those defaults.
 

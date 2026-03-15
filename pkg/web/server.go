@@ -50,7 +50,6 @@ type Server struct {
 	sessionStore     *session.Store // AI conversation session storage
 	port             int
 	server           *http.Server
-	embeddedLLM      bool // Using embedded LLM server
 	versionInfo      *VersionInfo
 
 	// Protects concurrent access to aiClient and cfg.LLM
@@ -135,7 +134,7 @@ func NewServer(cfg *config.Config, port int, versionInfo *VersionInfo) (*Server,
 		// DefaultPassword: intentionally empty for secure random generation
 	}
 
-	return newServer(cfg, port, authConfig, false, versionInfo)
+	return newServer(cfg, port, authConfig, versionInfo)
 }
 
 // NewServerWithAuth creates a new server with custom authentication options
@@ -158,11 +157,11 @@ func NewServerWithAuth(cfg *config.Config, port int, authOpts *AuthOptions, vers
 		authConfig.DefaultPassword = authOpts.DefaultPassword
 	}
 
-	return newServer(cfg, port, authConfig, authOpts.EmbeddedLLM, versionInfo)
+	return newServer(cfg, port, authConfig, versionInfo)
 }
 
 // newServer contains the shared initialization logic for both constructors.
-func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM bool, versionInfo *VersionInfo) (*Server, error) {
+func newServer(cfg *config.Config, port int, authConfig *AuthConfig, versionInfo *VersionInfo) (*Server, error) {
 	var aiClient *ai.Client
 	var err error
 
@@ -214,10 +213,6 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 		fmt.Printf("  Authentication: Disabled\n")
 	}
 
-	if embeddedLLM {
-		fmt.Printf("  Embedded LLM: Enabled (LLM settings locked)\n")
-	}
-
 	// Initialize session store for AI conversation history
 	sessionStore, err := session.NewStore()
 	if err != nil {
@@ -250,7 +245,6 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 		accessRequestManager: accessReqManager,
 		sessionStore:         sessionStore,
 		port:                 port,
-		embeddedLLM:          embeddedLLM,
 		versionInfo:          versionInfo,
 		pendingApprovals:     make(map[string]*PendingToolApproval),
 		apiRateLimiter:       apiRateLimiter,

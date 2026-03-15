@@ -31,6 +31,7 @@ PLATFORMS := \
 .PHONY: build-all build-linux build-darwin build-windows
 .PHONY: build-plugin install-plugin
 .PHONY: package package-all docker
+.PHONY: test-ui test-ui-e2e test-web test-web-local-e2e test-web-browser-e2e test-e2e
 .PHONY: test-integration docker-test-up docker-test-down docker-test-status
 .PHONY: ollama-setup ollama-pull-models
 .PHONY: bench bench-build bench-list bench-run bench-docker-up bench-docker-down
@@ -146,6 +147,34 @@ test:
 	@echo "Running tests..."
 	$(GOTEST) -v -race -cover ./...
 
+# Run focused TUI tests
+test-ui:
+	@echo "Running TUI tests..."
+	$(GOTEST) -v -race ./pkg/ui/...
+
+# Run focused TUI end-to-end journeys
+test-ui-e2e:
+	@echo "Running TUI E2E journeys..."
+	$(GOTEST) -v ./pkg/ui -run 'TestTUIJourney_|TestTUIAIPanelToggleAndHelpCommand|TestModern_' -count=1
+
+# Run focused Web tests
+test-web:
+	@echo "Running Web tests..."
+	$(GOTEST) -v -race ./pkg/web/...
+
+# Run process-based Web local auth E2E
+test-web-local-e2e:
+	@echo "Running process-based Web local auth E2E..."
+	K13D_RUN_PROCESS_E2E=1 $(GOTEST) -v ./pkg/web -run 'TestProcessE2E_LocalAuth(LoginFlow|LoginFlow_NoConfigFile|FeatureSweep)' -count=1
+
+# Run browser-based Web local auth E2E with Playwright
+test-web-browser-e2e:
+	@echo "Running browser-based Web local auth E2E..."
+	K13D_RUN_BROWSER_E2E=1 $(GOTEST) -v ./pkg/web -run 'TestProcessE2E_LocalAuthBrowserFlow(_NoConfigFile)?' -count=1
+
+# Run the supported end-to-end suites
+test-e2e: test-ui-e2e test-web-local-e2e test-web-browser-e2e
+
 # Run tests with coverage report
 test-coverage:
 	@echo "Running tests with coverage..."
@@ -189,29 +218,29 @@ docker-test-build:
 docker-test-logs:
 	docker compose -f deploy/docker/docker-compose.test.yaml logs -f
 
-# Ollama setup - install and configure Ollama with default model
+# Ollama setup - install and configure Ollama with the recommended default model
 ollama-setup:
-	@echo "Setting up Ollama with default Korean-friendly model..."
+	@echo "Setting up Ollama with the recommended local model..."
 	@command -v ollama >/dev/null 2>&1 || { \
 		echo "Ollama not installed. Installing..."; \
 		curl -fsSL https://ollama.com/install.sh | sh; \
 	}
-	@echo "Pulling default model (qwen2.5:3b - best for Korean, 2-3GB)..."
-	ollama pull qwen2.5:3b
+	@echo "Pulling default model (gpt-oss:20b)..."
+	ollama pull gpt-oss:20b
 	@echo ""
 	@echo "Ollama setup complete!"
 	@echo "Available models:"
 	@ollama list
 	@echo ""
-	@echo "To use with k13d, select 'qwen2.5-local' model in settings."
+	@echo "To use with k13d, select 'gpt-oss-local' model in settings."
 
-# Pull recommended models for low-spec environments (2 cores, 8GB RAM)
+# Pull recommended Ollama models
 ollama-pull-models:
-	@echo "Pulling recommended models for low-spec environments..."
-	@echo "1. qwen2.5:3b - Best multilingual (Korean), tool calling support (~2GB)"
-	ollama pull qwen2.5:3b
+	@echo "Pulling recommended Ollama models..."
+	@echo "1. gpt-oss:20b - Recommended default for local AI"
+	ollama pull gpt-oss:20b
 	@echo ""
-	@echo "2. gemma2:2b - Fastest, minimal resources (~1.5GB)"
+	@echo "2. gemma2:2b - Lightweight fallback"
 	ollama pull gemma2:2b
 	@echo ""
 	@echo "Available models:"
@@ -221,8 +250,8 @@ ollama-pull-models:
 run-local:
 	@echo "Starting k13d with local Ollama..."
 	@command -v ollama >/dev/null 2>&1 || { echo "Ollama not installed. Run 'make ollama-setup' first."; exit 1; }
-	@ollama list | grep -q "qwen2.5:3b" || { echo "Model not found. Run 'make ollama-setup' first."; exit 1; }
-	./$(BUILD_DIR)/$(APP_NAME) --llm-provider ollama --llm-model qwen2.5:3b --llm-endpoint http://localhost:11434
+	@ollama list | grep -q "gpt-oss:20b" || { echo "Model not found. Run 'make ollama-setup' first."; exit 1; }
+	./$(BUILD_DIR)/$(APP_NAME) --llm-provider ollama --llm-model gpt-oss:20b --llm-endpoint http://localhost:11434
 
 # ==========================================
 # AI Benchmark Targets
@@ -248,7 +277,7 @@ bench-run: bench-build
 		--task-dir benchmarks/tasks \
 		--output-dir .build/bench-results \
 		--llm-provider ollama \
-		--llm-model qwen2.5:3b \
+		--llm-model gpt-oss:20b \
 		--llm-endpoint http://localhost:11434 \
 		--output-format markdown
 
@@ -371,8 +400,8 @@ help:
 	@echo "  docker-test-logs  View test service logs"
 	@echo ""
 	@echo "Local LLM (Ollama):"
-	@echo "  ollama-setup      Install Ollama and pull default model (qwen2.5:3b)"
-	@echo "  ollama-pull-models Pull recommended models for low-spec environments"
+	@echo "  ollama-setup      Install Ollama and pull default model (gpt-oss:20b)"
+	@echo "  ollama-pull-models Pull recommended Ollama models"
 	@echo "  run-local         Run k13d with local Ollama (no API key needed)"
 	@echo ""
 	@echo "Installation targets:"

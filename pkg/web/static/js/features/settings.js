@@ -315,8 +315,15 @@ async function testLLMConnection() {
             statusText.style.color = 'var(--accent-red)';
 
             if (status.error === "tool calling 모델이 필요함") {
-                statusText.textContent = 'Tool Calling Not Supported';
-                statusDetail.innerHTML = `<strong>tool calling 모델이 필요함</strong><br>${status.message || 'Please use a model that supports functions/tools.'}`;
+                statusText.textContent = testConfig.provider === 'ollama'
+                    ? 'Ollama Tools Support Required'
+                    : 'Tool Calling Not Supported';
+
+                const extraNote = testConfig.provider === 'ollama'
+                    ? `<br>${escapeHtml(getOllamaToolSupportWarning(testConfig.model))}`
+                    : '';
+
+                statusDetail.innerHTML = `<strong>tool calling 모델이 필요함</strong><br>${escapeHtml(status.message || 'Please use a model that supports functions/tools.')}${extraNote}`;
             } else {
                 statusDetail.textContent = status.error || 'Unknown error';
                 if (status.message) {
@@ -347,22 +354,6 @@ async function loadLLMStatus() {
         const statusText = document.getElementById('llm-status-text');
         const statusDetail = document.getElementById('llm-status-detail');
 
-        // Check if using embedded LLM - disable settings if so
-        if (status.embedded_llm) {
-            indicator.style.background = 'var(--accent-green)';
-            indicator.style.boxShadow = '0 0 8px rgba(158,206,106,0.5)';
-            statusText.textContent = 'Embedded LLM Active';
-            statusText.style.color = 'var(--accent-green)';
-            statusDetail.textContent = `${status.provider} / ${status.model} (Local llama.cpp server)`;
-
-            // Disable all LLM settings inputs
-            disableLLMSettings(true, 'Embedded LLM is active. Settings are managed via CLI flags.');
-            return;
-        }
-
-        // Re-enable settings if not using embedded LLM
-        disableLLMSettings(false);
-
         if (status.configured && status.ready) {
             indicator.style.background = '#f59e0b';
             indicator.style.boxShadow = '0 0 8px rgba(245,158,11,0.5)';
@@ -390,49 +381,6 @@ async function loadLLMStatus() {
     }
 }
 
-function disableLLMSettings(disabled, message) {
-    const settingsLLM = document.getElementById('settings-llm');
-    if (!settingsLLM) return;
-
-    const inputs = settingsLLM.querySelectorAll('input, select, button');
-    inputs.forEach(input => {
-        // Don't disable the test connection button
-        if (input.id === 'llm-test-btn') return;
-        input.disabled = disabled;
-        input.style.opacity = disabled ? '0.5' : '1';
-        input.style.cursor = disabled ? 'not-allowed' : '';
-    });
-
-    // Show/hide embedded LLM notice
-    let notice = document.getElementById('embedded-llm-notice');
-    if (disabled && message) {
-        if (!notice) {
-            notice = document.createElement('div');
-            notice.id = 'embedded-llm-notice';
-            notice.style.cssText = 'margin:16px 0;padding:12px 16px;background:linear-gradient(135deg,rgba(158,206,106,0.15),rgba(122,162,247,0.15));border:1px solid rgba(158,206,106,0.3);border-radius:8px;display:flex;align-items:center;gap:12px;';
-            notice.innerHTML = `
-                        <span style="font-size:24px;">🤖</span>
-                        <div>
-                            <div style="font-weight:600;color:var(--accent-green);margin-bottom:4px;">Embedded LLM Mode</div>
-                            <div style="font-size:12px;color:var(--text-secondary);">${message}</div>
-                        </div>
-                    `;
-            const firstSection = settingsLLM.querySelector('.settings-section');
-            if (firstSection) {
-                firstSection.parentNode.insertBefore(notice, firstSection);
-            }
-        }
-    } else if (notice) {
-        notice.remove();
-    }
-
-    // Hide Ollama setup section when embedded LLM is active
-    const ollamaSection = document.getElementById('ollama-setup-section');
-    if (ollamaSection) {
-        ollamaSection.style.display = disabled ? 'none' : '';
-    }
-}
-
 function updateEndpointPlaceholder(setDefaults = true) {
     const provider = document.getElementById('setting-llm-provider').value;
     const endpointInput = document.getElementById('setting-llm-endpoint');
@@ -441,7 +389,7 @@ function updateEndpointPlaceholder(setDefaults = true) {
     const defaults = {
         'upstage': { placeholder: 'https://api.upstage.ai/v1', hint: '(Default: Upstage Solar API)', model: 'solar-pro2', apiKeyHint: 'up_...' },
         'openai': { placeholder: 'https://api.openai.com/v1', hint: '(Default: OpenAI API)', model: 'gpt-4', apiKeyHint: 'sk-...' },
-        'ollama': { placeholder: 'http://localhost:11434', hint: '(Required for Ollama)', model: 'llama3', apiKeyHint: '' },
+        'ollama': { placeholder: 'http://localhost:11434', hint: '(Required for Ollama)', model: 'gpt-oss:20b', apiKeyHint: '' },
         'gemini': { placeholder: 'https://generativelanguage.googleapis.com/v1beta', hint: '(Default: Gemini API)', model: 'gemini-2.5-flash', apiKeyHint: 'AIza...' },
         'anthropic': { placeholder: 'https://api.anthropic.com', hint: '(Default: Anthropic API)', model: 'claude-3-opus', apiKeyHint: 'sk-ant-...' },
         'bedrock': { placeholder: '', hint: '(Uses AWS credentials)', model: '', apiKeyHint: '' },
@@ -509,6 +457,42 @@ function updateEndpointPlaceholder(setDefaults = true) {
         modelSelect2.style.display = 'none';
         modelSelect2.innerHTML = '';
     }
+
+    updateLLMToolSupportWarning();
+}
+
+function getOllamaToolSupportWarning(model) {
+    const trimmed = (model || '').trim();
+    const subject = trimmed
+        ? `Ollama model "${trimmed}"`
+        : 'This Ollama model';
+
+    return `${subject} must support tools/function calling. Text-only models may connect, but the k13d AI Assistant will not work correctly. Recommended: gpt-oss:20b or another Ollama model whose card explicitly lists tools support.`;
+}
+
+function updateOllamaToolSupportWarning(targetId, provider, model) {
+    const notice = document.getElementById(targetId);
+    if (!notice) return;
+
+    const show = provider === 'ollama';
+    notice.style.display = show ? 'block' : 'none';
+    notice.textContent = show ? getOllamaToolSupportWarning(model) : '';
+}
+
+function updateLLMToolSupportWarning() {
+    updateOllamaToolSupportWarning(
+        'llm-tool-support-warning',
+        document.getElementById('setting-llm-provider')?.value,
+        document.getElementById('setting-llm-model')?.value
+    );
+}
+
+function updateNewModelToolSupportWarning() {
+    updateOllamaToolSupportWarning(
+        'new-model-tool-support-warning',
+        document.getElementById('new-model-provider')?.value,
+        document.getElementById('new-model-model')?.value
+    );
 }
 
 async function fetchAvailableModels() {
@@ -601,6 +585,7 @@ async function loadModelProfiles() {
                             <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
                                 ${escapeHtml(m.provider)} / ${escapeHtml(m.model)} ${m.description ? '- ' + escapeHtml(m.description) : ''}
                             </div>
+                            ${m.warning ? `<div style="margin-top:8px;font-size:12px;color:var(--accent-yellow);line-height:1.5;">${escapeHtml(m.warning)}</div>` : ''}
                         </div>
                         <div style="display:flex;gap:8px;">
                             ${!m.is_active ? `<button class="btn btn-secondary" onclick="switchModel('${escapeHtml(m.name)}')" style="padding:4px 12px;font-size:12px;">Use</button>` : ''}
@@ -625,10 +610,14 @@ async function switchModel(name) {
             showToast(errData.error || 'Failed to switch model', 'error');
             return;
         }
+        const data = await resp.json().catch(() => ({}));
         // Reload both profile list AND LLM form fields to stay in sync
         loadModelProfiles();
         loadSettings();
         showToast('Switched to model: ' + name, 'success');
+        if (data.warning) {
+            showToast(data.warning, 'warning');
+        }
     } catch (e) {
         showToast('Failed to switch model: ' + e.message, 'error');
     }
@@ -656,6 +645,7 @@ async function deleteModel(name) {
 
 function showAddModelForm() {
     document.getElementById('add-model-form').style.display = 'block';
+    updateNewModelToolSupportWarning();
 }
 
 function hideAddModelForm() {
@@ -667,6 +657,7 @@ function hideAddModelForm() {
     document.getElementById('new-model-apikey').value = '';
     document.getElementById('new-model-description').value = '';
     document.getElementById('new-model-skip-tls').checked = false;
+    updateNewModelToolSupportWarning();
 }
 
 async function addModelProfile() {
@@ -696,9 +687,13 @@ async function addModelProfile() {
             showToast(errData.error || 'Failed to add model', 'error');
             return;
         }
+        const data = await resp.json().catch(() => ({}));
         hideAddModelForm();
         loadModelProfiles();
         showToast('Added model: ' + profile.name, 'success');
+        if (data.warning) {
+            showToast(data.warning, 'warning');
+        }
     } catch (e) {
         showToast('Failed to add model: ' + e.message, 'error');
     }
@@ -1340,7 +1335,7 @@ async function loadSettings() {
             const defaults = {
                 'upstage': { model: 'solar-pro2', endpoint: 'https://api.upstage.ai/v1' },
                 'openai': { model: 'gpt-4', endpoint: 'https://api.openai.com/v1' },
-                'ollama': { model: 'llama3', endpoint: 'http://localhost:11434' },
+                'ollama': { model: 'gpt-oss:20b', endpoint: 'http://localhost:11434' },
                 'gemini': { model: 'gemini-2.5-flash', endpoint: 'https://generativelanguage.googleapis.com/v1beta' },
                 'anthropic': { model: 'claude-3-opus', endpoint: 'https://api.anthropic.com' }
             };
@@ -1364,6 +1359,7 @@ async function loadSettings() {
         }
         // Update endpoint placeholder/hints without overwriting loaded values
         updateEndpointPlaceholder(false);
+        updateLLMToolSupportWarning();
         // Load local settings
         updateSettingsUI();
         // Update AI panel status

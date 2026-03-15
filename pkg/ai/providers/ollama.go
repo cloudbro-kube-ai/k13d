@@ -51,16 +51,15 @@ func NewOllamaProvider(cfg *ProviderConfig) (Provider, error) {
 
 	model := cfg.Model
 	if model == "" {
-		model = "llama3.2" // Default Ollama model
+		model = "gpt-oss:20b" // Default Ollama model
 	}
 
+	providerCfg := *cfg
+	providerCfg.Model = model
+	providerCfg.Endpoint = endpoint
+
 	return &OllamaProvider{
-		config: &ProviderConfig{
-			Provider: cfg.Provider,
-			Model:    model,
-			Endpoint: endpoint,
-			APIKey:   cfg.APIKey,
-		},
+		config:     &providerCfg,
 		httpClient: newHTTPClient(cfg.SkipTLSVerify),
 		endpoint:   endpoint,
 	}, nil
@@ -221,15 +220,14 @@ func (p *OllamaProvider) ListModels(ctx context.Context) ([]string, error) {
 // Ollama supports OpenAI-compatible tool calling since v0.3.0.
 func (p *OllamaProvider) AskWithTools(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
 	endpoint := p.endpoint + "/api/chat"
+	tools = sortedToolDefinitions(tools)
+	maxIterations := effectiveMaxIterations(p.config)
 
 	messages := []ChatMessage{
-		{Role: "system", Content: `You are a Kubernetes expert assistant with DIRECT ACCESS to kubectl and bash tools.
-ALWAYS USE TOOLS to execute commands - NEVER just suggest commands.
-When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`},
+		{Role: "system", Content: toolAgentSystemPrompt(maxIterations)},
 		{Role: "user", Content: prompt},
 	}
 
-	maxIterations := 10
 	for i := 0; i < maxIterations; i++ {
 		reqBody := ollamaChatRequest{
 			Model:    p.config.Model,
@@ -314,5 +312,5 @@ When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`},
 		}
 	}
 
-	return fmt.Errorf("exceeded maximum tool call iterations")
+	return fmt.Errorf("exceeded maximum tool call iterations (%d)", maxIterations)
 }

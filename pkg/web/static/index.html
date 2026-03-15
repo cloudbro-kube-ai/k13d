@@ -1011,9 +1011,13 @@
                                     Models</button><span id="fetch-models-status"
                                     style="font-size:11px;color:var(--text-secondary);margin-left:6px;"></span></label>
                             <select id="setting-llm-model-select"
-                                onchange="document.getElementById('setting-llm-model').value=this.value"
+                                onchange="document.getElementById('setting-llm-model').value=this.value; updateLLMToolSupportWarning()"
                                 style="display:none;margin-bottom:4px;"></select>
-                            <input type="text" id="setting-llm-model" placeholder="solar-pro2">
+                            <input type="text" id="setting-llm-model" placeholder="solar-pro2"
+                                oninput="updateLLMToolSupportWarning()">
+                            <div id="llm-tool-support-warning"
+                                style="display:none;margin-top:8px;font-size:12px;line-height:1.5;color:var(--accent-yellow);">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Endpoint <span id="endpoint-hint"
@@ -1076,7 +1080,7 @@
                         </div>
                         <div class="form-group">
                             <label>Provider</label>
-                            <select id="new-model-provider">
+                            <select id="new-model-provider" onchange="updateNewModelToolSupportWarning()">
                                 <option value="upstage">Upstage Solar</option>
                                 <option value="openai">OpenAI</option>
                                 <option value="ollama">Ollama</option>
@@ -1087,7 +1091,11 @@
                         </div>
                         <div class="form-group">
                             <label>Model</label>
-                            <input type="text" id="new-model-model" placeholder="e.g., solar-pro2">
+                            <input type="text" id="new-model-model" placeholder="e.g., solar-pro2"
+                                oninput="updateNewModelToolSupportWarning()">
+                            <div id="new-model-tool-support-warning"
+                                style="display:none;margin-top:8px;font-size:12px;line-height:1.5;color:var(--accent-yellow);">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Endpoint (optional)</label>
@@ -1181,14 +1189,18 @@
                                 <label style="font-size:12px;color:var(--text-secondary);">Recommended models for
                                     Kubernetes tasks:</label>
                                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;">
-                                    <button class="btn btn-secondary" onclick="pullOllamaModel('llama3.2:3b')"
-                                        style="font-size:11px;padding:4px 10px;">llama3.2:3b (2GB)</button>
+                                    <button class="btn btn-secondary" onclick="pullOllamaModel('gpt-oss:20b')"
+                                        style="font-size:11px;padding:4px 10px;">gpt-oss:20b (recommended)</button>
                                     <button class="btn btn-secondary" onclick="pullOllamaModel('qwen2.5:7b')"
-                                        style="font-size:11px;padding:4px 10px;">qwen2.5:7b (4GB)</button>
+                                        style="font-size:11px;padding:4px 10px;">qwen2.5:7b (verify tools)</button>
+                                    <button class="btn btn-secondary" onclick="pullOllamaModel('gemma2:2b')"
+                                        style="font-size:11px;padding:4px 10px;">gemma2:2b (2GB)</button>
                                     <button class="btn btn-secondary" onclick="pullOllamaModel('mistral:7b')"
                                         style="font-size:11px;padding:4px 10px;">mistral:7b (4GB)</button>
-                                    <button class="btn btn-secondary" onclick="pullOllamaModel('codellama:7b')"
-                                        style="font-size:11px;padding:4px 10px;">codellama:7b (4GB)</button>
+                                </div>
+                                <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;">
+                                    Only use Ollama models that explicitly support tools/function calling. Text-only
+                                    models may connect, but the AI Assistant will not work correctly.
                                 </div>
                                 <div style="display:flex;gap:8px;align-items:center;">
                                     <input type="text" id="ollama-custom-model" placeholder="Or enter model name..."

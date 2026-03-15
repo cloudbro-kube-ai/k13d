@@ -185,15 +185,14 @@ func (p *AzureOpenAIProvider) ListModels(ctx context.Context) ([]string, error) 
 func (p *AzureOpenAIProvider) AskWithTools(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
 	endpoint := fmt.Sprintf("%s/openai/deployments/%s/chat/completions?api-version=2024-02-15-preview",
 		p.endpoint, p.deployment)
+	tools = sortedToolDefinitions(tools)
+	maxIterations := effectiveMaxIterations(p.config)
 
 	messages := []ChatMessage{
-		{Role: "system", Content: `You are a Kubernetes expert assistant with DIRECT ACCESS to kubectl and bash tools.
-ALWAYS USE TOOLS to execute commands - NEVER just suggest commands.
-When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`},
+		{Role: "system", Content: toolAgentSystemPrompt(maxIterations)},
 		{Role: "user", Content: prompt},
 	}
 
-	maxIterations := 10
 	for i := 0; i < maxIterations; i++ {
 		reqBody := azureOpenAIChatRequest{
 			Messages: messages,
@@ -286,7 +285,7 @@ When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`},
 		}
 	}
 
-	return fmt.Errorf("exceeded maximum iterations")
+	return fmt.Errorf("exceeded maximum iterations (%d)", maxIterations)
 }
 
 // azureOpenAIChatRequest extends the request with tools support

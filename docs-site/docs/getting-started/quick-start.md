@@ -2,6 +2,10 @@
 
 This guide will get you up and running with k13d in under 5 minutes.
 
+!!! info "Scope of this quick start"
+    This quick start covers the **currently supported path**: running the k13d **binary locally** for the **TUI** and **Web UI**.
+    Docker, Docker Compose, Kubernetes, and Helm deployment flows are still Beta / in preparation.
+
 ## Prerequisites
 
 Before you begin, ensure you have:
@@ -26,8 +30,8 @@ Before you begin, ensure you have:
 === "Web Mode"
 
     ```bash
-    # Start web server
-    ./k13d --web --port 8080
+    # Start web server with local auth
+    ./k13d --web --auth-mode local --port 8080
 
     # Open in browser
     open http://localhost:8080
@@ -113,15 +117,17 @@ For the best AI experience, configure an LLM provider:
 
     ```bash
     # Start Ollama first
-    ollama pull qwen2.5:3b
+    ollama pull gpt-oss:20b
     ```
 
     ```yaml title="~/.config/k13d/config.yaml"
     llm:
       provider: ollama
-      model: qwen2.5:3b
-      endpoint: http://localhost:11434/v1
+      model: gpt-oss:20b
+      endpoint: http://localhost:11434
     ```
+
+    Use an Ollama model that explicitly supports **tools/function calling**. Text-only Ollama models may connect, but the k13d AI Assistant will not work correctly.
 
 ---
 

@@ -37,6 +37,8 @@ enable_audit: true
 
 `config.yaml` does **not** currently persist LDAP or OIDC provider settings from the Web UI. Those provider settings remain startup-configured in the current build.
 
+For the exact Web UI / TUI save behavior, field ownership, and file write rules, see [Model Settings & Storage](../ai-llm/model-settings-storage.md).
+
 ---
 
 ## Full Configuration Reference
@@ -44,7 +46,7 @@ enable_audit: true
 ```yaml title="~/.config/k13d/config.yaml"
 # LLM Configuration
 llm:
-  provider: upstage         # upstage, openai, ollama, azopenai, anthropic, gemini, bedrock, embedded
+  provider: upstage         # upstage, openai, ollama, azopenai, anthropic, gemini, bedrock
   model: solar-pro2         # Model name
   endpoint: ""              # Custom endpoint (optional)
   api_key: ""               # API key
@@ -167,39 +169,32 @@ Run models locally for air-gapped environments.
 ```bash
 # Install and run Ollama
 curl -fsSL https://ollama.com/install.sh | sh
-ollama pull qwen2.5:3b
+ollama pull gpt-oss:20b
 ```
 
 ```yaml
 llm:
   provider: ollama
-  model: qwen2.5:3b
-  endpoint: http://localhost:11434/v1
+  model: gpt-oss:20b
+  endpoint: http://localhost:11434
 ```
+
+Important: k13d requires an Ollama model with **tools/function calling** support. Text-only Ollama models may connect successfully, but the AI Assistant will not work correctly. Use `gpt-oss:20b` or another Ollama model whose model card explicitly lists tools support.
 
 **Recommended Ollama Models:**
 
 | Model | Size | Notes |
 |-------|------|-------|
-| `qwen2.5:3b` | 2GB | Best for low-spec machines |
-| `qwen2.5:7b` | 4.5GB | Better reasoning |
-| `llama3.2:3b` | 2GB | Good general model |
+| `gpt-oss:20b` | 14GB | Recommended default for local AI |
+| `qwen2.5:7b` | 4.5GB | Verify tools/function calling support before use |
+| `gemma2:2b` | 2GB | Lightweight fallback only if the specific Ollama tag supports tools |
 
-### Embedded LLM
+### Embedded LLM Removal
 
-Zero external dependencies - built-in llama.cpp.
+Embedded LLM support has been removed due to poor quality and maintenance cost.
 
-!!! warning "Limited Capability"
-    Embedded models have significantly reduced capabilities.
-    Use only for testing or when no other option is available.
-
-```bash
-# Download model (one-time)
-./k13d --download-model
-
-# Run with embedded LLM
-./k13d --embedded-llm --web --auth-mode local
-```
+- For local/private inference, use **Ollama**
+- If an old config still says `provider: embedded`, change it to `provider: ollama`
 
 ---
 
@@ -491,11 +486,11 @@ models:
     api_key: ${OPENAI_API_KEY}
     description: "OpenAI GPT-4o (Faster)"
 
-  - name: qwen2.5-local
+  - name: gpt-oss-local
     provider: ollama
-    model: qwen2.5:3b
+    model: gpt-oss:20b
     endpoint: http://localhost:11434
-    description: "Local Ollama (Korean, low-spec friendly)"
+    description: "Local Ollama (recommended default)"
 
 active_model: solar-pro2
 ```
@@ -505,8 +500,8 @@ active_model: solar-pro2
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | Yes | Unique profile name (used in `:model <name>`) |
-| `provider` | Yes | LLM provider: `upstage`, `openai`, `ollama`, `anthropic`, `azopenai`, `gemini`, `bedrock`, `embedded` |
-| `model` | Yes | Model identifier (e.g., `gpt-4o`, `solar-pro2`, `qwen2.5:3b`) |
+| `provider` | Yes | LLM provider: `upstage`, `openai`, `ollama`, `anthropic`, `azopenai`, `gemini`, `bedrock` |
+| `model` | Yes | Model identifier (e.g., `gpt-4o`, `solar-pro2`, `gpt-oss:20b`) |
 | `endpoint` | No | Custom API endpoint (required for Ollama/Azure) |
 | `api_key` | No | API key (can also use environment variables) |
 | `description` | No | Human-readable description shown in model selector |
@@ -524,6 +519,8 @@ active_model: solar-pro2
 
 - Go to Settings > LLM Settings to add, delete, or switch profiles
 - Saving Web UI LLM settings updates the currently active profile
+
+For the full persistence details, including which fields stay global in `llm` and which fields are copied into `models[]`, see [Model Settings & Storage](../ai-llm/model-settings-storage.md).
 
 !!! tip "Cost Optimization"
     Use a lightweight model (e.g., Ollama local) for routine monitoring and switch to a powerful model (e.g., GPT-4o) only when you need deep analysis.
@@ -561,3 +558,5 @@ Settings can also be changed via the Web UI:
 4. Click **Save Settings**
 
 Changes take effect immediately without restart.
+
+Important: saving from Web UI writes the current in-memory values back to `config.yaml`. If your file used `${ENV_VAR}` placeholders for API keys, those may be serialized as resolved literal values when you save. See [Model Settings & Storage](../ai-llm/model-settings-storage.md).

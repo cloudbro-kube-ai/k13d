@@ -244,9 +244,8 @@ func GetConfigDir() (string, error) {
 // DefaultOllamaEndpoint is the default Ollama server endpoint
 const DefaultOllamaEndpoint = "http://localhost:11434"
 
-// DefaultOllamaModel is the recommended model for low-spec environments (2 cores, 8GB RAM)
-// qwen2.5:3b provides excellent multilingual support (Korean included) with tool calling
-const DefaultOllamaModel = "qwen2.5:3b"
+// DefaultOllamaModel is the recommended Ollama model for local AI workflows.
+const DefaultOllamaModel = "gpt-oss:20b"
 
 // DefaultSolarEndpoint is the default Upstage Solar API endpoint
 const DefaultSolarEndpoint = "https://api.upstage.ai/v1"
@@ -317,11 +316,11 @@ func NewDefaultConfig() *Config {
 				Description: "OpenAI GPT-4o (Faster)",
 			},
 			{
-				Name:        "qwen2.5-local",
+				Name:        "gpt-oss-local",
 				Provider:    "ollama",
 				Model:       DefaultOllamaModel,
 				Endpoint:    DefaultOllamaEndpoint,
-				Description: "Qwen2.5 3B (Local/Offline, Korean supported, low-spec friendly)",
+				Description: "OpenAI gpt-oss 20B (Local/Offline, recommended Ollama default)",
 			},
 			{
 				Name:        "gemma2-local",

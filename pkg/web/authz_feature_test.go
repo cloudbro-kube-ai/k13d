@@ -42,14 +42,17 @@ func TestFeaturePermissions_ViewerLimitedFeatures(t *testing.T) {
 
 	// Viewer should NOT have helm, terminal, AI, etc.
 	deniedFeatures := []Feature{
-		FeatureHelmManagement, FeatureSecurityScan, FeatureAIAssistant,
-		FeatureTerminal, FeatureReports,
+		FeatureHelmManagement, FeatureSecurityScan, FeatureTerminal, FeatureReports,
 		FeaturePortForward, FeatureGitOps, FeatureVelero,
 	}
 	for _, f := range deniedFeatures {
 		if az.IsFeatureAllowed("viewer", f) {
 			t.Errorf("viewer should NOT have access to feature %s", f)
 		}
+	}
+
+	if !az.IsFeatureAllowed("viewer", FeatureAIAssistant) {
+		t.Error("viewer should have access to AI assistant")
 	}
 }
 

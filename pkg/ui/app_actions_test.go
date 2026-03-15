@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -103,5 +104,29 @@ func TestScaleValidationRange(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestOllamaModelToolsHint(t *testing.T) {
+	got := ollamaModelToolsHint("llama3.2")
+	if !strings.Contains(got, "tools/function calling") {
+		t.Fatalf("expected tools warning, got %q", got)
+	}
+	if !strings.Contains(got, "gpt-oss:20b") {
+		t.Fatalf("expected recommended Ollama model, got %q", got)
+	}
+}
+
+func TestBuildLLMInfoTextIncludesOllamaWarning(t *testing.T) {
+	got := buildLLMInfoText("ollama", "llama3.2", "http://localhost:11434", false)
+	if !strings.Contains(got, "Tools Required") {
+		t.Fatalf("expected tools required note, got %q", got)
+	}
+}
+
+func TestBuildLLMInfoTextOmitsOllamaWarningForOpenAI(t *testing.T) {
+	got := buildLLMInfoText("openai", "gpt-4o", "https://api.openai.com/v1", true)
+	if strings.Contains(got, "Tools Required") {
+		t.Fatalf("did not expect Ollama-only note for OpenAI config, got %q", got)
 	}
 }

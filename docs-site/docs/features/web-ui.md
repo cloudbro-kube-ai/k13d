@@ -526,37 +526,13 @@ Deploy k13d on various platforms.
 
 ---
 
-## Docker Compose
+## Deployment Note
 
-Quick local deployment with Docker Compose.
+!!! warning "Beta / not supported yet"
+    Docker, Docker Compose, Kubernetes, and Helm deployment flows are still **Beta / in preparation** and are **not officially supported** for end users.
 
-### Compose Configuration
+Use the supported local binary flow for the Web UI today:
 
-```yaml
-version: '3.8'
-services:
-  k13d:
-    image: cloudbro/k13d:latest
-    ports:
-      - "8080:8080"
-    volumes:
-      - ~/.kube:/root/.kube:ro
-    environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-```
-
-### With Ollama
-
-```yaml
-version: '3.8'
-services:
-  k13d:
-    image: cloudbro/k13d:latest
-    ports:
-      - "8080:8080"
-    environment:
-      - LLM_PROVIDER=ollama
-      - LLM_ENDPOINT=http://ollama:11434
-  ollama:
-    image: ollama/ollama:latest
+```bash
+./k13d --web --auth-mode local
 ```

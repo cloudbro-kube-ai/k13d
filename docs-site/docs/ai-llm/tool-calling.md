@@ -2,6 +2,8 @@
 
 k13d uses AI tool calling to execute kubectl commands, bash scripts, and MCP tools based on natural language requests.
 
+Important: the connected model itself must support **tools/function calling**. This is especially important for **Ollama**. Some Ollama models can connect and produce text, but k13d's AI Assistant will not work correctly unless the selected model explicitly supports tools.
+
 ## Overview
 
 Tool calling allows the AI to:

@@ -25,9 +25,6 @@ k13d --web --port 3000
 
 # With local authentication
 k13d --web --auth-mode local
-
-# With embedded LLM (no API key needed)
-k13d --web --embedded-llm
 ```
 
 ### Access the Dashboard
@@ -167,6 +164,10 @@ Settings → AI → LLM Configuration
 | **Model** | gpt-4, llama3.2, etc. |
 | **Endpoint** | Custom API endpoint |
 | **API Key** | Provider API key |
+
+The Web UI saves active LLM settings back to `config.yaml` immediately and can also manage named profiles through **Add Model Profile**, **Use**, and **Delete**.
+
+For the full storage model, including how `llm`, `models[]`, and `active_model` change, see [Model Settings & Storage](../ai-llm/model-settings-storage.md).
 
 ### MCP Servers
 

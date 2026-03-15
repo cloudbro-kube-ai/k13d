@@ -24,12 +24,18 @@
 <p align="center">
   <a href="https://cloudbro-kube-ai.github.io/k13d"><strong>Documentation</strong></a> ·
   <a href="https://github.com/cloudbro-kube-ai/k13d/releases"><strong>Download</strong></a> ·
-  <a href="https://cloudbro-kube-ai.github.io/k13d/latest/features/web-ui/"><strong>Web UI Guide</strong></a> ·
-  <a href="https://cloudbro-kube-ai.github.io/k13d/latest/features/tui/"><strong>TUI Guide</strong></a> ·
-  <a href="https://cloudbro-kube-ai.github.io/k13d/latest/ko/"><strong>한국어</strong></a>
+  <a href="https://cloudbro-kube-ai.github.io/k13d/features/web-ui/"><strong>Web UI Guide</strong></a> ·
+  <a href="https://cloudbro-kube-ai.github.io/k13d/features/tui/"><strong>TUI Guide</strong></a> ·
+  <a href="https://cloudbro-kube-ai.github.io/k13d/ko/"><strong>한국어</strong></a>
 </p>
 
 ---
+
+> [!WARNING]
+> **Current support status**
+> k13d currently supports and recommends **local single-binary usage** for the **TUI** and **Web UI**.
+> **Docker, Docker Compose, Kubernetes, Helm, and other containerized/in-cluster deployment paths are still Beta / in preparation and are not officially supported yet.**
+> There is also **no official public Docker image repository** for end users at this time, so the deployment docs should be treated as roadmap/reference material, not a supported install path.
 
 ## Web UI
 
@@ -76,14 +82,6 @@ Opens a full-featured terminal dashboard. Use `j/k` to navigate, `Tab` to open t
 
 > If `--admin-user` and `--admin-password` are not specified, the username defaults to `admin` and a **secure random password is generated** and printed to the terminal on startup. You can also set credentials via environment variables: `K13D_USERNAME` and `K13D_PASSWORD`.
 
-#### Web UI mode — production (Kubernetes RBAC)
-
-```bash
-./k13d --web --auth-mode token
-```
-
-Uses Kubernetes service account tokens validated via the TokenReview API. Best for in-cluster deployments where users authenticate with their K8s credentials.
-
 #### Both modes — Web UI + TUI simultaneously
 
 ```bash
@@ -95,15 +93,20 @@ Run the Web UI as a background process, then launch the TUI in the foreground. B
 
 #### Authentication Modes
 
-| Mode | Flag | Use Case |
-|------|------|----------|
-| **Local** | `--auth-mode local` | Local dev, desktop, standalone deployments |
-| **Token** | `--auth-mode token` | In-cluster with K8s RBAC (default) |
-| **LDAP** | `--auth-mode ldap` | LDAP auth path; provider config still needs startup wiring |
-| **OIDC** | `--auth-mode oidc` | OIDC auth path; provider config still needs startup wiring |
+| Mode | Flag | Status / Use Case |
+|------|------|-------------------|
+| **Local** | `--auth-mode local` | Supported. Recommended for local desktop Web UI use |
+| **Token** | `--auth-mode token` | Preview only. Deployment-oriented path is not officially supported yet |
+| **LDAP** | `--auth-mode ldap` | Preview only. Provider wiring is still incomplete |
+| **OIDC** | `--auth-mode oidc` | Preview only. Provider wiring is still incomplete |
 | **No Auth** | `--no-auth` | Development/testing only (not recommended) |
 
 `--auth-mode ldap` and `--auth-mode oidc` select those login paths, but the current stock binary does not yet expose every provider-specific LDAP/OIDC field as dedicated CLI flags. The Web UI auth settings page currently shows runtime status rather than persisting provider config.
+
+If you're evaluating k13d today, focus on:
+
+- Local **TUI** with your existing kubeconfig
+- Local **Web UI** via `./k13d --web --auth-mode local`
 
 #### Flags
 
@@ -118,8 +121,6 @@ Run the Web UI as a background process, then launch the TUI in the foreground. B
 | `--admin-user <name>` | Admin username for local auth (env: `K13D_USERNAME`) |
 | `--admin-password <pw>` | Admin password for local auth (env: `K13D_PASSWORD`) |
 | `--no-auth` | Disable auth (dev only) |
-| `--embedded-llm` | Use built-in LLM (no API key needed) |
-| `--download-model` | Download the default embedded model |
 | `-n <namespace>` | Start in a specific namespace |
 | `-A` | Start with all namespaces |
 | `--version` | Show version information |
@@ -188,14 +189,14 @@ export K13D_LLM_API_KEY=sk-...
 ./k13d --web --auth-mode local
 
 # Ollama (local, free, no API key)
-ollama pull qwen2.5:3b && ollama serve
+ollama pull gpt-oss:20b && ollama serve
 ./k13d --web --auth-mode local
 # Set Provider: "ollama" in Settings > AI
-
-# Embedded LLM (zero dependencies, no API key)
-./k13d --download-model              # One-time download
-./k13d --embedded-llm --web --auth-mode local
 ```
+
+For **Ollama**, choose a model that explicitly supports **tools/function calling**. Some Ollama models can connect and generate text, but k13d's AI Assistant will not work correctly unless the model supports tools. `gpt-oss:20b` is the recommended default.
+
+Embedded LLM support has been removed. For local/private inference, use **Ollama** instead.
 
 ### Supported AI Providers
 
@@ -207,8 +208,7 @@ ollama pull qwen2.5:3b && ollama serve
 | **Upstage Solar** | Solar Pro2, Solar Pro | Good balance of quality/cost |
 | **Azure OpenAI** | GPT-4, GPT-3.5 | Enterprise Azure deployments |
 | **AWS Bedrock** | Claude, Llama, Mistral | AWS-hosted models |
-| **Ollama** | Qwen, Llama, Mistral | Local, free, no API key |
-| **Embedded** | Qwen2.5-0.5B | Built-in, no setup needed |
+| **Ollama** | GPT-OSS, Qwen, Llama, Mistral | Local, free, no API key, choose a tools-capable model |
 
 The AI assistant can:
 
@@ -242,7 +242,7 @@ mcp:
       args: ["-y", "@modelcontextprotocol/server-sequential-thinking"]
 ```
 
-See the [MCP Guide](https://cloudbro-kube-ai.github.io/k13d/latest/concepts/mcp-integration/) for details.
+See the [MCP Guide](https://cloudbro-kube-ai.github.io/k13d/concepts/mcp-integration/) for details.
 
 ---
 
@@ -251,11 +251,10 @@ See the [MCP Guide](https://cloudbro-kube-ai.github.io/k13d/latest/concepts/mcp-
 ```bash
 ./k13d                                    # TUI mode
 ./k13d --web --auth-mode local           # Web UI — local auth (desktop use)
-./k13d --web --auth-mode token           # Web UI — K8s RBAC auth (production)
+./k13d --web --auth-mode token           # Web UI — token auth path (preview only)
 ./k13d --web --port 3000                 # Custom port
 ./k13d --web --no-auth                   # No auth (dev only)
 ./k13d --mcp                             # MCP server mode
-./k13d --embedded-llm --web --auth-mode local  # With built-in LLM
 ./k13d -n kube-system                    # Start in specific namespace
 ./k13d -A                                # Start with all namespaces
 ./k13d --version                         # Show version
@@ -278,29 +277,13 @@ source <(./k13d --completion zsh)
 
 ---
 
-## Docker
+## Deployment Status
 
-```bash
-docker run -d -p 8080:8080 \
-  -v ~/.kube/config:/home/k13d/.kube/config:ro \
-  cloudbro/k13d:latest \
-  --web --auth-mode local
-```
+Docker, Docker Compose, Kubernetes, and Helm packaging are still **Beta / in preparation**.
 
-With environment variables:
-
-```bash
-docker run -d -p 8080:8080 \
-  -v ~/.kube/config:/home/k13d/.kube/config:ro \
-  -e K13D_AUTH_MODE=local \
-  -e K13D_USERNAME=admin \
-  -e K13D_PASSWORD=mysecurepassword \
-  -e K13D_LLM_PROVIDER=openai \
-  -e K13D_LLM_MODEL=gpt-4o \
-  -e K13D_LLM_API_KEY=$OPENAI_API_KEY \
-  cloudbro/k13d:latest \
-  --web
-```
+- No official public Docker image repository is available yet
+- The deployment files in this repository are roadmap/reference material for upcoming work
+- The supported experience today is the local **TUI** and local **Web UI**
 
 ---
 
@@ -325,7 +308,7 @@ k13d uses `~/.config/k13d/config.yaml` for configuration:
 | `aliases.yaml` | Resource command aliases |
 | `views.yaml` | Per-resource view settings (sort defaults) |
 
-See the [Configuration Guide](https://cloudbro-kube-ai.github.io/k13d/latest/getting-started/configuration/) for full reference.
+See the [Configuration Guide](https://cloudbro-kube-ai.github.io/k13d/getting-started/configuration/) for full reference.
 
 ---
 
@@ -333,15 +316,15 @@ See the [Configuration Guide](https://cloudbro-kube-ai.github.io/k13d/latest/get
 
 **Full documentation: [https://cloudbro-kube-ai.github.io/k13d](https://cloudbro-kube-ai.github.io/k13d)**
 
-- [Installation Guide](https://cloudbro-kube-ai.github.io/k13d/latest/getting-started/installation/)
-- [Web UI Features](https://cloudbro-kube-ai.github.io/k13d/latest/features/web-ui/)
-- [TUI Features](https://cloudbro-kube-ai.github.io/k13d/latest/features/tui/)
-- [AI Assistant](https://cloudbro-kube-ai.github.io/k13d/latest/features/ai-assistant/)
-- [Configuration](https://cloudbro-kube-ai.github.io/k13d/latest/getting-started/configuration/)
-- [MCP Integration](https://cloudbro-kube-ai.github.io/k13d/latest/concepts/mcp-integration/)
-- [Docker Deployment](https://cloudbro-kube-ai.github.io/k13d/latest/deployment/docker/)
-- [Kubernetes Deployment](https://cloudbro-kube-ai.github.io/k13d/latest/deployment/kubernetes/)
-- [한국어 가이드](https://cloudbro-kube-ai.github.io/k13d/latest/ko/)
+- [Installation Guide](https://cloudbro-kube-ai.github.io/k13d/getting-started/installation/)
+- [Web UI Features](https://cloudbro-kube-ai.github.io/k13d/features/web-ui/)
+- [TUI Features](https://cloudbro-kube-ai.github.io/k13d/features/tui/)
+- [AI Assistant](https://cloudbro-kube-ai.github.io/k13d/features/ai-assistant/)
+- [Configuration](https://cloudbro-kube-ai.github.io/k13d/getting-started/configuration/)
+- [MCP Integration](https://cloudbro-kube-ai.github.io/k13d/concepts/mcp-integration/)
+- [Docker Deployment (Beta / not officially supported)](https://cloudbro-kube-ai.github.io/k13d/deployment/docker/)
+- [Kubernetes Deployment (Beta / not officially supported)](https://cloudbro-kube-ai.github.io/k13d/deployment/kubernetes/)
+- [한국어 가이드](https://cloudbro-kube-ai.github.io/k13d/ko/)
 
 ---
 

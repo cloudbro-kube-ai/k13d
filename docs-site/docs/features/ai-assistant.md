@@ -196,7 +196,7 @@ models:
     model: gpt-4
   - name: local-llama
     provider: ollama
-    model: llama3.2
+    model: gpt-oss:20b
     endpoint: http://localhost:11434
 
 active_model: gpt-4
@@ -229,8 +229,9 @@ Real-time response streaming for immediate feedback.
 | **Anthropic** | ✅ | Claude models |
 | **Google Gemini** | ✅ | Fast responses |
 | **Azure OpenAI** | ✅ | Enterprise |
-| **Ollama** | ✅ | Local, air-gapped |
-| **Embedded SLLM** | ⚠️ | Zero-dependency |
+| **Ollama** | Model-dependent | Local, air-gapped with a tools-capable model |
+
+When using Ollama, choose a model that explicitly supports **tools/function calling**. A plain text-only model may connect successfully but still fail to operate the k13d AI Assistant.
 
 ### Configuration
 

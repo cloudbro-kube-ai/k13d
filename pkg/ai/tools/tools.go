@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -191,6 +192,9 @@ func (r *Registry) GetMCPTools() []*Tool {
 			mcpTools = append(mcpTools, tool)
 		}
 	}
+	sort.Slice(mcpTools, func(i, j int) bool {
+		return mcpTools[i].Name < mcpTools[j].Name
+	})
 	return mcpTools
 }
 
@@ -210,6 +214,9 @@ func (r *Registry) List() []*Tool {
 	for _, t := range r.tools {
 		tools = append(tools, t)
 	}
+	sort.Slice(tools, func(i, j int) bool {
+		return tools[i].Name < tools[j].Name
+	})
 	return tools
 }
 
@@ -218,7 +225,13 @@ func (r *Registry) ToOpenAIFormat() []map[string]interface{} {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	result := make([]map[string]interface{}, 0, len(r.tools))
-	for _, tool := range r.tools {
+	names := make([]string, 0, len(r.tools))
+	for name := range r.tools {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		tool := r.tools[name]
 		result = append(result, map[string]interface{}{
 			"type": "function",
 			"function": map[string]interface{}{

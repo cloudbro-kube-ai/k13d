@@ -246,109 +246,6 @@ func newGeminiModelsServer(t *testing.T, models []string) *httptest.Server {
 	}))
 }
 
-// newEmbeddedNonStreamServer returns an httptest server for embedded non-streaming responses.
-func newEmbeddedNonStreamServer(t *testing.T, content string) *httptest.Server {
-	t.Helper()
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp := embeddedChatResponse{
-			ID:    "chatcmpl-embedded",
-			Model: "qwen2.5",
-			Choices: []struct {
-				Index   int `json:"index"`
-				Message struct {
-					Role      string     `json:"role"`
-					Content   string     `json:"content"`
-					ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-				} `json:"message"`
-				Delta struct {
-					Content   string     `json:"content"`
-					ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-				} `json:"delta"`
-				FinishReason string `json:"finish_reason"`
-			}{
-				{
-					Message: struct {
-						Role      string     `json:"role"`
-						Content   string     `json:"content"`
-						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-					}{
-						Role:    "assistant",
-						Content: content,
-					},
-					FinishReason: "stop",
-				},
-			},
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(resp)
-	}))
-}
-
-// newEmbeddedStreamServer returns an httptest server for embedded SSE streaming.
-func newEmbeddedStreamServer(t *testing.T, tokens []string) *httptest.Server {
-	t.Helper()
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.WriteHeader(http.StatusOK)
-
-		for _, token := range tokens {
-			resp := embeddedChatResponse{
-				ID: "chatcmpl-stream",
-				Choices: []struct {
-					Index   int `json:"index"`
-					Message struct {
-						Role      string     `json:"role"`
-						Content   string     `json:"content"`
-						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-					} `json:"message"`
-					Delta struct {
-						Content   string     `json:"content"`
-						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-					} `json:"delta"`
-					FinishReason string `json:"finish_reason"`
-				}{
-					{
-						Delta: struct {
-							Content   string     `json:"content"`
-							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-						}{Content: token},
-					},
-				},
-			}
-			data, _ := json.Marshal(resp)
-			fmt.Fprintf(w, "data: %s\n\n", data)
-		}
-		// Final event with stop reason
-		finalResp := embeddedChatResponse{
-			ID: "chatcmpl-stream",
-			Choices: []struct {
-				Index   int `json:"index"`
-				Message struct {
-					Role      string     `json:"role"`
-					Content   string     `json:"content"`
-					ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-				} `json:"message"`
-				Delta struct {
-					Content   string     `json:"content"`
-					ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-				} `json:"delta"`
-				FinishReason string `json:"finish_reason"`
-			}{
-				{
-					Delta: struct {
-						Content   string     `json:"content"`
-						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-					}{Content: ""},
-					FinishReason: "stop",
-				},
-			},
-		}
-		finalData, _ := json.Marshal(finalResp)
-		fmt.Fprintf(w, "data: %s\n\n", finalData)
-		fmt.Fprint(w, "data: [DONE]\n\n")
-	}))
-}
-
 // newAzureStreamServer returns an httptest server for Azure OpenAI SSE streaming.
 func newAzureStreamServer(t *testing.T, tokens []string) *httptest.Server {
 	t.Helper()
@@ -912,6 +809,129 @@ func TestOllamaProvider_AskWithTools_NoToolCalls(t *testing.T) {
 	}
 }
 
+func TestOllamaProvider_AskWithTools_RespectsConfiguredMaxIterations(t *testing.T) {
+	var callCount int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&callCount, 1)
+		resp := ollamaChatResponse{}
+		resp.Message.ToolCalls = []ToolCall{
+			{
+				ID:   "ollama-loop",
+				Type: "function",
+				Function: FunctionCall{
+					Name:      "kubectl",
+					Arguments: `{"command":"kubectl get pods -A"}`,
+				},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	p, _ := NewOllamaProvider(&ProviderConfig{
+		Provider:      "ollama",
+		Model:         "gpt-oss:20b",
+		Endpoint:      srv.URL,
+		MaxIterations: 2,
+	})
+
+	err := p.(ToolProvider).AskWithTools(
+		context.Background(),
+		"keep checking pods",
+		[]ToolDefinition{{
+			Type: "function",
+			Function: FunctionDef{
+				Name:        "kubectl",
+				Description: "Execute kubectl commands",
+				Parameters:  map[string]interface{}{"type": "object"},
+			},
+		}},
+		nil,
+		func(call ToolCall) ToolResult {
+			return ToolResult{ToolCallID: call.ID, Content: "loop"}
+		},
+	)
+	if err == nil {
+		t.Fatal("expected iteration limit error, got nil")
+	}
+	if !strings.Contains(err.Error(), "exceeded maximum tool call iterations (2)") {
+		t.Fatalf("error = %v, want configured iteration limit", err)
+	}
+	if got := atomic.LoadInt32(&callCount); got != 2 {
+		t.Fatalf("provider made %d tool loop requests, want 2", got)
+	}
+}
+
+func TestToolProviders_PreserveMaxIterationsConfig(t *testing.T) {
+	tests := []struct {
+		name string
+		new  func(*ProviderConfig) (Provider, error)
+		cfg  *ProviderConfig
+		want int
+	}{
+		{
+			name: "ollama",
+			new:  NewOllamaProvider,
+			cfg: &ProviderConfig{
+				Provider:      "ollama",
+				Model:         "gpt-oss:20b",
+				Endpoint:      "http://localhost:11434",
+				MaxIterations: 4,
+			},
+			want: 4,
+		},
+		{
+			name: "gemini",
+			new:  NewGeminiProvider,
+			cfg: &ProviderConfig{
+				Provider:      "gemini",
+				Model:         "gemini-2.5-flash",
+				APIKey:        "test-key",
+				Endpoint:      "https://example.test",
+				MaxIterations: 5,
+			},
+			want: 5,
+		},
+		{
+			name: "bedrock",
+			new:  NewBedrockProvider,
+			cfg: &ProviderConfig{
+				Provider:      "bedrock",
+				Model:         "anthropic.claude-3-sonnet-20240229-v1:0",
+				Region:        "us-east-1",
+				MaxIterations: 6,
+			},
+			want: 6,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			provider, err := tt.new(tt.cfg)
+			if err != nil {
+				t.Fatalf("new provider: %v", err)
+			}
+
+			var got int
+			switch p := provider.(type) {
+			case *OllamaProvider:
+				got = p.config.MaxIterations
+			case *GeminiProvider:
+				got = p.config.MaxIterations
+			case *BedrockProvider:
+				got = p.config.MaxIterations
+			default:
+				t.Fatalf("unexpected provider type %T", provider)
+			}
+
+			if got != tt.want {
+				t.Fatalf("provider config MaxIterations = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
 // ===========================================================================
 // Gemini Provider Tests
 // ===========================================================================
@@ -1334,160 +1354,6 @@ func TestAzureOpenAIProvider_AskWithTools_NoToolCalls(t *testing.T) {
 }
 
 // ===========================================================================
-// Embedded Provider Tests
-// ===========================================================================
-
-func TestEmbeddedProvider_AskStreaming(t *testing.T) {
-	tokens := []string{"embedded", " response", " here"}
-	srv := newEmbeddedStreamServer(t, tokens)
-	defer srv.Close()
-
-	p, err := NewEmbeddedProvider(&ProviderConfig{
-		Provider: "embedded",
-		Model:    "qwen2.5",
-		Endpoint: srv.URL,
-	})
-	if err != nil {
-		t.Fatalf("NewEmbeddedProvider: %v", err)
-	}
-
-	var collected []string
-	err = p.Ask(context.Background(), "test", func(s string) {
-		collected = append(collected, s)
-	})
-	if err != nil {
-		t.Fatalf("Ask: %v", err)
-	}
-
-	got := strings.Join(collected, "")
-	if got != "embedded response here" {
-		t.Errorf("Ask collected = %q, want 'embedded response here'", got)
-	}
-}
-
-func TestEmbeddedProvider_AskNonStreaming(t *testing.T) {
-	srv := newEmbeddedNonStreamServer(t, "embedded non-streaming")
-	defer srv.Close()
-
-	p, _ := NewEmbeddedProvider(&ProviderConfig{
-		Provider: "embedded",
-		Endpoint: srv.URL,
-	})
-
-	resp, err := p.AskNonStreaming(context.Background(), "test")
-	if err != nil {
-		t.Fatalf("AskNonStreaming: %v", err)
-	}
-	if resp != "embedded non-streaming" {
-		t.Errorf("response = %q, want 'embedded non-streaming'", resp)
-	}
-}
-
-func TestEmbeddedProvider_AskNonStreaming_EmptyChoices(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		resp := embeddedChatResponse{ID: "empty"}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(resp)
-	}))
-	defer srv.Close()
-
-	p, _ := NewEmbeddedProvider(&ProviderConfig{
-		Provider: "embedded",
-		Endpoint: srv.URL,
-	})
-
-	_, err := p.AskNonStreaming(context.Background(), "test")
-	if err == nil {
-		t.Fatal("expected error for empty choices, got nil")
-	}
-	if !strings.Contains(err.Error(), "no response") {
-		t.Errorf("error = %v, want to contain 'no response'", err)
-	}
-}
-
-func TestEmbeddedProvider_ListModels(t *testing.T) {
-	p, _ := NewEmbeddedProvider(&ProviderConfig{
-		Provider: "embedded",
-		Model:    "qwen2.5-0.5b-instruct",
-	})
-
-	models, err := p.ListModels(context.Background())
-	if err != nil {
-		t.Fatalf("ListModels: %v", err)
-	}
-	if len(models) != 1 || models[0] != "qwen2.5-0.5b-instruct" {
-		t.Errorf("ListModels = %v, want [qwen2.5-0.5b-instruct]", models)
-	}
-}
-
-func TestEmbeddedProvider_DefaultValues(t *testing.T) {
-	p, _ := NewEmbeddedProvider(&ProviderConfig{
-		Provider: "embedded",
-	})
-
-	ep := p.(*EmbeddedProvider)
-	if ep.endpoint != "http://127.0.0.1:8081" {
-		t.Errorf("default endpoint = %q, want 'http://127.0.0.1:8081'", ep.endpoint)
-	}
-	if p.GetModel() != "qwen2.5-0.5b-instruct" {
-		t.Errorf("default model = %q, want 'qwen2.5-0.5b-instruct'", p.GetModel())
-	}
-	if p.Name() != "embedded" {
-		t.Errorf("Name() = %q, want 'embedded'", p.Name())
-	}
-}
-
-func TestEmbeddedProvider_IsReady_ServerUp(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/health" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		http.NotFound(w, r)
-	}))
-	defer srv.Close()
-
-	p, _ := NewEmbeddedProvider(&ProviderConfig{
-		Provider: "embedded",
-		Endpoint: srv.URL,
-	})
-
-	if !p.IsReady() {
-		t.Error("embedded provider should be ready when health endpoint is OK")
-	}
-}
-
-func TestEmbeddedProvider_IsReady_ServerDown(t *testing.T) {
-	// Use an endpoint that will not respond
-	p, _ := NewEmbeddedProvider(&ProviderConfig{
-		Provider: "embedded",
-		Endpoint: "http://127.0.0.1:1", // unlikely to be running
-	})
-
-	if p.IsReady() {
-		t.Error("embedded provider should not be ready when server is down")
-	}
-}
-
-func TestEmbeddedProvider_ErrorStatusCode(t *testing.T) {
-	srv := newErrorServer(503, "model loading")
-	defer srv.Close()
-
-	p, _ := NewEmbeddedProvider(&ProviderConfig{
-		Provider: "embedded",
-		Endpoint: srv.URL,
-	})
-
-	err := p.Ask(context.Background(), "test", func(s string) {})
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
-	if !strings.Contains(err.Error(), "status 503") {
-		t.Errorf("error = %v, want to contain 'status 503'", err)
-	}
-}
-
-// ===========================================================================
 // Bedrock Provider Tests (limited: signing + response parsing)
 // ===========================================================================
 
@@ -1763,79 +1629,6 @@ func TestParseReActResponse(t *testing.T) {
 				if resp.Action.Name != tt.wantAction {
 					t.Errorf("action.name = %q, want %q", resp.Action.Name, tt.wantAction)
 				}
-			}
-		})
-	}
-}
-
-// ===========================================================================
-// EmbeddedProvider parseToolCallFromText Tests
-// ===========================================================================
-
-func TestEmbeddedProvider_ParseToolCallFromText(t *testing.T) {
-	p := &EmbeddedProvider{}
-
-	tests := []struct {
-		name     string
-		content  string
-		wantNil  bool
-		wantName string
-	}{
-		{
-			name:     "valid JSON tool call",
-			content:  `{"name": "kubectl", "arguments": {"command": "kubectl get pods"}}`,
-			wantNil:  false,
-			wantName: "kubectl",
-		},
-		{
-			name:     "double braces pattern",
-			content:  `{{"name": "bash", "arguments": {"command": "echo hello"}}}`,
-			wantNil:  false,
-			wantName: "bash",
-		},
-		{
-			name:    "plain text no JSON",
-			content: "Just a normal response without any tool calls",
-			wantNil: true,
-		},
-		{
-			name:    "JSON without name field",
-			content: `{"key": "value"}`,
-			wantNil: true,
-		},
-		{
-			name:    "empty string",
-			content: "",
-			wantNil: true,
-		},
-		{
-			name:     "JSON embedded in text",
-			content:  `Here is my action: {"name": "kubectl", "arguments": {"command": "kubectl get ns"}} done.`,
-			wantNil:  false,
-			wantName: "kubectl",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := p.parseToolCallFromText(tt.content)
-			if tt.wantNil {
-				if result != nil {
-					t.Errorf("expected nil, got %+v", result)
-				}
-				return
-			}
-			if result == nil {
-				t.Fatal("expected non-nil ToolCall, got nil")
-			}
-			if result.Function.Name != tt.wantName {
-				t.Errorf("tool name = %q, want %q", result.Function.Name, tt.wantName)
-			}
-			if result.ID == "" {
-				t.Error("tool call ID should not be empty")
-			}
-			if result.Type != "function" {
-				t.Errorf("type = %q, want 'function'", result.Type)
 			}
 		})
 	}
@@ -2255,12 +2048,10 @@ var (
 	_ Provider     = (*GeminiProvider)(nil)
 	_ Provider     = (*AzureOpenAIProvider)(nil)
 	_ Provider     = (*BedrockProvider)(nil)
-	_ Provider     = (*EmbeddedProvider)(nil)
 	_ Provider     = (*retryProvider)(nil)
 	_ ToolProvider = (*OpenAIProvider)(nil)
 	_ ToolProvider = (*OllamaProvider)(nil)
 	_ ToolProvider = (*GeminiProvider)(nil)
-	_ ToolProvider = (*EmbeddedProvider)(nil)
 	_ ToolProvider = (*retryProvider)(nil)
 )
 
@@ -2645,255 +2436,6 @@ func TestAzureOpenAIProvider_AskWithTools_WithFunctionCall(t *testing.T) {
 		t.Error("tool callback should have been called")
 	}
 	if !strings.Contains(callbackContent, "Found 2 services") {
-		t.Errorf("callback should contain final answer, got %q", callbackContent)
-	}
-}
-
-func TestEmbeddedProvider_AskWithTools_NativeToolCall(t *testing.T) {
-	var callCount int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		count := atomic.AddInt32(&callCount, 1)
-
-		switch count {
-		case 1:
-			// First call: return a native tool call via ToolCalls field
-			resp := embeddedChatResponse{
-				ID:    "emb-tool-1",
-				Model: "qwen2.5",
-				Choices: []struct {
-					Index   int `json:"index"`
-					Message struct {
-						Role      string     `json:"role"`
-						Content   string     `json:"content"`
-						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-					} `json:"message"`
-					Delta struct {
-						Content   string     `json:"content"`
-						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-					} `json:"delta"`
-					FinishReason string `json:"finish_reason"`
-				}{
-					{
-						Message: struct {
-							Role      string     `json:"role"`
-							Content   string     `json:"content"`
-							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-						}{
-							Role: "assistant",
-							ToolCalls: []ToolCall{
-								{
-									ID:   "emb-tc-1",
-									Type: "function",
-									Function: FunctionCall{
-										Name:      "kubectl",
-										Arguments: `{"command":"kubectl get nodes"}`,
-									},
-								},
-							},
-						},
-						FinishReason: "tool_calls",
-					},
-				},
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(resp)
-
-		case 2:
-			// Second call: return text (no tool calls)
-			resp := embeddedChatResponse{
-				ID:    "emb-tool-2",
-				Model: "qwen2.5",
-				Choices: []struct {
-					Index   int `json:"index"`
-					Message struct {
-						Role      string     `json:"role"`
-						Content   string     `json:"content"`
-						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-					} `json:"message"`
-					Delta struct {
-						Content   string     `json:"content"`
-						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-					} `json:"delta"`
-					FinishReason string `json:"finish_reason"`
-				}{
-					{
-						Message: struct {
-							Role      string     `json:"role"`
-							Content   string     `json:"content"`
-							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-						}{
-							Role:    "assistant",
-							Content: "Cluster has 3 nodes, all in Ready state.",
-						},
-						FinishReason: "stop",
-					},
-				},
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(resp)
-		}
-	}))
-	defer srv.Close()
-
-	p, _ := NewEmbeddedProvider(&ProviderConfig{
-		Provider: "embedded",
-		Model:    "qwen2.5",
-		Endpoint: srv.URL,
-	})
-
-	toolCalled := false
-	var callbackContent string
-	err := p.(ToolProvider).AskWithTools(
-		context.Background(),
-		"list nodes",
-		[]ToolDefinition{{
-			Type: "function",
-			Function: FunctionDef{
-				Name:        "kubectl",
-				Description: "Execute kubectl commands",
-				Parameters:  map[string]interface{}{"type": "object"},
-			},
-		}},
-		func(s string) { callbackContent += s },
-		func(call ToolCall) ToolResult {
-			toolCalled = true
-			if call.Function.Name != "kubectl" {
-				t.Errorf("tool name = %q, want 'kubectl'", call.Function.Name)
-			}
-			return ToolResult{
-				ToolCallID: call.ID,
-				Content:    "NAME    STATUS   ROLES    AGE\nnode1   Ready    master   30d\nnode2   Ready    worker   30d\nnode3   Ready    worker   30d",
-			}
-		},
-	)
-	if err != nil {
-		t.Fatalf("AskWithTools: %v", err)
-	}
-	if !toolCalled {
-		t.Error("tool callback should have been called")
-	}
-	if !strings.Contains(callbackContent, "3 nodes") {
-		t.Errorf("callback should contain final answer, got %q", callbackContent)
-	}
-}
-
-func TestEmbeddedProvider_AskWithTools_TextFallback(t *testing.T) {
-	// Test the text-based tool call parsing fallback for small models
-	// that output tool calls as JSON text instead of using the API properly
-	var callCount int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		count := atomic.AddInt32(&callCount, 1)
-
-		switch count {
-		case 1:
-			// First call: return text content with embedded JSON tool call (no native ToolCalls)
-			resp := embeddedChatResponse{
-				ID:    "emb-text-1",
-				Model: "qwen2.5-0.5b",
-				Choices: []struct {
-					Index   int `json:"index"`
-					Message struct {
-						Role      string     `json:"role"`
-						Content   string     `json:"content"`
-						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-					} `json:"message"`
-					Delta struct {
-						Content   string     `json:"content"`
-						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-					} `json:"delta"`
-					FinishReason string `json:"finish_reason"`
-				}{
-					{
-						Message: struct {
-							Role      string     `json:"role"`
-							Content   string     `json:"content"`
-							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-						}{
-							Role:    "assistant",
-							Content: `{"name": "kubectl", "arguments": {"command": "kubectl get deployments"}}`,
-						},
-						FinishReason: "stop",
-					},
-				},
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(resp)
-
-		case 2:
-			// Second call: return final text
-			resp := embeddedChatResponse{
-				ID:    "emb-text-2",
-				Model: "qwen2.5-0.5b",
-				Choices: []struct {
-					Index   int `json:"index"`
-					Message struct {
-						Role      string     `json:"role"`
-						Content   string     `json:"content"`
-						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-					} `json:"message"`
-					Delta struct {
-						Content   string     `json:"content"`
-						ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-					} `json:"delta"`
-					FinishReason string `json:"finish_reason"`
-				}{
-					{
-						Message: struct {
-							Role      string     `json:"role"`
-							Content   string     `json:"content"`
-							ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-						}{
-							Role:    "assistant",
-							Content: "There are 2 deployments running.",
-						},
-						FinishReason: "stop",
-					},
-				},
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(resp)
-		}
-	}))
-	defer srv.Close()
-
-	p, _ := NewEmbeddedProvider(&ProviderConfig{
-		Provider: "embedded",
-		Model:    "qwen2.5-0.5b",
-		Endpoint: srv.URL,
-	})
-
-	toolCalled := false
-	var callbackContent string
-	err := p.(ToolProvider).AskWithTools(
-		context.Background(),
-		"list deployments",
-		[]ToolDefinition{{
-			Type: "function",
-			Function: FunctionDef{
-				Name:        "kubectl",
-				Description: "Execute kubectl commands",
-				Parameters:  map[string]interface{}{"type": "object"},
-			},
-		}},
-		func(s string) { callbackContent += s },
-		func(call ToolCall) ToolResult {
-			toolCalled = true
-			if call.Function.Name != "kubectl" {
-				t.Errorf("tool name = %q, want 'kubectl'", call.Function.Name)
-			}
-			return ToolResult{
-				ToolCallID: call.ID,
-				Content:    "NAME     READY   UP-TO-DATE   AVAILABLE\nnginx    1/1     1            1\nredis    1/1     1            1",
-			}
-		},
-	)
-	if err != nil {
-		t.Fatalf("AskWithTools: %v", err)
-	}
-	if !toolCalled {
-		t.Error("tool callback should have been called (text fallback parsing)")
-	}
-	if !strings.Contains(callbackContent, "2 deployments") {
 		t.Errorf("callback should contain final answer, got %q", callbackContent)
 	}
 }

@@ -106,12 +106,16 @@ type App struct {
 	header      *tview.TextView
 	briefing    *BriefingPanel // Natural language cluster briefing
 	table       *tview.Table
+	contentFlex *tview.Flex
 	statusBar   *tview.TextView
 	flash       *tview.TextView
 	cmdInput    *tview.InputField
 	cmdHint     *tview.TextView // Autocomplete hint (dimmed)
 	cmdDropdown *tview.List     // Autocomplete dropdown
 	aiPanel     *tview.TextView
+	aiContainer *tview.Flex
+	aiMetaBar   *tview.TextView
+	aiStatusBar *tview.TextView
 	aiInput     *tview.InputField // AI question input
 
 	// State (protected by mutex)
@@ -132,8 +136,10 @@ type App struct {
 	sortAscending       bool              // Sort direction (true = ascending, false = descending)
 
 	// Command history
-	cmdHistory    []string
-	cmdHistoryIdx int // -1 = not browsing history
+	cmdHistory        []string
+	cmdHistoryIdx     int // -1 = not browsing history
+	aiInputHistory    []string
+	aiInputHistoryIdx int // -1 = not browsing history
 
 	// Port-forward tracking (protected by pfMx)
 	pfMx         sync.Mutex
@@ -167,6 +173,7 @@ type App struct {
 	aiMx                sync.RWMutex
 	pendingDecisions    []PendingDecision
 	pendingToolApproval chan bool
+	aiConversationTurns int
 	currentToolCallInfo struct {
 		Name    string
 		Args    string
@@ -176,7 +183,7 @@ type App struct {
 	// Watch state (protected by watchMu)
 	watcher     *k8s.ResourceWatcher // Active resource watcher (nil when inactive)
 	watchCancel context.CancelFunc   // Cancel function for watcher context
-	watchMu     sync.Mutex           // Protects watcher lifecycle operations
+	watchMu     sync.RWMutex         // Protects watcher lifecycle operations
 
 	// Logger
 	logger *slog.Logger
@@ -234,6 +241,16 @@ func (a *App) getAppContext() context.Context {
 	return context.Background()
 }
 
+func (a *App) reloadConfigFromDisk() error {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
+	a.config = cfg
+	i18n.SetLanguage(cfg.Language)
+	return nil
+}
+
 // NewApp creates a new TUI application
 func NewApp() *App {
 	return NewAppWithNamespace("")
@@ -283,6 +300,7 @@ func NewAppWithNamespace(initialNamespace string) *App {
 		sortColumn:          -1,
 		sortAscending:       true,
 		cmdHistoryIdx:       -1,
+		aiInputHistoryIdx:   -1,
 		pendingToolApproval: make(chan bool, 1),
 		logger:              logger,
 		appCtx:              appCtx,
@@ -352,12 +370,11 @@ func (a *App) Run() error {
 	}()
 
 	a.SetBeforeDrawFunc(func(screen tcell.Screen) bool {
-		screen.Clear()
 		now := time.Now().UnixNano()
 		if atomic.CompareAndSwapInt32(&a.needsSync, 1, 0) {
 			screen.Sync()
 			atomic.StoreInt64(&a.lastSync, now)
-		} else if now-atomic.LoadInt64(&a.lastSync) > 2_000_000_000 {
+		} else if now-atomic.LoadInt64(&a.lastSync) > 15_000_000_000 {
 			screen.Sync()
 			atomic.StoreInt64(&a.lastSync, now)
 		}
@@ -365,7 +382,7 @@ func (a *App) Run() error {
 	})
 
 	go func() {
-		ticker := time.NewTicker(150 * time.Millisecond)
+		ticker := time.NewTicker(250 * time.Millisecond)
 		defer ticker.Stop()
 		for {
 			if atomic.LoadInt32(&a.stopping) == 1 {
