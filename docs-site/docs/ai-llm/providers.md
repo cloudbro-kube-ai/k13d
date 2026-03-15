@@ -6,12 +6,13 @@ k13d supports multiple LLM providers for AI-powered features.
 
 | Provider | Models | Local | API Key |
 |----------|--------|-------|---------|
-| **OpenAI** | GPT-4, GPT-3.5 | No | Required |
-| **Anthropic** | Claude 3 | No | Required |
-| **Google** | Gemini Pro | No | Required |
-| **Ollama** | Llama, Mistral, etc. | Yes | Not needed |
+| **OpenAI** | GPT-4o, o3-mini, GPT-4 | No | Required |
+| **Anthropic** | Claude Opus 4, Sonnet 4, Haiku 4.5 | No | Required |
+| **Google Gemini** | Gemini 2.5 Flash, 2.0 | No | Required |
+| **Upstage Solar** | Solar Pro2, Solar Pro | No | Required |
+| **Ollama** | Llama, Qwen, Mistral, etc. | Yes | Not needed |
 | **Azure OpenAI** | GPT-4, GPT-3.5 | No | Required |
-| **AWS Bedrock** | Claude, Titan | No | Required |
+| **AWS Bedrock** | Claude, Llama, Titan | No | Required |
 | **Embedded** | llama.cpp | Yes | Not needed |
 
 ## Configuration
@@ -38,16 +39,19 @@ k13d -web
 ```yaml
 llm:
   provider: anthropic
-  model: claude-3-opus-20240229
+  model: claude-sonnet-4-20250514
   api_key: ${ANTHROPIC_API_KEY}
+  # endpoint: https://api.anthropic.com  # default
 ```
+
+Available models: `claude-opus-4-20250514`, `claude-sonnet-4-20250514`, `claude-haiku-4-5-20251001`, `claude-3-5-sonnet-20241022`
 
 ### Google Gemini
 
 ```yaml
 llm:
   provider: gemini
-  model: gemini-pro
+  model: gemini-2.5-flash
   api_key: ${GOOGLE_API_KEY}
 ```
 
@@ -131,7 +135,7 @@ models:
 
   - name: claude
     provider: anthropic
-    model: claude-3-opus-20240229
+    model: claude-sonnet-4-20250514
     api_key: ${ANTHROPIC_API_KEY}
 
 # Default model
@@ -152,12 +156,12 @@ Settings → AI → Active Model
 
 ### Feature Comparison
 
-| Feature | OpenAI | Anthropic | Gemini | Ollama |
-|---------|--------|-----------|--------|--------|
-| Streaming | ✅ | ✅ | ✅ | ✅ |
-| Tool Calling | ✅ | ✅ | ✅ | ✅ |
-| Vision | ✅ | ✅ | ✅ | ⚠️ |
-| Context Length | 128K | 200K | 32K | Varies |
+| Feature | OpenAI | Anthropic | Gemini | Ollama | Solar |
+|---------|--------|-----------|--------|--------|-------|
+| Streaming | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Tool Calling | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Vision | ✅ | ✅ | ✅ | ⚠️ | ❌ |
+| Context Length | 128K | 200K | 1M | Varies | 32K |
 
 ### Tool Calling Support
 

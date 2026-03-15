@@ -20,7 +20,7 @@ hide:
 [![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://go.dev)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.29+-326CE5?style=flat&logo=kubernetes)](https://kubernetes.io)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat)](https://github.com/cloudbro-kube-ai/k13d/blob/main/LICENSE)
-[![AI Support](https://img.shields.io/badge/AI-OpenAI%20%7C%20Ollama%20%7C%20Embedded-orange?style=flat)](getting-started/configuration.md#llm-providers)
+[![AI Support](https://img.shields.io/badge/AI-OpenAI%20%7C%20Anthropic%20%7C%20Gemini%20%7C%20Ollama-orange?style=flat)](getting-started/configuration.md#llm-providers)
 
 </div>
 
@@ -177,7 +177,10 @@ It bridges the gap between traditional cluster management and natural language A
 |----------|:------------:|----------|
 | **Upstage Solar** | :white_check_mark: | **Recommended** - Best balance of quality & cost |
 | **OpenAI** | :white_check_mark: | Production use, best tool support |
+| **Anthropic** | :white_check_mark: | Claude models, strong reasoning |
+| **Google Gemini** | :white_check_mark: | Multimodal, fast responses |
 | **Azure OpenAI** | :white_check_mark: | Enterprise deployments |
+| **AWS Bedrock** | :white_check_mark: | AWS-hosted models |
 | **Ollama** | :white_check_mark: | Air-gapped, local models |
 | **Embedded LLM** | :warning: | Zero-dependency, limited capability |
 

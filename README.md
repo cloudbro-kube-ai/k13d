@@ -197,8 +197,8 @@ ollama pull qwen2.5:3b && ollama serve
 
 | Provider | Models | Notes |
 |----------|--------|-------|
-| **OpenAI** | GPT-4o, GPT-4, GPT-3.5 | Best tool calling support |
-| **Anthropic** | Claude 3.5, Claude 3 | Strong reasoning |
+| **OpenAI** | GPT-4o, GPT-4, o3-mini | Best tool calling support |
+| **Anthropic** | Claude Opus 4, Sonnet 4, Haiku 4.5 | Native Messages API, strong reasoning |
 | **Google Gemini** | Gemini 2.5, 2.0 | Multimodal capable |
 | **Upstage Solar** | Solar Pro2, Solar Pro | Good balance of quality/cost |
 | **Azure OpenAI** | GPT-4, GPT-3.5 | Enterprise Azure deployments |

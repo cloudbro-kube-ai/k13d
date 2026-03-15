@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.8] - 2026-03-15
 
 ### Added
+- **Anthropic Claude Provider**: Native Anthropic Messages API support with streaming, tool calling, and model listing (Claude Opus 4, Sonnet 4, Haiku 4.5)
 - **AI Panel: Stop Button**: Added stop button and functionality to cancel ongoing AI generation
 - **AI Panel: Empty Input Feedback**: Visual error feedback with shake animation and red styling for empty AI input
 - **AI Panel: Fullscreen Expansion**: Fullscreen expansion for AI panel with dynamic styling for input, context chips, and actions
@@ -16,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Developer Scripts**: Added `run.sh` for local build+run and `log.sh` for tailing application logs
 
 ### Fixed
+- **OpenAI reasoning_effort 400 Error**: Skip `reasoning_effort` parameter for models that don't support it (gpt-4, gpt-4o, etc.) — only sent for o-series and Solar Pro2
 - **Gemini MCP Tools**: Strip unsupported schema keys for Gemini tool declarations (fixes 400 errors)
 - **LLM Model Listing**: Use discovery mode for LLM model listing
 - **Race Condition**: Resolve timeout middleware race condition (concurrent map write)
