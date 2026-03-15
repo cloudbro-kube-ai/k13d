@@ -487,6 +487,17 @@
     transition: all 0.2s ease;
 }
 
+.ai-input.error {
+    border-color: var(--accent-red) !important;
+    box-shadow: 0 0 0 3px rgba(247, 118, 142, 0.1), 0 0 20px rgba(247, 118, 142, 0.1) !important;
+    animation: shake 0.4s ease-in-out;
+}
+
+.ai-input.error::placeholder {
+    color: var(--accent-red);
+    opacity: 0.8;
+}
+
 .ai-input:focus {
     outline: none;
     border-color: var(--accent-purple);

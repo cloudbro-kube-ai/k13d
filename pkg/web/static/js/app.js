@@ -34,6 +34,7 @@ let currentLLMModel = ''; // Current LLM model name
 let llmConnected = false; // LLM connection status
 let currentSessionId = sessionStorage.getItem('k13d_session_id') || ''; // AI conversation session ID
 let appTimezone = localStorage.getItem('k13d_timezone') || 'auto'; // Timezone setting
+let aiAbortController = null; // To cancel AI generation
 
 // Timezone formatting helpers
 function getTimezoneOptions() {
@@ -2014,7 +2015,27 @@ function showDashboardActionNotification(message) {
 async function sendMessage() {
     const input = document.getElementById('ai-input');
     const message = input.value.trim();
-    if (!message || isLoading) return;
+    
+    // If it's already generation, skip validation to allow Stop button to work
+    if (isLoading) return;
+    
+    if (!message) {
+        const originalPlaceholder = input.placeholder;
+        input.placeholder = t('msg_enter_question') || '질문을 입력해 주세요.';
+        input.classList.add('error');
+        input.focus();
+        
+        // Remove error state when user types
+        const onInput = () => {
+            input.classList.remove('error');
+            input.placeholder = originalPlaceholder;
+            input.removeEventListener('input', onInput);
+        };
+        input.addEventListener('input', onInput);
+        return;
+    }
+    
+    if (isLoading) return;
 
     // Check guardrails (K8s safety analysis)
     const guardrailCheck = checkGuardrails(message);
@@ -2054,9 +2075,20 @@ async function sendMessage() {
     await proceedWithMessage(message);
 }
 
+function stopGeneration() {
+    if (aiAbortController) {
+        aiAbortController.abort();
+        aiAbortController = null;
+        console.log('[AI] Generation stopped by user');
+        showToast('Generation stopped', 'info');
+    }
+}
+
 async function proceedWithMessage(message) {
     isLoading = true;
-    document.getElementById('send-btn').disabled = true;
+    const sendBtn = document.getElementById('send-btn');
+    if (sendBtn) sendBtn.disabled = true;
+
     document.getElementById('ai-input').value = '';
     saveQueryToHistory(message);
     aiHistoryIndex = -1;
@@ -2066,11 +2098,13 @@ async function proceedWithMessage(message) {
     saveCurrentChatMessage(message, true);
     addMessage(message, true);
 
-    // Always use agentic mode
-    await sendMessageAgentic(message);
-
-    isLoading = false;
-    document.getElementById('send-btn').disabled = false;
+    try {
+        // Always use agentic mode
+        await sendMessageAgentic(message);
+    } finally {
+        isLoading = false;
+        if (sendBtn) sendBtn.disabled = false;
+    }
 }
 
 // Format resource links in AI responses to make them clickable
@@ -2161,6 +2195,9 @@ async function sendMessageAgentic(message) {
     const contentEl = div.querySelector('.message-content');
     let fullContent = '';
 
+    aiAbortController = new AbortController();
+    const signal = aiAbortController.signal;
+
     try {
         const response = await fetch('/api/chat/agentic', {
             method: 'POST',
@@ -2168,7 +2205,8 @@ async function sendMessageAgentic(message) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify({ message, language: currentLanguage, session_id: currentSessionId })
+            body: JSON.stringify({ message, language: currentLanguage, session_id: currentSessionId }),
+            signal: signal
         });
 
         if (!response.ok) {
@@ -2294,6 +2332,19 @@ async function sendMessageAgentic(message) {
         await loadData();
 
     } catch (e) {
+        if (e.name === 'AbortError') {
+            console.log('[AI] Stream aborted');
+            if (fullContent.trim()) {
+                // Keep what we already got
+                div.classList.remove('streaming');
+                div.id = '';
+                contentEl.innerHTML = formatResourceLinks(fullContent.replace(/\n/g, '<br>'));
+            } else {
+                div.remove();
+            }
+            return;
+        }
+
         div.classList.remove('streaming');
         div.id = '';
 
@@ -2315,6 +2366,8 @@ async function sendMessageAgentic(message) {
         }
 
         contentEl.innerHTML = `<span style="color: var(--accent-red)">${errorMsg}</span>`;
+    } finally {
+        aiAbortController = null;
     }
 }
 
@@ -8651,7 +8704,22 @@ const originalSendMessage = sendMessage;
 sendMessage = async function () {
     const input = document.getElementById('ai-input');
     let message = input.value.trim();
-    if (!message || isLoading) return;
+        if (isLoading) return;
+    if (!message) {
+        const originalPlaceholder = input.placeholder;
+        input.placeholder = t('msg_enter_question') || '질문을 입력해 주세요.';
+        input.classList.add('error');
+        input.focus();
+        
+        // Remove error state when user types
+        const onInput = () => {
+            input.classList.remove('error');
+            input.placeholder = originalPlaceholder;
+            input.removeEventListener('input', onInput);
+        };
+        input.addEventListener('input', onInput);
+        return;
+    }
 
     // Add context if available
     const contextStr = getContextForAI();

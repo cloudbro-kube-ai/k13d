@@ -163,6 +163,43 @@
     box-shadow: none;
 }
 
+.ai-stop-btn {
+    background: #ef4444 !important;
+    color: white !important;
+    border: none;
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 8px;
+    cursor: pointer;
+    display: none; /* Hidden by default */
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    padding: 0;
+    flex-shrink: 0;
+}
+
+/* Show stop button only when Send button is disabled (during generation) */
+.send-btn:disabled + .ai-stop-btn {
+    display: flex !important;
+}
+
+.ai-stop-btn:hover {
+    background: #dc2626 !important;
+    transform: translateY(-2px);
+}
+
+.ai-stop-btn:active {
+    transform: translateY(0);
+}
+
+.ai-stop-btn svg {
+    width: 14px;
+    height: 14px;
+    fill: white;
+}
+
 /* AI Input Action Buttons */
 .ai-actions-buttons {
     display: flex;
