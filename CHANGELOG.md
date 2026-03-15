@@ -5,6 +5,41 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.8] - 2026-03-15
+
+### Added
+- **AI Panel: Stop Button**: Added stop button and functionality to cancel ongoing AI generation
+- **AI Panel: Empty Input Feedback**: Visual error feedback with shake animation and red styling for empty AI input
+- **AI Panel: Fullscreen Expansion**: Fullscreen expansion for AI panel with dynamic styling for input, context chips, and actions
+- **MCP Debug UI**: Show MCP tool server name and type in debug UI
+- **LLM Model Discovery**: Enable model fetch for all LLM providers (not just Gemini/Ollama)
+- **Developer Scripts**: Added `run.sh` for local build+run and `log.sh` for tailing application logs
+
+### Fixed
+- **Gemini MCP Tools**: Strip unsupported schema keys for Gemini tool declarations (fixes 400 errors)
+- **LLM Model Listing**: Use discovery mode for LLM model listing
+- **Race Condition**: Resolve timeout middleware race condition (concurrent map write)
+- **Race Condition**: Resolve race condition in k8s client and TUI test panic
+- **Web UI: Race conditions**: Fix race conditions in LLM settings handlers and info disclosure
+- **Web UI: RBAC**: Set admin role headers in no-auth mode for consistent RBAC
+- **CI/CD**: Upgrade Go to 1.25.8 to resolve security vulnerabilities
+
+### Changed
+- **AI Panel Styling**: Moved expanded AI panel styling from JavaScript to CSS with i18n support for input hint
+- **Build System**: Clean up Makefile to remove vendor directory usage
+- **Code Modularity**: Split large files for maintainability
+- **Pre-release Stabilization**: Refactoring and stabilization for release readiness
+
+### Dependencies
+- Bumped `tcell/v2` v2.13.6 → v2.13.8
+- Bumped `modernc.org/sqlite` v1.43.0 → v1.46.1
+- Bumped `golang.org/x/crypto` v0.45.0 → v0.48.0
+- Bumped `helm.sh/helm/v3` v3.19.5 → v3.20.0
+- Bumped `go-sql-driver/mysql` v1.8.1 → v1.9.3
+- Bumped `lib/pq` v1.10.9 → v1.11.2
+- Bumped Docker base images: golang 1.26.1-alpine, alpine 3.23
+- Bumped GitHub Actions: checkout v6, setup-go v6, setup-python v6, upload-artifact v7, goreleaser-action v7, codeql-action v4, upload-pages-artifact v4
+
 ## [1.0.0-rc.1] - 2026-03-09
 
 ### Added
