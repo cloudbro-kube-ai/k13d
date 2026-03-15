@@ -168,89 +168,9 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 
 	fmt.Printf("Starting k13d web server...\n")
 
-	// Load LLM settings from SQLite if available
-	// If user edited config.yaml's active_model, YAML takes precedence;
-	// otherwise DB settings (from Web UI) take precedence.
-	if llmSettings, dbErr := db.GetWebSettingsWithPrefix("llm."); dbErr == nil && len(llmSettings) > 0 {
-		dbActiveModel := llmSettings["llm.active_model"]
-
-		if dbActiveModel != "" && dbActiveModel != cfg.ActiveModel {
-			// User changed active_model in config.yaml → YAML wins
-			// Re-apply the profile from YAML (already done by config.Load → SetActiveModel)
-			fmt.Printf("  LLM Settings: active_model changed in config.yaml (%s → %s), using YAML\n",
-				dbActiveModel, cfg.ActiveModel)
-		} else {
-			// DB matches YAML or no active_model in DB → use DB overrides
-			if v, ok := llmSettings["llm.provider"]; ok && v != "" {
-				cfg.LLM.Provider = v
-			}
-			if v, ok := llmSettings["llm.model"]; ok && v != "" {
-				cfg.LLM.Model = v
-			}
-			if v, ok := llmSettings["llm.endpoint"]; ok && v != "" {
-				cfg.LLM.Endpoint = v
-			}
-			if v, ok := llmSettings["llm.api_key"]; ok && v != "" {
-				cfg.LLM.APIKey = v
-			}
-			if v, ok := llmSettings["llm.use_json_mode"]; ok {
-				cfg.LLM.UseJSONMode = v == "true"
-			}
-			if v, ok := llmSettings["llm.reasoning_effort"]; ok && v != "" {
-				cfg.LLM.ReasoningEffort = v
-			}
-			fmt.Printf("  LLM Settings: Loaded from SQLite\n")
-		}
-	}
-
-	// Load tool approval settings from SQLite if available
-	if taSettings, dbErr := db.GetWebSettingsWithPrefix("tool_approval."); dbErr == nil && len(taSettings) > 0 {
-		if v, ok := taSettings["tool_approval.auto_approve_read_only"]; ok && v != "" {
-			cfg.Authorization.ToolApproval.AutoApproveReadOnly = v == "true"
-		}
-		if v, ok := taSettings["tool_approval.require_approval_for_write"]; ok && v != "" {
-			cfg.Authorization.ToolApproval.RequireApprovalForWrite = v == "true"
-		}
-		if v, ok := taSettings["tool_approval.require_approval_for_unknown"]; ok && v != "" {
-			cfg.Authorization.ToolApproval.RequireApprovalForUnknown = v == "true"
-		}
-		if v, ok := taSettings["tool_approval.block_dangerous"]; ok && v != "" {
-			cfg.Authorization.ToolApproval.BlockDangerous = v == "true"
-		}
-		if v, ok := taSettings["tool_approval.approval_timeout_seconds"]; ok && v != "" {
-			if seconds := parseIntSafe(v, 60); seconds > 0 && seconds <= 600 {
-				cfg.Authorization.ToolApproval.ApprovalTimeoutSeconds = seconds
-			}
-		}
-		if v, ok := taSettings["tool_approval.blocked_patterns"]; ok && v != "" {
-			cfg.Authorization.ToolApproval.BlockedPatterns = strings.Split(v, "\n")
-		}
-		fmt.Printf("  Tool Approval Settings: Loaded from SQLite\n")
-	}
-
-	// Load agent loop settings from SQLite if available
-	if agentSettings, dbErr := db.GetWebSettingsWithPrefix("agent."); dbErr == nil && len(agentSettings) > 0 {
-		if v, ok := agentSettings["agent.max_iterations"]; ok && v != "" {
-			if n, parseErr := strconv.Atoi(v); parseErr == nil && n >= 1 && n <= 30 {
-				cfg.LLM.MaxIterations = n
-			}
-		}
-		if v, ok := agentSettings["agent.temperature"]; ok && v != "" {
-			if f, parseErr := strconv.ParseFloat(v, 64); parseErr == nil && f >= 0 && f <= 2.0 {
-				cfg.LLM.Temperature = f
-			}
-		}
-		if v, ok := agentSettings["agent.max_tokens"]; ok && v != "" {
-			if n, parseErr := strconv.Atoi(v); parseErr == nil && n >= 0 {
-				cfg.LLM.MaxTokens = n
-			}
-		}
-		if v, ok := agentSettings["agent.reasoning_effort"]; ok && v != "" {
-			cfg.LLM.ReasoningEffort = v
-		}
-		fmt.Printf("  Agent Settings: Loaded from SQLite\n")
-	}
-
+	// All settings are loaded from config.yaml via LoadConfig().
+	// No SQLite overrides — config.yaml is the single source of truth.
+	fmt.Printf("  LLM Settings: Loaded from config.yaml\n")
 	fmt.Printf("  LLM Provider: %s, Model: %s\n", cfg.LLM.Provider, cfg.LLM.Model)
 
 	if cfg.LLM.Endpoint != "" {

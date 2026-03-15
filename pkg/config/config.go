@@ -23,6 +23,7 @@ type Config struct {
 	Language      string              `yaml:"language" json:"language"`
 	BeginnerMode  bool                `yaml:"beginner_mode" json:"beginner_mode"`
 	LogLevel      string              `yaml:"log_level" json:"log_level"`
+	Timezone      string              `yaml:"timezone" json:"timezone"`
 }
 
 // AnonymizationConfig holds settings for data anonymization before LLM calls
@@ -358,6 +359,7 @@ func NewDefaultConfig() *Config {
 		Language:     "ko",
 		BeginnerMode: true,
 		LogLevel:     "debug",
+		Timezone:     "auto",
 		ReportPath:   "report.md",
 		EnableAudit:  true,
 	}

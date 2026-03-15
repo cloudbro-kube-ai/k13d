@@ -211,6 +211,30 @@ func (a *App) setupKeybindings() {
 		case tcell.KeyTab:
 			a.SetFocus(a.aiInput)
 			return nil
+		case tcell.KeyUp:
+			row, col := a.aiPanel.GetScrollOffset()
+			if row > 0 {
+				a.aiPanel.ScrollTo(row-1, col)
+			}
+			return nil
+		case tcell.KeyDown:
+			row, col := a.aiPanel.GetScrollOffset()
+			a.aiPanel.ScrollTo(row+1, col)
+			return nil
+		case tcell.KeyPgUp:
+			row, col := a.aiPanel.GetScrollOffset()
+			_, _, _, height := a.aiPanel.GetInnerRect()
+			newRow := row - height
+			if newRow < 0 {
+				newRow = 0
+			}
+			a.aiPanel.ScrollTo(newRow, col)
+			return nil
+		case tcell.KeyPgDn:
+			row, col := a.aiPanel.GetScrollOffset()
+			_, _, _, height := a.aiPanel.GetInnerRect()
+			a.aiPanel.ScrollTo(row+height, col)
+			return nil
 		case tcell.KeyEnter:
 			// Approve pending MCP tool call (use atomic for lock-free check)
 			if atomic.LoadInt32(&a.hasToolCall) == 1 {
@@ -257,6 +281,25 @@ func (a *App) setupKeybindings() {
 					a.safeGo("executeAllDecisions", func() { a.executeAllDecisions() })
 					return nil
 				}
+			}
+			// Vim-style scroll keys (only when no pending approval/decisions)
+			switch event.Rune() {
+			case 'j':
+				row, col := a.aiPanel.GetScrollOffset()
+				a.aiPanel.ScrollTo(row+1, col)
+				return nil
+			case 'k':
+				row, col := a.aiPanel.GetScrollOffset()
+				if row > 0 {
+					a.aiPanel.ScrollTo(row-1, col)
+				}
+				return nil
+			case 'G':
+				a.aiPanel.ScrollToEnd()
+				return nil
+			case 'g':
+				a.aiPanel.ScrollTo(0, 0)
+				return nil
 			}
 		}
 		return event

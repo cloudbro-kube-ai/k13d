@@ -79,16 +79,13 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		// Load timezone from SQLite (web-only setting)
-		timezone := db.GetWebSettingWithDefault("general.timezone", "auto")
-
 		// Return current settings (without sensitive data)
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"language":      s.cfg.Language,
 			"beginner_mode": s.cfg.BeginnerMode,
 			"enable_audit":  s.cfg.EnableAudit,
 			"log_level":     s.cfg.LogLevel,
-			"timezone":      timezone,
+			"timezone":      s.cfg.Timezone,
 			"llm": map[string]interface{}{
 				"provider":         s.cfg.LLM.Provider,
 				"model":            s.cfg.LLM.Model,
@@ -117,6 +114,9 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		s.cfg.BeginnerMode = newSettings.BeginnerMode
 		s.cfg.EnableAudit = newSettings.EnableAudit
 		s.cfg.LogLevel = newSettings.LogLevel
+		if newSettings.Timezone != "" {
+			s.cfg.Timezone = newSettings.Timezone
+		}
 		s.aiMu.Unlock()
 
 		// Apply language change to i18n system
@@ -126,18 +126,6 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		if err := s.cfg.Save(); err != nil {
 			WriteErrorSimple(w, http.StatusInternalServerError, "Failed to save settings")
 			return
-		}
-
-		// Also persist to SQLite for web UI settings
-		dbSettings := map[string]string{
-			"general.language":  newSettings.Language,
-			"general.log_level": newSettings.LogLevel,
-		}
-		if newSettings.Timezone != "" {
-			dbSettings["general.timezone"] = newSettings.Timezone
-		}
-		if err := db.SaveWebSettings(dbSettings); err != nil {
-			log.Warnf("Failed to save settings to SQLite: %v", err)
 		}
 
 		// Record audit
@@ -297,12 +285,6 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 		}
 		s.aiClient = newClient
 
-		// Capture config values under lock before releasing
-		activeModel := s.cfg.ActiveModel
-		llmProvider := s.cfg.LLM.Provider
-		llmModel := s.cfg.LLM.Model
-		llmEndpoint := s.cfg.LLM.Endpoint
-		llmAPIKey := s.cfg.LLM.APIKey
 		s.aiMu.Unlock()
 
 		// Re-register MCP tools
@@ -313,24 +295,6 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 		if err := s.cfg.Save(); err != nil {
 			WriteErrorSimple(w, http.StatusInternalServerError, "Failed to save config")
 			return
-		}
-
-		// Also persist LLM settings to SQLite so DB stays in sync after restart
-		llmDBSettings := map[string]string{
-			"llm.active_model": activeModel,
-			"llm.provider":     llmProvider,
-			"llm.model":        llmModel,
-			"llm.endpoint":     llmEndpoint,
-		}
-		if llmAPIKey != "" {
-			llmDBSettings["llm.api_key"] = llmAPIKey
-		}
-		if err := db.SaveWebSettings(llmDBSettings); err != nil {
-			log.Warnf("Failed to save model switch to SQLite: %v", err)
-		}
-		// Update active flag in model_profiles table
-		if err := db.SetActiveModelProfile(req.Name); err != nil {
-			log.Warnf("Failed to update active model profile in SQLite: %v", err)
 		}
 
 		// Record audit

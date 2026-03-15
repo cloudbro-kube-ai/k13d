@@ -14,6 +14,12 @@ import (
 	"github.com/rivo/tview"
 )
 
+// setAIPanelText updates AI panel text and auto-scrolls to the end
+func (a *App) setAIPanelText(text string) {
+	a.aiPanel.SetText(text)
+	a.aiPanel.ScrollToEnd()
+}
+
 // askAI sends a question to the AI and displays the response
 func (a *App) askAI(question string) {
 	a.startLoading()
@@ -28,7 +34,7 @@ func (a *App) askAI(question string) {
 
 	// Show loading state
 	a.QueueUpdateDraw(func() {
-		a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Question:[white] %s\n\n[gray]Thinking...", question))
+		a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Question:[white] %s\n\n[gray]Thinking...", question))
 	})
 
 	// Get current context
@@ -72,7 +78,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 	a.aiMx.RUnlock()
 	if client == nil || !client.IsReady() {
 		a.QueueUpdateDraw(func() {
-			a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[red]AI is not available.[white]\n\nConfigure LLM in config file:\n[gray]~/.kube-ai-dashboard/config.yaml", question))
+			a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[red]AI is not available.[white]\n\nConfigure LLM in config file:\n[gray]~/.kube-ai-dashboard/config.yaml", question))
 		})
 		return
 	}
@@ -84,7 +90,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 	if client.SupportsTools() {
 		// Use agentic mode with tool calling
 		a.QueueUpdateDraw(func() {
-			a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[cyan]🤖 Agentic Mode[white] - AI can execute kubectl commands\n\n[gray]Thinking...", question))
+			a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[cyan]🤖 Agentic Mode[white] - AI can execute kubectl commands\n\n[gray]Thinking...", question))
 		})
 
 		err = client.AskWithTools(ctx, prompt, func(chunk string) {
@@ -98,7 +104,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 			atomic.StoreInt64(&a.lastAIDraw, now)
 			response := fullResponse.String()
 			a.QueueUpdateDraw(func() {
-				a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[cyan]🤖 Agentic Mode[white]\n\n[green]A:[white] %s", question, response))
+				a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[cyan]🤖 Agentic Mode[white]\n\n[green]A:[white] %s", question, response))
 			})
 		}, func(toolName string, args string) bool {
 			// Tool approval callback - kubectl-ai style Decision Required
@@ -159,7 +165,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 				}
 
 				sb.WriteString("\n[gray]Press [green]Y[gray] or [green]Enter[gray] to approve, [red]N[gray] or [red]Esc[gray] to cancel[white]")
-				a.aiPanel.SetText(sb.String())
+				a.setAIPanelText(sb.String())
 
 				// Focus AI panel for key input
 				a.SetFocus(a.aiPanel)
@@ -179,12 +185,12 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 				if approved {
 					a.QueueUpdateDraw(func() {
 						currentText := a.aiPanel.GetText(false)
-						a.aiPanel.SetText(currentText + "\n\n[green]✓ Approved - Executing...[white]")
+						a.setAIPanelText(currentText + "\n\n[green]✓ Approved - Executing...[white]")
 					})
 				} else {
 					a.QueueUpdateDraw(func() {
 						currentText := a.aiPanel.GetText(false)
-						a.aiPanel.SetText(currentText + "\n\n[red]✗ Cancelled by user[white]")
+						a.setAIPanelText(currentText + "\n\n[red]✗ Cancelled by user[white]")
 					})
 				}
 				return approved
@@ -192,7 +198,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 				a.clearToolCallState()
 				a.QueueUpdateDraw(func() {
 					currentText := a.aiPanel.GetText(false)
-					a.aiPanel.SetText(currentText + "\n\n[yellow]⏰ Approval timed out (5 min)[white]")
+					a.setAIPanelText(currentText + "\n\n[yellow]⏰ Approval timed out (5 min)[white]")
 				})
 				return false
 			case <-ctx.Done():
@@ -212,7 +218,7 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 			atomic.StoreInt64(&a.lastAIDraw, now)
 			response := fullResponse.String()
 			a.QueueUpdateDraw(func() {
-				a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[green]A:[white] %s", question, response))
+				a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[green]A:[white] %s", question, response))
 			})
 		})
 	}
@@ -226,14 +232,14 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 				if !client.SupportsTools() {
 					prefix = ""
 				}
-				a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n%s[green]A:[white] %s", question, prefix, finalResponse))
+				a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n%s[green]A:[white] %s", question, prefix, finalResponse))
 			})
 		}
 	}
 
 	if err != nil {
 		a.QueueUpdateDraw(func() {
-			a.aiPanel.SetText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[red]Error:[white] %v", question, err))
+			a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[red]Error:[white] %v", question, err))
 		})
 		return
 	}
@@ -303,7 +309,7 @@ func (a *App) analyzeAndShowDecisions(question, response string) {
 		}
 
 		sb.WriteString("[gray]Press [yellow]1-9[gray] to execute, [yellow]A[gray] to execute all, [yellow]Esc[gray] to cancel[white]")
-		a.aiPanel.SetText(sb.String())
+		a.setAIPanelText(sb.String())
 	})
 }
 
@@ -337,7 +343,7 @@ func (a *App) executeDecision(idx int) {
 
 		// Show execution result
 		currentText := a.aiPanel.GetText(false)
-		a.aiPanel.SetText(currentText + "\n\n[yellow]━━━ EXECUTION RESULT ━━━[white]\n" +
+		a.setAIPanelText(currentText + "\n\n[yellow]━━━ EXECUTION RESULT ━━━[white]\n" +
 			fmt.Sprintf("[cyan]%s[white]\n%s", decision.Command, result))
 	})
 
@@ -407,7 +413,7 @@ func (a *App) doExecuteAll() {
 
 	a.QueueUpdateDraw(func() {
 		currentText := a.aiPanel.GetText(false)
-		a.aiPanel.SetText(currentText + results.String())
+		a.setAIPanelText(currentText + results.String())
 	})
 
 	a.flashMsg(fmt.Sprintf("Executed %d commands", len(decisions)), false)

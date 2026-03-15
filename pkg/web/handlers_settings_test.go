@@ -425,17 +425,7 @@ func TestActiveModel_PUT_Success(t *testing.T) {
 			t.Errorf("LLM.Provider = %s, want anthropic", s.cfg.LLM.Provider)
 		}
 
-		// Verify DB was synced
-		settings, err := db.GetWebSettingsWithPrefix("llm.")
-		if err != nil {
-			t.Fatalf("GetWebSettingsWithPrefix() error = %v", err)
-		}
-		if settings["llm.provider"] != "anthropic" {
-			t.Errorf("DB llm.provider = %s, want anthropic", settings["llm.provider"])
-		}
-		if settings["llm.model"] != "claude-3-opus" {
-			t.Errorf("DB llm.model = %s, want claude-3-opus", settings["llm.model"])
-		}
+		// config.yaml is the single source of truth — no DB sync needed
 	} else {
 		// Even if AI client creation fails, SetActiveModel should have updated config
 		if s.cfg.ActiveModel != "claude-3" {

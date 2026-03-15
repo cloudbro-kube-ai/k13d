@@ -89,16 +89,6 @@ func (s *Server) handleAgentSettings(w http.ResponseWriter, r *http.Request) {
 			log.Warnf("Failed to save agent settings to YAML: %v", err)
 		}
 
-		// Persist to SQLite for web UI persistence
-		if err := db.SaveWebSettings(map[string]string{
-			"agent.max_iterations":   fmt.Sprintf("%d", req.MaxIterations),
-			"agent.reasoning_effort": req.ReasoningEffort,
-			"agent.temperature":      fmt.Sprintf("%.2f", req.Temperature),
-			"agent.max_tokens":       fmt.Sprintf("%d", req.MaxTokens),
-		}); err != nil {
-			log.Warnf("Failed to save agent settings to SQLite: %v", err)
-		}
-
 		// Record audit
 		username := r.Header.Get("X-Username")
 		_ = db.RecordAudit(db.AuditEntry{
@@ -197,21 +187,6 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 		if saveErr != nil {
 			WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to save settings"))
 			return
-		}
-
-		// Also persist LLM settings to SQLite for web UI persistence
-		llmDBSettings := map[string]string{
-			"llm.provider":         llmSettings.Provider,
-			"llm.model":            llmSettings.Model,
-			"llm.endpoint":         llmSettings.Endpoint,
-			"llm.use_json_mode":    fmt.Sprintf("%v", llmSettings.UseJSONMode),
-			"llm.reasoning_effort": llmSettings.ReasoningEffort,
-		}
-		if llmSettings.APIKey != "" {
-			llmDBSettings["llm.api_key"] = llmSettings.APIKey
-		}
-		if err := db.SaveWebSettings(llmDBSettings); err != nil {
-			log.Warnf("Failed to save LLM settings to SQLite: %v", err)
 		}
 
 		// Record audit

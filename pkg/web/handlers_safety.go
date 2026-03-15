@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
@@ -57,18 +56,6 @@ func (s *Server) handleToolApprovalSettings(w http.ResponseWriter, r *http.Reque
 		// Save to config file
 		if err := s.cfg.Save(); err != nil {
 			fmt.Printf("Warning: failed to save tool approval settings to config: %v\n", err)
-		}
-
-		// Persist to web_settings DB for reload on restart
-		if err := db.SaveWebSettings(map[string]string{
-			"tool_approval.auto_approve_read_only":       fmt.Sprintf("%v", policy.AutoApproveReadOnly),
-			"tool_approval.require_approval_for_write":   fmt.Sprintf("%v", policy.RequireApprovalForWrite),
-			"tool_approval.require_approval_for_unknown": fmt.Sprintf("%v", policy.RequireApprovalForUnknown),
-			"tool_approval.block_dangerous":              fmt.Sprintf("%v", policy.BlockDangerous),
-			"tool_approval.approval_timeout_seconds":     fmt.Sprintf("%d", policy.ApprovalTimeoutSeconds),
-			"tool_approval.blocked_patterns":             strings.Join(policy.BlockedPatterns, "\n"),
-		}); err != nil {
-			fmt.Printf("Warning: failed to save tool approval settings to SQLite: %v\n", err)
 		}
 
 		// Record audit
