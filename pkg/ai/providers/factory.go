@@ -36,6 +36,7 @@ func GetFactory() *ProviderFactory {
 		defaultFactory.Register("ollama", NewOllamaProvider)
 		defaultFactory.Register("gemini", NewGeminiProvider)
 		defaultFactory.Register("bedrock", NewBedrockProvider)
+		defaultFactory.Register("anthropic", NewAnthropicProvider)
 		defaultFactory.Register("azopenai", NewAzureOpenAIProvider)
 		defaultFactory.Register("azure", NewAzureOpenAIProvider) // alias
 		defaultFactory.Register("embedded", NewEmbeddedProvider) // Local llama.cpp server
