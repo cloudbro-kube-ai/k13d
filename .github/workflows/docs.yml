@@ -38,7 +38,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install mkdocs-material mkdocs-minify-plugin mike
+          pip install mkdocs-material mkdocs-minify-plugin mkdocs-static-i18n mike
 
       - name: Build documentation
         working-directory: docs-site
@@ -83,7 +83,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install mkdocs-material mkdocs-minify-plugin mike
+          pip install mkdocs-material mkdocs-minify-plugin mkdocs-static-i18n mike
 
       - name: Configure Git
         run: |
