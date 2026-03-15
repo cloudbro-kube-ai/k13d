@@ -60,6 +60,55 @@ theme:
 plugins:
   - search:
       separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: ko
+          name: 한국어
+          build: true
+          theme:
+            language: ko
+          nav_translations:
+            Home: 홈
+            Getting Started: 시작하기
+            Overview: 개요
+            Installation: 설치
+            Quick Start: 빠른 시작
+            Configuration: 설정
+            Features: 기능
+            Web UI: 웹 UI
+            TUI: TUI
+            AI Assistant: AI 어시스턴트
+            Security: 보안
+            Concepts: 개념
+            Architecture: 아키텍처
+            TUI Architecture: TUI 아키텍처
+            MCP Integration: MCP 통합
+            Security & RBAC: 보안 & RBAC
+            User Guide: 사용 가이드
+            TUI Dashboard: TUI 대시보드
+            Web Dashboard: 웹 대시보드
+            Keyboard Shortcuts: 키보드 단축키
+            Reports: 리포트
+            AI & LLM: AI & LLM
+            LLM Providers: LLM 프로바이더
+            Embedded LLM: 임베디드 LLM
+            Tool Calling: 도구 호출
+            Benchmarks: 벤치마크
+            Deployment: 배포
+            Docker: Docker
+            Kubernetes: Kubernetes
+            Helm: Helm
+            Air-Gapped: 에어갭
+            Reference: 레퍼런스
+            API Reference: API 레퍼런스
+            CLI Reference: CLI 레퍼런스
+            Environment Variables: 환경 변수
+            Changelog: 변경 이력
   - minify:
       minify_html: true
 
@@ -155,11 +204,16 @@ nav:
     - Feature Gap Analysis: reference/feature-gap-analysis.md
     - TUI Testing Strategy: reference/tui-testing.md
     - Changelog: reference/changelog.md
-  - 한국어 (Korean):
-    - 한국어 가이드: ko/index.md
 
 # Extra
 extra:
+  alternate:
+    - name: English
+      link: /k13d/
+      lang: en
+    - name: 한국어
+      link: /k13d/ko/
+      lang: ko
   version:
     provider: mike
   social:
