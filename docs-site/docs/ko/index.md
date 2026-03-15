@@ -26,7 +26,7 @@ tar xzf k13d_*.tar.gz && chmod +x k13d
 ```bash
 # Web UI (권장)
 ./k13d -web -auth-mode local
-# 브라우저에서 http://localhost:8080 접속 (admin / admin)
+# 브라우저에서 http://localhost:8080 접속 (Username: admin / Password: 터미널에 출력됨)
 
 # TUI
 ./k13d

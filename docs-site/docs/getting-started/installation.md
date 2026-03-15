@@ -189,7 +189,7 @@ xattr -d com.apple.provenance ./k13d
 
 # Run web mode with local auth (recommended for desktop use)
 ./k13d -web -auth-mode local
-# Open http://localhost:8080 — Default login: admin / admin
+# Open http://localhost:8080 — Username: admin / Password: printed in terminal
 
 # Run web mode with K8s RBAC auth (for production)
 ./k13d -web -auth-mode token
@@ -213,7 +213,7 @@ When running the web server (`-web`), choose an authentication mode:
 For local/desktop usage, `-auth-mode local` is the simplest option:
 
 ```bash
-# With default credentials (admin / admin)
+# With auto-generated password (printed in terminal)
 ./k13d -web -auth-mode local
 
 # With custom credentials

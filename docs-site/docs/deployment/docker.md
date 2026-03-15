@@ -12,7 +12,7 @@ docker run -d \
   -v ~/.kube:/root/.kube:ro \
   cloudbro/k13d:latest \
   -web -auth-mode local -port 8080
-# Open http://localhost:8080 — Default login: admin / admin
+# Open http://localhost:8080 — Username: admin / Password: printed in docker logs
 ```
 
 With custom credentials and an AI provider:

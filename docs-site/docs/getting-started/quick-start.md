@@ -33,7 +33,7 @@ Before you begin, ensure you have:
     open http://localhost:8080
     ```
 
-    Default credentials: `admin` / `admin123`
+    Default username: `admin` — a random password is generated and printed in the terminal on startup.
 
 ---
 
