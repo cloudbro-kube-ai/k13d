@@ -626,9 +626,10 @@ func TestOpenAIProvider_RequestBuilding(t *testing.T) {
 	rc := newOpenAICaptureServer(t, "ok")
 	defer rc.Server.Close()
 
+	// Use o3-mini which supports reasoning_effort
 	p, _ := NewOpenAIProvider(&ProviderConfig{
 		Provider:        "openai",
-		Model:           "gpt-4-turbo",
+		Model:           "o3-mini",
 		APIKey:          "sk-test-12345",
 		Endpoint:        rc.Server.URL,
 		ReasoningEffort: "high",
@@ -650,14 +651,36 @@ func TestOpenAIProvider_RequestBuilding(t *testing.T) {
 	if err := json.Unmarshal(rc.Body, &reqBody); err != nil {
 		t.Fatalf("failed to unmarshal request body: %v", err)
 	}
-	if reqBody.Model != "gpt-4-turbo" {
-		t.Errorf("request model = %q, want 'gpt-4-turbo'", reqBody.Model)
+	if reqBody.Model != "o3-mini" {
+		t.Errorf("request model = %q, want 'o3-mini'", reqBody.Model)
 	}
 	if reqBody.Stream {
 		t.Error("request stream = true for AskNonStreaming, want false")
 	}
 	if reqBody.ReasoningEffort != "high" {
 		t.Errorf("reasoning_effort = %q, want 'high'", reqBody.ReasoningEffort)
+	}
+
+	// Verify reasoning_effort is NOT sent for standard GPT models
+	rc2 := newOpenAICaptureServer(t, "ok")
+	defer rc2.Server.Close()
+	p2, _ := NewOpenAIProvider(&ProviderConfig{
+		Provider:        "openai",
+		Model:           "gpt-4o",
+		APIKey:          "sk-test-12345",
+		Endpoint:        rc2.Server.URL,
+		ReasoningEffort: "high",
+	})
+	_, err = p2.AskNonStreaming(context.Background(), "describe pods")
+	if err != nil {
+		t.Fatalf("AskNonStreaming (gpt-4o): %v", err)
+	}
+	var reqBody2 openAIChatRequest
+	if err := json.Unmarshal(rc2.Body, &reqBody2); err != nil {
+		t.Fatalf("failed to unmarshal request body: %v", err)
+	}
+	if reqBody2.ReasoningEffort != "" {
+		t.Errorf("reasoning_effort for gpt-4o = %q, want empty (should not be sent)", reqBody2.ReasoningEffort)
 	}
 	if len(reqBody.Messages) != 2 {
 		t.Errorf("messages count = %d, want 2 (system + user)", len(reqBody.Messages))

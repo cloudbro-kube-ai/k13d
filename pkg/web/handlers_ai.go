@@ -156,9 +156,11 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			s.cfg.LLM.APIKey = llmSettings.APIKey
 		}
 		s.cfg.LLM.UseJSONMode = llmSettings.UseJSONMode
-		// Update reasoning effort (validate value)
+		// Update reasoning effort (validate value, clear if empty)
 		if llmSettings.ReasoningEffort == "high" || llmSettings.ReasoningEffort == "minimal" {
 			s.cfg.LLM.ReasoningEffort = llmSettings.ReasoningEffort
+		} else {
+			s.cfg.LLM.ReasoningEffort = ""
 		}
 
 		// Sync changes back to the active model profile so they persist across profile switches

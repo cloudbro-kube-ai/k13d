@@ -65,6 +65,25 @@ type ReActAction struct {
 	ModifiesResource string `json:"modifies_resource"` // "yes", "no", or "unknown"
 }
 
+// reasoningEffort returns the reasoning_effort value only for models that support it
+// (OpenAI o-series: o1, o3, o4-mini, etc. and Solar Pro2).
+// For standard GPT models, returns "" so the field is omitted via omitempty.
+func reasoningEffortForModel(model, effort string) string {
+	if effort == "" {
+		return ""
+	}
+	m := strings.ToLower(model)
+	// OpenAI o-series models (o1, o1-mini, o1-pro, o3, o3-mini, o4-mini, etc.)
+	if len(m) >= 2 && m[0] == 'o' && m[1] >= '0' && m[1] <= '9' {
+		return effort
+	}
+	// Solar Pro2
+	if strings.Contains(m, "solar-pro2") {
+		return effort
+	}
+	return ""
+}
+
 // NewOpenAIProvider creates a new OpenAI provider
 func NewOpenAIProvider(cfg *ProviderConfig) (Provider, error) {
 	endpoint := cfg.Endpoint
@@ -102,7 +121,7 @@ func (p *OpenAIProvider) Ask(ctx context.Context, prompt string, callback func(s
 			{Role: "user", Content: prompt},
 		},
 		Stream:          true,
-		ReasoningEffort: p.config.ReasoningEffort,
+		ReasoningEffort: reasoningEffortForModel(p.config.Model, p.config.ReasoningEffort),
 	}
 
 	jsonBody, err := json.Marshal(reqBody)
@@ -174,7 +193,7 @@ func (p *OpenAIProvider) AskNonStreaming(ctx context.Context, prompt string) (st
 			{Role: "user", Content: prompt},
 		},
 		Stream:          false,
-		ReasoningEffort: p.config.ReasoningEffort,
+		ReasoningEffort: reasoningEffortForModel(p.config.Model, p.config.ReasoningEffort),
 	}
 
 	jsonBody, err := json.Marshal(reqBody)
@@ -338,7 +357,7 @@ When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`},
 			Messages:        messages,
 			Stream:          false, // Non-streaming for first request to detect tool support
 			Tools:           tools,
-			ReasoningEffort: p.config.ReasoningEffort,
+			ReasoningEffort: reasoningEffortForModel(p.config.Model, p.config.ReasoningEffort),
 		}
 
 		jsonBody, err := json.Marshal(reqBody)
@@ -471,7 +490,7 @@ func (p *OpenAIProvider) streamFinalResponse(ctx context.Context, endpoint strin
 		Model:           p.config.Model,
 		Messages:        finalMessages,
 		Stream:          true,
-		ReasoningEffort: p.config.ReasoningEffort,
+		ReasoningEffort: reasoningEffortForModel(p.config.Model, p.config.ReasoningEffort),
 	}
 
 	jsonBody, err := json.Marshal(reqBody)
@@ -593,7 +612,7 @@ func (p *OpenAIProvider) askWithToolsShim(ctx context.Context, endpoint, prompt 
 			Model:           p.config.Model,
 			Messages:        messages,
 			Stream:          false, // Non-streaming for easier parsing
-			ReasoningEffort: p.config.ReasoningEffort,
+			ReasoningEffort: reasoningEffortForModel(p.config.Model, p.config.ReasoningEffort),
 		}
 
 		jsonBody, err := json.Marshal(reqBody)
