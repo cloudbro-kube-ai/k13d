@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 )
@@ -86,4 +87,12 @@ func (s *Server) getToolApprovalTimeout() time.Duration {
 		seconds = 60
 	}
 	return time.Duration(seconds) * time.Second
+}
+
+func (s *Server) getToolApprovalDecision(command string) *safety.Decision {
+	s.aiMu.RLock()
+	policy := s.cfg.Authorization.ToolApproval
+	s.aiMu.RUnlock()
+
+	return safety.NewPolicyEnforcer(policy).Evaluate(command)
 }

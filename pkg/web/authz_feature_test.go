@@ -777,6 +777,54 @@ func TestHandleToolApprovalSettings_TimeoutBounds(t *testing.T) {
 	}
 }
 
+func TestGetToolApprovalDecision_ReadOnlyCanRequireApproval(t *testing.T) {
+	s := setupRoleTestServer(t)
+	s.cfg.Authorization.ToolApproval.AutoApproveReadOnly = false
+
+	decision := s.getToolApprovalDecision("kubectl get pods -n default")
+	if !decision.Allowed {
+		t.Fatal("expected read-only command to remain allowed")
+	}
+	if !decision.RequiresApproval {
+		t.Fatal("expected read-only command to require approval when auto-approve is disabled")
+	}
+	if decision.Category != "read-only" {
+		t.Fatalf("decision.Category = %s, want read-only", decision.Category)
+	}
+}
+
+func TestGetToolApprovalDecision_WriteCanSkipApproval(t *testing.T) {
+	s := setupRoleTestServer(t)
+	s.cfg.Authorization.ToolApproval.RequireApprovalForWrite = false
+
+	decision := s.getToolApprovalDecision("kubectl scale deployment nginx --replicas=2")
+	if !decision.Allowed {
+		t.Fatal("expected write command to remain allowed")
+	}
+	if decision.RequiresApproval {
+		t.Fatal("expected write command to skip approval when policy disables it")
+	}
+	if decision.Category != "write" {
+		t.Fatalf("decision.Category = %s, want write", decision.Category)
+	}
+}
+
+func TestGetToolApprovalDecision_CanBlockDangerousCommands(t *testing.T) {
+	s := setupRoleTestServer(t)
+	s.cfg.Authorization.ToolApproval.BlockDangerous = true
+
+	decision := s.getToolApprovalDecision("kubectl delete namespace kube-system")
+	if decision.Allowed {
+		t.Fatal("expected dangerous command to be blocked")
+	}
+	if decision.BlockReason == "" {
+		t.Fatal("expected blocked command to include a reason")
+	}
+	if decision.Category != "dangerous" {
+		t.Fatalf("decision.Category = %s, want dangerous", decision.Category)
+	}
+}
+
 func TestHandleToolApprovalSettings_InvalidBody(t *testing.T) {
 	s := setupRoleTestServer(t)
 

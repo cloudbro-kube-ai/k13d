@@ -27,7 +27,7 @@ Before you begin, ensure you have:
 
     ```bash
     # Start web server
-    ./k13d -web -port 8080
+    ./k13d --web --port 8080
 
     # Open in browser
     open http://localhost:8080

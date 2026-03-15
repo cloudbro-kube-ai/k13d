@@ -426,6 +426,7 @@ func (am *AuthManager) HandleLDAPStatus(w http.ResponseWriter, r *http.Request) 
 		"base_dn":      ldapConfig.BaseDN,
 		"admin_groups": ldapConfig.AdminGroups,
 		"user_groups":  ldapConfig.UserGroups,
+		"config":       ldapConfig,
 	})
 }
 

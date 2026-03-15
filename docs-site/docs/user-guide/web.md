@@ -18,16 +18,16 @@ The Web UI offers:
 
 ```bash
 # Start web server on default port 8080
-k13d -web
+k13d --web
 
 # Specify custom port
-k13d -web -port 3000
+k13d --web --port 3000
 
-# With authentication
-k13d -web -password "your-secure-password"
+# With local authentication
+k13d --web --auth-mode local
 
 # With embedded LLM (no API key needed)
-k13d -web --embedded-llm
+k13d --web --embedded-llm
 ```
 
 ### Access the Dashboard
@@ -308,18 +308,19 @@ The Web UI is responsive and works on mobile devices:
 
 ### Authentication
 
-Enable password authentication:
+Run the Web UI with local authentication:
 
 ```bash
-k13d -web -password "secure-password"
+k13d --web --auth-mode local
 ```
 
-Or in config:
+For production, prefer token auth:
 
-```yaml
-auth:
-  password: "secure-password"
+```bash
+k13d --web --auth-mode token
 ```
+
+Provider-specific LDAP/OIDC settings are startup-configured in the current build and are not persisted from the Web UI settings page.
 
 ### HTTPS
 

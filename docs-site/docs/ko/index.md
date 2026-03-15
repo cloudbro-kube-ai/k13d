@@ -25,7 +25,7 @@ tar xzf k13d_*.tar.gz && chmod +x k13d
 
 ```bash
 # Web UI (권장)
-./k13d -web -auth-mode local
+./k13d --web --auth-mode local
 # 브라우저에서 http://localhost:8080 접속 (Username: admin / Password: 터미널에 출력됨)
 
 # TUI
@@ -163,11 +163,11 @@ Web UI 실행 후 **Settings > AI** 에서 LLM provider를 설정하세요.
 ```bash
 # OpenAI 사용
 export OPENAI_API_KEY=sk-...
-./k13d -web -auth-mode local
+./k13d --web --auth-mode local
 
 # Ollama 사용 (로컬, 무료)
 ollama pull qwen2.5:3b && ollama serve
-./k13d -web -auth-mode local
+./k13d --web --auth-mode local
 # Settings > AI에서 Provider를 "ollama"로 변경
 ```
 
@@ -187,13 +187,12 @@ ollama pull qwen2.5:3b && ollama serve
 
 ```bash
 ./k13d                              # TUI 모드
-./k13d -web                         # Web UI (port 8080)
-./k13d -web -port 3000              # 커스텀 포트
-./k13d -web -auth-mode local        # 인증 모드
-./k13d -web --no-auth               # 인증 없음 (개발용)
-./k13d --kubeconfig ~/.kube/prod    # kubeconfig 경로 지정
-./k13d --context prod-cluster       # 특정 context 사용
-./k13d --debug                      # 디버그 로깅
+./k13d --web                        # Web UI (port 8080)
+./k13d --web --port 3000            # 커스텀 포트
+./k13d --web --auth-mode local      # 로컬 인증 모드
+./k13d --web --no-auth              # 인증 없음 (개발용)
+./k13d --mcp                        # MCP 서버 모드
+./k13d --storage-info               # 저장소 경로 확인
 ```
 
 ---
@@ -204,7 +203,7 @@ ollama pull qwen2.5:3b && ollama serve
 docker run -d -p 8080:8080 \
   -v ~/.kube/config:/home/k13d/.kube/config:ro \
   cloudbro/k13d:latest \
-  -web -auth-mode local
+  --web --auth-mode local
 ```
 
 ---

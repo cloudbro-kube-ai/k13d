@@ -151,7 +151,7 @@ It bridges the gap between traditional cluster management and natural language A
     git clone https://github.com/cloudbro-kube-ai/k13d.git
     cd k13d
     make build
-    ./k13d -web -port 8080
+    ./k13d --web --port 8080
     ```
 
 === "Docker"

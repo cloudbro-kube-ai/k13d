@@ -121,7 +121,7 @@ tar -xzvf ollama-models.tar.gz -C ~/
 
 ```bash
 # Run with embedded LLM
-k13d --embedded-llm -web -port 8080
+k13d --embedded-llm --web --port 8080
 ```
 
 ### With Docker + Ollama
@@ -142,7 +142,7 @@ docker run -d \
   -e LLM_PROVIDER=ollama \
   -e LLM_ENDPOINT=http://ollama:11434 \
   cloudbro/k13d:latest \
-  -web -port 8080
+  --web
 ```
 
 ### Docker Compose (Air-Gapped)

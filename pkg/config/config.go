@@ -3,6 +3,8 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 
 	"github.com/adrg/xdg"
 	"gopkg.in/yaml.v3"
@@ -227,6 +229,9 @@ type MCPServer struct {
 }
 
 func GetConfigPath() string {
+	if path := strings.TrimSpace(os.Getenv("K13D_CONFIG")); path != "" {
+		return path
+	}
 	return filepath.Join(xdg.ConfigHome, "k13d", "config.yaml")
 }
 
@@ -397,6 +402,27 @@ func (c *Config) SetActiveModel(name string) bool {
 	return false
 }
 
+// SyncActiveModelProfileFromLLM persists the current LLM settings into the
+// explicitly selected active model profile.
+func (c *Config) SyncActiveModelProfileFromLLM() bool {
+	for i := range c.Models {
+		if c.Models[i].Name != c.ActiveModel {
+			continue
+		}
+
+		c.Models[i].Provider = c.LLM.Provider
+		c.Models[i].Model = c.LLM.Model
+		c.Models[i].Endpoint = c.LLM.Endpoint
+		c.Models[i].APIKey = c.LLM.APIKey
+		c.Models[i].Region = c.LLM.Region
+		c.Models[i].AzureDeployment = c.LLM.AzureDeployment
+		c.Models[i].SkipTLSVerify = c.LLM.SkipTLSVerify
+		return true
+	}
+
+	return false
+}
+
 // AddModelProfile adds a new model profile
 func (c *Config) AddModelProfile(profile ModelProfile) {
 	// Check if name already exists, update if so
@@ -517,10 +543,49 @@ func LoadConfig() (*Config, error) {
 		// TODO: Log warning when config file exists but fails to parse.
 		// Currently silently falls back to defaults which can be confusing.
 		cfg = NewDefaultConfig()
+	} else {
+		expandEnvPlaceholders(cfg)
 	}
 
 	applyEnvOverrides(cfg)
 	return cfg, nil
+}
+
+func expandEnvPlaceholders(cfg *Config) {
+	expandEnvValue(reflect.ValueOf(cfg))
+}
+
+func expandEnvValue(v reflect.Value) {
+	if !v.IsValid() {
+		return
+	}
+
+	switch v.Kind() {
+	case reflect.Pointer:
+		if v.IsNil() {
+			return
+		}
+		expandEnvValue(v.Elem())
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			expandEnvValue(v.Field(i))
+		}
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			expandEnvValue(v.Index(i))
+		}
+	case reflect.Map:
+		for _, key := range v.MapKeys() {
+			value := reflect.New(v.Type().Elem()).Elem()
+			value.Set(v.MapIndex(key))
+			expandEnvValue(value)
+			v.SetMapIndex(key, value)
+		}
+	case reflect.String:
+		if v.CanSet() {
+			v.SetString(os.ExpandEnv(v.String()))
+		}
+	}
 }
 
 // applyEnvOverrides applies K13D_* environment variable overrides.

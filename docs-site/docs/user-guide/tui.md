@@ -30,12 +30,14 @@ The Terminal User Interface (TUI) provides a k9s-like experience for managing Ku
 # Default mode
 k13d
 
-# With specific kubeconfig
-k13d --kubeconfig ~/.kube/my-cluster
+# With specific namespace
+k13d -n kube-system
 
-# With specific context
-k13d --context production
+# With all namespaces
+k13d -A
 ```
+
+`k13d` uses the standard Kubernetes client loading rules for kubeconfig and current context. Use `KUBECONFIG` or your current kubeconfig context instead of `--kubeconfig` / `--context` flags.
 
 ## Navigation
 

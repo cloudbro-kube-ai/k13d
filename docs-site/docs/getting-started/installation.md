@@ -151,7 +151,7 @@ cd offline-bundle
 make build-offline
 
 # Run with embedded LLM (no API keys needed)
-./k13d --embedded-llm -web -port 8080
+./k13d --embedded-llm --web --port 8080
 ```
 
 ---
@@ -188,11 +188,11 @@ xattr -d com.apple.provenance ./k13d
 ./k13d
 
 # Run web mode with local auth (recommended for desktop use)
-./k13d -web -auth-mode local
+./k13d --web --auth-mode local
 # Open http://localhost:8080 — Username: admin / Password: printed in terminal
 
 # Run web mode with K8s RBAC auth (for production)
-./k13d -web -auth-mode token
+./k13d --web --auth-mode token
 
 # Check embedded LLM status
 ./k13d --embedded-llm-status
@@ -200,29 +200,31 @@ xattr -d com.apple.provenance ./k13d
 
 ### Authentication Modes
 
-When running the web server (`-web`), choose an authentication mode:
+When running the Web server (`--web`), choose an authentication mode:
 
 | Mode | Flag | Description |
 |------|------|-------------|
-| **Local** | `-auth-mode local` | Username/password auth stored in memory. Ideal for local development, desktop use, and standalone deployments. No external auth infrastructure needed. |
-| **Token** | `-auth-mode token` | Kubernetes RBAC token validation via TokenReview API. Best for in-cluster deployments. This is the default. |
-| **LDAP** | `-auth-mode ldap` | Authenticate against an LDAP directory (Active Directory, OpenLDAP). |
-| **OIDC** | `-auth-mode oidc` | SSO via OpenID Connect providers (Google, Okta, Azure AD). |
+| **Local** | `--auth-mode local` | Username/password auth stored in memory. Ideal for local development, desktop use, and standalone deployments. |
+| **Token** | `--auth-mode token` | Kubernetes RBAC token validation via TokenReview API. Best for in-cluster deployments. This is the default. |
+| **LDAP** | `--auth-mode ldap` | LDAP auth path exists, but provider-specific LDAP settings still need startup-time wiring outside the current Web UI. |
+| **OIDC** | `--auth-mode oidc` | OIDC auth path exists, but provider-specific OIDC settings still need startup-time wiring outside the current Web UI. |
 | **No Auth** | `--no-auth` | Disables authentication entirely. **Not recommended** — use only for local testing. |
 
-For local/desktop usage, `-auth-mode local` is the simplest option:
+For LDAP, OIDC, MFA, and SAML guidance, see the [Security guide](../features/security.md).
+
+For local/desktop usage, `--auth-mode local` is the simplest option:
 
 ```bash
 # With auto-generated password (printed in terminal)
-./k13d -web -auth-mode local
+./k13d --web --auth-mode local
 
 # With custom credentials
-./k13d -web -auth-mode local -admin-user myadmin -admin-password mysecurepassword
+./k13d --web --auth-mode local --admin-user myadmin --admin-password mysecurepassword
 
 # Or via environment variables
 export K13D_USERNAME=myadmin
 export K13D_PASSWORD=mysecurepassword
-./k13d -web -auth-mode local
+./k13d --web --auth-mode local
 ```
 
 ---

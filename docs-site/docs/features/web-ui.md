@@ -440,7 +440,10 @@ Admin controls for user authentication:
 
 - Enable/disable user accounts
 - Reset passwords
-- Manage session timeouts
+- Inspect current runtime auth mode
+- Review runtime LDAP/OIDC provider status
+
+Provider-specific auth configuration is startup-configured in the current build. The Settings page shows runtime status, but LDAP/OIDC changes are not persisted from the Web UI yet.
 
 ---
 

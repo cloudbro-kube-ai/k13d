@@ -11,7 +11,7 @@ docker run -d \
   -p 8080:8080 \
   -v ~/.kube:/root/.kube:ro \
   cloudbro/k13d:latest \
-  -web -auth-mode local -port 8080
+  --web --auth-mode local
 # Open http://localhost:8080 — Username: admin / Password: printed in docker logs
 ```
 
@@ -27,7 +27,7 @@ docker run -d \
   -e K13D_PASSWORD=mysecurepassword \
   -e OPENAI_API_KEY=$OPENAI_API_KEY \
   cloudbro/k13d:latest \
-  -web -port 8080
+  --web
 ```
 
 Access at: http://localhost:8080

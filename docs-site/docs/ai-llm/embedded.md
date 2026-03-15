@@ -18,7 +18,7 @@ The embedded LLM feature allows k13d to:
 k13d --embedded-llm
 
 # Web mode with embedded LLM
-k13d --embedded-llm -web -port 8080
+k13d --embedded-llm --web --port 8080
 ```
 
 ## How It Works
@@ -169,7 +169,7 @@ llm:
 nvidia-smi
 
 # Run with GPU
-k13d --embedded-llm -web
+k13d --embedded-llm --web
 ```
 
 ### Apple Metal
@@ -206,7 +206,7 @@ sudo powermetrics --samplers gpu_power
 scp k13d air-gapped-server:/usr/local/bin/
 
 # Run on air-gapped machine
-k13d --embedded-llm -web
+k13d --embedded-llm --web
 ```
 
 ### Development/Testing
@@ -220,7 +220,7 @@ k13d --embedded-llm
 
 ```bash
 # Kubernetes cluster with sensitive data
-k13d --embedded-llm -web
+k13d --embedded-llm --web
 # All AI analysis happens locally
 ```
 

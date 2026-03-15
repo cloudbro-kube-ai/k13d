@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
+	"strconv"
 	"syscall"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
@@ -37,19 +38,44 @@ func envDefault(envKey, defaultVal string) string {
 	return defaultVal
 }
 
+func envBoolDefault(envKey string, defaultVal bool) bool {
+	v := os.Getenv(envKey)
+	if v == "" {
+		return defaultVal
+	}
+	parsed, err := strconv.ParseBool(v)
+	if err != nil {
+		return defaultVal
+	}
+	return parsed
+}
+
+func envIntDefault(envKey string, defaultVal int) int {
+	v := os.Getenv(envKey)
+	if v == "" {
+		return defaultVal
+	}
+	parsed, err := strconv.Atoi(v)
+	if err != nil {
+		return defaultVal
+	}
+	return parsed
+}
+
 func main() {
-	// Command line flags - using consistent --long-form style
-	// Flags fall back to K13D_* environment variables for Docker/K8s compatibility
+	// Command line flags - Go's flag parser accepts both -flag and --flag forms.
+	// Selected flags also fall back to K13D_* environment variables for Docker/K8s compatibility.
 	// Mode flags
-	webMode := flag.Bool("web", false, "Start web server mode")
+	webMode := flag.Bool("web", envBoolDefault("K13D_WEB", false), "Start web server mode")
 	tuiMode := flag.Bool("tui", false, "Start TUI mode (default when no mode specified)")
 	mcpMode := flag.Bool("mcp", false, "Start MCP server mode (stdio transport)")
-	webPort := flag.Int("port", 8080, "Web server port (used with --web)")
+	webPort := flag.Int("port", envIntDefault("K13D_PORT", 8080), "Web server port (used with --web)")
+	configPath := flag.String("config", envDefault("K13D_CONFIG", ""), "Config file path (default: ~/.config/k13d/config.yaml)")
 
 	// Namespace flags (k9s compatible)
-	namespace := flag.String("namespace", "", "Initial namespace (use 'all' for all namespaces)")
+	namespace := flag.String("namespace", envDefault("K13D_NAMESPACE", ""), "Initial namespace (use 'all' for all namespaces)")
 	flag.StringVar(namespace, "n", "", "Initial namespace (short for --namespace)")
-	allNamespaces := flag.Bool("all-namespaces", false, "Start with all namespaces")
+	allNamespaces := flag.Bool("all-namespaces", envBoolDefault("K13D_ALL_NAMESPACES", false), "Start with all namespaces")
 	flag.BoolVar(allNamespaces, "A", false, "Start with all namespaces (short for --all-namespaces)")
 
 	// Info flags
@@ -57,25 +83,29 @@ func main() {
 	genCompletion := flag.String("completion", "", "Generate shell completion (bash, zsh, fish)")
 
 	// Web server auth flags (env: K13D_AUTH_MODE, K13D_USERNAME, K13D_PASSWORD)
-	authMode := flag.String("auth-mode", envDefault("K13D_AUTH_MODE", "token"), "Authentication mode: token (K8s RBAC), local (username/password), ldap")
-	authDisabled := flag.Bool("no-auth", false, "Disable authentication (not recommended)")
+	authMode := flag.String("auth-mode", envDefault("K13D_AUTH_MODE", "token"), "Authentication mode: token (K8s RBAC), local (username/password), ldap, oidc")
+	authDisabled := flag.Bool("no-auth", envBoolDefault("K13D_NO_AUTH", false), "Disable authentication (not recommended)")
 	adminUser := flag.String("admin-user", envDefault("K13D_USERNAME", ""), "Default admin username for local auth mode")
 	adminPass := flag.String("admin-password", envDefault("K13D_PASSWORD", ""), "Default admin password for local auth mode")
 
 	// Storage flags
-	dbPath := flag.String("db-path", "", "SQLite database path (default: ~/.config/k13d/audit.db)")
-	disableDB := flag.Bool("no-db", false, "Disable database persistence entirely")
+	dbPath := flag.String("db-path", envDefault("K13D_DB_PATH", ""), "SQLite database path (default: ~/.config/k13d/audit.db)")
+	disableDB := flag.Bool("no-db", envBoolDefault("K13D_NO_DB", false), "Disable database persistence entirely")
 	showStorageInfo := flag.Bool("storage-info", false, "Show storage configuration and data locations")
 
 	// Embedded LLM flags
-	embeddedLLM := flag.Bool("embedded-llm", false, "Start embedded LLM server (llama.cpp)")
-	embeddedLLMPort := flag.Int("embedded-llm-port", 8081, "Embedded LLM server port")
-	embeddedLLMModel := flag.String("embedded-llm-model", "", "Path to custom GGUF model file")
-	embeddedLLMContext := flag.Int("embedded-llm-context", 0, "Context size (0 = auto-detect based on model)")
-	downloadModel := flag.Bool("download-model", false, "Download the default model (Qwen2.5-0.5B-Instruct)")
-	embeddedLLMStatus := flag.Bool("embedded-llm-status", false, "Show embedded LLM status")
+	embeddedLLM := flag.Bool("embedded-llm", envBoolDefault("K13D_EMBEDDED_LLM", false), "Start embedded LLM server (llama.cpp)")
+	embeddedLLMPort := flag.Int("embedded-llm-port", envIntDefault("K13D_EMBEDDED_LLM_PORT", 8081), "Embedded LLM server port")
+	embeddedLLMModel := flag.String("embedded-llm-model", envDefault("K13D_EMBEDDED_LLM_MODEL", ""), "Path to custom GGUF model file")
+	embeddedLLMContext := flag.Int("embedded-llm-context", envIntDefault("K13D_EMBEDDED_LLM_CONTEXT", 0), "Context size (0 = auto-detect based on model)")
+	downloadModel := flag.Bool("download-model", envBoolDefault("K13D_DOWNLOAD_MODEL", false), "Download the default model (Qwen2.5-0.5B-Instruct)")
+	embeddedLLMStatus := flag.Bool("embedded-llm-status", envBoolDefault("K13D_EMBEDDED_LLM_STATUS", false), "Show embedded LLM status")
 
 	flag.Parse()
+
+	if *configPath != "" {
+		_ = os.Setenv("K13D_CONFIG", *configPath)
+	}
 
 	// -tui flag is explicit TUI mode (useful for Docker)
 	_ = tuiMode // TUI is default when -web is not specified

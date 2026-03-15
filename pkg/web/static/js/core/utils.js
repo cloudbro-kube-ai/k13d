@@ -252,5 +252,6 @@
     // Export to global namespace
     global.K13D = global.K13D || {};
     global.K13D.Utils = Utils;
+    global.escapeHtml = Utils.escapeHtml;
 
 })(window);

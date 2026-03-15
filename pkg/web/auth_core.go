@@ -359,6 +359,7 @@ func (am *AuthManager) HandleAuthStatus(w http.ResponseWriter, r *http.Request) 
 		"auth_enabled":     am.config.Enabled,
 		"auth_mode":        am.config.AuthMode,
 		"ldap_enabled":     am.IsLDAPEnabled(),
+		"oidc_configured":  am.oidcProvider != nil,
 		"token_available":  am.tokenValidator != nil,
 		"session_duration": am.config.SessionDuration.String(),
 		"total_users":      len(am.users),

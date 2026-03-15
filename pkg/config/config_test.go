@@ -185,6 +185,43 @@ func TestSetActiveModel(t *testing.T) {
 	}
 }
 
+func TestSyncActiveModelProfileFromLLM(t *testing.T) {
+	cfg := &Config{
+		ActiveModel: "gpt-4o",
+		LLM: LLMConfig{
+			Provider:        "openai",
+			Model:           "gpt-4o",
+			Endpoint:        "https://api.openai.com/v1",
+			APIKey:          "sk-test",
+			Region:          "global",
+			AzureDeployment: "ignored",
+			SkipTLSVerify:   true,
+		},
+		Models: []ModelProfile{
+			{Name: "gpt-4o", Provider: "openai", Model: "gpt-4"},
+			{Name: "other", Provider: "anthropic", Model: "claude-sonnet-4"},
+		},
+	}
+
+	if !cfg.SyncActiveModelProfileFromLLM() {
+		t.Fatal("SyncActiveModelProfileFromLLM() = false, want true")
+	}
+
+	active := cfg.Models[0]
+	if active.Model != "gpt-4o" {
+		t.Errorf("active.Model = %s, want gpt-4o", active.Model)
+	}
+	if active.Endpoint != "https://api.openai.com/v1" {
+		t.Errorf("active.Endpoint = %s, want OpenAI endpoint", active.Endpoint)
+	}
+	if active.APIKey != "sk-test" {
+		t.Errorf("active.APIKey = %s, want sk-test", active.APIKey)
+	}
+	if !active.SkipTLSVerify {
+		t.Error("active.SkipTLSVerify should be true")
+	}
+}
+
 func TestAddModelProfile(t *testing.T) {
 	cfg := &Config{Models: []ModelProfile{}}
 
@@ -295,12 +332,22 @@ func TestMCPServerOperations(t *testing.T) {
 }
 
 func TestGetConfigPath(t *testing.T) {
+	t.Setenv("K13D_CONFIG", "")
 	path := GetConfigPath()
 	if path == "" {
 		t.Error("GetConfigPath() returned empty string")
 	}
 	if filepath.Base(path) != "config.yaml" {
 		t.Errorf("GetConfigPath() base = %s, want config.yaml", filepath.Base(path))
+	}
+}
+
+func TestGetConfigPathUsesEnvOverride(t *testing.T) {
+	customPath := filepath.Join(t.TempDir(), "custom-config.yaml")
+	t.Setenv("K13D_CONFIG", customPath)
+
+	if got := GetConfigPath(); got != customPath {
+		t.Errorf("GetConfigPath() = %s, want %s", got, customPath)
 	}
 }
 
@@ -452,6 +499,44 @@ func TestLoadConfig(t *testing.T) {
 	// Should have default values
 	if cfg.LLM.Provider == "" {
 		t.Error("LoadConfig() should return default provider")
+	}
+}
+
+func TestLoadConfigExpandsEnvPlaceholders(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	t.Setenv("K13D_CONFIG", configPath)
+	t.Setenv("TEST_K13D_API_KEY", "expanded-secret")
+	t.Setenv("TEST_K13D_MODEL", "gpt-4o")
+
+	data := []byte(`
+llm:
+  provider: openai
+  model: ${TEST_K13D_MODEL}
+  api_key: ${TEST_K13D_API_KEY}
+models:
+  - name: openai-prod
+    provider: openai
+    model: ${TEST_K13D_MODEL}
+    api_key: ${TEST_K13D_API_KEY}
+active_model: openai-prod
+`)
+	if err := os.WriteFile(configPath, data, 0600); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if cfg.LLM.Model != "gpt-4o" {
+		t.Errorf("cfg.LLM.Model = %s, want gpt-4o", cfg.LLM.Model)
+	}
+	if cfg.LLM.APIKey != "expanded-secret" {
+		t.Errorf("cfg.LLM.APIKey = %s, want expanded-secret", cfg.LLM.APIKey)
+	}
+	if len(cfg.Models) != 1 || cfg.Models[0].APIKey != "expanded-secret" {
+		t.Fatalf("cfg.Models[0].APIKey = %q, want expanded-secret", cfg.Models[0].APIKey)
 	}
 }
 

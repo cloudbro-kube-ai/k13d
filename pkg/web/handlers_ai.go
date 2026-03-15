@@ -153,15 +153,8 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			s.cfg.LLM.ReasoningEffort = ""
 		}
 
-		// Sync changes back to the active model profile so they persist across profile switches
-		if profile := s.cfg.GetActiveModelProfile(); profile != nil {
-			profile.Provider = s.cfg.LLM.Provider
-			profile.Model = s.cfg.LLM.Model
-			profile.Endpoint = s.cfg.LLM.Endpoint
-			if llmSettings.APIKey != "" {
-				profile.APIKey = s.cfg.LLM.APIKey
-			}
-		}
+		// Persist edits into the explicitly active profile so Web and TUI stay aligned.
+		s.cfg.SyncActiveModelProfileFromLLM()
 
 		// Recreate AI client
 		newClient, err := ai.NewClient(&s.cfg.LLM)
@@ -446,12 +439,24 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			command = cmd
 		}
 
-		// Classify the command
-		category := classifyCommand(command)
+		decision := s.getToolApprovalDecision(command)
 
-		// Auto-approve read-only commands
-		if category == "read-only" {
+		// Policy allows the command without prompting the user.
+		if decision.Allowed && !decision.RequiresApproval {
 			return true
+		}
+
+		if !decision.Allowed {
+			blockedJSON, _ := json.Marshal(map[string]interface{}{
+				"type":      "approval_blocked",
+				"tool_name": toolName,
+				"command":   command,
+				"category":  decision.Category,
+				"reason":    decision.BlockReason,
+				"warnings":  decision.Warnings,
+			})
+			_ = sse.WriteEvent("approval", string(blockedJSON))
+			return false
 		}
 
 		// Create pending approval
@@ -460,7 +465,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			ID:        approvalID,
 			ToolName:  toolName,
 			Command:   command,
-			Category:  category,
+			Category:  decision.Category,
 			Timestamp: time.Now(),
 			Response:  make(chan bool, 1),
 		}
@@ -475,7 +480,8 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			"id":        approvalID,
 			"tool_name": toolName,
 			"command":   command,
-			"category":  category,
+			"category":  decision.Category,
+			"warnings":  decision.Warnings,
 		})
 		_ = sse.WriteEvent("approval", string(approvalJSON))
 

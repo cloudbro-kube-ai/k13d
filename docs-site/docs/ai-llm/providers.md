@@ -31,7 +31,7 @@ Or via environment variable:
 
 ```bash
 export OPENAI_API_KEY=sk-your-key-here
-k13d -web
+k13d --web
 ```
 
 ### Anthropic (Claude)
@@ -106,7 +106,7 @@ export AWS_REGION=us-east-1
 Run without any external API:
 
 ```bash
-k13d --embedded-llm -web
+k13d --embedded-llm --web
 ```
 
 Configuration:
@@ -298,7 +298,7 @@ For faster responses:
 ```bash
 # Good
 export OPENAI_API_KEY=sk-...
-k13d -web
+k13d --web
 
 # Bad - key in config file
 llm:

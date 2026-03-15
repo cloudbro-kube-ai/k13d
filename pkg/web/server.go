@@ -616,6 +616,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/auth/oidc/login", s.authManager.HandleOIDCLogin)
 	mux.HandleFunc("/api/auth/oidc/callback", s.authManager.HandleOIDCCallback)
 	mux.HandleFunc("/api/auth/oidc/status", s.authManager.HandleOIDCStatus)
+	mux.HandleFunc("/api/auth/ldap/status", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleLDAPStatus)))
+	mux.HandleFunc("/api/auth/ldap/test", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleLDAPTest)))
 
 	// Prometheus scrape endpoint (no auth for scraping)
 	if s.cfg.Prometheus.ExposeMetrics {
