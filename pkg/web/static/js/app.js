@@ -2087,9 +2087,11 @@ function stopGeneration() {
 async function proceedWithMessage(message) {
     isLoading = true;
     const sendBtn = document.getElementById('send-btn');
+    const aiInput = document.getElementById('ai-input');
     if (sendBtn) sendBtn.disabled = true;
+    aiInput.value = '';
+    aiInput.disabled = true;
 
-    document.getElementById('ai-input').value = '';
     saveQueryToHistory(message);
     aiHistoryIndex = -1;
     aiCurrentDraft = '';
@@ -2104,6 +2106,8 @@ async function proceedWithMessage(message) {
     } finally {
         isLoading = false;
         if (sendBtn) sendBtn.disabled = false;
+        aiInput.disabled = false;
+        aiInput.focus();
     }
 }
 
@@ -8730,9 +8734,15 @@ sendMessage = async function () {
     // Log request in debug mode
     addDebugLog('request', 'AI Request', { message, context: aiContextItems });
 
+    // Save query to history for arrow key navigation
+    saveQueryToHistory(message.split('\n\nContext from selected resources:')[0]);
+    aiHistoryIndex = -1;
+    aiCurrentDraft = '';
+
     isLoading = true;
     document.getElementById('send-btn').disabled = true;
     input.value = '';
+    input.disabled = true;
 
     addMessage(message.split('\n\nContext from selected resources:')[0], true);
 
@@ -8741,6 +8751,8 @@ sendMessage = async function () {
 
     isLoading = false;
     document.getElementById('send-btn').disabled = false;
+    input.disabled = false;
+    input.focus();
 };
 
 // ==========================================
