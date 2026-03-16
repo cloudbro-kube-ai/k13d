@@ -40,27 +40,33 @@ func (a *App) setupUI() {
 		Background(tableSelect).
 		Foreground(tcell.ColorWhite).
 		Bold(true))
+	a.table.SetSelectionChangedFunc(func(row, column int) {
+		a.applyAIChrome()
+	})
 
 	// AI Panel with enhanced styling
 	a.aiPanel = tview.NewTextView().
 		SetDynamicColors(true).
 		SetScrollable(true).
 		SetWrap(true)
-	a.aiPanel.SetText("[#7aa2f7]╭─────────────────────────────╮[-]\n" +
-		"[#7aa2f7]│[white] 🤖 AI Assistant Ready       [#7aa2f7]│[-]\n" +
-		"[#7aa2f7]╰─────────────────────────────╯[-]\n\n" +
-		"[#a9b1d6]Press [#e0af68]Tab[#a9b1d6] to ask questions:\n\n" +
-		"[#565f89]• Why is this pod failing?\n" +
-		"• How do I scale this deployment?\n" +
-		"• Explain this resource\n" +
-		"• Show me the logs[-]")
+	a.aiPanel.SetBorder(false)
+
+	a.aiMetaBar = tview.NewTextView().
+		SetDynamicColors(true).
+		SetWrap(true)
+	a.aiMetaBar.SetBackgroundColor(tcell.ColorDefault)
+
+	a.aiStatusBar = tview.NewTextView().
+		SetDynamicColors(true).
+		SetWrap(false)
+	a.aiStatusBar.SetBackgroundColor(tcell.ColorDefault)
 
 	// AI Input field with better styling
 	a.aiInput = tview.NewInputField().
 		SetLabel("[#bb9af7] ⟩ [-]").
 		SetFieldWidth(0).
 		SetFieldBackgroundColor(tcell.ColorDefault).
-		SetPlaceholder("Ask AI...")
+		SetPlaceholder("Ask AI... (/help for commands)")
 	a.aiInput.SetPlaceholderStyle(tcell.StyleDefault.Foreground(tcell.ColorDarkGray))
 	a.aiInput.SetLabelColor(aiBorder)
 	a.setupAIInput()
@@ -109,19 +115,21 @@ func (a *App) setupUI() {
 	a.setupAutocomplete()
 
 	// AI Panel container with enhanced border
-	aiContainer := tview.NewFlex().SetDirection(tview.FlexRow).
+	a.aiContainer = tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(a.aiMetaBar, 2, 0, false).
 		AddItem(a.aiPanel, 0, 1, false).
+		AddItem(a.aiStatusBar, 1, 0, false).
 		AddItem(a.aiInput, 1, 0, true)
-	aiContainer.SetBorder(true).
+	a.aiContainer.SetBorder(true).
 		SetTitle(" 🤖 AI Assistant ").
 		SetBorderColor(aiBorder).
 		SetTitleColor(aiBorder)
 
 	// Content area (table + AI panel)
-	contentFlex := tview.NewFlex()
-	contentFlex.AddItem(a.table, 0, 3, true)
+	a.contentFlex = tview.NewFlex()
+	a.contentFlex.AddItem(a.table, 0, 3, true)
 	if a.showAIPanel {
-		contentFlex.AddItem(aiContainer, 48, 0, false) // Slightly wider for better UX
+		a.contentFlex.AddItem(a.aiContainer, 52, 0, false)
 	}
 
 	// Command bar with hint overlay
@@ -140,7 +148,7 @@ func (a *App) setupUI() {
 	}
 
 	mainFlex.
-		AddItem(contentFlex, 0, 1, true).
+		AddItem(a.contentFlex, 0, 1, true).
 		AddItem(a.statusBar, 1, 0, false).
 		AddItem(cmdFlex, 1, 0, false)
 
@@ -152,6 +160,8 @@ func (a *App) setupUI() {
 
 	// Initial UI state
 	a.updateHeader()
+	a.resetAIConversation()
+	a.applyAIChrome()
 	a.updateStatusBar()
 }
 
@@ -195,7 +205,7 @@ func (a *App) updateHeader() {
 	// Read watch state FIRST (before mx) to prevent lock ordering deadlock
 	// with startWatch() which acquires watchMu → mx
 	watchStatus := ""
-	a.watchMu.Lock()
+	a.watchMu.RLock()
 	if a.watcher != nil {
 		switch a.watcher.State() {
 		case k8s.WatchStateActive:
@@ -204,7 +214,7 @@ func (a *App) updateHeader() {
 			watchStatus = " [#e0af68]○ Poll[-]"
 		}
 	}
-	a.watchMu.Unlock()
+	a.watchMu.RUnlock()
 
 	a.mx.RLock()
 	ns := a.currentNamespace
@@ -291,7 +301,7 @@ func (a *App) updateStatusBar() {
 	a.mx.RUnlock()
 
 	// Enhanced status bar with Tokyo Night colors (dark text on green background)
-	shortcuts := "[black]n[-][#1a1b26]NS[-] [black]0[-][#1a1b26]All[-] [black]/[-][#1a1b26]Filter[-] [black]:[-][#1a1b26]Cmd[-] [black]?[-][#1a1b26]Help[-] [black]q[-][#1a1b26]Quit[-]"
+	shortcuts := "[black]n[-][#1a1b26]NS[-] [black]0[-][#1a1b26]All[-] [black]/[-][#1a1b26]Filter[-] [black]:[-][#1a1b26]Cmd[-] [black]Ctrl+E[-][#1a1b26]AI[-] [black]?[-][#1a1b26]Help[-] [black]q[-][#1a1b26]Quit[-]"
 
 	// Add resource-specific shortcuts
 	switch resource {
@@ -428,6 +438,10 @@ func (a *App) QueueUpdateDraw(f func()) {
 	if a.Application == nil || atomic.LoadInt32(&a.stopping) == 1 {
 		return
 	}
+	if atomic.LoadInt32(&a.running) == 0 {
+		f()
+		return
+	}
 	go a.queueUpdateDrawDirect(f)
 }
 
@@ -436,7 +450,30 @@ func (a *App) queueUpdateDrawDirect(f func()) {
 	if a.Application == nil || atomic.LoadInt32(&a.stopping) == 1 {
 		return
 	}
+	if atomic.LoadInt32(&a.running) == 0 {
+		f()
+		return
+	}
 	a.Application.QueueUpdateDraw(f)
+}
+
+func (a *App) rebuildContentLayout(focusAI bool) {
+	if a.contentFlex == nil {
+		return
+	}
+	a.contentFlex.Clear()
+	a.contentFlex.AddItem(a.table, 0, 3, !focusAI)
+	if a.showAIPanel && a.aiContainer != nil {
+		a.contentFlex.AddItem(a.aiContainer, 52, 0, focusAI)
+	}
+	if focusAI && a.showAIPanel {
+		a.SetFocus(a.aiInput)
+	} else {
+		a.SetFocus(a.table)
+	}
+	a.requestSync()
+	a.updateStatusBar()
+	a.applyAIChrome()
 }
 
 // startLoading increments the background task counter

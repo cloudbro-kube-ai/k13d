@@ -4,10 +4,36 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/providers"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/tools"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 )
+
+type capturingToolProvider struct {
+	prompt string
+	tools  []providers.ToolDefinition
+}
+
+func (m *capturingToolProvider) Name() string     { return "capture" }
+func (m *capturingToolProvider) GetModel() string { return "capture-model" }
+func (m *capturingToolProvider) IsReady() bool    { return true }
+func (m *capturingToolProvider) ListModels(ctx context.Context) ([]string, error) {
+	return []string{"capture-model"}, nil
+}
+func (m *capturingToolProvider) Ask(ctx context.Context, prompt string, callback func(string)) error {
+	return nil
+}
+func (m *capturingToolProvider) AskNonStreaming(ctx context.Context, prompt string) (string, error) {
+	return "", nil
+}
+func (m *capturingToolProvider) AskWithTools(ctx context.Context, prompt string, defs []providers.ToolDefinition, callback func(string), toolCallback providers.ToolCallback) error {
+	m.prompt = prompt
+	m.tools = append([]providers.ToolDefinition(nil), defs...)
+	return nil
+}
 
 func TestNewClient(t *testing.T) {
 	cfg := &config.LLMConfig{
@@ -245,6 +271,42 @@ func TestClient_Ask_Streaming(t *testing.T) {
 
 	if result != "Hello World" {
 		t.Errorf("Ask() streamed result = %v, want 'Hello World'", result)
+	}
+}
+
+func TestClientAskWithToolsAndExecutionBuildsAgenticPromptAndSortedTools(t *testing.T) {
+	mockProvider := &capturingToolProvider{}
+	client := &Client{
+		cfg:          &config.LLMConfig{MaxIterations: 7},
+		provider:     mockProvider,
+		toolRegistry: tools.NewRegistry(),
+	}
+	client.toolRegistry.RegisterMCPTool("zeta_tool", "Zeta tool", "mock-server", map[string]interface{}{"type": "object"})
+	client.toolRegistry.RegisterMCPTool("alpha_tool", "Alpha tool", "mock-server", map[string]interface{}{"type": "object"})
+
+	err := client.AskWithToolsAndExecution(context.Background(), "Investigate pod restarts", nil, nil, nil)
+	if err != nil {
+		t.Fatalf("AskWithToolsAndExecution() error = %v", err)
+	}
+
+	if got, want := mockProvider.prompt, "budget of at most 7 tool-use rounds"; !strings.Contains(got, want) {
+		t.Fatalf("prompt should include configured budget %q, got %q", want, got)
+	}
+	if got, want := mockProvider.prompt, "Available tools this turn: alpha_tool, bash, kubectl, zeta_tool."; !strings.Contains(got, want) {
+		t.Fatalf("prompt should include sorted tool inventory %q, got %q", want, got)
+	}
+	if got, want := mockProvider.prompt, "Use ONLY the exact tool names from the function schema."; !strings.Contains(got, want) {
+		t.Fatalf("prompt should include MCP tool naming guard, got %q", got)
+	}
+
+	wantToolNames := []string{"alpha_tool", "bash", "kubectl", "zeta_tool"}
+	if len(mockProvider.tools) != len(wantToolNames) {
+		t.Fatalf("provider received %d tools, want %d", len(mockProvider.tools), len(wantToolNames))
+	}
+	for i, toolDef := range mockProvider.tools {
+		if toolDef.Function.Name != wantToolNames[i] {
+			t.Fatalf("toolDefs[%d] = %q, want %q", i, toolDef.Function.Name, wantToolNames[i])
+		}
 	}
 }
 

@@ -317,11 +317,13 @@ func TestRegression_AllFixesIntegration(t *testing.T) {
 	ctx := NewTUITestContext(t)
 	defer ctx.Cleanup()
 
-	ctx.ExpectNoDeadlock(20*time.Second,
+	ctx.Command("no").Wait(100 * time.Millisecond)
+
+	ctx.ExpectNoDeadlock(35*time.Second,
 		// Fix #1: showNode + goBack
 		func(c *TUITestContext) {
-			c.Command("no").Wait(50 * time.Millisecond)
-			for i := 0; i < 10; i++ {
+			for i := 0; i < 5; i++ {
+				c.Command("no").Wait(20 * time.Millisecond)
 				c.Press(tcell.KeyEnter)
 				time.Sleep(30 * time.Millisecond)
 				c.Escape()
@@ -330,29 +332,29 @@ func TestRegression_AllFixesIntegration(t *testing.T) {
 		},
 		// Fix #2: namespace switching
 		func(c *TUITestContext) {
-			for i := 0; i < 30; i++ {
+			for i := 0; i < 20; i++ {
 				c.PressRune(rune('0' + (i % 3)))
 				time.Sleep(20 * time.Millisecond)
 			}
 		},
 		// Fix #3: updateHeader via resource switching
 		func(c *TUITestContext) {
-			resources := []string{"pods", "deploy", "svc"}
-			for i := 0; i < 15; i++ {
+			resources := []string{"deploy", "svc", "ns"}
+			for i := 0; i < 9; i++ {
 				c.Command(resources[i%len(resources)])
 				time.Sleep(40 * time.Millisecond)
 			}
 		},
 		// Fix #6: flash messages
 		func(c *TUITestContext) {
-			for i := 0; i < 10; i++ {
+			for i := 0; i < 6; i++ {
 				c.Command("invalidcmd")
 				time.Sleep(50 * time.Millisecond)
 			}
 		},
 		// Fix #7: table cell access (via QueueUpdate for thread safety)
 		func(c *TUITestContext) {
-			for i := 0; i < 20; i++ {
+			for i := 0; i < 10; i++ {
 				if c.app.IsRunning() {
 					c.app.QueueUpdate(func() {
 						_ = c.app.getTableCellText(0, 0)

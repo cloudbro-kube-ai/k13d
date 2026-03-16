@@ -7,7 +7,7 @@ This document describes the internal stability patterns that ensure k13d operate
 - [Lock Ordering Convention](#lock-ordering-convention)
 - [Goroutine Lifecycle](#goroutine-lifecycle)
 - [Error Recovery Strategy](#error-recovery-strategy)
-- [Watcher & Refresh Synchronization](#watcher--refresh-synchronization)
+- [Watcher & Refresh Synchronization](#watcher-refresh-synchronization)
 - [Shutdown Sequence](#shutdown-sequence)
 - [Thread-Safe UI Updates](#thread-safe-ui-updates)
 

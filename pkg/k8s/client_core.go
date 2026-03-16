@@ -18,6 +18,14 @@ type Client struct {
 	Dynamic   dynamic.Interface
 	Config    *rest.Config
 	Metrics   *metricsv1beta1.MetricsV1beta1Client
+
+	// Optional overrides used by hermetic tests to avoid reading the caller's
+	// local kubeconfig for simple context/namespace metadata lookups.
+	ContextsOverride         []string
+	CurrentContextOverride   string
+	CurrentClusterOverride   string
+	CurrentUserOverride      string
+	CurrentNamespaceOverride string
 }
 
 func NewClient() (*Client, error) {

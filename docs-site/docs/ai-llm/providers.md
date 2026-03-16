@@ -2,6 +2,8 @@
 
 k13d supports multiple LLM providers for AI-powered features.
 
+Need the exact save/switch/storage behavior across Web UI and TUI? See [Model Settings & Storage](model-settings-storage.md).
+
 ## Supported Providers
 
 | Provider | Models | Local | API Key |
@@ -13,7 +15,6 @@ k13d supports multiple LLM providers for AI-powered features.
 | **Ollama** | Llama, Qwen, Mistral, etc. | Yes | Not needed |
 | **Azure OpenAI** | GPT-4, GPT-3.5 | No | Required |
 | **AWS Bedrock** | Claude, Llama, Titan | No | Required |
-| **Embedded** | llama.cpp | Yes | Not needed |
 
 ## Configuration
 
@@ -31,7 +32,7 @@ Or via environment variable:
 
 ```bash
 export OPENAI_API_KEY=sk-your-key-here
-k13d -web
+k13d --web
 ```
 
 ### Anthropic (Claude)
@@ -61,7 +62,7 @@ Start Ollama:
 
 ```bash
 ollama serve
-ollama pull llama3.2
+ollama pull gpt-oss:20b
 ```
 
 Configure k13d:
@@ -69,9 +70,11 @@ Configure k13d:
 ```yaml
 llm:
   provider: ollama
-  model: llama3.2
+  model: gpt-oss:20b
   endpoint: http://localhost:11434
 ```
+
+Important: k13d requires an Ollama model with **tools/function calling** support. Some Ollama models can connect and answer plain text prompts but still fail in k13d because the AI Assistant depends on tools. Use `gpt-oss:20b` or another Ollama model whose card explicitly lists tools support.
 
 ### Azure OpenAI
 
@@ -101,21 +104,12 @@ export AWS_SECRET_ACCESS_KEY=your-secret
 export AWS_REGION=us-east-1
 ```
 
-### Embedded LLM
+### Embedded LLM Removal
 
-Run without any external API:
+Embedded LLM support has been removed.
 
-```bash
-k13d --embedded-llm -web
-```
-
-Configuration:
-
-```yaml
-llm:
-  provider: embedded
-  model: llama-3.2-1b  # Built-in model
-```
+- Use **Ollama** for local/private inference
+- Update old configs from `provider: embedded` to `provider: ollama`
 
 ## Multi-Model Configuration
 
@@ -128,9 +122,9 @@ models:
     model: gpt-4
     api_key: ${OPENAI_API_KEY}
 
-  - name: local-llama
+  - name: local-ollama
     provider: ollama
-    model: llama3.2
+    model: gpt-oss:20b
     endpoint: http://localhost:11434
 
   - name: claude
@@ -152,6 +146,8 @@ Switch models at runtime:
 **Web:**
 Settings → AI → Active Model
 
+For what this changes in `llm`, `models[]`, and `active_model`, see [Model Settings & Storage](model-settings-storage.md).
+
 ## Provider Features
 
 ### Feature Comparison
@@ -159,13 +155,13 @@ Settings → AI → Active Model
 | Feature | OpenAI | Anthropic | Gemini | Ollama | Solar |
 |---------|--------|-----------|--------|--------|-------|
 | Streaming | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Tool Calling | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Tool Calling | ✅ | ✅ | ✅ | Model-dependent | ✅ |
 | Vision | ✅ | ✅ | ✅ | ⚠️ | ❌ |
 | Context Length | 128K | 200K | 1M | Varies | 32K |
 
 ### Tool Calling Support
 
-All providers support tool calling for kubectl and bash integration:
+k13d's AI Assistant depends on tool calling for kubectl, bash, and MCP integration. Provider support is not enough by itself; the **selected model** must also support tools. This is especially important for **Ollama**, where support varies by model tag.
 
 ```
 User: "Scale nginx to 5 replicas"
@@ -220,7 +216,7 @@ llm:
 ```yaml
 llm:
   provider: ollama
-  model: llama3.2
+  model: gpt-oss:20b
   endpoint: http://localhost:11434
 ```
 
@@ -228,8 +224,9 @@ llm:
 
 ```yaml
 llm:
-  provider: embedded
-  model: llama-3.2-1b
+  provider: ollama
+  model: gpt-oss:20b
+  endpoint: http://localhost:11434
 ```
 
 ## Environment Variables
@@ -298,7 +295,7 @@ For faster responses:
 ```bash
 # Good
 export OPENAI_API_KEY=sk-...
-k13d -web
+k13d --web
 
 # Bad - key in config file
 llm:
@@ -317,6 +314,6 @@ Track API usage to detect anomalies.
 
 ## Next Steps
 
-- [Embedded LLM](embedded.md) - Run without API
+- [Embedded LLM Removal](embedded.md) - Migration note
 - [Tool Calling](tool-calling.md) - How AI executes commands
 - [Benchmarks](benchmarks.md) - Model performance comparison

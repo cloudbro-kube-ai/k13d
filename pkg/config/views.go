@@ -32,7 +32,7 @@ func LoadViews() (*ViewConfig, error) {
 		return DefaultViews(), nil
 	}
 
-	viewsPath := filepath.Join(configDir, "views.yaml")
+	viewsPath := resolveConfigReadPath(configDir, "views.yaml")
 	data, err := os.ReadFile(viewsPath)
 	if err != nil {
 		if os.IsNotExist(err) {

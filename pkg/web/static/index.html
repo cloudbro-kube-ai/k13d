@@ -18,13 +18,7 @@
     <script src="vendor/marked.min.js"></script>
     <!-- G6 for topology graph visualization -->
     <script src="vendor/g6.min.js"></script>
-    <!-- CSS Modules -->
-    <link rel="stylesheet" href="css/variables.css" />
-    <link rel="stylesheet" href="css/base.css" />
-    <link rel="stylesheet" href="css/components.css" />
-    <link rel="stylesheet" href="css/layout.css" />
-    <link rel="stylesheet" href="css/views.css" />
-    <link rel="stylesheet" href="css/animations.css" />
+    <link rel="stylesheet" href="bundle.css" />
 </head>
 
 <body>
@@ -1017,9 +1011,13 @@
                                     Models</button><span id="fetch-models-status"
                                     style="font-size:11px;color:var(--text-secondary);margin-left:6px;"></span></label>
                             <select id="setting-llm-model-select"
-                                onchange="document.getElementById('setting-llm-model').value=this.value"
+                                onchange="document.getElementById('setting-llm-model').value=this.value; updateLLMToolSupportWarning()"
                                 style="display:none;margin-bottom:4px;"></select>
-                            <input type="text" id="setting-llm-model" placeholder="solar-pro2">
+                            <input type="text" id="setting-llm-model" placeholder="solar-pro2"
+                                oninput="updateLLMToolSupportWarning()">
+                            <div id="llm-tool-support-warning"
+                                style="display:none;margin-top:8px;font-size:12px;line-height:1.5;color:var(--accent-yellow);">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Endpoint <span id="endpoint-hint"
@@ -1082,18 +1080,23 @@
                         </div>
                         <div class="form-group">
                             <label>Provider</label>
-                            <select id="new-model-provider">
+                            <select id="new-model-provider" onchange="updateNewModelToolSupportWarning()">
                                 <option value="upstage">Upstage Solar</option>
                                 <option value="openai">OpenAI</option>
                                 <option value="ollama">Ollama</option>
                                 <option value="gemini">Google Gemini</option>
+                                <option value="anthropic">Anthropic Claude</option>
                                 <option value="bedrock">AWS Bedrock</option>
                                 <option value="azopenai">Azure OpenAI</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label>Model</label>
-                            <input type="text" id="new-model-model" placeholder="e.g., solar-pro2">
+                            <input type="text" id="new-model-model" placeholder="e.g., solar-pro2"
+                                oninput="updateNewModelToolSupportWarning()">
+                            <div id="new-model-tool-support-warning"
+                                style="display:none;margin-top:8px;font-size:12px;line-height:1.5;color:var(--accent-yellow);">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Endpoint (optional)</label>
@@ -1187,14 +1190,18 @@
                                 <label style="font-size:12px;color:var(--text-secondary);">Recommended models for
                                     Kubernetes tasks:</label>
                                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;">
-                                    <button class="btn btn-secondary" onclick="pullOllamaModel('llama3.2:3b')"
-                                        style="font-size:11px;padding:4px 10px;">llama3.2:3b (2GB)</button>
+                                    <button class="btn btn-secondary" onclick="pullOllamaModel('gpt-oss:20b')"
+                                        style="font-size:11px;padding:4px 10px;">gpt-oss:20b (recommended)</button>
                                     <button class="btn btn-secondary" onclick="pullOllamaModel('qwen2.5:7b')"
-                                        style="font-size:11px;padding:4px 10px;">qwen2.5:7b (4GB)</button>
+                                        style="font-size:11px;padding:4px 10px;">qwen2.5:7b (verify tools)</button>
+                                    <button class="btn btn-secondary" onclick="pullOllamaModel('gemma2:2b')"
+                                        style="font-size:11px;padding:4px 10px;">gemma2:2b (2GB)</button>
                                     <button class="btn btn-secondary" onclick="pullOllamaModel('mistral:7b')"
                                         style="font-size:11px;padding:4px 10px;">mistral:7b (4GB)</button>
-                                    <button class="btn btn-secondary" onclick="pullOllamaModel('codellama:7b')"
-                                        style="font-size:11px;padding:4px 10px;">codellama:7b (4GB)</button>
+                                </div>
+                                <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;">
+                                    Only use Ollama models that explicitly support tools/function calling. Text-only
+                                    models may connect, but the AI Assistant will not work correctly.
                                 </div>
                                 <div style="display:flex;gap:8px;align-items:center;">
                                     <input type="text" id="ollama-custom-model" placeholder="Or enter model name..."
@@ -1278,9 +1285,9 @@
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Auto-approve read-only commands</div>
-                                <div class="settings-description">kubectl get, describe, logs, etc.</div>
+                                <div class="settings-description">kubectl get, describe, logs, etc. Disabled by default.</div>
                             </div>
-                            <div class="auto-refresh-toggle active" id="ta-auto-approve-ro"
+                            <div class="auto-refresh-toggle" id="ta-auto-approve-ro"
                                 onclick="toggleToolApproval(this)"></div>
                         </div>
                         <div class="settings-row">
@@ -1872,6 +1879,9 @@
 
                     <div class="settings-section" style="margin-top:16px;">
                         <h4>Authentication Settings</h4>
+                        <p class="settings-description" id="auth-runtime-note" style="margin-bottom:12px;">
+                            Authentication provider configuration is loaded at startup and shown here as runtime status.
+                        </p>
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Authentication Mode</div>
@@ -2017,7 +2027,7 @@
                                 placeholder="cn=k13d-admins,ou=groups,dc=example,dc=com">
                         </div>
                         <div style="margin-top:12px;display:flex;gap:10px;">
-                            <button class="btn btn-secondary" onclick="testLDAPConnection()">Test Connection</button>
+                            <button class="btn btn-secondary" id="auth-ldap-test-btn" onclick="testLDAPConnection()">Test Configured Connection</button>
                         </div>
                     </div>
 
@@ -2029,11 +2039,11 @@
                                 <span>Current Mode: <strong id="current-auth-mode">Local</strong></span>
                             </div>
                             <div style="color:var(--text-secondary);font-size:12px;">
-                                Changes to authentication settings require a server restart.
+                                Provider-specific authentication settings are startup-configured in the current build.
                             </div>
                         </div>
                         <div style="margin-top:16px;">
-                            <button class="btn btn-primary" onclick="saveAuthSettings()" style="width:100%;">
+                            <button class="btn btn-primary" id="auth-save-btn" onclick="saveAuthSettings()" style="width:100%;">
                                 Save Authentication Settings
                             </button>
                         </div>
@@ -2701,11 +2711,7 @@ spec:
 
     <!-- Template Deploy Modal -->
 
-    <script src="js/core/utils.js"></script>
-    <script src="js/modules/i18n.js"></script>
-    <script src="js/modules/VirtualScroller.js"></script>
-    <script src="js/modules/api.js"></script>
-    <script src="js/app.js"></script>
+    <script src="bundle.js"></script>
 </body>
 
 </html>

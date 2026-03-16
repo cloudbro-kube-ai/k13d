@@ -50,7 +50,6 @@ type Server struct {
 	sessionStore     *session.Store // AI conversation session storage
 	port             int
 	server           *http.Server
-	embeddedLLM      bool // Using embedded LLM server
 	versionInfo      *VersionInfo
 
 	// Protects concurrent access to aiClient and cfg.LLM
@@ -135,7 +134,7 @@ func NewServer(cfg *config.Config, port int, versionInfo *VersionInfo) (*Server,
 		// DefaultPassword: intentionally empty for secure random generation
 	}
 
-	return newServer(cfg, port, authConfig, false, versionInfo)
+	return newServer(cfg, port, authConfig, versionInfo)
 }
 
 // NewServerWithAuth creates a new server with custom authentication options
@@ -158,31 +157,39 @@ func NewServerWithAuth(cfg *config.Config, port int, authOpts *AuthOptions, vers
 		authConfig.DefaultPassword = authOpts.DefaultPassword
 	}
 
-	return newServer(cfg, port, authConfig, authOpts.EmbeddedLLM, versionInfo)
+	return newServer(cfg, port, authConfig, versionInfo)
 }
 
 // newServer contains the shared initialization logic for both constructors.
-func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM bool, versionInfo *VersionInfo) (*Server, error) {
+func newServer(cfg *config.Config, port int, authConfig *AuthConfig, versionInfo *VersionInfo) (*Server, error) {
 	var aiClient *ai.Client
 	var err error
+	runtimeInfo := config.GetRuntimeSourceInfo()
 
 	fmt.Printf("Starting k13d web server...\n")
-
-	// All settings are loaded from config.yaml via LoadConfig().
-	// No SQLite overrides — config.yaml is the single source of truth.
-	fmt.Printf("  LLM Settings: Loaded from config.yaml\n")
-	fmt.Printf("  LLM Provider: %s, Model: %s\n", cfg.LLM.Provider, cfg.LLM.Model)
-
-	if cfg.LLM.Endpoint != "" {
-		aiClient, err = ai.NewClient(&cfg.LLM)
-		if err != nil {
-			fmt.Printf("  AI client creation failed: %v\n", err)
-			aiClient = nil
-		} else {
-			fmt.Printf("  AI client: Ready\n")
-		}
+	fmt.Printf("  Config File: %s (%s)\n", runtimeInfo.ConfigPath, describeConfigFileStatus(runtimeInfo))
+	fmt.Printf("  Config Path Source: %s\n", runtimeInfo.ConfigPathSource)
+	if runtimeInfo.XDGConfigHome != "" {
+		fmt.Printf("  XDG_CONFIG_HOME: %s\n", runtimeInfo.XDGConfigHome)
+	}
+	if len(runtimeInfo.EnvOverrides) > 0 {
+		fmt.Printf("  Env Overrides: %s\n", strings.Join(runtimeInfo.EnvOverrides, ", "))
 	} else {
-		fmt.Printf("  AI client: Not configured\n")
+		fmt.Printf("  Env Overrides: none\n")
+	}
+	fmt.Printf("  LLM Settings: %s\n", describeLLMSource(runtimeInfo))
+	fmt.Printf("  LLM Provider: %s, Model: %s\n", cfg.LLM.Provider, cfg.LLM.Model)
+	fmt.Printf("  Login UI: %s\n", describeLoginUI(authConfig))
+
+	aiClient, ready, err := createUsableAIClient(&cfg.LLM)
+	if err != nil {
+		fmt.Printf("  AI client creation failed: %v\n", err)
+		aiClient = nil
+	} else if ready {
+		fmt.Printf("  AI client: Ready\n")
+	} else {
+		aiClient = nil
+		fmt.Printf("  AI client: Not configured (missing endpoint or credentials)\n")
 	}
 
 	k8sClient, err := k8s.NewClient()
@@ -212,10 +219,6 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 		fmt.Printf("  Authentication: Enabled (mode: %s)\n", authConfig.AuthMode)
 	} else {
 		fmt.Printf("  Authentication: Disabled\n")
-	}
-
-	if embeddedLLM {
-		fmt.Printf("  Embedded LLM: Enabled (LLM settings locked)\n")
 	}
 
 	// Initialize session store for AI conversation history
@@ -250,7 +253,6 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 		accessRequestManager: accessReqManager,
 		sessionStore:         sessionStore,
 		port:                 port,
-		embeddedLLM:          embeddedLLM,
 		versionInfo:          versionInfo,
 		pendingApprovals:     make(map[string]*PendingToolApproval),
 		apiRateLimiter:       apiRateLimiter,
@@ -323,6 +325,45 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, embeddedLLM
 	})
 
 	return server, nil
+}
+
+func describeConfigFileStatus(info config.RuntimeSourceInfo) string {
+	if info.ConfigFileExists {
+		return "found"
+	}
+	return "missing -> defaults/env only"
+}
+
+func describeLLMSource(info config.RuntimeSourceInfo) string {
+	if len(info.LLMEnvOverrides) == 0 {
+		if info.ConfigFileExists {
+			return "config file only"
+		}
+		return "defaults only"
+	}
+	if info.ConfigFileExists {
+		return "config file + env overrides"
+	}
+	return "defaults + env overrides"
+}
+
+func describeLoginUI(authConfig *AuthConfig) string {
+	if authConfig == nil || !authConfig.Enabled {
+		return "no login screen (authentication disabled)"
+	}
+
+	switch authConfig.AuthMode {
+	case "local":
+		return "username/password form (token form hidden)"
+	case "token", "":
+		return "Kubernetes token form"
+	case "ldap":
+		return "username/password form (LDAP backend)"
+	case "oidc":
+		return "OIDC / SSO flow"
+	default:
+		return fmt.Sprintf("auth mode %q", authConfig.AuthMode)
+	}
 }
 
 // loadCustomRoles loads custom roles from the database and registers them with the authorizer
@@ -616,6 +657,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/auth/oidc/login", s.authManager.HandleOIDCLogin)
 	mux.HandleFunc("/api/auth/oidc/callback", s.authManager.HandleOIDCCallback)
 	mux.HandleFunc("/api/auth/oidc/status", s.authManager.HandleOIDCStatus)
+	mux.HandleFunc("/api/auth/ldap/status", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleLDAPStatus)))
+	mux.HandleFunc("/api/auth/ldap/test", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleLDAPTest)))
 
 	// Prometheus scrape endpoint (no auth for scraping)
 	if s.cfg.Prometheus.ExposeMetrics {

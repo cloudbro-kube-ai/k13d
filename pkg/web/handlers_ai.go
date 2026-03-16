@@ -111,12 +111,6 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPut:
-		// Block changes when embedded LLM is active
-		if s.embeddedLLM {
-			WriteErrorSimple(w, http.StatusForbidden, "LLM settings are locked while embedded LLM is active")
-			return
-		}
-
 		var llmSettings struct {
 			Provider        string `json:"provider"`
 			Model           string `json:"model"`
@@ -153,32 +147,34 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			s.cfg.LLM.ReasoningEffort = ""
 		}
 
-		// Sync changes back to the active model profile so they persist across profile switches
-		if profile := s.cfg.GetActiveModelProfile(); profile != nil {
-			profile.Provider = s.cfg.LLM.Provider
-			profile.Model = s.cfg.LLM.Model
-			profile.Endpoint = s.cfg.LLM.Endpoint
-			if llmSettings.APIKey != "" {
-				profile.APIKey = s.cfg.LLM.APIKey
-			}
-		}
+		// Persist edits into the explicitly active profile so Web and TUI stay aligned.
+		s.cfg.SyncActiveModelProfileFromLLM()
 
 		// Recreate AI client
-		newClient, err := ai.NewClient(&s.cfg.LLM)
+		newClient, ready, err := createUsableAIClient(&s.cfg.LLM)
 		if err != nil {
 			s.aiMu.Unlock()
 			apiErr := ParseLLMError(err, llmSettings.Provider)
 			WriteError(w, apiErr)
 			return
 		}
-		s.aiClient = newClient
+		if ready {
+			s.aiClient = newClient
+		} else {
+			s.aiClient = nil
+		}
 
 		// Capture values under lock for the response
 		respProvider := s.cfg.LLM.Provider
 		respModel := s.cfg.LLM.Model
-		respEndpoint := s.aiClient.GetEndpoint()
-		respReady := s.aiClient.IsReady()
-		respSupportsTools := s.aiClient.SupportsTools()
+		respEndpoint := s.cfg.LLM.Endpoint
+		respReady := false
+		respSupportsTools := false
+		if newClient != nil {
+			respEndpoint = newClient.GetEndpoint()
+			respReady = newClient.IsReady()
+			respSupportsTools = newClient.SupportsTools()
+		}
 
 		// Save config while still under lock to prevent concurrent mutation
 		saveErr := s.cfg.Save()
@@ -341,7 +337,6 @@ func (s *Server) handleLLMStatus(w http.ResponseWriter, r *http.Request) {
 		"endpoint":      s.cfg.LLM.Endpoint,
 		"has_api_key":   s.cfg.LLM.APIKey != "",
 		"use_json_mode": s.cfg.LLM.UseJSONMode,
-		"embedded_llm":  s.embeddedLLM,
 	}
 
 	// Add default endpoint hint if not configured
@@ -387,6 +382,10 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 	username := r.Header.Get("X-Username")
 	if username == "" {
 		username = "anonymous"
+	}
+	role := r.Header.Get("X-User-Role")
+	if role == "" {
+		role = "viewer"
 	}
 
 	// Record audit log with k8s context
@@ -445,13 +444,25 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 		if cmd, ok := args["command"].(string); ok {
 			command = cmd
 		}
+		displayCommand := normalizeAIToolCommand(toolName, command)
+		decision := s.evaluateAIToolDecision(role, toolName, command)
 
-		// Classify the command
-		category := classifyCommand(command)
-
-		// Auto-approve read-only commands
-		if category == "read-only" {
+		// Policy allows the command without prompting the user.
+		if decision.Allowed && !decision.RequiresApproval {
 			return true
+		}
+
+		if !decision.Allowed {
+			blockedJSON, _ := json.Marshal(map[string]interface{}{
+				"type":      "approval_blocked",
+				"tool_name": toolName,
+				"command":   displayCommand,
+				"category":  decision.Category,
+				"reason":    decision.BlockReason,
+				"warnings":  decision.Warnings,
+			})
+			_ = sse.WriteEvent("approval", string(blockedJSON))
+			return false
 		}
 
 		// Create pending approval
@@ -459,8 +470,8 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 		approval := &PendingToolApproval{
 			ID:        approvalID,
 			ToolName:  toolName,
-			Command:   command,
-			Category:  category,
+			Command:   displayCommand,
+			Category:  decision.Category,
 			Timestamp: time.Now(),
 			Response:  make(chan bool, 1),
 		}
@@ -474,8 +485,9 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			"type":      "approval_required",
 			"id":        approvalID,
 			"tool_name": toolName,
-			"command":   command,
-			"category":  category,
+			"command":   displayCommand,
+			"category":  decision.Category,
+			"warnings":  decision.Warnings,
 		})
 		_ = sse.WriteEvent("approval", string(approvalJSON))
 
@@ -494,12 +506,12 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 				Action:      map[bool]string{true: "tool_approved", false: "tool_rejected"}[approved],
 				ActionType:  db.ActionTypeLLM,
 				Resource:    toolName,
-				Details:     fmt.Sprintf("LLM requested: %s", command),
+				Details:     fmt.Sprintf("LLM requested: %s", displayCommand),
 				K8sUser:     k8sUser,
 				K8sContext:  k8sContext,
 				K8sCluster:  k8sCluster,
 				LLMTool:     toolName,
-				LLMCommand:  command,
+				LLMCommand:  displayCommand,
 				LLMApproved: approved,
 				LLMRequest:  req.Message,
 			})
@@ -525,12 +537,13 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 
 	// Tool execution callback - sends tool execution info via SSE and records audit
 	toolExecutionCallback := func(toolName string, command string, result string, isError bool, toolType string, toolServerName string) {
+		displayCommand := normalizeAIToolCommand(toolName, command)
 		execJSON, _ := json.Marshal(map[string]interface{}{
 			"type":      "tool_execution",
 			"tool":      toolName,
 			"tool_type": toolType,
 			"server":    toolServerName,
-			"command":   command,
+			"command":   displayCommand,
 			"result":    result,
 			"is_error":  isError,
 		})
@@ -539,7 +552,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 		// Record tool execution in audit log
 		actionType := db.ActionTypeLLM
 		// Determine if this is a mutation (create, delete, apply, scale, etc.)
-		cmdCategory := classifyCommand(command)
+		cmdCategory := classifyCommand(displayCommand)
 		if cmdCategory == "write" || cmdCategory == "dangerous" {
 			actionType = db.ActionTypeMutation
 		}
@@ -549,9 +562,9 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			Action:      "tool_executed",
 			ActionType:  actionType,
 			Resource:    toolName,
-			Details:     fmt.Sprintf("Command: %s", truncateString(command, 200)),
+			Details:     fmt.Sprintf("Command: %s", truncateString(displayCommand, 200)),
 			LLMTool:     toolName,
-			LLMCommand:  command,
+			LLMCommand:  displayCommand,
 			LLMApproved: true,
 			LLMRequest:  req.Message,
 			Success:     !isError,
@@ -616,6 +629,9 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 		if langInstruction != "" {
 			message = langInstruction + "\n\n" + message
 		}
+	}
+	if restrictionPrompt := buildAIRestrictionPrompt(role); restrictionPrompt != "" {
+		message = restrictionPrompt + "\n\n" + message
 	}
 
 	// Collect response for session storage
@@ -922,7 +938,7 @@ func getLLMCapabilities(client *ai.Client, provider string) LLMCapabilities {
 		if caps.ToolCalling {
 			caps.Recommendation = "Full agentic AI features available. Ollama tool calling enabled"
 		} else {
-			caps.Recommendation = "Ollama models vary in capabilities. Try llama3, mistral, or qwen2.5 for tool calling support"
+			caps.Recommendation = ollamaToolSupportWarning(client.GetModel())
 		}
 	case "bedrock":
 		caps.JSONMode = true
@@ -1000,8 +1016,8 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 
 	var client *ai.Client
 	// Create temporary client if provider is specified
-	// For Ollama and embedded providers, API key is not required
-	noKeyProviders := map[string]bool{"ollama": true, "embedded": true}
+	// For Ollama, API key is not required
+	noKeyProviders := map[string]bool{"ollama": true}
 	if provider != "" && (apiKey != "" || noKeyProviders[provider]) {
 		// Create temporary client with provided config
 		tempConfig := config.LLMConfig{
@@ -1277,6 +1293,15 @@ func (s *Server) handleSafetyAnalysis(w http.ResponseWriter, r *http.Request) {
 
 	// Analyze the command
 	response := analyzeK8sSafety(req)
+	decision := s.getToolApprovalDecision(req.Command)
+	response.RequiresApproval = decision.RequiresApproval
+	if !decision.Allowed && decision.BlockReason != "" {
+		response.Safe = false
+		if response.RiskLevel == "safe" {
+			response.RiskLevel = "dangerous"
+		}
+		response.Warnings = append(response.Warnings, decision.BlockReason)
+	}
 
 	_ = json.NewEncoder(w).Encode(response)
 }

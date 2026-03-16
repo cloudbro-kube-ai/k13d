@@ -58,10 +58,7 @@ func NewAIPanel(app *tview.Application) *AIPanel {
 	p.outputView = tview.NewTextView().
 		SetDynamicColors(true).
 		SetScrollable(true).
-		SetWordWrap(true).
-		SetChangedFunc(func() {
-			app.Draw()
-		})
+		SetWordWrap(true)
 	p.outputView.SetBorder(false)
 
 	// Input field for questions

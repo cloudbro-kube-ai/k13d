@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -86,6 +87,23 @@ func (a *App) showContextSwitcher() {
 	a.showModal("context-switcher", centered(list, 60, min(len(contexts)+4, 20)), true)
 }
 
+func (a *App) toggleAIPanel() {
+	a.mx.Lock()
+	a.showAIPanel = !a.showAIPanel
+	show := a.showAIPanel
+	a.mx.Unlock()
+
+	a.QueueUpdateDraw(func() {
+		a.rebuildContentLayout(show)
+	})
+
+	if show {
+		a.flashMsg("AI panel opened", false)
+		return
+	}
+	a.flashMsg("AI panel hidden. Press Ctrl+E to reopen.", false)
+}
+
 // useNamespace switches to the selected namespace (k9s u key)
 func (a *App) useNamespace() {
 	a.mx.RLock()
@@ -147,7 +165,7 @@ func (a *App) showHealth() {
 		sb.WriteString(fmt.Sprintf(" [green]✓[white] AI: Online (%s)\n", aiClient.GetModel()))
 	} else {
 		sb.WriteString(" [red]✗[white] AI: Offline\n")
-		sb.WriteString("   Configure in ~/.kube-ai-dashboard/config.yaml\n")
+		sb.WriteString("   Configure in ~/.config/k13d/config.yaml\n")
 	}
 
 	sb.WriteString("\n")
@@ -439,6 +457,10 @@ func (a *App) aiBriefing() {
 
 // showSettings displays settings modal with LLM connection test and save functionality
 func (a *App) showSettings() {
+	if err := a.reloadConfigFromDisk(); err != nil {
+		a.flashMsg(fmt.Sprintf("Failed to reload config: %v", err), true)
+	}
+
 	// Create settings form
 	form := tview.NewForm()
 
@@ -455,6 +477,33 @@ func (a *App) showSettings() {
 	endpoint := a.config.LLM.Endpoint
 	apiKey := "" // Don't show existing API key
 	hasAPIKey := a.config.LLM.APIKey != ""
+	toolPolicy := effectiveUIToolApprovalPolicy(a.config.Authorization.ToolApproval)
+	autoApproveReadOnly := toolPolicy.AutoApproveReadOnly
+	requireApprovalForWrite := toolPolicy.RequireApprovalForWrite
+	blockDangerous := toolPolicy.BlockDangerous
+	requireApprovalForUnknown := toolPolicy.RequireApprovalForUnknown
+	approvalTimeoutSeconds := toolPolicy.ApprovalTimeoutSeconds
+	var infoView *tview.TextView
+
+	updateInfoView := func() {
+		if infoView == nil {
+			return
+		}
+		currentAPIKey := hasAPIKey
+		if apiKey != "" {
+			currentAPIKey = true
+		}
+		infoView.SetText(
+			buildLLMInfoText(provider, model, endpoint, currentAPIKey) + "\n" +
+				buildToolApprovalInfoText(config.ToolApprovalPolicy{
+					AutoApproveReadOnly:       autoApproveReadOnly,
+					RequireApprovalForWrite:   requireApprovalForWrite,
+					RequireApprovalForUnknown: requireApprovalForUnknown,
+					BlockDangerous:            blockDangerous,
+					ApprovalTimeoutSeconds:    approvalTimeoutSeconds,
+				}),
+		)
+	}
 
 	// Provider dropdown
 	providers := []string{"openai", "ollama", "upstage", "gemini", "anthropic", "bedrock", "azopenai"}
@@ -480,8 +529,8 @@ func (a *App) showSettings() {
 					}
 				}
 			}
-			if model == "" || model == "gpt-4o" {
-				model = "llama3.2"
+			if model == "" || model == "gpt-4" || model == "gpt-4o" || model == config.DefaultSolarModel {
+				model = config.DefaultOllamaModel
 				if item := form.GetFormItemByLabel("Model"); item != nil {
 					if input, ok := item.(*tview.InputField); ok {
 						input.SetText(model)
@@ -489,7 +538,7 @@ func (a *App) showSettings() {
 				}
 			}
 		case "openai":
-			if model == "" || model == "llama3.2" {
+			if model == "" || model == config.DefaultOllamaModel || model == "llama3.2" || model == config.DefaultSolarModel {
 				model = "gpt-4o"
 				if item := form.GetFormItemByLabel("Model"); item != nil {
 					if input, ok := item.(*tview.InputField); ok {
@@ -515,8 +564,8 @@ func (a *App) showSettings() {
 					}
 				}
 			}
-			if model == "" || model == "gpt-4o" || model == "llama3.2" {
-				model = "solar-pro2"
+			if model == "" || model == "gpt-4" || model == "gpt-4o" || model == config.DefaultOllamaModel || model == "llama3.2" {
+				model = config.DefaultSolarModel
 				if item := form.GetFormItemByLabel("Model"); item != nil {
 					if input, ok := item.(*tview.InputField); ok {
 						input.SetText(model)
@@ -524,45 +573,47 @@ func (a *App) showSettings() {
 				}
 			}
 		}
+		updateInfoView()
 	})
 	form.AddInputField("Model", model, 30, nil, func(text string) {
 		model = text
+		updateInfoView()
 	})
 	form.AddInputField("Endpoint", endpoint, 50, nil, func(text string) {
 		endpoint = text
+		updateInfoView()
 	})
 	form.AddPasswordField("API Key", "", 50, '*', func(text string) {
 		apiKey = text
+		updateInfoView()
+	})
+	form.AddCheckbox("Auto-approve Read-only", autoApproveReadOnly, func(checked bool) {
+		autoApproveReadOnly = checked
+		updateInfoView()
+	})
+	form.AddCheckbox("Require Write Approval", requireApprovalForWrite, func(checked bool) {
+		requireApprovalForWrite = checked
+		updateInfoView()
+	})
+	form.AddCheckbox("Block Dangerous", blockDangerous, func(checked bool) {
+		blockDangerous = checked
+		updateInfoView()
+	})
+	form.AddCheckbox("Require Unknown Approval", requireApprovalForUnknown, func(checked bool) {
+		requireApprovalForUnknown = checked
+		updateInfoView()
+	})
+	form.AddInputField("Approval Timeout (s)", strconv.Itoa(approvalTimeoutSeconds), 8, nil, func(text string) {
+		value, err := strconv.Atoi(strings.TrimSpace(text))
+		if err == nil && value > 0 {
+			approvalTimeoutSeconds = value
+		}
+		updateInfoView()
 	})
 
-	// Helper function to update infoView
-	updateInfoView := func(infoView *tview.TextView) {
-		currentAPIKey := hasAPIKey
-		if apiKey != "" {
-			currentAPIKey = true
-		}
-		infoText := fmt.Sprintf(` [cyan::b]LLM Configuration[white::-]
- Provider: [yellow]%s[white]  Model: [yellow]%s[white]
- API Key: %s  Endpoint: %s
-`,
-			provider, model,
-			map[bool]string{true: "[green]Set[white]", false: "[red]Not set[white]"}[currentAPIKey],
-			map[bool]string{true: "[green]" + endpoint + "[white]", false: "[gray](default)[white]"}[endpoint != ""])
-		infoView.SetText(infoText)
-	}
-
-	// Create info view first (we'll reference it in Save button)
-	infoText := fmt.Sprintf(` [cyan::b]LLM Configuration[white::-]
- Provider: [yellow]%s[white]  Model: [yellow]%s[white]
- API Key: %s  Endpoint: %s
-`,
-		provider, model,
-		map[bool]string{true: "[green]Set[white]", false: "[red]Not set[white]"}[hasAPIKey],
-		map[bool]string{true: "[green]" + endpoint + "[white]", false: "[gray](default)[white]"}[endpoint != ""])
-
-	infoView := tview.NewTextView().
+	infoView = tview.NewTextView().
 		SetDynamicColors(true).
-		SetText(infoText)
+		SetText(buildLLMInfoText(provider, model, endpoint, hasAPIKey) + "\n" + buildToolApprovalInfoText(toolPolicy))
 	infoView.SetBackgroundColor(tcell.ColorDefault)
 
 	// Add Save button
@@ -571,6 +622,14 @@ func (a *App) showSettings() {
 		a.QueueUpdateDraw(func() {})
 
 		a.safeGo("saveConfig", func() {
+			timeout := approvalTimeoutSeconds
+			if timeout <= 0 {
+				timeout = config.DefaultToolApprovalPolicy().ApprovalTimeoutSeconds
+			}
+			if timeout > 600 {
+				timeout = 600
+			}
+
 			// Update config
 			a.config.LLM.Provider = provider
 			a.config.LLM.Model = model
@@ -579,6 +638,15 @@ func (a *App) showSettings() {
 				a.config.LLM.APIKey = apiKey
 				hasAPIKey = true
 			}
+			a.config.Authorization.ToolApproval = config.ToolApprovalPolicy{
+				AutoApproveReadOnly:       autoApproveReadOnly,
+				RequireApprovalForWrite:   requireApprovalForWrite,
+				RequireApprovalForUnknown: requireApprovalForUnknown,
+				BlockDangerous:            blockDangerous,
+				BlockedPatterns:           append([]string(nil), a.config.Authorization.ToolApproval.BlockedPatterns...),
+				ApprovalTimeoutSeconds:    timeout,
+			}
+			a.config.SyncActiveModelProfileFromLLM()
 
 			// Save config to file
 			if err := a.config.Save(); err != nil {
@@ -602,8 +670,10 @@ func (a *App) showSettings() {
 
 			a.QueueUpdateDraw(func() {
 				statusView.SetText("[green]●[white] Configuration saved! Press 'Test Connection' to verify")
-				updateInfoView(infoView)
+				approvalTimeoutSeconds = timeout
+				updateInfoView()
 				a.updateHeader() // Update AI status in header
+				a.applyAIChrome()
 			})
 		})
 	})
@@ -633,6 +703,9 @@ func (a *App) showSettings() {
 					if status.Message != "" {
 						resultText += "\n    [gray]" + status.Message + "[white]"
 					}
+					if provider == "ollama" && status.Error == "tool calling 모델이 필요함" {
+						resultText += "\n    [yellow]" + ollamaModelToolsHint(model) + "[white]"
+					}
 				}
 			}
 
@@ -649,7 +722,7 @@ func (a *App) showSettings() {
 
 	// Combine into flex layout
 	flex := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(infoView, 4, 0, false).
+		AddItem(infoView, 12, 0, false).
 		AddItem(statusView, 2, 0, false).
 		AddItem(form, 0, 1, true)
 
@@ -657,7 +730,7 @@ func (a *App) showSettings() {
 	flex.SetBackgroundColor(tcell.ColorDefault)
 
 	// Wrap in centered container
-	a.showModal("settings", centered(flex, 70, 28), true)
+	a.showModal("settings", centered(flex, 88, 38), true)
 	a.SetFocus(form)
 
 	// Handle escape
@@ -692,6 +765,11 @@ func (a *App) showSettings() {
 
 // showModelSelector displays a modal for switching AI model profiles
 func (a *App) showModelSelector() {
+	if err := a.reloadConfigFromDisk(); err != nil {
+		a.flashMsg(fmt.Sprintf("Failed to reload config: %v", err), true)
+		return
+	}
+
 	if a.config == nil || len(a.config.Models) == 0 {
 		a.flashMsg("No AI model profiles configured. Add model definitions to your config.yaml file under the 'models' section.", true)
 		return
@@ -743,6 +821,11 @@ func (a *App) showModelSelector() {
 
 // switchModel switches to a named AI model profile
 func (a *App) switchModel(name string) {
+	if err := a.reloadConfigFromDisk(); err != nil {
+		a.flashMsg(fmt.Sprintf("Failed to reload config: %v", err), true)
+		return
+	}
+
 	if a.config == nil {
 		a.flashMsg("Configuration not available. Cannot switch AI model without config.yaml.", true)
 		return
@@ -768,8 +851,15 @@ func (a *App) switchModel(name string) {
 	a.aiMx.Lock()
 	a.aiClient = newClient
 	a.aiMx.Unlock()
-	a.flashMsg(fmt.Sprintf("Switched to model: %s (%s/%s)", name, a.config.LLM.Provider, a.config.LLM.Model), false)
+	msg := fmt.Sprintf("Switched to model: %s (%s/%s)", name, a.config.LLM.Provider, a.config.LLM.Model)
+	if a.config.LLM.Provider == "ollama" {
+		msg += " | Ollama models must support tools/function calling."
+	}
+	a.flashMsg(msg, false)
 	a.updateHeader()
+	a.QueueUpdateDraw(func() {
+		a.applyAIChrome()
+	})
 }
 
 // showPlugins displays a modal listing all configured plugins

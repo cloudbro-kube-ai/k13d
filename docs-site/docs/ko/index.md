@@ -25,7 +25,7 @@ tar xzf k13d_*.tar.gz && chmod +x k13d
 
 ```bash
 # Web UI (권장)
-./k13d -web -auth-mode local
+./k13d --web --auth-mode local
 # 브라우저에서 http://localhost:8080 접속 (Username: admin / Password: 터미널에 출력됨)
 
 # TUI
@@ -55,14 +55,14 @@ Web UI는 브라우저에서 Kubernetes 클러스터의 모든 것을 관리할 
 
 ![AI Assistant](../images/webui-assistant-pannel.png)
 
-AI Assistant는 자연어로 질문하면 kubectl 명령을 직접 실행해주는 agentic AI입니다.
+AI Assistant는 자연어로 질문하면 kubectl 명령을 직접 실행해주는 agentic AI입니다. 기본적으로 `kubectl get` 같은 읽기 전용 작업도 실행 전에 승인 모달을 거치며, `bash`는 꼭 필요한 경우에만 마지막 수단으로 사용합니다.
 
 ```
 사용자: "nginx pod이 왜 crash 하나요?"
 AI: Pod의 YAML, Events, Logs를 분석하여 원인을 진단하고 해결 방법을 제시합니다.
 ```
 
-- 위험한 명령은 실행 전 **승인(Approve/Reject)** 을 요청합니다
+- 읽기 전용/쓰기 명령 모두 기본적으로 실행 전 **승인(Approve/Reject)** 을 요청합니다
 - OpenAI, Ollama, Anthropic, Gemini 등 다양한 LLM provider를 지원합니다
 - Settings > AI에서 provider와 model을 설정할 수 있습니다
 
@@ -163,13 +163,17 @@ Web UI 실행 후 **Settings > AI** 에서 LLM provider를 설정하세요.
 ```bash
 # OpenAI 사용
 export OPENAI_API_KEY=sk-...
-./k13d -web -auth-mode local
+./k13d --web --auth-mode local
 
 # Ollama 사용 (로컬, 무료)
-ollama pull qwen2.5:3b && ollama serve
-./k13d -web -auth-mode local
+ollama pull gpt-oss:20b && ollama serve
+./k13d --web --auth-mode local
 # Settings > AI에서 Provider를 "ollama"로 변경
 ```
+
+중요: Ollama는 **tools/function calling** 을 지원하는 모델이어야 k13d AI Assistant가 정상 동작합니다. 텍스트만 생성하는 모델은 연결은 되어도 agentic 기능이 제대로 동작하지 않을 수 있습니다.
+
+Web UI와 TUI에서 모델을 어떻게 저장하고, `config.yaml` 에 어떤 식으로 반영되는지 자세히 보려면 [모델 설정 및 저장](ai-llm/model-settings-storage.md) 문서를 참고하세요.
 
 지원하는 LLM providers:
 
@@ -187,38 +191,49 @@ ollama pull qwen2.5:3b && ollama serve
 
 ```bash
 ./k13d                              # TUI 모드
-./k13d -web                         # Web UI (port 8080)
-./k13d -web -port 3000              # 커스텀 포트
-./k13d -web -auth-mode local        # 인증 모드
-./k13d -web --no-auth               # 인증 없음 (개발용)
-./k13d --kubeconfig ~/.kube/prod    # kubeconfig 경로 지정
-./k13d --context prod-cluster       # 특정 context 사용
-./k13d --debug                      # 디버그 로깅
+./k13d --web                        # Web UI (port 8080)
+./k13d --web --port 3000            # 커스텀 포트
+./k13d --web --auth-mode local      # 로컬 인증 모드
+./k13d --web --no-auth              # 인증 없음 (개발용)
+./k13d --mcp                        # MCP 서버 모드
+./k13d --storage-info               # 저장소 경로 확인
 ```
 
 ---
 
-## Docker로 실행
+## 배포 상태 안내
 
-```bash
-docker run -d -p 8080:8080 \
-  -v ~/.kube/config:/home/k13d/.kube/config:ro \
-  cloudbro/k13d:latest \
-  -web -auth-mode local
-```
+현재 공식 지원 경로는 **로컬 바이너리 기반 TUI / Web UI** 입니다.
+
+- Docker
+- Docker Compose
+- Kubernetes
+- Helm
+
+위 배포 방식은 아직 **Beta / 준비중** 이며, 공식 퍼블릭 Docker 저장소도 아직 제공되지 않습니다.
 
 ---
 
 ## 설정 파일
 
-```
-~/.config/k13d/
+기본 설정 디렉터리는 운영체제에 따라 다음과 같습니다.
+
+- Linux: `${XDG_CONFIG_HOME:-~/.config}/k13d/`
+- macOS: `~/.config/k13d/`
+- Windows: `%AppData%\\k13d\\`
+
+예시 파일 구성:
+
+```text
+k13d/
 ├── config.yaml       # LLM, language, model profiles 설정
 ├── hotkeys.yaml      # 커스텀 단축키
 ├── plugins.yaml      # 외부 플러그인
 ├── aliases.yaml      # 리소스 command alias (예: pp → pods)
 └── views.yaml        # 리소스별 기본 정렬 설정
 ```
+
+실제로 어떤 파일을 읽고 있는지는 Web UI 시작 로그의 `Config File`, `Config Path Source`, `Env Overrides` 항목으로 바로 확인할 수 있습니다.
 
 ---
 

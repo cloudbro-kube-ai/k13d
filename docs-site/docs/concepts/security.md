@@ -84,7 +84,7 @@ k13d uses AST parsing for accurate command analysis:
 ```yaml
 authorization:
   tool_approval:
-    auto_approve_read_only: true       # Auto-approve read-only commands
+    auto_approve_read_only: false      # Require approval for read-only commands by default
     require_approval_for_write: true   # Require approval for write commands
     require_approval_for_unknown: true # Require approval for unknown commands
     block_dangerous: false             # Block dangerous commands entirely

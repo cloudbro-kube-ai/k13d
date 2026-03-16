@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+      - 'codex/**'
       - 'feature/**'
       - 'fix/**'
       - 'docs/**'
@@ -47,6 +48,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     needs: lint
+    env:
+      CI: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -60,14 +63,81 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      - name: Build frontend bundle
+        run: go run scripts/build-frontend.go
+
+      - name: Prepare isolated XDG dirs
+        run: |
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/xdg-config"
+          export XDG_DATA_HOME="$RUNNER_TEMP/xdg-data"
+          export XDG_CACHE_HOME="$RUNNER_TEMP/xdg-cache"
+          echo "XDG_CONFIG_HOME=$XDG_CONFIG_HOME" >> "$GITHUB_ENV"
+          echo "XDG_DATA_HOME=$XDG_DATA_HOME" >> "$GITHUB_ENV"
+          echo "XDG_CACHE_HOME=$XDG_CACHE_HOME" >> "$GITHUB_ENV"
+          mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME"
+
       - name: Run tests
-        env:
-          CI: "true"
         run: go test -race -timeout 600s ./...
 
-  build:
+  e2e:
     runs-on: ubuntu-latest
     needs: test
+    timeout-minutes: 45
+    env:
+      CI: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.8'
+          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build frontend bundle
+        run: go run scripts/build-frontend.go
+
+      - name: Prepare isolated XDG dirs
+        run: |
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/xdg-config"
+          export XDG_DATA_HOME="$RUNNER_TEMP/xdg-data"
+          export XDG_CACHE_HOME="$RUNNER_TEMP/xdg-cache"
+          echo "XDG_CONFIG_HOME=$XDG_CONFIG_HOME" >> "$GITHUB_ENV"
+          echo "XDG_DATA_HOME=$XDG_DATA_HOME" >> "$GITHUB_ENV"
+          echo "XDG_CACHE_HOME=$XDG_CACHE_HOME" >> "$GITHUB_ENV"
+          mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME"
+
+      - name: Set up kind cluster
+        uses: helm/kind-action@v1.12.0
+
+      - name: Verify cluster access
+        run: |
+          kubectl cluster-info
+          kubectl get nodes -o wide
+
+      - name: Run process E2E
+        env:
+          K13D_RUN_PROCESS_E2E: "1"
+        run: go test -v ./pkg/web -run 'TestProcessE2E_LocalAuth(LoginFlow|LoginFlow_NoConfigFile|FeatureSweep)' -count=1
+
+      - name: Run browser E2E
+        env:
+          K13D_RUN_BROWSER_E2E: "1"
+        run: go test -v ./pkg/web -run 'TestProcessE2E_LocalAuthBrowserFlow(_NoConfigFile)?' -count=1
+
+  build:
+    if: github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'dev')
+    runs-on: ubuntu-latest
+    needs: [test, e2e]
     strategy:
       matrix:
         goos: [linux, darwin]
@@ -85,6 +155,9 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      - name: Build frontend bundle
+        run: go run scripts/build-frontend.go
+
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
@@ -93,11 +166,21 @@ jobs:
         run: go build -ldflags="-w -s" -o k13d-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/kube-ai-dashboard-cli/main.go
 
   docker:
+    if: github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'dev')
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, e2e]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.8'
+          cache: true
+
+      - name: Build frontend bundle
+        run: go run scripts/build-frontend.go
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

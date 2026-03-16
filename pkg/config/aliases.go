@@ -26,7 +26,7 @@ func LoadAliases() (*AliasConfig, error) {
 		return DefaultAliases(), nil
 	}
 
-	aliasPath := filepath.Join(configDir, "aliases.yaml")
+	aliasPath := resolveConfigReadPath(configDir, "aliases.yaml")
 	data, err := os.ReadFile(aliasPath)
 	if err != nil {
 		if os.IsNotExist(err) {

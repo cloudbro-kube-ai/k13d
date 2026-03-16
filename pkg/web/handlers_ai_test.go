@@ -48,8 +48,14 @@ func setupAITestServer(t *testing.T, withSessions bool) *Server {
 	}
 
 	if withSessions {
-		dir := t.TempDir()
-		store, err := session.NewStoreWithDir(dir)
+		tmpDir := t.TempDir()
+		dbPath := tmpDir + "/test_sessions.db"
+		if err := db.Init(dbPath); err != nil {
+			t.Fatalf("Failed to init test DB for sessions: %v", err)
+		}
+		t.Cleanup(func() { db.Close() })
+
+		store, err := session.NewStore()
 		if err != nil {
 			t.Fatalf("Failed to create session store: %v", err)
 		}
@@ -97,9 +103,6 @@ func TestLLMStatus_ReturnsConfigWhenNoClient(t *testing.T) {
 	}
 	if body["has_api_key"] != true {
 		t.Errorf("Expected has_api_key=true, got %v", body["has_api_key"])
-	}
-	if body["embedded_llm"] != false {
-		t.Errorf("Expected embedded_llm=false, got %v", body["embedded_llm"])
 	}
 }
 
@@ -696,8 +699,8 @@ func TestSafetyAnalysis_ReadOnlyCommand(t *testing.T) {
 	if resp.Category != "read-only" {
 		t.Errorf("Expected category=read-only, got %s", resp.Category)
 	}
-	if resp.RequiresApproval {
-		t.Error("Expected read-only command to not require approval")
+	if !resp.RequiresApproval {
+		t.Error("Expected read-only command to require approval by default")
 	}
 }
 

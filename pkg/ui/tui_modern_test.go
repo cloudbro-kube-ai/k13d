@@ -38,6 +38,7 @@ type TUITestContext struct {
 	screen  tcell.SimulationScreen
 	done    chan struct{}
 	timeout time.Duration
+	inputMu sync.Mutex
 }
 
 // NewTUITestContext creates a new test context with sensible defaults.
@@ -100,35 +101,45 @@ func (ctx *TUITestContext) WithTimeout(d time.Duration) *TUITestContext {
 
 // Type sends text as key presses.
 func (ctx *TUITestContext) Type(text string) *TUITestContext {
-	for _, r := range text {
-		ctx.screen.InjectKey(tcell.KeyRune, r, tcell.ModNone)
-		time.Sleep(10 * time.Millisecond)
-	}
+	ctx.withInputLock(func() {
+		ctx.typeUnlocked(text)
+	})
 	return ctx
 }
 
 // Press sends a key press.
 func (ctx *TUITestContext) Press(key tcell.Key) *TUITestContext {
-	ctx.screen.InjectKey(key, 0, tcell.ModNone)
-	time.Sleep(20 * time.Millisecond)
+	ctx.withInputLock(func() {
+		ctx.pressUnlocked(key)
+	})
 	return ctx
 }
 
 // PressRune sends a rune key press.
 func (ctx *TUITestContext) PressRune(r rune) *TUITestContext {
-	ctx.screen.InjectKey(tcell.KeyRune, r, tcell.ModNone)
-	time.Sleep(20 * time.Millisecond)
+	ctx.withInputLock(func() {
+		ctx.pressRuneUnlocked(r)
+	})
 	return ctx
 }
 
 // Submit sends text followed by Enter.
 func (ctx *TUITestContext) Submit(text string) *TUITestContext {
-	return ctx.Type(text).Press(tcell.KeyEnter)
+	ctx.withInputLock(func() {
+		ctx.typeUnlocked(text)
+		ctx.pressUnlocked(tcell.KeyEnter)
+	})
+	return ctx
 }
 
 // Command enters command mode and submits a command.
 func (ctx *TUITestContext) Command(cmd string) *TUITestContext {
-	return ctx.PressRune(':').Submit(cmd)
+	ctx.withInputLock(func() {
+		ctx.pressRuneUnlocked(':')
+		ctx.typeUnlocked(cmd)
+		ctx.pressUnlocked(tcell.KeyEnter)
+	})
+	return ctx
 }
 
 // Escape sends Escape key.
@@ -145,6 +156,46 @@ func (ctx *TUITestContext) Tab() *TUITestContext {
 func (ctx *TUITestContext) Wait(d time.Duration) *TUITestContext {
 	time.Sleep(d)
 	return ctx
+}
+
+func (ctx *TUITestContext) injectKey(key tcell.Key, r rune) {
+	ctx.screen.InjectKey(key, r, tcell.ModNone)
+}
+
+func (ctx *TUITestContext) withInputLock(fn func()) {
+	ctx.inputMu.Lock()
+	defer ctx.inputMu.Unlock()
+	fn()
+}
+
+func (ctx *TUITestContext) typeUnlocked(text string) {
+	for _, r := range text {
+		ctx.injectKey(tcell.KeyRune, r)
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func (ctx *TUITestContext) pressUnlocked(key tcell.Key) {
+	ctx.injectKey(key, 0)
+	time.Sleep(20 * time.Millisecond)
+}
+
+func (ctx *TUITestContext) pressRuneUnlocked(r rune) {
+	ctx.injectKey(tcell.KeyRune, r)
+	time.Sleep(20 * time.Millisecond)
+}
+
+func (ctx *TUITestContext) textViewText(view *tview.TextView) string {
+	ctx.t.Helper()
+
+	done := make(chan struct{})
+	var text string
+	ctx.app.QueueUpdate(func() {
+		text = view.GetText(false)
+		close(done)
+	})
+	<-done
+	return text
 }
 
 // ============================================================================

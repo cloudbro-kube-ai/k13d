@@ -2,6 +2,11 @@
 
 k13d can be installed in multiple ways depending on your environment and requirements.
 
+!!! warning "Supported today: local binary for TUI and Web UI"
+    The only officially supported install path today is the **single binary** running locally with your kubeconfig.
+    **Docker, Docker Compose, Kubernetes, Helm, and containerized air-gapped deployment flows are still Beta / in preparation and are not officially supported yet.**
+    There is **no official public Docker image repository** for end users yet.
+
 ## Prerequisites
 
 - **Go 1.25+** (for building from source)
@@ -57,102 +62,29 @@ export PATH="$PATH:/path/to/k13d"
 
 ---
 
-## Docker
+## Docker / Docker Compose
 
-### Quick Start
-
-```bash
-docker run -d -p 8080:8080 \
-  -v ~/.kube/config:/home/k13d/.kube/config:ro \
-  -e K13D_USERNAME=admin \
-  -e K13D_PASSWORD=changeme \
-  cloudbro-kube-ai/k13d:latest
-```
-
-### Docker Compose
-
-For more complex setups, use Docker Compose:
-
-```yaml title="docker-compose.yaml"
-version: '3.8'
-services:
-  k13d:
-    image: cloudbro-kube-ai/k13d:latest
-    ports:
-      - "8080:8080"
-    volumes:
-      - ~/.kube/config:/home/k13d/.kube/config:ro
-    environment:
-      - K13D_USERNAME=admin
-      - K13D_PASSWORD=changeme
-      - K13D_LLM_PROVIDER=openai
-      - K13D_LLM_API_KEY=${OPENAI_API_KEY}
-```
-
-```bash
-docker-compose up -d
-```
+!!! warning "Beta / not supported yet"
+    Docker and Docker Compose deployment are still being prepared.
+    Do not treat the current repository files as a supported end-user install path yet.
+    Use the local binary instead: `./k13d` for TUI or `./k13d --web --auth-mode local` for the Web UI.
 
 ---
 
-## Kubernetes
+## Kubernetes / Helm
 
-### Basic Deployment
-
-```bash
-# Deploy to Kubernetes
-kubectl apply -f deploy/kubernetes/deployment.yaml
-
-# Port forward to access locally
-kubectl port-forward -n k13d svc/k13d 8080:80
-
-# Open in browser
-open http://localhost:8080
-```
-
-### Helm Chart
-
-```bash
-# Add Helm repository
-helm repo add k13d https://cloudbro-kube-ai.github.io/k13d
-
-# Install with defaults
-helm install k13d k13d/k13d
-
-# Install with custom values
-helm install k13d k13d/k13d \
-  --set auth.mode=ldap \
-  --set llm.provider=ollama
-```
+!!! warning "Beta / not supported yet"
+    Kubernetes and Helm deployment are not officially supported in the current release line.
+    The manifests and chart-related material in this repository should be treated as **work in progress**.
+    For now, please evaluate k13d as a local binary with the TUI or Web UI.
 
 ---
 
 ## Air-Gapped Installation
 
-!!! info "For Offline Environments"
-    Use this method when the target environment has no internet access.
-
-### On Connected Machine
-
-```bash
-# Create offline bundle
-make bundle-offline
-
-# Transfer to air-gapped machine
-scp dist/k13d-offline-bundle-*.tar.gz user@airgapped:~/
-```
-
-### On Air-Gapped Machine
-
-```bash
-# Extract and build
-tar -xzvf k13d-offline-bundle-*.tar.gz
-cd offline-bundle
-make build-offline
-
-# Run with embedded LLM (no API keys needed)
-./k13d --embedded-llm -web -port 8080
-```
+!!! info "Current status"
+    The **supported** offline story today is still the **single binary** copied into the target environment and run locally.
+    Container-image-based air-gapped deployment remains Beta / in preparation.
 
 ---
 
@@ -188,41 +120,40 @@ xattr -d com.apple.provenance ./k13d
 ./k13d
 
 # Run web mode with local auth (recommended for desktop use)
-./k13d -web -auth-mode local
+./k13d --web --auth-mode local
 # Open http://localhost:8080 — Username: admin / Password: printed in terminal
 
-# Run web mode with K8s RBAC auth (for production)
-./k13d -web -auth-mode token
-
-# Check embedded LLM status
-./k13d --embedded-llm-status
+# Token/cluster-oriented auth modes exist in the binary, but their deployment story is still preview-only
+./k13d --web --auth-mode token
 ```
 
 ### Authentication Modes
 
-When running the web server (`-web`), choose an authentication mode:
+When running the Web server (`--web`), choose an authentication mode:
 
 | Mode | Flag | Description |
 |------|------|-------------|
-| **Local** | `-auth-mode local` | Username/password auth stored in memory. Ideal for local development, desktop use, and standalone deployments. No external auth infrastructure needed. |
-| **Token** | `-auth-mode token` | Kubernetes RBAC token validation via TokenReview API. Best for in-cluster deployments. This is the default. |
-| **LDAP** | `-auth-mode ldap` | Authenticate against an LDAP directory (Active Directory, OpenLDAP). |
-| **OIDC** | `-auth-mode oidc` | SSO via OpenID Connect providers (Google, Okta, Azure AD). |
+| **Local** | `--auth-mode local` | Supported and recommended for local desktop Web UI use. |
+| **Token** | `--auth-mode token` | Preview only. The broader deployment/in-cluster usage story is not officially supported yet. |
+| **LDAP** | `--auth-mode ldap` | Preview only. Provider-specific LDAP wiring is still incomplete. |
+| **OIDC** | `--auth-mode oidc` | Preview only. Provider-specific OIDC wiring is still incomplete. |
 | **No Auth** | `--no-auth` | Disables authentication entirely. **Not recommended** — use only for local testing. |
 
-For local/desktop usage, `-auth-mode local` is the simplest option:
+For LDAP, OIDC, MFA, and SAML guidance, see the [Security guide](../features/security.md).
+
+For local/desktop usage, `--auth-mode local` is the simplest option:
 
 ```bash
 # With auto-generated password (printed in terminal)
-./k13d -web -auth-mode local
+./k13d --web --auth-mode local
 
 # With custom credentials
-./k13d -web -auth-mode local -admin-user myadmin -admin-password mysecurepassword
+./k13d --web --auth-mode local --admin-user myadmin --admin-password mysecurepassword
 
 # Or via environment variables
 export K13D_USERNAME=myadmin
 export K13D_PASSWORD=mysecurepassword
-./k13d -web -auth-mode local
+./k13d --web --auth-mode local
 ```
 
 ---

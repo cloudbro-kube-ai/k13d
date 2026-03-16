@@ -7,8 +7,10 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -39,7 +41,6 @@ func GetFactory() *ProviderFactory {
 		defaultFactory.Register("anthropic", NewAnthropicProvider)
 		defaultFactory.Register("azopenai", NewAzureOpenAIProvider)
 		defaultFactory.Register("azure", NewAzureOpenAIProvider) // alias
-		defaultFactory.Register("embedded", NewEmbeddedProvider) // Local llama.cpp server
 	})
 	return defaultFactory
 }
@@ -53,6 +54,12 @@ func (f *ProviderFactory) Register(name string, constructor func(*ProviderConfig
 
 // Create creates a provider instance based on the configuration
 func (f *ProviderFactory) Create(cfg *ProviderConfig) (Provider, error) {
+	cfg = applyEnvFallbacks(cfg)
+
+	if strings.EqualFold(cfg.Provider, "embedded") {
+		return nil, fmt.Errorf("provider %q has been removed; use ollama or a remote provider instead", cfg.Provider)
+	}
+
 	f.mu.RLock()
 	constructor, ok := f.providers[strings.ToLower(cfg.Provider)]
 	f.mu.RUnlock()
@@ -62,6 +69,56 @@ func (f *ProviderFactory) Create(cfg *ProviderConfig) (Provider, error) {
 	}
 
 	return constructor(cfg)
+}
+
+func applyEnvFallbacks(cfg *ProviderConfig) *ProviderConfig {
+	if cfg == nil {
+		return nil
+	}
+
+	clone := *cfg
+
+	switch strings.ToLower(clone.Provider) {
+	case "openai":
+		if clone.APIKey == "" {
+			clone.APIKey = os.Getenv("OPENAI_API_KEY")
+		}
+	case "solar", "upstage":
+		if clone.APIKey == "" {
+			clone.APIKey = os.Getenv("UPSTAGE_API_KEY")
+		}
+		if clone.APIKey == "" {
+			clone.APIKey = os.Getenv("OPENAI_API_KEY")
+		}
+	case "anthropic":
+		if clone.APIKey == "" {
+			clone.APIKey = os.Getenv("ANTHROPIC_API_KEY")
+		}
+	case "gemini":
+		if clone.APIKey == "" {
+			clone.APIKey = os.Getenv("GOOGLE_API_KEY")
+		}
+	case "azopenai", "azure":
+		if clone.APIKey == "" {
+			clone.APIKey = os.Getenv("AZURE_OPENAI_API_KEY")
+		}
+		if clone.Endpoint == "" {
+			clone.Endpoint = os.Getenv("AZURE_OPENAI_ENDPOINT")
+		}
+	case "ollama":
+		if clone.Endpoint == "" {
+			host := os.Getenv("OLLAMA_HOST")
+			if host != "" {
+				if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
+					clone.Endpoint = host
+				} else {
+					clone.Endpoint = "http://" + host
+				}
+			}
+		}
+	}
+
+	return &clone
 }
 
 // ListProviders returns a comma-separated list of available provider names
@@ -161,18 +218,57 @@ func (r *retryProvider) AskNonStreaming(ctx context.Context, prompt string) (str
 	return "", fmt.Errorf("max retries exceeded: %w", lastErr)
 }
 
-// AskWithTools implements ToolProvider interface by delegating to the underlying provider
-// if it supports tool calling. Tool calls have side effects (executing commands), so
-// retrying could cause duplicate executions. We do NOT retry this method.
+// AskWithTools implements ToolProvider interface by delegating to the underlying provider.
+// Tool calls have side effects, so retries are only allowed before any tool execution
+// or streamed output has been emitted to the caller.
 func (r *retryProvider) AskWithTools(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
 	toolProvider, ok := r.provider.(ToolProvider)
 	if !ok {
 		return fmt.Errorf("underlying provider does not support tool calling")
 	}
 
-	// Do not retry — tool calls have side effects and retrying could
-	// cause duplicate tool executions.
-	return toolProvider.AskWithTools(ctx, prompt, tools, callback, toolCallback)
+	var lastErr error
+	for attempt := 0; attempt < r.config.MaxAttempts; attempt++ {
+		if attempt > 0 {
+			backoff := r.calculateBackoff(attempt)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff):
+			}
+		}
+
+		var streamStarted atomic.Bool
+		var toolExecuted atomic.Bool
+
+		var wrappedCallback func(string)
+		if callback != nil {
+			wrappedCallback = func(chunk string) {
+				streamStarted.Store(true)
+				callback(chunk)
+			}
+		}
+
+		wrappedToolCallback := toolCallback
+		if toolCallback != nil {
+			wrappedToolCallback = func(call ToolCall) ToolResult {
+				toolExecuted.Store(true)
+				return toolCallback(call)
+			}
+		}
+
+		err := toolProvider.AskWithTools(ctx, prompt, tools, wrappedCallback, wrappedToolCallback)
+		if err == nil {
+			return nil
+		}
+		if streamStarted.Load() || toolExecuted.Load() || !isRetryableError(err) {
+			return err
+		}
+
+		lastErr = err
+	}
+
+	return fmt.Errorf("max retries exceeded: %w", lastErr)
 }
 
 // SupportsTools returns true if the underlying provider supports tool calling

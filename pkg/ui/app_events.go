@@ -184,6 +184,9 @@ func (a *App) setupKeybindings() {
 		case tcell.KeyCtrlC:
 			a.Stop()
 			return nil
+		case tcell.KeyCtrlE:
+			a.toggleAIPanel()
+			return nil
 		case tcell.KeyCtrlI:
 			a.aiBriefing() // Ctrl+I = AI-generated briefing
 			return nil
@@ -251,6 +254,9 @@ func (a *App) setupKeybindings() {
 			// Clear pending decisions when escaping
 			a.clearPendingDecisions()
 			a.SetFocus(a.table)
+			return nil
+		case tcell.KeyCtrlE:
+			a.toggleAIPanel()
 			return nil
 		case tcell.KeyRune:
 			// Handle Y/N for MCP tool approval (kubectl-ai style)
@@ -589,6 +595,10 @@ func (a *App) setupAIInput() {
 			question := a.aiInput.GetText()
 			if question != "" {
 				a.aiInput.SetText("")
+				if a.handleAICommand(question) {
+					return
+				}
+				a.addAIInputHistory(question)
 				a.safeGo("askAI", func() {
 					a.askAI(question)
 				})
@@ -598,6 +608,15 @@ func (a *App) setupAIInput() {
 
 	a.aiInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
+		case tcell.KeyUp:
+			a.aiInput.SetText(a.recallAIInputHistory(-1))
+			return nil
+		case tcell.KeyDown:
+			a.aiInput.SetText(a.recallAIInputHistory(1))
+			return nil
+		case tcell.KeyCtrlE:
+			a.toggleAIPanel()
+			return nil
 		case tcell.KeyEsc, tcell.KeyTab:
 			a.SetFocus(a.table)
 			return nil
