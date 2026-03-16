@@ -12,9 +12,9 @@ async function login(page) {
 
   await page.fill('#login-username', username);
   await page.fill('#login-password', password);
-  await page.press('#login-password', 'Enter');
+  await page.click('#password-login-form .login-btn');
 
-  await expect(page.locator('#app')).toHaveClass(/active/);
+  await expect(page.locator('#login-page')).toBeHidden();
   await expect(page.locator('#user-badge')).toHaveText(username);
   await expect(page.locator('#panel-title')).toHaveText(/Pods/i);
 }
