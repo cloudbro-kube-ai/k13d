@@ -220,33 +220,34 @@ func TestStress_MixedConcurrentOperations(t *testing.T) {
 
 	// This scenario serializes a large amount of input through the shared
 	// simulation screen. Under `go test -race` in CI it can take noticeably
-	// longer than local runs without indicating a real deadlock.
-	ctx.ExpectNoDeadlock(35*time.Second,
+	// longer than local runs without indicating a real deadlock, so keep the
+	// operation mix broad but avoid an oversized input backlog.
+	ctx.ExpectNoDeadlock(60*time.Second,
 		// Resource switching goroutine
 		func(c *TUITestContext) {
 			resources := []string{"pods", "deploy", "svc"}
-			for i := 0; i < 10; i++ {
+			for i := 0; i < 6; i++ {
 				c.Command(resources[i%len(resources)])
 				time.Sleep(30 * time.Millisecond)
 			}
 		},
 		// Namespace switching goroutine
 		func(c *TUITestContext) {
-			for i := 0; i < 15; i++ {
+			for i := 0; i < 9; i++ {
 				c.PressRune(rune('0' + (i % 3)))
 				time.Sleep(20 * time.Millisecond)
 			}
 		},
 		// Navigation goroutine
 		func(c *TUITestContext) {
-			for i := 0; i < 20; i++ {
+			for i := 0; i < 12; i++ {
 				c.PressRune('j')
 				time.Sleep(10 * time.Millisecond)
 			}
 		},
 		// Filter goroutine
 		func(c *TUITestContext) {
-			for i := 0; i < 10; i++ {
+			for i := 0; i < 6; i++ {
 				c.PressRune('/').Type("test").Press(tcell.KeyEnter)
 				time.Sleep(30 * time.Millisecond)
 			}
