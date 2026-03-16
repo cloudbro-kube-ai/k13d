@@ -1,6 +1,8 @@
 # Tool Calling
 
-k13d uses AI tool calling to execute kubectl commands, bash scripts, and MCP tools based on natural language requests.
+k13d uses AI tool calling to execute kubectl commands, limited bash commands, and MCP tools based on natural language requests.
+
+Important: the connected model itself must support **tools/function calling**. This is especially important for **Ollama**. Some Ollama models can connect and produce text, but k13d's AI Assistant will not work correctly unless the selected model explicitly supports tools.
 
 ## Overview
 
@@ -8,7 +10,7 @@ Tool calling allows the AI to:
 
 1. **Understand Intent**: Parse natural language requests
 2. **Select Tools**: Choose appropriate tools for the task
-3. **Execute Commands**: Run kubectl, bash, or MCP commands
+3. **Execute Commands**: Run kubectl, limited bash, or MCP commands
 4. **Report Results**: Explain outcomes to the user
 
 ```
@@ -55,12 +57,12 @@ Examples:
 
 ### bash
 
-Execute shell commands:
+Execute shell commands only as a last resort:
 
 ```json
 {
   "name": "bash",
-  "description": "Execute shell commands",
+  "description": "Execute shell commands as a last resort when kubectl or MCP cannot do the job",
   "parameters": {
     "command": "date"
   }
@@ -71,6 +73,8 @@ Examples:
 - `date`
 - `grep pattern file`
 - `jq '.items[]' data.json`
+
+Avoid using `bash` for Kubernetes operations. If the task can be expressed with `kubectl`, k13d prefers the dedicated `kubectl` tool and will block bash-wrapped `kubectl` or `helm` commands.
 
 ### MCP Tools
 
@@ -214,8 +218,8 @@ authorization:
 ```yaml
 authorization:
   tool_approval:
-    # Auto-approve read-only commands
-    auto_approve_read_only: true
+    # Keep Decision Required for read-only commands unless you explicitly enable skipping
+    auto_approve_read_only: false
 
     # Require approval for write commands
     require_approval_for_write: true

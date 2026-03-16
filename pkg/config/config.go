@@ -3,6 +3,9 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"runtime"
+	"strings"
 
 	"github.com/adrg/xdg"
 	"gopkg.in/yaml.v3"
@@ -25,6 +28,23 @@ type Config struct {
 	LogLevel      string              `yaml:"log_level" json:"log_level"`
 	Timezone      string              `yaml:"timezone" json:"timezone"`
 }
+
+// RuntimeSourceInfo describes where runtime configuration came from.
+type RuntimeSourceInfo struct {
+	ConfigPath       string
+	ConfigPathSource string
+	ConfigFileExists bool
+	XDGConfigHome    string
+	EnvOverrides     []string
+	LLMEnvOverrides  []string
+}
+
+var (
+	userHomeDirFunc = os.UserHomeDir
+	xdgConfigHomeFn = func() string { return xdg.ConfigHome }
+	xdgDataHomeFn   = func() string { return xdg.DataHome }
+	runtimeGOOS     = runtime.GOOS
+)
 
 // AnonymizationConfig holds settings for data anonymization before LLM calls
 type AnonymizationConfig struct {
@@ -73,7 +93,7 @@ type AuthorizationConfig struct {
 
 // ToolApprovalPolicy controls which AI tool commands require user approval
 type ToolApprovalPolicy struct {
-	// AutoApproveReadOnly allows read-only commands without approval (default: true)
+	// AutoApproveReadOnly allows read-only commands without approval (default: false)
 	AutoApproveReadOnly bool `yaml:"auto_approve_read_only" json:"auto_approve_read_only"`
 	// RequireApprovalForWrite requires approval for write operations (default: true)
 	RequireApprovalForWrite bool `yaml:"require_approval_for_write" json:"require_approval_for_write"`
@@ -90,7 +110,7 @@ type ToolApprovalPolicy struct {
 // DefaultToolApprovalPolicy returns the default tool approval policy
 func DefaultToolApprovalPolicy() ToolApprovalPolicy {
 	return ToolApprovalPolicy{
-		AutoApproveReadOnly:       true,
+		AutoApproveReadOnly:       false,
 		RequireApprovalForWrite:   true,
 		RequireApprovalForUnknown: true,
 		BlockDangerous:            false,
@@ -227,21 +247,60 @@ type MCPServer struct {
 }
 
 func GetConfigPath() string {
-	return filepath.Join(xdg.ConfigHome, "k13d", "config.yaml")
+	if path := strings.TrimSpace(os.Getenv("K13D_CONFIG")); path != "" {
+		return path
+	}
+	return filepath.Join(preferredConfigDir(), "config.yaml")
+}
+
+// GetRuntimeSourceInfo returns diagnostic metadata about config loading.
+// It is intended for startup/status output so users can tell which file/path
+// and which environment overrides are affecting the effective runtime config.
+func GetRuntimeSourceInfo() RuntimeSourceInfo {
+	info := RuntimeSourceInfo{
+		ConfigPath:       GetConfigPath(),
+		ConfigPathSource: defaultConfigPathSource(),
+		XDGConfigHome:    os.Getenv("XDG_CONFIG_HOME"),
+	}
+
+	if _, err := os.Stat(info.ConfigPath); err == nil {
+		info.ConfigFileExists = true
+	}
+
+	for _, key := range []string{
+		"K13D_LLM_PROVIDER",
+		"K13D_LLM_MODEL",
+		"K13D_LLM_ENDPOINT",
+		"K13D_LLM_API_KEY",
+	} {
+		if strings.TrimSpace(os.Getenv(key)) != "" {
+			info.EnvOverrides = append(info.EnvOverrides, key)
+			info.LLMEnvOverrides = append(info.LLMEnvOverrides, key)
+		}
+	}
+
+	for _, key := range []string{
+		"K13D_JWT_SECRET",
+		"K13D_DEFAULT_ROLE",
+	} {
+		if strings.TrimSpace(os.Getenv(key)) != "" {
+			info.EnvOverrides = append(info.EnvOverrides, key)
+		}
+	}
+
+	return info
 }
 
 // GetConfigDir returns the k13d configuration directory
 func GetConfigDir() (string, error) {
-	dir := filepath.Join(xdg.ConfigHome, "k13d")
-	return dir, nil
+	return preferredConfigDir(), nil
 }
 
 // DefaultOllamaEndpoint is the default Ollama server endpoint
 const DefaultOllamaEndpoint = "http://localhost:11434"
 
-// DefaultOllamaModel is the recommended model for low-spec environments (2 cores, 8GB RAM)
-// qwen2.5:3b provides excellent multilingual support (Korean included) with tool calling
-const DefaultOllamaModel = "qwen2.5:3b"
+// DefaultOllamaModel is the recommended Ollama model for local AI workflows.
+const DefaultOllamaModel = "gpt-oss:20b"
 
 // DefaultSolarEndpoint is the default Upstage Solar API endpoint
 const DefaultSolarEndpoint = "https://api.upstage.ai/v1"
@@ -251,17 +310,17 @@ const DefaultSolarModel = "solar-pro2"
 
 // DefaultDBPath returns the default SQLite database path
 func DefaultDBPath() string {
-	return filepath.Join(xdg.ConfigHome, "k13d", "audit.db")
+	return filepath.Join(xdgConfigHomeFn(), "k13d", "audit.db")
 }
 
 // DefaultAuditFilePath returns the default audit log file path
 func DefaultAuditFilePath() string {
-	return filepath.Join(xdg.ConfigHome, "k13d", "audit.log")
+	return filepath.Join(xdgConfigHomeFn(), "k13d", "audit.log")
 }
 
 // DefaultSessionsPath returns the default sessions directory
 func DefaultSessionsPath() string {
-	return filepath.Join(xdg.DataHome, "k13d", "sessions")
+	return filepath.Join(xdgDataHomeFn(), "k13d", "sessions")
 }
 
 func NewDefaultConfig() *Config {
@@ -312,11 +371,11 @@ func NewDefaultConfig() *Config {
 				Description: "OpenAI GPT-4o (Faster)",
 			},
 			{
-				Name:        "qwen2.5-local",
+				Name:        "gpt-oss-local",
 				Provider:    "ollama",
 				Model:       DefaultOllamaModel,
 				Endpoint:    DefaultOllamaEndpoint,
-				Description: "Qwen2.5 3B (Local/Offline, Korean supported, low-spec friendly)",
+				Description: "OpenAI gpt-oss 20B (Local/Offline, recommended Ollama default)",
 			},
 			{
 				Name:        "gemma2-local",
@@ -394,6 +453,27 @@ func (c *Config) SetActiveModel(name string) bool {
 			return true
 		}
 	}
+	return false
+}
+
+// SyncActiveModelProfileFromLLM persists the current LLM settings into the
+// explicitly selected active model profile.
+func (c *Config) SyncActiveModelProfileFromLLM() bool {
+	for i := range c.Models {
+		if c.Models[i].Name != c.ActiveModel {
+			continue
+		}
+
+		c.Models[i].Provider = c.LLM.Provider
+		c.Models[i].Model = c.LLM.Model
+		c.Models[i].Endpoint = c.LLM.Endpoint
+		c.Models[i].APIKey = c.LLM.APIKey
+		c.Models[i].Region = c.LLM.Region
+		c.Models[i].AzureDeployment = c.LLM.AzureDeployment
+		c.Models[i].SkipTLSVerify = c.LLM.SkipTLSVerify
+		return true
+	}
+
 	return false
 }
 
@@ -498,7 +578,7 @@ func (c *Config) IsPersistenceEnabled() bool {
 }
 
 func LoadConfig() (*Config, error) {
-	path := GetConfigPath()
+	path := ensurePrimaryConfigPath()
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		cfg := NewDefaultConfig()
 		applyEnvOverrides(cfg)
@@ -517,10 +597,49 @@ func LoadConfig() (*Config, error) {
 		// TODO: Log warning when config file exists but fails to parse.
 		// Currently silently falls back to defaults which can be confusing.
 		cfg = NewDefaultConfig()
+	} else {
+		expandEnvPlaceholders(cfg)
 	}
 
 	applyEnvOverrides(cfg)
 	return cfg, nil
+}
+
+func expandEnvPlaceholders(cfg *Config) {
+	expandEnvValue(reflect.ValueOf(cfg))
+}
+
+func expandEnvValue(v reflect.Value) {
+	if !v.IsValid() {
+		return
+	}
+
+	switch v.Kind() {
+	case reflect.Pointer:
+		if v.IsNil() {
+			return
+		}
+		expandEnvValue(v.Elem())
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			expandEnvValue(v.Field(i))
+		}
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			expandEnvValue(v.Index(i))
+		}
+	case reflect.Map:
+		for _, key := range v.MapKeys() {
+			value := reflect.New(v.Type().Elem()).Elem()
+			value.Set(v.MapIndex(key))
+			expandEnvValue(value)
+			v.SetMapIndex(key, value)
+		}
+	case reflect.String:
+		if v.CanSet() {
+			v.SetString(os.ExpandEnv(v.String()))
+		}
+	}
 }
 
 // applyEnvOverrides applies K13D_* environment variable overrides.
@@ -560,4 +679,128 @@ func (c *Config) Save() error {
 	}
 
 	return os.WriteFile(path, data, 0600)
+}
+
+func hasXDGConfigHomeOverride() bool {
+	return strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME")) != ""
+}
+
+func preferredConfigBaseDir() string {
+	if base := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME")); base != "" {
+		return base
+	}
+	if runtimeGOOS == "darwin" {
+		if home, err := userHomeDirFunc(); err == nil && strings.TrimSpace(home) != "" {
+			return filepath.Join(home, ".config")
+		}
+	}
+	return xdgConfigHomeFn()
+}
+
+func preferredConfigDir() string {
+	return filepath.Join(preferredConfigBaseDir(), "k13d")
+}
+
+func defaultConfigPathSource() string {
+	switch {
+	case strings.TrimSpace(os.Getenv("K13D_CONFIG")) != "":
+		return "K13D_CONFIG"
+	case hasXDGConfigHomeOverride():
+		return "XDG_CONFIG_HOME"
+	case runtimeGOOS == "darwin":
+		return "macOS default (~/.config)"
+	default:
+		return "xdg default"
+	}
+}
+
+func legacyConfigDir() string {
+	if runtimeGOOS != "darwin" || strings.TrimSpace(os.Getenv("K13D_CONFIG")) != "" || hasXDGConfigHomeOverride() {
+		return ""
+	}
+
+	legacy := filepath.Join(xdgConfigHomeFn(), "k13d")
+	if filepath.Clean(legacy) == filepath.Clean(preferredConfigDir()) {
+		return ""
+	}
+	return legacy
+}
+
+func resolveConfigReadPath(configDir string, rel ...string) string {
+	path := filepath.Join(append([]string{configDir}, rel...)...)
+	if pathExists(path) {
+		return path
+	}
+	if filepath.Clean(configDir) != filepath.Clean(preferredConfigDir()) {
+		return path
+	}
+
+	legacyDir := legacyConfigDir()
+	if legacyDir == "" {
+		return path
+	}
+
+	legacyPath := filepath.Join(append([]string{legacyDir}, rel...)...)
+	if pathExists(legacyPath) {
+		return legacyPath
+	}
+	return path
+}
+
+func resolveConfigReadDir(configDir string, rel ...string) string {
+	dir := filepath.Join(append([]string{configDir}, rel...)...)
+	if dirExists(dir) {
+		return dir
+	}
+	if filepath.Clean(configDir) != filepath.Clean(preferredConfigDir()) {
+		return dir
+	}
+
+	legacyDir := legacyConfigDir()
+	if legacyDir == "" {
+		return dir
+	}
+
+	legacyPath := filepath.Join(append([]string{legacyDir}, rel...)...)
+	if dirExists(legacyPath) {
+		return legacyPath
+	}
+	return dir
+}
+
+func ensurePrimaryConfigPath() string {
+	path := GetConfigPath()
+	if pathExists(path) {
+		return path
+	}
+	if strings.TrimSpace(os.Getenv("K13D_CONFIG")) != "" {
+		return path
+	}
+
+	legacyPath := resolveConfigReadPath(preferredConfigDir(), "config.yaml")
+	if legacyPath == path || !pathExists(legacyPath) {
+		return path
+	}
+
+	data, err := os.ReadFile(legacyPath)
+	if err != nil {
+		return legacyPath
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return legacyPath
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return legacyPath
+	}
+	return path
+}
+
+func pathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }

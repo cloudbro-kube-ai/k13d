@@ -264,6 +264,9 @@ reports:
 
 ### Kubernetes CronJob
 
+!!! warning "Beta / reference only"
+    In-cluster and containerized deployment is still **Beta / in preparation**. Treat the following CronJob as a conceptual example only, and replace the image with your own internal build if you experiment with it.
+
 ```yaml
 apiVersion: batch/v1
 kind: CronJob
@@ -277,7 +280,7 @@ spec:
         spec:
           containers:
           - name: k13d
-            image: cloudbro/k13d:latest
+            image: <your-registry>/k13d:<tag>
             command:
               - k13d
               - report

@@ -122,11 +122,13 @@ func (a *App) refresh() {
 			if count > 0 {
 				a.table.Select(1, 0)
 			}
+			a.applyAIChrome()
 		})
 	}
 
 	a.queueUpdateDrawDirect(func() {
 		a.updateStatusBar()
+		a.applyAIChrome()
 	})
 
 	if a.briefing != nil && a.briefing.IsVisible() {

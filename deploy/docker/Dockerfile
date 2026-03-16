@@ -84,8 +84,8 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -sf http://localhost:${K13D_PORT}/api/health || exit 1
 
-# Default command: run in web mode
+# Default command: run in web mode.
 # TUI mode: docker run -it --rm -v ~/.kube/config:/home/k13d/.kube/config:ro k13d -tui
 # Web mode: docker run -d -p 8080:8080 -v ~/.kube/config:/home/k13d/.kube/config:ro k13d
 ENTRYPOINT ["/usr/local/bin/k13d"]
-CMD ["-web", "-port", "8080"]
+CMD ["-web"]

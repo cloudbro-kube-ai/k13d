@@ -144,7 +144,9 @@ User Command
 
 ### SQLite (Audit Log)
 
-Location: `~/.config/k13d/audit.db`
+Location: `<XDG config home>/k13d/audit.db`
+
+On macOS, the default path is `~/Library/Application Support/k13d/audit.db`.
 
 ```sql
 CREATE TABLE audit_logs (
@@ -162,7 +164,7 @@ CREATE TABLE audit_logs (
 ### Session Storage
 
 - **Memory Store**: Default, deleted on process exit
-- **Filesystem Store**: `~/.config/k13d/sessions/`
+- **Filesystem Store**: platform data directory, for example `~/.local/share/k13d/sessions/` on Linux or `~/Library/Application Support/k13d/sessions/` on macOS
 
 ## Web UI Architecture
 

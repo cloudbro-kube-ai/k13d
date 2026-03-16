@@ -264,6 +264,42 @@ func TestAuthManager_HandleLogin(t *testing.T) {
 	}
 }
 
+func TestAuthManager_HandleAuthStatus_IncludesOIDCConfigured(t *testing.T) {
+	am := NewAuthManager(&AuthConfig{
+		Quiet:           true,
+		Enabled:         true,
+		SessionDuration: time.Hour,
+		AuthMode:        "oidc",
+	})
+	defer am.StopCleanup()
+
+	am.oidcProvider = &OIDCProvider{
+		config: &OIDCConfig{
+			ProviderName: "Test Provider",
+			ProviderURL:  "https://idp.example.com",
+			ClientID:     "client-id",
+		},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/status", nil)
+	w := httptest.NewRecorder()
+
+	am.HandleAuthStatus(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+
+	var status map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&status); err != nil {
+		t.Fatalf("failed to decode auth status: %v", err)
+	}
+
+	if status["oidc_configured"] != true {
+		t.Fatalf("expected oidc_configured=true, got %v", status["oidc_configured"])
+	}
+}
+
 func TestAuthManager_HandleLogout(t *testing.T) {
 	am := NewAuthManager(&AuthConfig{
 		Quiet:           true,

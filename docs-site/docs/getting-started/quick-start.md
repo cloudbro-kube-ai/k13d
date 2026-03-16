@@ -2,6 +2,10 @@
 
 This guide will get you up and running with k13d in under 5 minutes.
 
+!!! info "Scope of this quick start"
+    This quick start covers the **currently supported path**: running the k13d **binary locally** for the **TUI** and **Web UI**.
+    Docker, Docker Compose, Kubernetes, and Helm deployment flows are still Beta / in preparation.
+
 ## Prerequisites
 
 Before you begin, ensure you have:
@@ -26,14 +30,15 @@ Before you begin, ensure you have:
 === "Web Mode"
 
     ```bash
-    # Start web server
-    ./k13d -web -port 8080
+    # Start web server with local auth
+    ./k13d --web --auth-mode local --port 8080
 
     # Open in browser
     open http://localhost:8080
     ```
 
     Default username: `admin` — a random password is generated and printed in the terminal on startup.
+    In `--auth-mode local`, the login screen shows the username/password form only. The token form is used with `--auth-mode token`.
 
 ---
 
@@ -90,6 +95,14 @@ The AI will:
 
 For the best AI experience, configure an LLM provider:
 
+Default config file path:
+
+- Linux: `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml`
+- macOS: `~/.config/k13d/config.yaml`
+- Windows: `%AppData%\\k13d\\config.yaml`
+
+You can override that with `--config /path/to/config.yaml` or `K13D_CONFIG=/path/to/config.yaml`.
+
 === "Upstage Solar (Recommended)"
 
     ```yaml title="~/.config/k13d/config.yaml"
@@ -113,15 +126,17 @@ For the best AI experience, configure an LLM provider:
 
     ```bash
     # Start Ollama first
-    ollama pull qwen2.5:3b
+    ollama pull gpt-oss:20b
     ```
 
     ```yaml title="~/.config/k13d/config.yaml"
     llm:
       provider: ollama
-      model: qwen2.5:3b
-      endpoint: http://localhost:11434/v1
+      model: gpt-oss:20b
+      endpoint: http://localhost:11434
     ```
+
+    Use an Ollama model that explicitly supports **tools/function calling**. Text-only Ollama models may connect, but the k13d AI Assistant will not work correctly.
 
 ---
 

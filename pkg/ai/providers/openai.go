@@ -264,69 +264,11 @@ func (p *OpenAIProvider) ListModels(ctx context.Context) ([]string, error) {
 	return models, nil
 }
 
-// ReAct system prompt for Tool Use Shim mode (for LLMs without native tool calling)
-const reactSystemPrompt = `You are a Kubernetes expert assistant with DIRECT ACCESS to kubectl and bash tools.
-
-## Response Format
-You MUST respond with a JSON code block in one of these formats:
-
-### When you need to execute a command:
-` + "```json" + `
-{
-    "thought": "Your reasoning about what to do",
-    "action": {
-        "name": "kubectl",
-        "reason": "Why you chose this tool",
-        "command": "kubectl get pods -A",
-        "modifies_resource": "no"
-    }
-}
-` + "```" + `
-
-### When you have the final answer:
-` + "```json" + `
-{
-    "thought": "Your final reasoning",
-    "answer": "Your comprehensive answer to the user"
-}
-` + "```" + `
-
-## CRITICAL RULES:
-1. ALWAYS respond with a JSON code block - no other format is accepted
-2. For kubectl commands, ALWAYS put the verb immediately after "kubectl" (e.g., "kubectl get pods", NOT "kubectl -n default get pods")
-3. Set "modifies_resource" to "yes" for write operations (create, delete, apply, patch, scale), "no" for read operations (get, describe, logs)
-4. After receiving command results, provide a final answer summarizing the information
-
-## Available Tools:
-- kubectl: Execute kubectl commands (get, describe, logs, apply, delete, scale, etc.)
-- bash: Execute shell commands for non-kubectl operations
-
-## Example Flow:
-User: "Show me all pods"
-` + "```json" + `
-{
-    "thought": "User wants to see all pods across all namespaces",
-    "action": {
-        "name": "kubectl",
-        "reason": "Need to list all pods",
-        "command": "kubectl get pods -A",
-        "modifies_resource": "no"
-    }
-}
-` + "```" + `
-
-After receiving results, provide final answer:
-` + "```json" + `
-{
-    "thought": "I have the pod list, now I'll summarize it",
-    "answer": "Here are your pods:\n- pod1 in namespace default (Running)\n- pod2 in namespace kube-system (Running)"
-}
-` + "```"
-
 // AskWithTools implements the ToolProvider interface for agentic tool calling
 // Supports both native tool calling and Tool Use Shim mode for LLMs without tool support
 func (p *OpenAIProvider) AskWithTools(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
 	endpoint := p.endpoint + "/chat/completions"
+	tools = sortedToolDefinitions(tools)
 
 	// First, try with native tool calling
 	nativeToolSuccess := p.tryNativeToolCalling(ctx, endpoint, prompt, tools, callback, toolCallback)
@@ -336,21 +278,20 @@ func (p *OpenAIProvider) AskWithTools(ctx context.Context, prompt string, tools 
 
 	// Fallback to Tool Use Shim mode (ReAct format)
 	log.Debugf("Native tool calling failed or not supported, using Tool Use Shim mode")
-	return p.askWithToolsShim(ctx, endpoint, prompt, callback, toolCallback)
+	return p.askWithToolsShim(ctx, endpoint, prompt, tools, callback, toolCallback)
 }
 
 // tryNativeToolCalling attempts to use native OpenAI-style tool calling
 // Returns true if tool calls were made, false if model doesn't support it
 func (p *OpenAIProvider) tryNativeToolCalling(ctx context.Context, endpoint, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) bool {
+	tools = sortedToolDefinitions(tools)
+	maxIterations := effectiveMaxIterations(p.config)
 	messages := []ChatMessage{
-		{Role: "system", Content: `You are a Kubernetes expert assistant with DIRECT ACCESS to kubectl and bash tools.
-ALWAYS USE TOOLS to execute commands - NEVER just suggest commands.
-When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`},
+		{Role: "system", Content: toolAgentSystemPrompt(maxIterations)},
 		{Role: "user", Content: prompt},
 	}
 
 	toolCallMade := false
-	maxIterations := 10
 	for i := 0; i < maxIterations; i++ {
 		reqBody := openAIChatRequest{
 			Model:           p.config.Model,
@@ -420,14 +361,18 @@ When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`},
 				log.Debugf("No tool calls on first request. Model may not support tool calling.")
 				return false // Signal to use fallback
 			}
-			// After first iteration with no more tool calls - we're done
-			// Stream the final response for better UX
+			if content != "" {
+				messages = append(messages, ChatMessage{
+					Role:    "assistant",
+					Content: content,
+				})
+			}
 			if callback != nil {
-				if content != "" {
+				if toolCallMade {
+					p.streamFinalResponse(ctx, endpoint, messages, callback)
+				} else if content != "" {
 					callback(content)
 				}
-				// Make a streaming request for the final response
-				p.streamFinalResponse(ctx, endpoint, messages, callback)
 			}
 			return toolCallMade
 		}
@@ -473,6 +418,9 @@ When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`},
 		}
 	}
 
+	if toolCallMade && callback != nil {
+		p.streamFinalResponse(ctx, endpoint, messages, callback)
+	}
 	return toolCallMade
 }
 
@@ -483,7 +431,7 @@ func (p *OpenAIProvider) streamFinalResponse(ctx context.Context, endpoint strin
 	copy(finalMessages, messages)
 	finalMessages = append(finalMessages, ChatMessage{
 		Role:    "user",
-		Content: "Based on the tool execution results above, please provide a clear and helpful summary.",
+		Content: finalToolSummaryPrompt,
 	})
 
 	reqBody := openAIChatRequest{
@@ -599,13 +547,13 @@ func parseReActResponse(input string) (*ReActResponse, error) {
 
 // askWithToolsShim implements Tool Use Shim mode using ReAct format
 // This is used when the LLM doesn't support native tool calling
-func (p *OpenAIProvider) askWithToolsShim(ctx context.Context, endpoint, prompt string, callback func(string), toolCallback ToolCallback) error {
+func (p *OpenAIProvider) askWithToolsShim(ctx context.Context, endpoint, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
+	maxIterations := effectiveMaxIterations(p.config)
 	messages := []ChatMessage{
-		{Role: "system", Content: reactSystemPrompt},
+		{Role: "system", Content: buildToolUseShimSystemPrompt(tools, maxIterations)},
 		{Role: "user", Content: prompt},
 	}
 
-	maxIterations := 10
 	for i := 0; i < maxIterations; i++ {
 		// Request without tools (using ReAct prompting instead)
 		reqBody := openAIChatRequest{
@@ -744,5 +692,5 @@ func (p *OpenAIProvider) askWithToolsShim(ctx context.Context, endpoint, prompt 
 		}
 	}
 
-	return fmt.Errorf("exceeded maximum iterations")
+	return fmt.Errorf("exceeded maximum iterations (%d)", maxIterations)
 }

@@ -69,6 +69,7 @@ main        ← Production releases only
 
 ### Coding Standards
 - **Go Style**: We strictly follow standard Go formatting. Run `gofmt -s -w .` before committing.
+- **Pre-commit**: Install hooks with `pre-commit install`. Commits will run `go fmt ./...` automatically.
 - **Linting**: We use `golangci-lint`. Please ensure your code passes all lints.
 - **Documentation**: All exported functions, types, and constants must have descriptive comments.
 - **Commit Messages**: We follow [Conventional Commits](https://www.conventionalcommits.org/).

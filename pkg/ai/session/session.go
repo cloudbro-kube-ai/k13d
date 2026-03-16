@@ -1,4 +1,4 @@
-// Package session provides AI conversation session persistence
+// Package session provides AI conversation session persistence backed by SQLite
 package session
 
 import (
@@ -9,12 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/adrg/xdg"
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 )
 
 const (
@@ -24,10 +23,6 @@ const (
 	MaxMessageContentLength = 1024 * 1024
 	// MaxMessagesPerSession limits messages per session for memory safety
 	MaxMessagesPerSession = 10000
-	// SessionFilePermission is the file permission for session files (owner read/write only)
-	SessionFilePermission = 0600
-	// SessionDirPermission is the directory permission for session directory
-	SessionDirPermission = 0700
 )
 
 // validSessionIDPattern matches valid session IDs (alphanumeric and hyphen only)
@@ -74,33 +69,26 @@ type SessionSummary struct {
 	MessageCount int       `json:"message_count"`
 }
 
-// Store manages session persistence
-type Store struct {
-	baseDir string
-	mu      sync.RWMutex
-}
+// Store manages session persistence via SQLite
+type Store struct{}
 
-// NewStore creates a new session store
+// NewStore creates a new SQLite-backed session store.
+// It also migrates any legacy file-based sessions to SQLite.
 func NewStore() (*Store, error) {
-	baseDir := filepath.Join(xdg.DataHome, "k13d", "sessions")
-	if err := os.MkdirAll(baseDir, SessionDirPermission); err != nil {
-		return nil, fmt.Errorf("failed to create session directory: %w", err)
+	store := &Store{}
+
+	// Migrate legacy file-based sessions to SQLite
+	legacyDir := filepath.Join(xdg.DataHome, "k13d", "sessions")
+	if info, err := os.Stat(legacyDir); err == nil && info.IsDir() {
+		migrated, migrateErr := migrateFileSessions(legacyDir)
+		if migrateErr != nil {
+			fmt.Printf("  Session migration warning: %v\n", migrateErr)
+		} else if migrated > 0 {
+			fmt.Printf("  Session migration: migrated %d file sessions to SQLite\n", migrated)
+		}
 	}
 
-	return &Store{
-		baseDir: baseDir,
-	}, nil
-}
-
-// NewStoreWithDir creates a session store with a custom directory (for testing)
-func NewStoreWithDir(dir string) (*Store, error) {
-	if err := os.MkdirAll(dir, SessionDirPermission); err != nil {
-		return nil, fmt.Errorf("failed to create session directory: %w", err)
-	}
-
-	return &Store{
-		baseDir: dir,
-	}, nil
+	return store, nil
 }
 
 // generateID creates a cryptographically secure unique session ID
@@ -124,7 +112,6 @@ func validateSessionID(id string) error {
 	if !validSessionIDPattern.MatchString(id) {
 		return fmt.Errorf("session ID contains invalid characters")
 	}
-	// Prevent path traversal
 	if strings.Contains(id, "..") || strings.ContainsAny(id, `/\`) {
 		return fmt.Errorf("session ID contains invalid path characters")
 	}
@@ -133,7 +120,6 @@ func validateSessionID(id string) error {
 
 // sanitizeTitle ensures title is safe and within limits
 func sanitizeTitle(title string) string {
-	// Remove control characters and trim
 	title = strings.Map(func(r rune) rune {
 		if r < 32 || r == 127 {
 			return -1
@@ -153,7 +139,6 @@ func sanitizeTitle(title string) string {
 
 // generateTitle creates a title from the first user message
 func generateTitle(content string) string {
-	// Take first 50 chars of the first line
 	lines := strings.SplitN(content, "\n", 2)
 	title := strings.TrimSpace(lines[0])
 	if len(title) > 50 {
@@ -164,24 +149,23 @@ func generateTitle(content string) string {
 
 // Create creates a new session
 func (s *Store) Create(provider, model string) (*Session, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	id := generateID()
+	title := "New Conversation"
+	now := time.Now()
 
-	session := &Session{
-		ID:        generateID(),
-		Title:     "New Conversation",
-		Model:     model,
-		Provider:  provider,
-		Messages:  []Message{},
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	if err := s.saveSession(session); err != nil {
+	if err := db.CreateChatSession(id, title, provider, model); err != nil {
 		return nil, err
 	}
 
-	return session, nil
+	return &Session{
+		ID:        id,
+		Title:     title,
+		Model:     model,
+		Provider:  provider,
+		Messages:  []Message{},
+		CreatedAt: now,
+		UpdatedAt: now,
+	}, nil
 }
 
 // Get retrieves a session by ID
@@ -190,10 +174,12 @@ func (s *Store) Get(id string) (*Session, error) {
 		return nil, err
 	}
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	dbSession, err := db.GetChatSession(id)
+	if err != nil {
+		return nil, err
+	}
 
-	return s.loadSession(id)
+	return dbSessionToSession(dbSession), nil
 }
 
 // AddMessage adds a message to a session
@@ -202,82 +188,60 @@ func (s *Store) AddMessage(sessionID string, msg Message) error {
 		return err
 	}
 
-	// Validate message content length
 	if len(msg.Content) > MaxMessageContentLength {
 		return fmt.Errorf("message content exceeds maximum length (%d bytes)", MaxMessageContentLength)
 	}
 
-	// Validate role
 	validRoles := map[string]bool{"user": true, "assistant": true, "system": true, "tool": true}
 	if !validRoles[msg.Role] {
 		return fmt.Errorf("invalid message role: %s", msg.Role)
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// Serialize tool calls to JSON
+	toolCallsJSON := ""
+	if len(msg.ToolCalls) > 0 {
+		data, err := json.Marshal(msg.ToolCalls)
+		if err != nil {
+			return fmt.Errorf("failed to serialize tool calls: %w", err)
+		}
+		toolCallsJSON = string(data)
+	}
 
-	session, err := s.loadSession(sessionID)
-	if err != nil {
+	if err := db.AddChatMessage(sessionID, msg.Role, msg.Content, toolCallsJSON, msg.ToolCallID); err != nil {
 		return err
 	}
 
-	// Check message limit
-	if len(session.Messages) >= MaxMessagesPerSession {
-		return fmt.Errorf("session has reached maximum message limit (%d)", MaxMessagesPerSession)
-	}
-
-	if msg.Timestamp.IsZero() {
-		msg.Timestamp = time.Now()
-	}
-
-	session.Messages = append(session.Messages, msg)
-	session.UpdatedAt = time.Now()
-	session.MessageCount = len(session.Messages)
-
 	// Update title from first user message
-	if session.Title == "New Conversation" && msg.Role == "user" && msg.Content != "" {
-		session.Title = generateTitle(msg.Content)
+	if msg.Role == "user" && msg.Content != "" {
+		dbSession, err := db.GetChatSession(sessionID)
+		if err == nil && dbSession.Title == "New Conversation" {
+			title := generateTitle(msg.Content)
+			_ = db.UpdateChatSessionTitle(sessionID, title)
+		}
 	}
 
-	return s.saveSession(session)
+	return nil
 }
 
 // List returns all session summaries, sorted by update time (newest first)
 func (s *Store) List() ([]SessionSummary, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	entries, err := os.ReadDir(s.baseDir)
+	dbSummaries, err := db.ListChatSessions()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read session directory: %w", err)
+		return nil, err
 	}
 
-	var summaries []SessionSummary
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".json") {
-			id := strings.TrimSuffix(entry.Name(), ".json")
-			session, err := s.loadSession(id)
-			if err != nil {
-				continue // Skip invalid sessions
-			}
-
-			summaries = append(summaries, SessionSummary{
-				ID:           session.ID,
-				Title:        session.Title,
-				Model:        session.Model,
-				Provider:     session.Provider,
-				CreatedAt:    session.CreatedAt,
-				UpdatedAt:    session.UpdatedAt,
-				MessageCount: session.MessageCount,
-			})
+	summaries := make([]SessionSummary, len(dbSummaries))
+	for i, s := range dbSummaries {
+		summaries[i] = SessionSummary{
+			ID:           s.ID,
+			Title:        s.Title,
+			Model:        s.Model,
+			Provider:     s.Provider,
+			CreatedAt:    s.CreatedAt,
+			UpdatedAt:    s.UpdatedAt,
+			MessageCount: s.MessageCount,
 		}
 	}
-
-	// Sort by UpdatedAt descending
-	sort.Slice(summaries, func(i, j int) bool {
-		return summaries[i].UpdatedAt.After(summaries[j].UpdatedAt)
-	})
-
 	return summaries, nil
 }
 
@@ -286,41 +250,12 @@ func (s *Store) Delete(id string) error {
 	if err := validateSessionID(id); err != nil {
 		return err
 	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	path := filepath.Join(s.baseDir, id+".json")
-	if err := os.Remove(path); err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("session not found: %s", id)
-		}
-		return fmt.Errorf("failed to delete session: %w", err)
-	}
-	return nil
+	return db.DeleteChatSession(id)
 }
 
 // Clear removes all sessions
 func (s *Store) Clear() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	entries, err := os.ReadDir(s.baseDir)
-	if err != nil {
-		return fmt.Errorf("failed to read session directory: %w", err)
-	}
-
-	var firstErr error
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".json") {
-			path := filepath.Join(s.baseDir, entry.Name())
-			if err := os.Remove(path); err != nil && firstErr == nil {
-				firstErr = fmt.Errorf("failed to remove session file %s: %w", entry.Name(), err)
-			}
-		}
-	}
-
-	return firstErr
+	return db.ClearChatSessions()
 }
 
 // UpdateTitle updates the session title
@@ -328,19 +263,7 @@ func (s *Store) UpdateTitle(id, title string) error {
 	if err := validateSessionID(id); err != nil {
 		return err
 	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	session, err := s.loadSession(id)
-	if err != nil {
-		return err
-	}
-
-	session.Title = sanitizeTitle(title)
-	session.UpdatedAt = time.Now()
-
-	return s.saveSession(session)
+	return db.UpdateChatSessionTitle(id, sanitizeTitle(title))
 }
 
 // GetMessages returns messages for a session with optional pagination
@@ -349,27 +272,12 @@ func (s *Store) GetMessages(sessionID string, limit, offset int) ([]Message, err
 		return nil, err
 	}
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	session, err := s.loadSession(sessionID)
+	dbMessages, err := db.GetChatMessages(sessionID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
 
-	messages := session.Messages
-	total := len(messages)
-
-	if offset >= total {
-		return []Message{}, nil
-	}
-
-	end := offset + limit
-	if end > total || limit <= 0 {
-		end = total
-	}
-
-	return messages[offset:end], nil
+	return dbMessagesToMessages(dbMessages), nil
 }
 
 // GetRecentSessions returns the most recent n sessions
@@ -392,10 +300,7 @@ func (s *Store) Export(id string) ([]byte, error) {
 		return nil, err
 	}
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	session, err := s.loadSession(id)
+	session, err := s.Get(id)
 	if err != nil {
 		return nil, err
 	}
@@ -405,9 +310,6 @@ func (s *Store) Export(id string) ([]byte, error) {
 
 // Import imports a session from JSON data
 func (s *Store) Import(data []byte) (*Session, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	var session Session
 	if err := json.Unmarshal(data, &session); err != nil {
 		return nil, fmt.Errorf("failed to parse session data: %w", err)
@@ -417,99 +319,134 @@ func (s *Store) Import(data []byte) (*Session, error) {
 	session.ID = generateID()
 	session.UpdatedAt = time.Now()
 
-	if err := s.saveSession(&session); err != nil {
+	if err := db.CreateChatSession(session.ID, session.Title, session.Provider, session.Model); err != nil {
 		return nil, err
 	}
 
-	return &session, nil
-}
-
-// saveSession saves a session to disk with atomic write
-func (s *Store) saveSession(session *Session) error {
-	data, err := json.MarshalIndent(session, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal session: %w", err)
-	}
-
-	path := filepath.Join(s.baseDir, session.ID+".json")
-	tmpPath := path + ".tmp"
-
-	// Write to temporary file first (atomic write pattern)
-	if err := os.WriteFile(tmpPath, data, SessionFilePermission); err != nil {
-		return fmt.Errorf("failed to write session file: %w", err)
-	}
-
-	// Rename to final path (atomic on most filesystems)
-	if err := os.Rename(tmpPath, path); err != nil {
-		os.Remove(tmpPath) // Clean up temp file on failure
-		return fmt.Errorf("failed to finalize session file: %w", err)
-	}
-
-	return nil
-}
-
-// loadSession loads a session from disk
-func (s *Store) loadSession(id string) (*Session, error) {
-	path := filepath.Join(s.baseDir, id+".json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("session not found: %s", id)
+	// Import all messages
+	for _, msg := range session.Messages {
+		toolCallsJSON := ""
+		if len(msg.ToolCalls) > 0 {
+			tc, _ := json.Marshal(msg.ToolCalls)
+			toolCallsJSON = string(tc)
 		}
-		return nil, fmt.Errorf("failed to read session file: %w", err)
-	}
-
-	var session Session
-	if err := json.Unmarshal(data, &session); err != nil {
-		return nil, fmt.Errorf("failed to parse session file: %w", err)
+		if err := db.AddChatMessage(session.ID, msg.Role, msg.Content, toolCallsJSON, msg.ToolCallID); err != nil {
+			return nil, err
+		}
 	}
 
 	return &session, nil
 }
 
 // GetContextMessages returns messages formatted for LLM context
-// It returns messages in chronological order, optionally limiting to recent messages
 func (s *Store) GetContextMessages(sessionID string, maxMessages int) ([]Message, error) {
 	if err := validateSessionID(sessionID); err != nil {
 		return nil, err
 	}
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	session, err := s.loadSession(sessionID)
+	dbMessages, err := db.GetRecentChatMessages(sessionID, maxMessages)
 	if err != nil {
 		return nil, err
 	}
 
-	messages := session.Messages
-	if maxMessages > 0 && len(messages) > maxMessages {
-		messages = messages[len(messages)-maxMessages:]
-	}
-
-	return messages, nil
-}
-
-// GetBaseDir returns the base directory for session storage (for debugging/admin)
-func (s *Store) GetBaseDir() string {
-	return s.baseDir
+	return dbMessagesToMessages(dbMessages), nil
 }
 
 // Count returns the total number of sessions
 func (s *Store) Count() (int, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	return db.CountChatSessions()
+}
 
-	entries, err := os.ReadDir(s.baseDir)
-	if err != nil {
-		return 0, fmt.Errorf("failed to read session directory: %w", err)
+// GetBaseDir returns a description of the storage backend
+func (s *Store) GetBaseDir() string {
+	return "SQLite database"
+}
+
+// dbSessionToSession converts a db.ChatSession to a session.Session
+func dbSessionToSession(dbs *db.ChatSession) *Session {
+	messages := dbMessagesToMessages(dbs.Messages)
+
+	return &Session{
+		ID:           dbs.ID,
+		Title:        dbs.Title,
+		Model:        dbs.Model,
+		Provider:     dbs.Provider,
+		Messages:     messages,
+		CreatedAt:    dbs.CreatedAt,
+		UpdatedAt:    dbs.UpdatedAt,
+		MessageCount: dbs.MessageCount,
 	}
+}
 
-	count := 0
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".json") {
-			count++
+// dbMessagesToMessages converts db.ChatMessage slice to session.Message slice
+func dbMessagesToMessages(dbMsgs []db.ChatMessage) []Message {
+	messages := make([]Message, len(dbMsgs))
+	for i, m := range dbMsgs {
+		var toolCalls []ToolCallRecord
+		if m.ToolCalls != "" {
+			_ = json.Unmarshal([]byte(m.ToolCalls), &toolCalls)
+		}
+		messages[i] = Message{
+			Role:       m.Role,
+			Content:    m.Content,
+			ToolCalls:  toolCalls,
+			ToolCallID: m.ToolCallID,
+			Timestamp:  m.Timestamp,
 		}
 	}
-	return count, nil
+	return messages
+}
+
+// migrateFileSessions migrates legacy JSON file sessions to SQLite
+func migrateFileSessions(legacyDir string) (int, error) {
+	entries, err := os.ReadDir(legacyDir)
+	if err != nil {
+		return 0, err
+	}
+
+	migrated := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+
+		id := strings.TrimSuffix(entry.Name(), ".json")
+		path := filepath.Join(legacyDir, entry.Name())
+
+		// Skip if already in SQLite
+		if _, err := db.GetChatSession(id); err == nil {
+			continue
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+
+		var session Session
+		if err := json.Unmarshal(data, &session); err != nil {
+			continue
+		}
+
+		// Insert session
+		if err := db.CreateChatSession(session.ID, session.Title, session.Provider, session.Model); err != nil {
+			continue
+		}
+
+		// Insert messages
+		for _, msg := range session.Messages {
+			toolCallsJSON := ""
+			if len(msg.ToolCalls) > 0 {
+				tc, _ := json.Marshal(msg.ToolCalls)
+				toolCallsJSON = string(tc)
+			}
+			_ = db.AddChatMessage(session.ID, msg.Role, msg.Content, toolCallsJSON, msg.ToolCallID)
+		}
+
+		// Rename migrated file
+		_ = os.Rename(path, path+".migrated")
+		migrated++
+	}
+
+	return migrated, nil
 }

@@ -44,9 +44,13 @@ type mockToolProvider struct {
 	mockProvider
 	toolsErr       error
 	toolCallsCount int
+	askWithToolsFn func(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error
 }
 
 func (m *mockToolProvider) AskWithTools(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
+	if m.askWithToolsFn != nil {
+		return m.askWithToolsFn(ctx, prompt, tools, callback, toolCallback)
+	}
 	m.toolCallsCount++
 	return m.toolsErr
 }
@@ -100,10 +104,26 @@ func TestRetryProviderAskWithTools(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name: "provider with tool error is not retried (side effects)",
+			name: "provider with tool error is retried only before any side effects",
 			provider: &mockToolProvider{
 				mockProvider: mockProvider{name: "mock-tools", ready: true},
-				toolsErr:     errors.New("status 503: service unavailable"),
+				askWithToolsFn: func(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
+					return errors.New("status 503: service unavailable")
+				},
+			},
+			wantErr:     true,
+			errContains: "max retries exceeded",
+		},
+		{
+			name: "provider with tool error after execution is not retried",
+			provider: &mockToolProvider{
+				mockProvider: mockProvider{name: "mock-tools", ready: true},
+				askWithToolsFn: func(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
+					if toolCallback != nil {
+						toolCallback(ToolCall{ID: "tool-1"})
+					}
+					return errors.New("status 503: service unavailable")
+				},
 			},
 			wantErr:     true,
 			errContains: "service unavailable",
@@ -135,6 +155,69 @@ func TestRetryProviderAskWithTools(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestRetryProviderAskWithTools_RetriesBeforeStreamingOrToolExecution(t *testing.T) {
+	var attempts int
+	provider := &mockToolProvider{
+		mockProvider: mockProvider{name: "mock-tools", ready: true},
+		askWithToolsFn: func(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
+			attempts++
+			if attempts < 3 {
+				return errors.New("status 503: service unavailable")
+			}
+			if callback != nil {
+				callback("success after retry")
+			}
+			return nil
+		},
+	}
+
+	cfg := &RetryConfig{MaxAttempts: 3, MaxBackoff: 0.001, JitterRatio: 0}
+	retryProv := CreateWithRetry(provider, cfg)
+	toolProv := retryProv.(ToolProvider)
+
+	var streamed string
+	err := toolProv.AskWithTools(context.Background(), "test", nil, func(s string) {
+		streamed += s
+	}, func(call ToolCall) ToolResult {
+		return ToolResult{ToolCallID: call.ID}
+	})
+	if err != nil {
+		t.Fatalf("AskWithTools() error = %v", err)
+	}
+	if attempts != 3 {
+		t.Fatalf("attempts = %d, want 3", attempts)
+	}
+	if streamed != "success after retry" {
+		t.Fatalf("streamed = %q, want success after retry", streamed)
+	}
+}
+
+func TestRetryProviderAskWithTools_DoesNotRetryAfterStreamStarts(t *testing.T) {
+	var attempts int
+	provider := &mockToolProvider{
+		mockProvider: mockProvider{name: "mock-tools", ready: true},
+		askWithToolsFn: func(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
+			attempts++
+			if callback != nil {
+				callback("partial")
+			}
+			return errors.New("status 503: service unavailable")
+		},
+	}
+
+	cfg := &RetryConfig{MaxAttempts: 3, MaxBackoff: 0.001, JitterRatio: 0}
+	retryProv := CreateWithRetry(provider, cfg)
+	toolProv := retryProv.(ToolProvider)
+
+	err := toolProv.AskWithTools(context.Background(), "test", nil, func(string) {}, nil)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if attempts != 1 {
+		t.Fatalf("attempts = %d, want 1 after stream started", attempts)
 	}
 }
 
@@ -228,6 +311,14 @@ func TestProviderFactoryCreate(t *testing.T) {
 			},
 			wantErr:     true,
 			errContains: "unknown provider",
+		},
+		{
+			name: "removed embedded provider returns migration hint",
+			config: &ProviderConfig{
+				Provider: "embedded",
+			},
+			wantErr:     true,
+			errContains: "has been removed",
 		},
 	}
 
@@ -675,8 +766,8 @@ func TestOllamaProviderDefaults(t *testing.T) {
 	if op.endpoint != "http://localhost:11434" {
 		t.Errorf("Expected default Ollama endpoint, got %q", op.endpoint)
 	}
-	if provider.GetModel() != "llama3.2" {
-		t.Errorf("Expected default model 'llama3.2', got %q", provider.GetModel())
+	if provider.GetModel() != "gpt-oss:20b" {
+		t.Errorf("Expected default model 'gpt-oss:20b', got %q", provider.GetModel())
 	}
 }
 
@@ -909,12 +1000,11 @@ func TestFactoryCreateSolarProvider(t *testing.T) {
 var _ ToolProvider = (*OllamaProvider)(nil)
 var _ ToolProvider = (*GeminiProvider)(nil)
 var _ ToolProvider = (*OpenAIProvider)(nil)
-var _ ToolProvider = (*EmbeddedProvider)(nil)
 
 func TestOllamaToolProviderInterface(t *testing.T) {
 	provider, err := NewOllamaProvider(&ProviderConfig{
 		Provider: "ollama",
-		Model:    "llama3.2",
+		Model:    "gpt-oss:20b",
 		Endpoint: "http://localhost:11434",
 	})
 	if err != nil {
