@@ -185,6 +185,19 @@ func (ctx *TUITestContext) pressRuneUnlocked(r rune) {
 	time.Sleep(20 * time.Millisecond)
 }
 
+func (ctx *TUITestContext) textViewText(view *tview.TextView) string {
+	ctx.t.Helper()
+
+	done := make(chan struct{})
+	var text string
+	ctx.app.QueueUpdate(func() {
+		text = view.GetText(false)
+		close(done)
+	})
+	<-done
+	return text
+}
+
 // ============================================================================
 // Assertions
 // ============================================================================

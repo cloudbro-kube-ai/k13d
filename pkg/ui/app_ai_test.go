@@ -240,7 +240,7 @@ func TestTUIAIPanelToggleAndHelpCommand(t *testing.T) {
 	})
 	ctx.Submit("/help").Wait(150 * time.Millisecond)
 
-	helpText := ctx.app.aiPanel.GetText(false)
+	helpText := ctx.textViewText(ctx.app.aiPanel)
 	if !strings.Contains(helpText, "AI Help") || !strings.Contains(helpText, "/context") {
 		t.Fatalf("expected /help to render in AI panel, got:\n%s", helpText)
 	}
