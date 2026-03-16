@@ -2664,11 +2664,49 @@ function aiForceScrollToBottom() {
 })();
 
 // AI input query history
-let aiQueryHistory = JSON.parse(localStorage.getItem('k13d_query_history') || '[]');
+let aiQueryHistory = [];
 let aiHistoryIndex = -1;
 let aiCurrentDraft = '';
 
+function loadAIQueryHistory() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem('k13d_query_history') || '[]');
+        aiQueryHistory = Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        aiQueryHistory = [];
+    }
+}
+
+function aiInputHasSelection(input) {
+    return input.selectionStart !== input.selectionEnd;
+}
+
+function aiInputCursorOnFirstLine(input) {
+    if (!input || input.value.indexOf('\n') === -1) {
+        return true;
+    }
+    const cursor = Math.max(0, input.selectionStart || 0);
+    return !input.value.slice(0, cursor).includes('\n');
+}
+
+function aiInputCursorOnLastLine(input) {
+    if (!input || input.value.indexOf('\n') === -1) {
+        return true;
+    }
+    const cursor = Math.max(0, input.selectionEnd || 0);
+    return !input.value.slice(cursor).includes('\n');
+}
+
+function setAIInputValueFromHistory(input, value) {
+    input.value = value;
+    const end = input.value.length;
+    if (typeof input.setSelectionRange === 'function') {
+        input.setSelectionRange(end, end);
+    }
+}
+
 function saveQueryToHistory(query) {
+    loadAIQueryHistory();
     if (!query.trim()) return;
     // Avoid duplicates at the end
     if (aiQueryHistory.length > 0 && aiQueryHistory[aiQueryHistory.length - 1] === query) return;
@@ -2746,6 +2784,12 @@ function toggleAiExpand() {
 }
 
 document.getElementById('ai-input').addEventListener('keydown', (e) => {
+    if (e.isComposing) {
+        return;
+    }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        loadAIQueryHistory();
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         sendMessage();
@@ -2754,10 +2798,9 @@ document.getElementById('ai-input').addEventListener('keydown', (e) => {
         if (aiPanel.classList.contains('expanded')) {
             toggleAiExpand();
         }
-    } else if (e.key === 'ArrowUp' && !e.shiftKey) {
+    } else if (e.key === 'ArrowUp' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
         const input = e.target;
-        // Only navigate history if cursor is at the start or input is single-line
-        if (input.selectionStart === 0 && aiQueryHistory.length > 0) {
+        if (!aiInputHasSelection(input) && aiQueryHistory.length > 0 && aiInputCursorOnFirstLine(input)) {
             e.preventDefault();
             if (aiHistoryIndex === -1) {
                 aiCurrentDraft = input.value;
@@ -2765,22 +2808,24 @@ document.getElementById('ai-input').addEventListener('keydown', (e) => {
             } else if (aiHistoryIndex > 0) {
                 aiHistoryIndex--;
             }
-            input.value = aiQueryHistory[aiHistoryIndex];
+            setAIInputValueFromHistory(input, aiQueryHistory[aiHistoryIndex]);
         }
-    } else if (e.key === 'ArrowDown' && !e.shiftKey) {
+    } else if (e.key === 'ArrowDown' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
         const input = e.target;
-        if (aiHistoryIndex !== -1) {
+        if (!aiInputHasSelection(input) && aiHistoryIndex !== -1 && aiInputCursorOnLastLine(input)) {
             e.preventDefault();
             if (aiHistoryIndex < aiQueryHistory.length - 1) {
                 aiHistoryIndex++;
-                input.value = aiQueryHistory[aiHistoryIndex];
+                setAIInputValueFromHistory(input, aiQueryHistory[aiHistoryIndex]);
             } else {
                 aiHistoryIndex = -1;
-                input.value = aiCurrentDraft;
+                setAIInputValueFromHistory(input, aiCurrentDraft);
             }
         }
     }
 });
+
+loadAIQueryHistory();
 
 // Resizable panel
 function setupResizeHandle() {
@@ -7345,7 +7390,11 @@ async function loadNotificationSettings() {
         const data = await resp.json();
         if (data.enabled !== undefined) document.getElementById('notif-enabled').checked = data.enabled;
         if (data.provider) document.getElementById('notif-platform').value = data.provider;
-        if (data.webhook_url) document.getElementById('notif-webhook-url').value = data.webhook_url;
+        if (data.webhook_url) {
+            const webhookInput = document.getElementById('notif-webhook-url');
+            webhookInput.value = data.webhook_url;
+            webhookInput.dataset.maskedValue = data.webhook_url;
+        }
         if (data.channel) document.getElementById('notif-channel').value = data.channel;
         const evts = data.events || [];
         const evtMap = { 'pod_crash': 'notif-evt-crash', 'oom_killed': 'notif-evt-oom', 'node_not_ready': 'notif-evt-node', 'deploy_fail': 'notif-evt-deploy', 'image_pull_fail': 'notif-evt-imagepull' };
@@ -7367,10 +7416,15 @@ async function loadNotificationSettings() {
 
 async function saveNotificationSettings() {
     const provider = document.getElementById('notif-platform').value;
+    const webhookInput = document.getElementById('notif-webhook-url');
+    const webhookValue = webhookInput.value;
+    const maskedValue = webhookInput.dataset.maskedValue || '';
+    const preserveWebhookURL = provider !== 'email' && webhookValue !== '' && webhookValue === maskedValue;
     const payload = {
         enabled: document.getElementById('notif-enabled').checked,
         provider: provider,
-        webhook_url: document.getElementById('notif-webhook-url').value,
+        webhook_url: preserveWebhookURL ? '' : webhookValue,
+        preserve_webhook_url: preserveWebhookURL,
         channel: document.getElementById('notif-channel').value,
         events: [
             document.getElementById('notif-evt-crash')?.checked ? 'pod_crash' : '',

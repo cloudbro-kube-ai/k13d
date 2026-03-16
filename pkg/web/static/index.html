@@ -1494,7 +1494,7 @@
                                 <div class="settings-description">Scan container images for CVEs during security reports
                                     (requires Trivy)</div>
                             </div>
-                            <input type="checkbox" id="security-scan-images" checked>
+                            <input type="checkbox" id="security-scan-images" checked onchange="saveSecurityPreferences()">
                         </div>
 
                         <div class="settings-row" style="margin-top:12px;">
@@ -1503,7 +1503,7 @@
                                 <div class="settings-description">Only report vulnerabilities at or above this level
                                 </div>
                             </div>
-                            <select id="security-min-severity">
+                            <select id="security-min-severity" onchange="saveSecurityPreferences()">
                                 <option value="CRITICAL">Critical only</option>
                                 <option value="HIGH" selected>High and above</option>
                                 <option value="MEDIUM">Medium and above</option>
@@ -1609,7 +1609,7 @@
                                 <div class="settings-label">Metrics Retention Period</div>
                                 <div class="settings-description">How long to keep historical metrics</div>
                             </div>
-                            <select id="prometheus-retention-days">
+                            <select id="prometheus-retention-days" onchange="updateMetricsStorageInfo()">
                                 <option value="7">7 days</option>
                                 <option value="14">14 days</option>
                                 <option value="30" selected>30 days</option>
