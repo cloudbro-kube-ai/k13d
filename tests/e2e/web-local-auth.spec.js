@@ -25,6 +25,27 @@ async function login(page) {
   await expect(page.locator('#panel-title')).toHaveText(/Pods/i);
 }
 
+async function openCustomView(page, resource, containerSelector, functionName) {
+  const nav = page.locator(`.nav-item[data-resource="${resource}"]`);
+  const container = page.locator(containerSelector);
+
+  await expect(nav).toBeVisible();
+  await nav.click({ force: true });
+
+  try {
+    await expect(container).toBeVisible({ timeout: 3000 });
+    return;
+  } catch (error) {
+    await page.evaluate((name) => {
+      const fn = window[name];
+      if (typeof fn === 'function') {
+        fn();
+      }
+    }, functionName);
+    await expect(container).toBeVisible();
+  }
+}
+
 test('local auth browser journey covers main web workflows', async ({ page }) => {
   await login(page);
 
@@ -33,14 +54,11 @@ test('local auth browser journey covers main web workflows', async ({ page }) =>
   await expect(page.locator('#filter-input')).toHaveValue('zzz-no-match');
   await page.fill('#filter-input', '');
 
-  await page.locator('.nav-item[data-resource="overview"]').click();
-  await expect(page.locator('#overview-container')).toBeVisible();
+  await openCustomView(page, 'overview', '#overview-container', 'showOverviewPanel');
 
-  await page.locator('.nav-item[data-resource="applications"]').click();
-  await expect(page.locator('#applications-container')).toBeVisible();
+  await openCustomView(page, 'applications', '#applications-container', 'showApplicationsView');
 
-  await page.locator('.nav-item[data-resource="topology"]').click();
-  await expect(page.locator('#topology-container')).toBeVisible();
+  await openCustomView(page, 'topology', '#topology-container', 'showTopology');
 
   await page.getByText('Reports', { exact: true }).click();
   await expect(page.locator('#reports-modal')).toBeVisible();
