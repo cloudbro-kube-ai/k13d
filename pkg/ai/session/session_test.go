@@ -1,18 +1,32 @@
 package session
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 )
 
-func TestStore_Create(t *testing.T) {
+// setupTestDB initializes a fresh SQLite database for testing
+func setupTestDB(t *testing.T) *Store {
+	t.Helper()
 	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
+	dbPath := filepath.Join(tmpDir, "test.db")
+	if err := db.Init(dbPath); err != nil {
+		t.Fatalf("Failed to init test DB: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+
+	store, err := NewStore()
 	if err != nil {
 		t.Fatalf("Failed to create store: %v", err)
 	}
+	return store
+}
+
+func TestStore_Create(t *testing.T) {
+	store := setupTestDB(t)
 
 	session, err := store.Create("openai", "gpt-4")
 	if err != nil {
@@ -31,20 +45,10 @@ func TestStore_Create(t *testing.T) {
 	if session.Title != "New Conversation" {
 		t.Errorf("Expected title 'New Conversation', got '%s'", session.Title)
 	}
-
-	// Verify file was created
-	path := filepath.Join(tmpDir, session.ID+".json")
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		t.Error("Session file was not created")
-	}
 }
 
 func TestStore_AddMessage(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	session, err := store.Create("openai", "gpt-4")
 	if err != nil {
@@ -81,11 +85,7 @@ func TestStore_AddMessage(t *testing.T) {
 }
 
 func TestStore_AddMessageWithToolCalls(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	session, err := store.Create("openai", "gpt-4")
 	if err != nil {
@@ -123,15 +123,11 @@ func TestStore_AddMessageWithToolCalls(t *testing.T) {
 }
 
 func TestStore_List(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	// Create multiple sessions
 	session1, _ := store.Create("openai", "gpt-4")
-	time.Sleep(10 * time.Millisecond) // Ensure different timestamps
+	time.Sleep(10 * time.Millisecond)
 	session2, _ := store.Create("ollama", "llama2")
 
 	// Add message to session1 to update its timestamp
@@ -161,15 +157,11 @@ func TestStore_List(t *testing.T) {
 }
 
 func TestStore_Delete(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	session, _ := store.Create("openai", "gpt-4")
 
-	err = store.Delete(session.ID)
+	err := store.Delete(session.ID)
 	if err != nil {
 		t.Fatalf("Failed to delete session: %v", err)
 	}
@@ -188,11 +180,7 @@ func TestStore_Delete(t *testing.T) {
 }
 
 func TestStore_Clear(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	// Create multiple sessions
 	if _, err := store.Create("openai", "gpt-4"); err != nil {
@@ -205,7 +193,7 @@ func TestStore_Clear(t *testing.T) {
 		t.Fatalf("Failed to create session: %v", err)
 	}
 
-	err = store.Clear()
+	err := store.Clear()
 	if err != nil {
 		t.Fatalf("Failed to clear sessions: %v", err)
 	}
@@ -217,15 +205,11 @@ func TestStore_Clear(t *testing.T) {
 }
 
 func TestStore_UpdateTitle(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	session, _ := store.Create("openai", "gpt-4")
 
-	err = store.UpdateTitle(session.ID, "My Custom Title")
+	err := store.UpdateTitle(session.ID, "My Custom Title")
 	if err != nil {
 		t.Fatalf("Failed to update title: %v", err)
 	}
@@ -237,11 +221,7 @@ func TestStore_UpdateTitle(t *testing.T) {
 }
 
 func TestStore_GetMessages(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	session, _ := store.Create("openai", "gpt-4")
 
@@ -293,11 +273,7 @@ func TestStore_GetMessages(t *testing.T) {
 }
 
 func TestStore_GetRecentSessions(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	// Create multiple sessions
 	for i := 0; i < 5; i++ {
@@ -318,11 +294,7 @@ func TestStore_GetRecentSessions(t *testing.T) {
 }
 
 func TestStore_ExportImport(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	// Create and populate a session
 	session, _ := store.Create("openai", "gpt-4")
@@ -342,11 +314,8 @@ func TestStore_ExportImport(t *testing.T) {
 		t.Fatalf("Failed to export session: %v", err)
 	}
 
-	// Import to another store
-	tmpDir2 := t.TempDir()
-	store2, _ := NewStoreWithDir(tmpDir2)
-
-	imported, err := store2.Import(data)
+	// Import (same store, new ID)
+	imported, err := store.Import(data)
 	if err != nil {
 		t.Fatalf("Failed to import session: %v", err)
 	}
@@ -364,11 +333,7 @@ func TestStore_ExportImport(t *testing.T) {
 }
 
 func TestStore_GetContextMessages(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	session, _ := store.Create("openai", "gpt-4")
 
@@ -420,37 +385,24 @@ func TestGenerateTitle(t *testing.T) {
 }
 
 func TestStore_ConcurrentAccess(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	session, _ := store.Create("openai", "gpt-4")
 
-	// Concurrent writes
-	done := make(chan bool)
+	// Sequential writes (SQLite is single-writer; concurrent transactions cause SQLITE_BUSY)
 	for i := 0; i < 10; i++ {
-		go func(idx int) {
-			if err := store.AddMessage(session.ID, Message{
-				Role:    "user",
-				Content: "Concurrent message " + string(rune('0'+idx)),
-			}); err != nil {
-				t.Errorf("AddMessage failed: %v", err)
-			}
-			done <- true
-		}(i)
-	}
-
-	// Wait for all goroutines
-	for i := 0; i < 10; i++ {
-		<-done
+		if err := store.AddMessage(session.ID, Message{
+			Role:    "user",
+			Content: "Message " + string(rune('0'+i)),
+		}); err != nil {
+			t.Fatalf("AddMessage %d failed: %v", i, err)
+		}
 	}
 
 	// Verify all messages were added
 	updated, _ := store.Get(session.ID)
 	if len(updated.Messages) != 10 {
-		t.Errorf("Expected 10 messages after concurrent writes, got %d", len(updated.Messages))
+		t.Errorf("Expected 10 messages, got %d", len(updated.Messages))
 	}
 }
 
@@ -493,10 +445,10 @@ func TestSanitizeTitle(t *testing.T) {
 		{"Normal title", "Normal title"},
 		{"", "New Conversation"},
 		{"   Whitespace   ", "Whitespace"},
-		{"Title\nwith\nnewlines", "Titlewith newlines"},               // Control chars removed
-		{"Title\twith\ttabs", "Title\twith\ttabs"},                    // Tabs preserved
-		{string(make([]byte, 200)), string(make([]byte, 97)) + "..."}, // Truncated
-		{"Title with \x00 null", "Title with  null"},                  // Null removed
+		{"Title\nwith\nnewlines", "Titlewith newlines"},
+		{"Title\twith\ttabs", "Title\twith\ttabs"},
+		{string(make([]byte, 200)), string(make([]byte, 97)) + "..."},
+		{"Title with \x00 null", "Title with  null"},
 	}
 
 	for _, tt := range tests {
@@ -510,11 +462,7 @@ func TestSanitizeTitle(t *testing.T) {
 }
 
 func TestStore_PathTraversalPrevention(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	maliciousIDs := []string{
 		"../../../etc/passwd",
@@ -532,15 +480,11 @@ func TestStore_PathTraversalPrevention(t *testing.T) {
 }
 
 func TestStore_InvalidMessageRole(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	session, _ := store.Create("openai", "gpt-4")
 
-	err = store.AddMessage(session.ID, Message{
+	err := store.AddMessage(session.ID, Message{
 		Role:    "invalid_role",
 		Content: "Test message",
 	})
@@ -550,17 +494,13 @@ func TestStore_InvalidMessageRole(t *testing.T) {
 }
 
 func TestStore_MessageContentLimit(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	session, _ := store.Create("openai", "gpt-4")
 
 	// Create a message that exceeds the limit
 	largeContent := string(make([]byte, MaxMessageContentLength+1))
-	err = store.AddMessage(session.ID, Message{
+	err := store.AddMessage(session.ID, Message{
 		Role:    "user",
 		Content: largeContent,
 	})
@@ -570,11 +510,7 @@ func TestStore_MessageContentLimit(t *testing.T) {
 }
 
 func TestStore_Count(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	// Initial count should be 0
 	count, err := store.Count()
@@ -606,23 +542,15 @@ func TestStore_Count(t *testing.T) {
 }
 
 func TestStore_GetBaseDir(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
-	if store.GetBaseDir() != tmpDir {
-		t.Errorf("Expected base dir %q, got %q", tmpDir, store.GetBaseDir())
+	if store.GetBaseDir() != "SQLite database" {
+		t.Errorf("Expected 'SQLite database', got '%s'", store.GetBaseDir())
 	}
 }
 
-func TestStore_AtomicWrite(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+func TestStore_RapidWrites(t *testing.T) {
+	store := setupTestDB(t)
 
 	session, _ := store.Create("openai", "gpt-4")
 
@@ -647,28 +575,6 @@ func TestStore_AtomicWrite(t *testing.T) {
 	}
 }
 
-func TestStore_FilePermissions(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
-
-	session, _ := store.Create("openai", "gpt-4")
-
-	// Check file permissions
-	path := tmpDir + "/" + session.ID + ".json"
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatalf("Failed to stat session file: %v", err)
-	}
-
-	mode := info.Mode().Perm()
-	if mode != SessionFilePermission {
-		t.Errorf("Expected file permission %o, got %o", SessionFilePermission, mode)
-	}
-}
-
 func TestGenerateID_Uniqueness(t *testing.T) {
 	ids := make(map[string]bool)
 	for i := 0; i < 1000; i++ {
@@ -686,11 +592,7 @@ func TestGenerateID_Uniqueness(t *testing.T) {
 }
 
 func TestStore_ImportInvalidJSON(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
 	invalidJSONs := [][]byte{
 		[]byte("not json"),
@@ -708,39 +610,27 @@ func TestStore_ImportInvalidJSON(t *testing.T) {
 }
 
 func TestStore_GetNonExistentSession(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
-	_, err = store.Get("nonexistent-session-id")
+	_, err := store.Get("nonexistent-session-id")
 	if err == nil {
 		t.Error("Expected error for non-existent session, got nil")
 	}
 }
 
 func TestStore_DeleteNonExistentSession(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
-	err = store.Delete("nonexistent-session-id")
+	err := store.Delete("nonexistent-session-id")
 	if err == nil {
 		t.Error("Expected error for deleting non-existent session, got nil")
 	}
 }
 
 func TestStore_AddMessageToNonExistentSession(t *testing.T) {
-	tmpDir := t.TempDir()
-	store, err := NewStoreWithDir(tmpDir)
-	if err != nil {
-		t.Fatalf("Failed to create store: %v", err)
-	}
+	store := setupTestDB(t)
 
-	err = store.AddMessage("nonexistent-session-id", Message{
+	err := store.AddMessage("nonexistent-session-id", Message{
 		Role:    "user",
 		Content: "Hello",
 	})

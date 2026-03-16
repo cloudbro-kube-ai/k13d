@@ -2,6 +2,9 @@
 
 The Terminal User Interface (TUI) provides a k9s-like experience for managing Kubernetes clusters directly from your terminal.
 
+!!! note "Path note"
+    This page uses `~/.config/k13d/...` examples in code blocks. That is now also the default config directory on macOS.
+
 ## Overview
 
 ```
@@ -30,12 +33,14 @@ The Terminal User Interface (TUI) provides a k9s-like experience for managing Ku
 # Default mode
 k13d
 
-# With specific kubeconfig
-k13d --kubeconfig ~/.kube/my-cluster
+# With specific namespace
+k13d -n kube-system
 
-# With specific context
-k13d --context production
+# With all namespaces
+k13d -A
 ```
+
+`k13d` uses the standard Kubernetes client loading rules for kubeconfig and current context. Use `KUBECONFIG` or your current kubeconfig context instead of `--kubeconfig` / `--context` flags.
 
 ## Navigation
 
@@ -202,6 +207,10 @@ Switch AI models on the fly:
 - Type `:model gpt-4o` to switch directly
 - Active model marked with `*` in selector
 
+Use `Shift+O` to edit the current active LLM connection from the TUI settings modal.
+
+For the exact file persistence behavior, including when TUI updates `llm`, when it syncs the active profile, and how `:model` rewrites `active_model`, see [Model Settings & Storage](../ai-llm/model-settings-storage.md).
+
 ### AI Actions on Resources
 
 | Key | Action | Description |
@@ -222,6 +231,8 @@ When AI requests to execute a command:
 │ [Y] Approve  [N] Reject  [A] Always     │
 └─────────────────────────────────────────┘
 ```
+
+Read-only commands are not auto-approved by default. Use `A` only if you intentionally want to allow future read-only actions to skip the approval dialog.
 
 | Key | Action |
 |-----|--------|

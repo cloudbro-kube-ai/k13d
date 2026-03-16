@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 )
 
 func TestGetCompletions(t *testing.T) {
@@ -541,6 +542,21 @@ func TestQueueUpdateDrawStoppingApp(t *testing.T) {
 	app.QueueUpdateDraw(func() {
 		t.Error("callback should not be called when app is stopping")
 	})
+}
+
+func TestQueueUpdateDrawBeforeRunExecutesInline(t *testing.T) {
+	app := &App{
+		Application: tview.NewApplication(),
+	}
+
+	called := false
+	app.QueueUpdateDraw(func() {
+		called = true
+	})
+
+	if !called {
+		t.Fatal("QueueUpdateDraw should execute inline before Application.Run() starts")
+	}
 }
 
 // TestIsRunning tests the IsRunning method

@@ -3,6 +3,16 @@
 # Run manually: pre-commit run --all-files
 
 repos:
+  # Local Go hooks
+  - repo: local
+    hooks:
+      - id: go-fmt
+        name: go fmt
+        entry: go fmt ./...
+        language: system
+        pass_filenames: false
+        files: \.go$
+
   # Secrets detection - blocks commits with leaked credentials
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.21.2
@@ -13,7 +23,6 @@ repos:
   - repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.5.1
     hooks:
-      - id: go-fmt
       - id: go-vet
       - id: go-mod-tidy
 

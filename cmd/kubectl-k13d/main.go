@@ -2,7 +2,7 @@
 // When installed as kubectl-k13d in PATH, it becomes available as "kubectl k13d".
 //
 // TODO: This file duplicates significant logic from cmd/kube-ai-dashboard-cli/main.go.
-// Extract shared startup logic (flag parsing, DB init, embedded LLM, web/TUI runner)
+// Extract shared startup logic (flag parsing, DB init, web/TUI runner)
 // into an internal/cli package and keep both main.go files as thin entry points.
 package main
 
@@ -14,11 +14,11 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
+	"strconv"
 	"syscall"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/db"
-	"github.com/cloudbro-kube-ai/k13d/pkg/llm/embedded"
 	"github.com/cloudbro-kube-ai/k13d/pkg/log"
 	mcpserver "github.com/cloudbro-kube-ai/k13d/pkg/mcp/server"
 	"github.com/cloudbro-kube-ai/k13d/pkg/ui"
@@ -40,38 +40,61 @@ func envDefault(envKey, defaultVal string) string {
 	return defaultVal
 }
 
+func envBoolDefault(envKey string, defaultVal bool) bool {
+	v := os.Getenv(envKey)
+	if v == "" {
+		return defaultVal
+	}
+	parsed, err := strconv.ParseBool(v)
+	if err != nil {
+		return defaultVal
+	}
+	return parsed
+}
+
+func envIntDefault(envKey string, defaultVal int) int {
+	v := os.Getenv(envKey)
+	if v == "" {
+		return defaultVal
+	}
+	parsed, err := strconv.Atoi(v)
+	if err != nil {
+		return defaultVal
+	}
+	return parsed
+}
+
 func main() {
-	// Command line flags - same as main k13d binary
-	webMode := flag.Bool("web", false, "Start web server mode")
+	// Command line flags - same as main k13d binary.
+	// Go's flag parser accepts both -flag and --flag forms.
+	webMode := flag.Bool("web", envBoolDefault("K13D_WEB", false), "Start web server mode")
 	tuiMode := flag.Bool("tui", false, "Start TUI mode (default when no mode specified)")
 	mcpMode := flag.Bool("mcp", false, "Start MCP server mode (stdio transport)")
-	webPort := flag.Int("port", 8080, "Web server port (used with --web)")
+	webPort := flag.Int("port", envIntDefault("K13D_PORT", 8080), "Web server port (used with --web)")
+	configPath := flag.String("config", envDefault("K13D_CONFIG", ""), "Config file path (default: platform XDG config dir + /k13d/config.yaml)")
 
-	namespace := flag.String("namespace", "", "Initial namespace (use 'all' for all namespaces)")
+	namespace := flag.String("namespace", envDefault("K13D_NAMESPACE", ""), "Initial namespace (use 'all' for all namespaces)")
 	flag.StringVar(namespace, "n", "", "Initial namespace (short for --namespace)")
-	allNamespaces := flag.Bool("all-namespaces", false, "Start with all namespaces")
+	allNamespaces := flag.Bool("all-namespaces", envBoolDefault("K13D_ALL_NAMESPACES", false), "Start with all namespaces")
 	flag.BoolVar(allNamespaces, "A", false, "Start with all namespaces (short for --all-namespaces)")
 
 	showVersion := flag.Bool("version", false, "Show version information")
 	genCompletion := flag.String("completion", "", "Generate shell completion (bash, zsh, fish)")
 
-	authMode := flag.String("auth-mode", envDefault("K13D_AUTH_MODE", "token"), "Authentication mode: token (K8s RBAC), local (username/password), ldap")
-	authDisabled := flag.Bool("no-auth", false, "Disable authentication (not recommended)")
+	authMode := flag.String("auth-mode", envDefault("K13D_AUTH_MODE", "token"), "Authentication mode: token (K8s RBAC), local (username/password), ldap, oidc")
+	authDisabled := flag.Bool("no-auth", envBoolDefault("K13D_NO_AUTH", false), "Disable authentication (not recommended)")
 	adminUser := flag.String("admin-user", envDefault("K13D_USERNAME", ""), "Default admin username for local auth mode")
 	adminPass := flag.String("admin-password", envDefault("K13D_PASSWORD", ""), "Default admin password for local auth mode")
 
-	dbPath := flag.String("db-path", "", "SQLite database path (default: ~/.config/k13d/audit.db)")
-	disableDB := flag.Bool("no-db", false, "Disable database persistence entirely")
+	dbPath := flag.String("db-path", envDefault("K13D_DB_PATH", ""), "SQLite database path (default: platform XDG config dir + /k13d/audit.db)")
+	disableDB := flag.Bool("no-db", envBoolDefault("K13D_NO_DB", false), "Disable database persistence entirely")
 	showStorageInfo := flag.Bool("storage-info", false, "Show storage configuration and data locations")
 
-	embeddedLLM := flag.Bool("embedded-llm", false, "Start embedded LLM server (llama.cpp)")
-	embeddedLLMPort := flag.Int("embedded-llm-port", 8081, "Embedded LLM server port")
-	embeddedLLMModel := flag.String("embedded-llm-model", "", "Path to custom GGUF model file")
-	embeddedLLMContext := flag.Int("embedded-llm-context", 0, "Context size (0 = auto-detect based on model)")
-	downloadModel := flag.Bool("download-model", false, "Download the default model (Qwen2.5-0.5B-Instruct)")
-	embeddedLLMStatus := flag.Bool("embedded-llm-status", false, "Show embedded LLM status")
-
 	flag.Parse()
+
+	if *configPath != "" {
+		_ = os.Setenv("K13D_CONFIG", *configPath)
+	}
 
 	_ = tuiMode
 
@@ -84,16 +107,6 @@ func main() {
 
 	if *genCompletion != "" {
 		generateCompletion(*genCompletion)
-		return
-	}
-
-	if *downloadModel {
-		downloadEmbeddedModel()
-		return
-	}
-
-	if *embeddedLLMStatus {
-		showEmbeddedLLMStatus()
 		return
 	}
 
@@ -121,25 +134,6 @@ func main() {
 		cfg.EnableAudit = false
 	}
 
-	var embeddedServer *embedded.Server
-	if *embeddedLLM {
-		var err error
-		embeddedServer, err = startEmbeddedLLM(*embeddedLLMPort, *embeddedLLMModel, *embeddedLLMContext)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: Failed to start embedded LLM: %v\n", err)
-			os.Exit(1)
-		}
-		defer func() {
-			if err := embeddedServer.Stop(); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: error stopping embedded LLM: %v\n", err)
-			}
-		}()
-
-		cfg.LLM.Provider = "embedded"
-		cfg.LLM.Endpoint = embeddedServer.Endpoint()
-		cfg.LLM.Model = "qwen2.5-0.5b-instruct"
-	}
-
 	if *mcpMode {
 		runMCPServer()
 		return
@@ -151,9 +145,8 @@ func main() {
 			Disabled:        *authDisabled,
 			DefaultAdmin:    *adminUser,
 			DefaultPassword: *adminPass,
-			EmbeddedLLM:     *embeddedLLM,
 		}
-		runWebServer(cfg, *webPort, authOpts, embeddedServer)
+		runWebServer(cfg, *webPort, authOpts)
 		return
 	}
 
@@ -161,7 +154,7 @@ func main() {
 	if *allNamespaces {
 		initialNS = ""
 	}
-	runTUI(cfg, initialNS, embeddedServer)
+	runTUI(cfg, initialNS)
 }
 
 func runMCPServer() {
@@ -187,7 +180,7 @@ func runMCPServer() {
 	}
 }
 
-func runWebServer(cfg *config.Config, port int, authOpts *web.AuthOptions, embeddedServer *embedded.Server) {
+func runWebServer(cfg *config.Config, port int, authOpts *web.AuthOptions) {
 	if cfg.EnableAudit && cfg.IsPersistenceEnabled() {
 		dbCfg := db.DBConfig{
 			Type:     db.DBType(cfg.Storage.DBType),
@@ -242,12 +235,6 @@ func runWebServer(cfg *config.Config, port int, authOpts *web.AuthOptions, embed
 		if err := server.Stop(); err != nil {
 			log.Errorf("Error stopping web server: %v", err)
 		}
-		if embeddedServer != nil {
-			fmt.Println("Stopping embedded LLM server...")
-			if err := embeddedServer.Stop(); err != nil {
-				log.Errorf("Error stopping embedded LLM: %v", err)
-			}
-		}
 		fmt.Println("Shutdown complete.")
 	case err := <-serverErrCh:
 		if err != nil {
@@ -258,7 +245,7 @@ func runWebServer(cfg *config.Config, port int, authOpts *web.AuthOptions, embed
 	}
 }
 
-func runTUI(cfg *config.Config, initialNamespace string, embeddedServer *embedded.Server) {
+func runTUI(cfg *config.Config, initialNamespace string) {
 	if cfg.EnableAudit && cfg.IsPersistenceEnabled() {
 		dbCfg := db.DBConfig{
 			Type:     db.DBType(cfg.Storage.DBType),
@@ -281,15 +268,6 @@ func runTUI(cfg *config.Config, initialNamespace string, embeddedServer *embedde
 			}
 			defer db.CloseAuditFile()
 		}
-	}
-
-	if embeddedServer != nil {
-		defer func() {
-			fmt.Println("Stopping embedded LLM server...")
-			if err := embeddedServer.Stop(); err != nil {
-				log.Errorf("Error stopping embedded LLM: %v", err)
-			}
-		}()
 	}
 
 	defer func() {
@@ -392,77 +370,6 @@ complete -c kubectl-k13d -l version -d 'Show version information'
 complete -c kubectl-k13d -l completion -d 'Generate shell completion' -xa 'bash zsh fish'
 `
 
-func startEmbeddedLLM(port int, modelPath string, contextSize int) (*embedded.Server, error) {
-	cfg := embedded.DefaultConfig()
-	cfg.Port = port
-	if modelPath != "" {
-		cfg.ModelPath = modelPath
-	}
-
-	if contextSize > 0 {
-		cfg.ContextSize = contextSize
-	} else if modelPath != "" {
-		modelInfo := embedded.GetModelContextInfo(modelPath)
-		cfg.ContextSize = modelInfo.RecommendedCtx
-		fmt.Printf("  Auto-detected context size: %d (max: %d)\n", modelInfo.RecommendedCtx, modelInfo.MaxContext)
-	}
-
-	server, err := embedded.NewServer(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create embedded LLM server: %w", err)
-	}
-
-	if err := server.EnsureBinary(); err != nil {
-		return nil, err
-	}
-
-	if _, err := os.Stat(server.ModelPath()); err != nil {
-		return nil, fmt.Errorf("model not found at %s. Run 'k13d --download-model' to download", server.ModelPath())
-	}
-
-	ctx := context.Background()
-
-	fmt.Printf("Starting embedded LLM server...\n")
-	fmt.Printf("  Model: %s\n", server.ModelPath())
-	fmt.Printf("  Port: %d\n", port)
-
-	if err := server.Start(ctx); err != nil {
-		return nil, fmt.Errorf("failed to start server: %w", err)
-	}
-
-	fmt.Printf("Embedded LLM server running at %s\n", server.Endpoint())
-	return server, nil
-}
-
-func downloadEmbeddedModel() {
-	cfg := embedded.DefaultConfig()
-	server, err := embedded.NewServer(cfg)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("Downloading model to: %s\n", server.ModelPath())
-	fmt.Printf("Model URL: %s\n", embedded.ModelURL)
-	fmt.Println("This may take a few minutes...")
-
-	ctx := context.Background()
-	err = server.EnsureModel(ctx, func(downloaded, total int64) {
-		if total > 0 {
-			pct := float64(downloaded) / float64(total) * 100
-			fmt.Printf("\rDownloading: %.1f%% (%d / %d MB)", pct, downloaded/1024/1024, total/1024/1024)
-		}
-	})
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\nError downloading model: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Println("\nModel downloaded successfully!")
-	fmt.Printf("Path: %s\n", server.ModelPath())
-}
-
 func showStorageConfiguration() {
 	cfg, _ := config.LoadConfig()
 	if cfg == nil {
@@ -489,44 +396,5 @@ func showStorageConfiguration() {
 		fmt.Printf("  Host:     %s:%d\n", cfg.Storage.DBHost, cfg.Storage.DBPort)
 		fmt.Printf("  Database: %s\n", cfg.Storage.DBName)
 		fmt.Printf("  User:     %s\n", cfg.Storage.DBUser)
-	}
-}
-
-func showEmbeddedLLMStatus() {
-	cfg := embedded.DefaultConfig()
-	server, err := embedded.NewServer(cfg)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	status := server.Status()
-
-	fmt.Println("Embedded LLM Status")
-	fmt.Println("===================")
-	fmt.Printf("Data Directory: %s\n", server.DataDir())
-	fmt.Printf("Model: %s\n", status.Model)
-	fmt.Printf("Model Exists: %v\n", status.ModelExists)
-
-	if status.ModelExists {
-		modelInfo := embedded.GetModelContextInfo(server.ModelPath())
-		fmt.Printf("Max Context: %d tokens\n", modelInfo.MaxContext)
-		fmt.Printf("Recommended Context: %d tokens\n", modelInfo.RecommendedCtx)
-		fmt.Printf("Min RAM: %dGB\n", modelInfo.MinRAM)
-	}
-
-	fmt.Printf("Server Binary: %s\n", server.ServerBinaryPath())
-
-	if _, err := os.Stat(server.ServerBinaryPath()); err == nil {
-		fmt.Printf("Binary Exists: true\n")
-	} else {
-		fmt.Printf("Binary Exists: false\n")
-	}
-
-	fmt.Printf("Default Port: %d\n", status.Port)
-
-	if !status.ModelExists {
-		fmt.Println("\nTo download the model, run:")
-		fmt.Println("  k13d --download-model")
 	}
 }

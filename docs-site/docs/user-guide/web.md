@@ -18,16 +18,13 @@ The Web UI offers:
 
 ```bash
 # Start web server on default port 8080
-k13d -web
+k13d --web
 
 # Specify custom port
-k13d -web -port 3000
+k13d --web --port 3000
 
-# With authentication
-k13d -web -password "your-secure-password"
-
-# With embedded LLM (no API key needed)
-k13d -web --embedded-llm
+# With local authentication
+k13d --web --auth-mode local
 ```
 
 ### Access the Dashboard
@@ -134,6 +131,8 @@ When AI needs to execute a command:
 └──────────────────────────────────────┘
 ```
 
+By default, this modal appears for both read-only and write AI tool actions. You only skip it for read-only commands if you explicitly enable auto-approve in Settings.
+
 ## Features
 
 ### Dark/Light Theme
@@ -167,6 +166,10 @@ Settings → AI → LLM Configuration
 | **Model** | gpt-4, llama3.2, etc. |
 | **Endpoint** | Custom API endpoint |
 | **API Key** | Provider API key |
+
+The Web UI saves active LLM settings back to `config.yaml` immediately and can also manage named profiles through **Add Model Profile**, **Use**, and **Delete**.
+
+For the full storage model, including how `llm`, `models[]`, and `active_model` change, see [Model Settings & Storage](../ai-llm/model-settings-storage.md).
 
 ### MCP Servers
 
@@ -308,18 +311,19 @@ The Web UI is responsive and works on mobile devices:
 
 ### Authentication
 
-Enable password authentication:
+Run the Web UI with local authentication:
 
 ```bash
-k13d -web -password "secure-password"
+k13d --web --auth-mode local
 ```
 
-Or in config:
+For production, prefer token auth:
 
-```yaml
-auth:
-  password: "secure-password"
+```bash
+k13d --web --auth-mode token
 ```
+
+Provider-specific LDAP/OIDC settings are startup-configured in the current build and are not persisted from the Web UI settings page.
 
 ### HTTPS
 

@@ -92,13 +92,12 @@ func NewGeminiProvider(cfg *ProviderConfig) (Provider, error) {
 		}
 	}
 
+	providerCfg := *cfg
+	providerCfg.Model = model
+	providerCfg.Endpoint = endpoint
+
 	return &GeminiProvider{
-		config: &ProviderConfig{
-			Provider: cfg.Provider,
-			Model:    model,
-			Endpoint: endpoint,
-			APIKey:   cfg.APIKey,
-		},
+		config:     &providerCfg,
 		httpClient: newHTTPClient(cfg.SkipTLSVerify),
 		endpoint:   endpoint,
 	}, nil
@@ -322,6 +321,8 @@ func sanitizeSchemaValueForGemini(v interface{}) interface{} {
 
 // AskWithTools implements ToolProvider for Gemini using functionDeclarations/functionCall.
 func (p *GeminiProvider) AskWithTools(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
+	tools = sortedToolDefinitions(tools)
+
 	// Convert tools to Gemini format (sanitize parameters so Gemini API accepts the schema)
 	var funcDecls []geminiFuncDecl
 	for _, tool := range tools {
@@ -342,16 +343,14 @@ func (p *GeminiProvider) AskWithTools(ctx context.Context, prompt string, tools 
 		},
 	}
 
-	maxIterations := 10
+	maxIterations := effectiveMaxIterations(p.config)
 	for i := 0; i < maxIterations; i++ {
 		endpoint := fmt.Sprintf("%s/models/%s:generateContent",
 			p.endpoint, p.config.Model)
 
 		reqBody := geminiRequest{
 			SystemInstruction: &geminiContent{
-				Parts: []geminiPart{{Text: `You are a Kubernetes expert assistant with DIRECT ACCESS to kubectl and bash tools.
-ALWAYS USE TOOLS to execute commands - NEVER just suggest commands.
-When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`}},
+				Parts: []geminiPart{{Text: toolAgentSystemPrompt(maxIterations)}},
 			},
 			Contents: contents,
 			Tools:    geminiTools,
@@ -471,7 +470,7 @@ When asked about Kubernetes resources, IMMEDIATELY use the kubectl tool.`}},
 		})
 	}
 
-	return fmt.Errorf("exceeded maximum tool call iterations")
+	return fmt.Errorf("exceeded maximum tool call iterations (%d)", maxIterations)
 }
 
 // validGeminiModelPrefixes lists known valid Gemini model name prefixes.

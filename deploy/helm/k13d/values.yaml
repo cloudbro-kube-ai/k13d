@@ -4,7 +4,7 @@
 replicaCount: 1
 
 image:
-  repository: fjvbn2003/k13d
+  repository: fjvbn2003/k13d  # Placeholder only; no official public image repository is supported yet
   pullPolicy: IfNotPresent
   tag: ""  # Defaults to Chart appVersion
 
@@ -14,7 +14,7 @@ fullnameOverride: ""
 
 # k13d configuration
 k13d:
-  # Run mode: web or tui (web recommended for Kubernetes deployment)
+  # Run mode: web or tui (Kubernetes deployment path is still Beta / in preparation)
   mode: web
   port: 8080
 
@@ -51,21 +51,6 @@ k13d:
     password: ""
     existingSecret: ""
     existingSecretKey: "password"
-
-  # Embedded LLM (Ollama sidecar)
-  embeddedLLM:
-    enabled: false
-    image:
-      repository: ollama/ollama
-      tag: latest
-    model: llama3.2:1b
-    resources:
-      requests:
-        memory: "2Gi"
-        cpu: "1"
-      limits:
-        memory: "4Gi"
-        cpu: "2"
 
 serviceAccount:
   create: true

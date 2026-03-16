@@ -79,7 +79,6 @@ type AuthOptions struct {
 	Disabled        bool   // Disable authentication entirely
 	DefaultAdmin    string // Default admin username for local mode
 	DefaultPassword string // Default admin password for local mode
-	EmbeddedLLM     bool   // Using embedded LLM server (disables LLM settings)
 }
 
 // NewAuthManager creates a new AuthManager
@@ -359,6 +358,7 @@ func (am *AuthManager) HandleAuthStatus(w http.ResponseWriter, r *http.Request) 
 		"auth_enabled":     am.config.Enabled,
 		"auth_mode":        am.config.AuthMode,
 		"ldap_enabled":     am.IsLDAPEnabled(),
+		"oidc_configured":  am.oidcProvider != nil,
 		"token_available":  am.tokenValidator != nil,
 		"session_duration": am.config.SessionDuration.String(),
 		"total_users":      len(am.users),

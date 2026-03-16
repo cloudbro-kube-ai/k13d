@@ -8,6 +8,39 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func useDarwinConfigPathsForTest(t *testing.T) (homeDir string, legacyBase string) {
+	t.Helper()
+
+	homeDir = filepath.Join(t.TempDir(), "home")
+	legacyBase = filepath.Join(t.TempDir(), "legacy-config-home")
+	if err := os.MkdirAll(homeDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(homeDir) error = %v", err)
+	}
+	if err := os.MkdirAll(legacyBase, 0o755); err != nil {
+		t.Fatalf("MkdirAll(legacyBase) error = %v", err)
+	}
+
+	t.Setenv("HOME", homeDir)
+	t.Setenv("K13D_CONFIG", "")
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	oldUserHomeDirFunc := userHomeDirFunc
+	oldXDGConfigHomeFn := xdgConfigHomeFn
+	oldRuntimeGOOS := runtimeGOOS
+
+	userHomeDirFunc = func() (string, error) { return homeDir, nil }
+	xdgConfigHomeFn = func() string { return legacyBase }
+	runtimeGOOS = "darwin"
+
+	t.Cleanup(func() {
+		userHomeDirFunc = oldUserHomeDirFunc
+		xdgConfigHomeFn = oldXDGConfigHomeFn
+		runtimeGOOS = oldRuntimeGOOS
+	})
+
+	return homeDir, legacyBase
+}
+
 func TestNewDefaultConfig(t *testing.T) {
 	cfg := NewDefaultConfig()
 
@@ -44,13 +77,13 @@ func TestNewDefaultConfig(t *testing.T) {
 	}
 
 	// Verify all expected models are included
-	var hasSolar, hasQwen, hasGemma bool
+	var hasSolar, hasGPTOSS, hasGemma bool
 	for _, m := range cfg.Models {
 		if m.Name == "solar-pro2" && m.Provider == "upstage" {
 			hasSolar = true
 		}
-		if m.Name == "qwen2.5-local" && m.Provider == "ollama" {
-			hasQwen = true
+		if m.Name == "gpt-oss-local" && m.Provider == "ollama" && m.Model == DefaultOllamaModel {
+			hasGPTOSS = true
 		}
 		if m.Name == "gemma2-local" && m.Provider == "ollama" {
 			hasGemma = true
@@ -59,8 +92,8 @@ func TestNewDefaultConfig(t *testing.T) {
 	if !hasSolar {
 		t.Error("Default models should include solar-pro2")
 	}
-	if !hasQwen {
-		t.Error("Default models should include qwen2.5-local")
+	if !hasGPTOSS {
+		t.Error("Default models should include gpt-oss-local")
 	}
 	if !hasGemma {
 		t.Error("Default models should include gemma2-local")
@@ -78,6 +111,12 @@ func TestNewDefaultConfig(t *testing.T) {
 	}
 	if !cfg.EnableAudit {
 		t.Error("EnableAudit should be true by default")
+	}
+	if cfg.Authorization.ToolApproval.AutoApproveReadOnly {
+		t.Error("ToolApproval.AutoApproveReadOnly should be false by default")
+	}
+	if !cfg.Authorization.ToolApproval.RequireApprovalForWrite {
+		t.Error("ToolApproval.RequireApprovalForWrite should be true by default")
 	}
 }
 
@@ -182,6 +221,43 @@ func TestSetActiveModel(t *testing.T) {
 	}
 	if cfg.ActiveModel != "gpt-4" {
 		t.Errorf("ActiveModel should remain gpt-4, got %s", cfg.ActiveModel)
+	}
+}
+
+func TestSyncActiveModelProfileFromLLM(t *testing.T) {
+	cfg := &Config{
+		ActiveModel: "gpt-4o",
+		LLM: LLMConfig{
+			Provider:        "openai",
+			Model:           "gpt-4o",
+			Endpoint:        "https://api.openai.com/v1",
+			APIKey:          "sk-test",
+			Region:          "global",
+			AzureDeployment: "ignored",
+			SkipTLSVerify:   true,
+		},
+		Models: []ModelProfile{
+			{Name: "gpt-4o", Provider: "openai", Model: "gpt-4"},
+			{Name: "other", Provider: "anthropic", Model: "claude-sonnet-4"},
+		},
+	}
+
+	if !cfg.SyncActiveModelProfileFromLLM() {
+		t.Fatal("SyncActiveModelProfileFromLLM() = false, want true")
+	}
+
+	active := cfg.Models[0]
+	if active.Model != "gpt-4o" {
+		t.Errorf("active.Model = %s, want gpt-4o", active.Model)
+	}
+	if active.Endpoint != "https://api.openai.com/v1" {
+		t.Errorf("active.Endpoint = %s, want OpenAI endpoint", active.Endpoint)
+	}
+	if active.APIKey != "sk-test" {
+		t.Errorf("active.APIKey = %s, want sk-test", active.APIKey)
+	}
+	if !active.SkipTLSVerify {
+		t.Error("active.SkipTLSVerify should be true")
 	}
 }
 
@@ -295,74 +371,224 @@ func TestMCPServerOperations(t *testing.T) {
 }
 
 func TestGetConfigPath(t *testing.T) {
-	path := GetConfigPath()
-	if path == "" {
-		t.Error("GetConfigPath() returned empty string")
+	homeDir, _ := useDarwinConfigPathsForTest(t)
+
+	got := GetConfigPath()
+	want := filepath.Join(homeDir, ".config", "k13d", "config.yaml")
+	if got != want {
+		t.Errorf("GetConfigPath() = %s, want %s", got, want)
 	}
-	if filepath.Base(path) != "config.yaml" {
-		t.Errorf("GetConfigPath() base = %s, want config.yaml", filepath.Base(path))
+}
+
+func TestGetConfigPathUsesEnvOverride(t *testing.T) {
+	customPath := filepath.Join(t.TempDir(), "custom-config.yaml")
+	t.Setenv("K13D_CONFIG", customPath)
+
+	if got := GetConfigPath(); got != customPath {
+		t.Errorf("GetConfigPath() = %s, want %s", got, customPath)
+	}
+}
+
+func TestGetConfigPathUsesXDGConfigHomeOverride(t *testing.T) {
+	homeDir, _ := useDarwinConfigPathsForTest(t)
+	xdgHome := filepath.Join(t.TempDir(), "xdg-home")
+	t.Setenv("XDG_CONFIG_HOME", xdgHome)
+	userHomeDirFunc = func() (string, error) { return homeDir, nil }
+
+	got := GetConfigPath()
+	want := filepath.Join(xdgHome, "k13d", "config.yaml")
+	if got != want {
+		t.Errorf("GetConfigPath() = %s, want %s", got, want)
+	}
+}
+
+func TestGetRuntimeSourceInfo_ReportsEnvAndFileStatus(t *testing.T) {
+	customPath := filepath.Join(t.TempDir(), "custom-config.yaml")
+	if err := os.WriteFile(customPath, []byte("llm:\n  provider: openai\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	t.Setenv("K13D_CONFIG", customPath)
+	t.Setenv("K13D_LLM_PROVIDER", "anthropic")
+	t.Setenv("K13D_LLM_MODEL", "claude-sonnet")
+	t.Setenv("K13D_LLM_API_KEY", "redacted")
+	t.Setenv("K13D_DEFAULT_ROLE", "viewer")
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg-home"))
+
+	info := GetRuntimeSourceInfo()
+	if info.ConfigPath != customPath {
+		t.Fatalf("ConfigPath = %s, want %s", info.ConfigPath, customPath)
+	}
+	if info.ConfigPathSource != "K13D_CONFIG" {
+		t.Fatalf("ConfigPathSource = %s, want K13D_CONFIG", info.ConfigPathSource)
+	}
+	if !info.ConfigFileExists {
+		t.Fatal("ConfigFileExists = false, want true")
+	}
+	if info.XDGConfigHome == "" {
+		t.Fatal("XDGConfigHome should be reported when set")
+	}
+
+	wantOverrides := []string{
+		"K13D_LLM_PROVIDER",
+		"K13D_LLM_MODEL",
+		"K13D_LLM_API_KEY",
+		"K13D_DEFAULT_ROLE",
+	}
+	if len(info.EnvOverrides) != len(wantOverrides) {
+		t.Fatalf("len(EnvOverrides) = %d, want %d (%v)", len(info.EnvOverrides), len(wantOverrides), info.EnvOverrides)
+	}
+	for i, want := range wantOverrides {
+		if info.EnvOverrides[i] != want {
+			t.Fatalf("EnvOverrides[%d] = %s, want %s", i, info.EnvOverrides[i], want)
+		}
+	}
+	wantLLMOverrides := []string{
+		"K13D_LLM_PROVIDER",
+		"K13D_LLM_MODEL",
+		"K13D_LLM_API_KEY",
+	}
+	if len(info.LLMEnvOverrides) != len(wantLLMOverrides) {
+		t.Fatalf("len(LLMEnvOverrides) = %d, want %d (%v)", len(info.LLMEnvOverrides), len(wantLLMOverrides), info.LLMEnvOverrides)
+	}
+	for i, want := range wantLLMOverrides {
+		if info.LLMEnvOverrides[i] != want {
+			t.Fatalf("LLMEnvOverrides[%d] = %s, want %s", i, info.LLMEnvOverrides[i], want)
+		}
+	}
+}
+
+func TestGetRuntimeSourceInfo_MissingConfigFile(t *testing.T) {
+	customPath := filepath.Join(t.TempDir(), "missing-config.yaml")
+	t.Setenv("K13D_CONFIG", customPath)
+	t.Setenv("K13D_LLM_PROVIDER", "")
+	t.Setenv("K13D_LLM_MODEL", "")
+	t.Setenv("K13D_LLM_ENDPOINT", "")
+	t.Setenv("K13D_LLM_API_KEY", "")
+	t.Setenv("K13D_JWT_SECRET", "")
+	t.Setenv("K13D_DEFAULT_ROLE", "")
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	info := GetRuntimeSourceInfo()
+	if info.ConfigFileExists {
+		t.Fatal("ConfigFileExists = true, want false")
+	}
+	if len(info.EnvOverrides) != 0 {
+		t.Fatalf("EnvOverrides = %v, want empty", info.EnvOverrides)
+	}
+	if len(info.LLMEnvOverrides) != 0 {
+		t.Fatalf("LLMEnvOverrides = %v, want empty", info.LLMEnvOverrides)
+	}
+}
+
+func TestGetRuntimeSourceInfo_UsesMacOSDotConfigSource(t *testing.T) {
+	homeDir, _ := useDarwinConfigPathsForTest(t)
+
+	info := GetRuntimeSourceInfo()
+	wantPath := filepath.Join(homeDir, ".config", "k13d", "config.yaml")
+	if info.ConfigPath != wantPath {
+		t.Fatalf("ConfigPath = %s, want %s", info.ConfigPath, wantPath)
+	}
+	if info.ConfigPathSource != "macOS default (~/.config)" {
+		t.Fatalf("ConfigPathSource = %s, want macOS default (~/.config)", info.ConfigPathSource)
 	}
 }
 
 func TestGetConfigDir(t *testing.T) {
+	homeDir, _ := useDarwinConfigPathsForTest(t)
+
 	dir, err := GetConfigDir()
 	if err != nil {
 		t.Errorf("GetConfigDir() error = %v", err)
 	}
-	if dir == "" {
-		t.Error("GetConfigDir() returned empty string")
+	want := filepath.Join(homeDir, ".config", "k13d")
+	if dir != want {
+		t.Errorf("GetConfigDir() = %s, want %s", dir, want)
 	}
-	if filepath.Base(dir) != "k13d" {
-		t.Errorf("GetConfigDir() base = %s, want k13d", filepath.Base(dir))
+}
+
+func TestLoadConfigMigratesLegacyMacOSConfigPath(t *testing.T) {
+	homeDir, legacyBase := useDarwinConfigPathsForTest(t)
+	legacyPath := filepath.Join(legacyBase, "k13d", "config.yaml")
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(legacyPath, []byte("llm:\n  provider: anthropic\n  model: claude-sonnet-4\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.LLM.Provider != "anthropic" {
+		t.Fatalf("LLM.Provider = %s, want anthropic", cfg.LLM.Provider)
+	}
+
+	newPath := filepath.Join(homeDir, ".config", "k13d", "config.yaml")
+	data, err := os.ReadFile(newPath)
+	if err != nil {
+		t.Fatalf("ReadFile(newPath) error = %v", err)
+	}
+	if len(data) == 0 {
+		t.Fatal("migrated config file is empty")
+	}
+}
+
+func TestLoadAliasesFallsBackToLegacyMacOSConfigDir(t *testing.T) {
+	_, legacyBase := useDarwinConfigPathsForTest(t)
+	legacyPath := filepath.Join(legacyBase, "k13d", "aliases.yaml")
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(legacyPath, []byte("aliases:\n  pp: pods\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	aliases, err := LoadAliases()
+	if err != nil {
+		t.Fatalf("LoadAliases() error = %v", err)
+	}
+	if got := aliases.Resolve("pp"); got != "pods" {
+		t.Fatalf("aliases.Resolve(pp) = %s, want pods", got)
 	}
 }
 
 func TestConfigSaveLoad(t *testing.T) {
-	// Create a temp directory for testing
-	tmpDir, err := os.MkdirTemp("", "k13d-config-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
+	tmpPath := filepath.Join(tmpDir, "config.yaml")
+	t.Setenv("K13D_CONFIG", tmpPath)
 
-	// Create config and save to temp location
 	cfg := NewDefaultConfig()
 	cfg.LLM.Provider = "test-provider"
 	cfg.LLM.Model = "test-model"
 	cfg.LLM.APIKey = "test-api-key"
 	cfg.Language = "ko"
 
-	// Save to temp file
-	tmpPath := filepath.Join(tmpDir, "config.yaml")
-	cfgDir := filepath.Dir(tmpPath)
-	if err := os.MkdirAll(cfgDir, 0755); err != nil {
-		t.Fatalf("Failed to create config dir: %v", err)
+	if err := cfg.Save(); err != nil {
+		t.Fatalf("Save() error = %v", err)
 	}
 
-	// Manually save since Save() uses GetConfigPath()
-	data, err := os.ReadFile(GetConfigPath())
-	if err == nil {
-		// If config exists, just verify Save() works
-		if err := cfg.Save(); err != nil {
-			t.Errorf("Save() error = %v", err)
-		}
-	}
-
-	// Test LoadConfig returns defaults when file doesn't exist
 	loadedCfg, err := LoadConfig()
 	if err != nil {
-		t.Errorf("LoadConfig() error = %v", err)
+		t.Fatalf("LoadConfig() error = %v", err)
 	}
 	if loadedCfg == nil {
 		t.Fatal("LoadConfig() returned nil")
 	}
 
-	// Verify it's a valid config (either loaded or default)
-	if loadedCfg.LLM.Provider == "" {
-		t.Error("LoadConfig() returned config with empty provider")
+	if loadedCfg.LLM.Provider != "test-provider" {
+		t.Errorf("LoadConfig().LLM.Provider = %s, want test-provider", loadedCfg.LLM.Provider)
 	}
-
-	_ = data // suppress unused variable warning
+	if loadedCfg.LLM.Model != "test-model" {
+		t.Errorf("LoadConfig().LLM.Model = %s, want test-model", loadedCfg.LLM.Model)
+	}
+	if loadedCfg.LLM.APIKey != "test-api-key" {
+		t.Errorf("LoadConfig().LLM.APIKey = %s, want test-api-key", loadedCfg.LLM.APIKey)
+	}
+	if loadedCfg.Language != "ko" {
+		t.Errorf("LoadConfig().Language = %s, want ko", loadedCfg.Language)
+	}
 }
 
 func TestLLMConfigFields(t *testing.T) {
@@ -440,7 +666,8 @@ func TestMCPServerFields(t *testing.T) {
 }
 
 func TestLoadConfig(t *testing.T) {
-	// Test loading config returns defaults when file doesn't exist
+	t.Setenv("K13D_CONFIG", filepath.Join(t.TempDir(), "missing-config.yaml"))
+
 	cfg, err := LoadConfig()
 	if err != nil {
 		t.Errorf("LoadConfig() error = %v", err)
@@ -455,13 +682,81 @@ func TestLoadConfig(t *testing.T) {
 	}
 }
 
+func TestSaveCreatesMissingConfigDirAndFile(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "nested", "k13d", "config.yaml")
+	t.Setenv("K13D_CONFIG", configPath)
+
+	cfg := NewDefaultConfig()
+	cfg.LLM.Provider = "ollama"
+	cfg.LLM.Model = DefaultOllamaModel
+	cfg.LLM.Endpoint = DefaultOllamaEndpoint
+
+	if err := cfg.Save(); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	info, err := os.Stat(configPath)
+	if err != nil {
+		t.Fatalf("expected config file to exist: %v", err)
+	}
+	if info.Mode().Perm() != 0600 {
+		t.Fatalf("config file mode = %o, want 0600", info.Mode().Perm())
+	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if len(data) == 0 {
+		t.Fatal("expected saved config file to be non-empty")
+	}
+}
+
+func TestLoadConfigExpandsEnvPlaceholders(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	t.Setenv("K13D_CONFIG", configPath)
+	t.Setenv("TEST_K13D_API_KEY", "expanded-secret")
+	t.Setenv("TEST_K13D_MODEL", "gpt-4o")
+
+	data := []byte(`
+llm:
+  provider: openai
+  model: ${TEST_K13D_MODEL}
+  api_key: ${TEST_K13D_API_KEY}
+models:
+  - name: openai-prod
+    provider: openai
+    model: ${TEST_K13D_MODEL}
+    api_key: ${TEST_K13D_API_KEY}
+active_model: openai-prod
+`)
+	if err := os.WriteFile(configPath, data, 0600); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if cfg.LLM.Model != "gpt-4o" {
+		t.Errorf("cfg.LLM.Model = %s, want gpt-4o", cfg.LLM.Model)
+	}
+	if cfg.LLM.APIKey != "expanded-secret" {
+		t.Errorf("cfg.LLM.APIKey = %s, want expanded-secret", cfg.LLM.APIKey)
+	}
+	if len(cfg.Models) != 1 || cfg.Models[0].APIKey != "expanded-secret" {
+		t.Fatalf("cfg.Models[0].APIKey = %q, want expanded-secret", cfg.Models[0].APIKey)
+	}
+}
+
 func TestModelProfileYAMLRoundTrip(t *testing.T) {
 	// Test that ModelProfile with all fields survives YAML marshal/unmarshal
 	original := Config{
 		ActiveModel: "ollama-local",
 		LLM: LLMConfig{
 			Provider:      "ollama",
-			Model:         "qwen2.5:3b",
+			Model:         DefaultOllamaModel,
 			Endpoint:      "https://ollama.internal:11434",
 			SkipTLSVerify: true,
 			Temperature:   0.7,
@@ -472,7 +767,7 @@ func TestModelProfileYAMLRoundTrip(t *testing.T) {
 			{
 				Name:          "ollama-local",
 				Provider:      "ollama",
-				Model:         "qwen2.5:3b",
+				Model:         DefaultOllamaModel,
 				Endpoint:      "https://ollama.internal:11434",
 				SkipTLSVerify: true,
 				Description:   "Local Ollama with self-signed cert",

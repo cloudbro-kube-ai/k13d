@@ -30,10 +30,4 @@ Your release is named {{ .Release.Name }}.
    Access the Web UI at the URL above.
 {{- end }}
 
-{{- if .Values.k13d.embeddedLLM.enabled }}
-
-3. Embedded LLM (Ollama) is enabled with model: {{ .Values.k13d.embeddedLLM.model }}
-   The model will be downloaded automatically on first startup.
-{{- end }}
-
 For more information, visit: https://github.com/cloudbro-kube-ai/k13d

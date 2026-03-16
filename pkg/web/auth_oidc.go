@@ -429,7 +429,7 @@ func (am *AuthManager) HandleOIDCCallback(w http.ResponseWriter, r *http.Request
 	am.mu.Unlock()
 
 	// Set session cookie
-	am.setSessionCookie(w, session)
+	am.setSessionCookie(w, session, r)
 
 	// Redirect to dashboard
 	http.Redirect(w, r, "/", http.StatusFound)
@@ -448,14 +448,15 @@ func (am *AuthManager) getOIDCRedirectURI(r *http.Request) string {
 	return fmt.Sprintf("%s://%s/api/auth/oidc/callback", scheme, r.Host)
 }
 
-// setSessionCookie sets the session cookie with security flags
-func (am *AuthManager) setSessionCookie(w http.ResponseWriter, session *Session) {
+// setSessionCookie sets the session cookie with security flags.
+func (am *AuthManager) setSessionCookie(w http.ResponseWriter, session *Session, r *http.Request) {
+	secure := r != nil && (r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https")
 	http.SetCookie(w, &http.Cookie{
 		Name:     "k13d_session",
 		Value:    session.ID,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true, // Set based on environment
+		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
 		Expires:  session.ExpiresAt,
 	})
@@ -471,7 +472,13 @@ func (am *AuthManager) HandleOIDCStatus(w http.ResponseWriter, r *http.Request) 
 	if am.oidcProvider != nil {
 		status["provider_name"] = am.oidcProvider.config.ProviderName
 		status["provider_url"] = am.oidcProvider.config.ProviderURL
-		// Don't expose client secret
+		status["client_id"] = am.oidcProvider.config.ClientID
+		status["redirect_uri"] = am.oidcProvider.config.RedirectURI
+		status["scopes"] = am.oidcProvider.config.Scopes
+		status["admin_roles"] = am.oidcProvider.config.AdminRoles
+		status["user_roles"] = am.oidcProvider.config.UserRoles
+		status["default_role"] = am.oidcProvider.config.DefaultRole
+		status["group_mappings"] = am.oidcProvider.config.GroupMappings
 	}
 
 	w.Header().Set("Content-Type", "application/json")

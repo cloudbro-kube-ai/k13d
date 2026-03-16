@@ -1,23 +1,427 @@
 package ui
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
-	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
-// setAIPanelText updates AI panel text and auto-scrolls to the end
-func (a *App) setAIPanelText(text string) {
-	a.aiPanel.SetText(text)
+type aiPromptContext struct {
+	Resource          string
+	Namespace         string
+	SelectedName      string
+	SelectedNamespace string
+	SelectedSummary   string
+	DetailedContext   string
+}
+
+func buildAIPrompt(question string, ctx aiPromptContext) string {
+	var prompt strings.Builder
+	prompt.WriteString("You are helping a user inside the k13d terminal UI.\n")
+	if ctx.Resource != "" {
+		prompt.WriteString(fmt.Sprintf("Current resource view: %s.\n", ctx.Resource))
+	}
+	if ctx.Namespace == "" {
+		prompt.WriteString("Namespace scope: all namespaces.\n")
+	} else {
+		prompt.WriteString(fmt.Sprintf("Namespace scope: %s.\n", ctx.Namespace))
+	}
+	if ctx.SelectedSummary != "" {
+		prompt.WriteString(fmt.Sprintf("Selected row: %s.\n", ctx.SelectedSummary))
+	}
+	if ctx.SelectedName != "" {
+		prompt.WriteString(fmt.Sprintf("Selected object: %s/%s.\n", ctx.Resource, ctx.SelectedName))
+		if ctx.SelectedNamespace != "" {
+			prompt.WriteString(fmt.Sprintf("Selected object namespace: %s.\n", ctx.SelectedNamespace))
+		}
+	}
+	if ctx.DetailedContext != "" {
+		prompt.WriteString("\nSelected resource context:\n")
+		prompt.WriteString(ctx.DetailedContext)
+		prompt.WriteString("\n")
+	}
+	prompt.WriteString("\nUser question:\n")
+	prompt.WriteString(question)
+	prompt.WriteString("\n\nProvide a concise, evidence-based answer. If you suggest kubectl commands, explain why.")
+	return prompt.String()
+}
+
+func trimAIBlock(text string, maxRunes int) string {
+	trimmed := strings.TrimSpace(text)
+	if maxRunes <= 0 {
+		return trimmed
+	}
+	runes := []rune(trimmed)
+	if len(runes) <= maxRunes {
+		return trimmed
+	}
+	return strings.TrimSpace(string(runes[:maxRunes])) + "\n...[truncated]"
+}
+
+func summarizeAIToolResult(result string) string {
+	if strings.TrimSpace(result) == "" {
+		return "(no output)"
+	}
+	return trimAIBlock(result, 420)
+}
+
+func defaultAIStatusText() string {
+	return "[gray]Ready[-] Enter send | Esc close | Up/Down history | Ctrl+E toggle | /help commands"
+}
+
+func (a *App) resetAIConversation() {
+	if a.aiPanel == nil {
+		return
+	}
+	a.aiMx.Lock()
+	a.aiConversationTurns = 0
+	a.aiMx.Unlock()
+	a.aiPanel.Clear()
+	fmt.Fprint(a.aiPanel,
+		"[#7aa2f7::b]AI Assistant[-::-]\n"+
+			"[gray]Ask about the current resource, or attach deeper cluster context automatically from the selected row.[-]\n\n"+
+			"[#565f89]Try:[-]\n"+
+			"  [#9ece6a]-[-] Why is this workload failing?\n"+
+			"  [#9ece6a]-[-] Explain this resource\n"+
+			"  [#9ece6a]-[-] Show me the rollout risk\n\n"+
+			"[#565f89]Commands:[-] /context  /clear  /help\n")
+	a.aiPanel.ScrollTo(0, 0)
+	a.setAIStatus(defaultAIStatusText())
+}
+
+func (a *App) setAIStatus(text string) {
+	if a.aiStatusBar == nil {
+		return
+	}
+	a.aiStatusBar.SetText(text)
+}
+
+func (a *App) getAIPromptContext() aiPromptContext {
+	a.mx.RLock()
+	resource := a.currentResource
+	ns := a.currentNamespace
+	headers := append([]string(nil), a.tableHeaders...)
+	a.mx.RUnlock()
+
+	snapshot := aiPromptContext{
+		Resource:  resource,
+		Namespace: ns,
+	}
+
+	if a.table == nil {
+		return snapshot
+	}
+
+	row, _ := a.table.GetSelection()
+	if row <= 0 {
+		return snapshot
+	}
+
+	nameIdx := nameColumnIndex(resource)
+	snapshot.SelectedName = strings.TrimSpace(a.getTableCellText(row, nameIdx))
+	if snapshot.SelectedName == "" {
+		return snapshot
+	}
+	if nameIdx != 0 {
+		if selectedNS := strings.TrimSpace(a.getTableCellText(row, 0)); selectedNS != "" {
+			snapshot.SelectedNamespace = selectedNS
+		}
+	}
+	if snapshot.SelectedNamespace == "" {
+		snapshot.SelectedNamespace = ns
+	}
+
+	var parts []string
+	for i, header := range headers {
+		value := strings.TrimSpace(a.getTableCellText(row, i))
+		if value == "" {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s=%s", header, value))
+	}
+	snapshot.SelectedSummary = strings.Join(parts, " | ")
+
+	return snapshot
+}
+
+func (a *App) loadDetailedAIContext(base aiPromptContext) aiPromptContext {
+	if a.k8s == nil || base.SelectedName == "" || base.Resource == "" {
+		return base
+	}
+
+	ctx, cancel := context.WithTimeout(a.getAppContext(), 4*time.Second)
+	defer cancel()
+
+	resourceContext, err := a.k8s.GetResourceContext(ctx, base.SelectedNamespace, base.SelectedName, base.Resource)
+	if err != nil {
+		return base
+	}
+	base.DetailedContext = trimAIBlock(resourceContext, 12000)
+	return base
+}
+
+func (a *App) formatAIContextLabel(ctx aiPromptContext) string {
+	if ctx.SelectedName == "" {
+		scope := "all namespaces"
+		if ctx.Namespace != "" {
+			scope = ctx.Namespace
+		}
+		return fmt.Sprintf("[#7dcfff]%s[-] [gray](scope: %s)[-]", tview.Escape(ctx.Resource), tview.Escape(scope))
+	}
+
+	target := ctx.SelectedName
+	if ctx.SelectedNamespace != "" {
+		target = ctx.SelectedNamespace + "/" + target
+	}
+	detail := "row summary"
+	if ctx.DetailedContext != "" {
+		detail = "YAML/events/logs attached"
+	}
+	return fmt.Sprintf("[#7dcfff]%s %s[-] [gray](%s)[-]", tview.Escape(ctx.Resource), tview.Escape(target), detail)
+}
+
+func (a *App) applyAIChrome() {
+	if a.aiMetaBar == nil {
+		return
+	}
+
+	a.aiMx.RLock()
+	client := a.aiClient
+	turns := a.aiConversationTurns
+	a.aiMx.RUnlock()
+
+	ctx := a.getAIPromptContext()
+	modelLabel := "not configured"
+	statusLabel := "[#f7768e]● offline[-]"
+	toolsLabel := "[#f7768e]off[-]"
+	if client != nil {
+		modelParts := make([]string, 0, 2)
+		if provider := client.GetProvider(); provider != "" {
+			modelParts = append(modelParts, provider)
+		}
+		if model := client.GetModel(); model != "" {
+			modelParts = append(modelParts, model)
+		}
+		if len(modelParts) > 0 {
+			modelLabel = strings.Join(modelParts, "/")
+		}
+		if client.IsReady() {
+			statusLabel = "[#9ece6a]● online[-]"
+		}
+		if client.SupportsTools() {
+			toolsLabel = "[#9ece6a]on[-]"
+		}
+	}
+	meta := fmt.Sprintf(
+		"[#bb9af7::b]AI Assistant[-::-] %s [gray]|[-] [yellow]%s[-] [gray]|[-] tools %s [gray]|[-] turns [white]%d[-]\n[gray]Context:[-] %s [gray]|[-] /help /context /clear",
+		statusLabel,
+		tview.Escape(modelLabel),
+		toolsLabel,
+		turns,
+		a.formatAIContextLabel(ctx),
+	)
+	a.aiMetaBar.SetText(meta)
+	if strings.TrimSpace(a.aiStatusBar.GetText(false)) == "" {
+		a.setAIStatus(defaultAIStatusText())
+	}
+}
+
+func (a *App) appendAIEscaped(text string) {
+	if text == "" {
+		return
+	}
+	fmt.Fprint(a.aiPanel, tview.Escape(text))
 	a.aiPanel.ScrollToEnd()
+}
+
+func (a *App) appendAIMarkup(text string) {
+	if text == "" {
+		return
+	}
+	fmt.Fprint(a.aiPanel, text)
+	a.aiPanel.ScrollToEnd()
+}
+
+func (a *App) appendAISystemSection(title, body string) {
+	if strings.TrimSpace(a.aiPanel.GetText(false)) != "" {
+		a.appendAIMarkup("\n")
+	}
+	a.appendAIMarkup(fmt.Sprintf("[#e0af68::b]%s[-::-]\n", tview.Escape(title)))
+	a.appendAIEscaped(strings.TrimSpace(body))
+	a.appendAIMarkup("\n")
+}
+
+func (a *App) startAITurn(question string, ctx aiPromptContext, mode string) {
+	a.aiMx.Lock()
+	a.aiConversationTurns++
+	turn := a.aiConversationTurns
+	a.aiMx.Unlock()
+
+	if turn == 1 {
+		a.aiPanel.Clear()
+	} else {
+		a.appendAIMarkup("\n\n[gray]────────────────────────────────────────[-]\n\n")
+	}
+
+	ts := time.Now().Format("15:04:05")
+	modeLabel := "[#bb9af7]Chat[-]"
+	if mode == "agentic" {
+		modeLabel = "[#9ece6a]Agentic[-]"
+	}
+	a.appendAIMarkup(fmt.Sprintf("[#7aa2f7::b]You[-::-] [gray]%s[-]\n", ts))
+	a.appendAIEscaped(question)
+	a.appendAIMarkup("\n")
+	a.appendAIMarkup(fmt.Sprintf("[gray]Context:[-] %s\n", a.formatAIContextLabel(ctx)))
+	a.appendAIMarkup(fmt.Sprintf("\n[#9ece6a::b]Assistant[-::-] %s\n", modeLabel))
+	if ctx.DetailedContext != "" {
+		a.appendAIMarkup("[gray]Attached selected resource context (YAML, events, recent logs).[-]\n")
+	}
+}
+
+func (a *App) appendAIToolExecution(toolName, command, result string, isError bool, toolType, toolServerName string) {
+	titleColor := "[#9ece6a]"
+	if isError {
+		titleColor = "[#f7768e]"
+	}
+	label := toolName
+	if toolType != "" {
+		label = toolType + ":" + toolName
+	}
+	if toolServerName != "" {
+		label += "@" + toolServerName
+	}
+	a.appendAIMarkup(fmt.Sprintf("\n%sTool[-] [white]%s[-]\n", titleColor, tview.Escape(label)))
+	if strings.TrimSpace(command) != "" {
+		a.appendAIMarkup("[gray]Command:[-] ")
+		a.appendAIEscaped(trimAIBlock(command, 240))
+		a.appendAIMarkup("\n")
+	}
+	a.appendAIMarkup("[gray]Result:[-] ")
+	a.appendAIEscaped(summarizeAIToolResult(result))
+	a.appendAIMarkup("\n")
+}
+
+func (a *App) addAIInputHistory(input string) {
+	trimmed := strings.TrimSpace(input)
+	if trimmed == "" {
+		return
+	}
+
+	a.aiMx.Lock()
+	defer a.aiMx.Unlock()
+
+	if len(a.aiInputHistory) > 0 && a.aiInputHistory[len(a.aiInputHistory)-1] == trimmed {
+		a.aiInputHistoryIdx = -1
+		return
+	}
+	a.aiInputHistory = append(a.aiInputHistory, trimmed)
+	if len(a.aiInputHistory) > maxCmdHistory {
+		a.aiInputHistory = a.aiInputHistory[1:]
+	}
+	a.aiInputHistoryIdx = -1
+}
+
+func (a *App) recallAIInputHistory(direction int) string {
+	a.aiMx.Lock()
+	defer a.aiMx.Unlock()
+
+	if len(a.aiInputHistory) == 0 {
+		return ""
+	}
+
+	switch {
+	case direction < 0:
+		if a.aiInputHistoryIdx == -1 {
+			a.aiInputHistoryIdx = len(a.aiInputHistory) - 1
+		} else if a.aiInputHistoryIdx > 0 {
+			a.aiInputHistoryIdx--
+		}
+	case direction > 0:
+		if a.aiInputHistoryIdx >= 0 && a.aiInputHistoryIdx < len(a.aiInputHistory)-1 {
+			a.aiInputHistoryIdx++
+		} else {
+			a.aiInputHistoryIdx = -1
+			return ""
+		}
+	}
+
+	if a.aiInputHistoryIdx < 0 || a.aiInputHistoryIdx >= len(a.aiInputHistory) {
+		return ""
+	}
+	return a.aiInputHistory[a.aiInputHistoryIdx]
+}
+
+func (a *App) showAIContextPreview() {
+	a.startLoading()
+	defer a.stopLoading()
+
+	a.QueueUpdateDraw(func() {
+		a.setAIStatus("[cyan]Inspecting current selection...[-]")
+	})
+
+	ctx := a.loadDetailedAIContext(a.getAIPromptContext())
+	body := fmt.Sprintf("View: %s\nNamespace: %s\n", ctx.Resource, ctx.Namespace)
+	if ctx.Namespace == "" {
+		body = fmt.Sprintf("View: %s\nNamespace: all namespaces\n", ctx.Resource)
+	}
+	if ctx.SelectedName != "" {
+		body += fmt.Sprintf("Selected: %s\n", ctx.SelectedName)
+		if ctx.SelectedNamespace != "" {
+			body += fmt.Sprintf("Selected namespace: %s\n", ctx.SelectedNamespace)
+		}
+		if ctx.SelectedSummary != "" {
+			body += "\nRow summary:\n" + ctx.SelectedSummary + "\n"
+		}
+		if ctx.DetailedContext != "" {
+			body += "\nAttached preview:\n" + trimAIBlock(ctx.DetailedContext, 1400)
+		}
+	} else {
+		body += "\nNo row selected. The AI will answer using the current resource view only."
+	}
+
+	a.QueueUpdateDraw(func() {
+		a.appendAISystemSection("Context Preview", body)
+		a.setAIStatus(defaultAIStatusText())
+		a.applyAIChrome()
+	})
+}
+
+func (a *App) handleAICommand(input string) bool {
+	fields := strings.Fields(strings.TrimSpace(input))
+	if len(fields) == 0 || !strings.HasPrefix(fields[0], "/") {
+		return false
+	}
+
+	switch strings.TrimPrefix(strings.ToLower(fields[0]), "/") {
+	case "clear", "new":
+		a.QueueUpdateDraw(func() {
+			a.resetAIConversation()
+			a.applyAIChrome()
+		})
+	case "help":
+		a.QueueUpdateDraw(func() {
+			a.appendAISystemSection("AI Help", "Commands:\n/context  show the resource context that will be attached\n/clear    reset the current transcript\n/new      start a fresh conversation\n/help     show this help\n\nTips:\n- Select a row before asking for richer YAML/events/log context\n- Up/Down recall previous prompts\n- Ctrl+E toggles the AI panel")
+			a.setAIStatus(defaultAIStatusText())
+			a.applyAIChrome()
+		})
+	case "context":
+		a.safeGo("ai-context-preview", a.showAIContextPreview)
+	default:
+		a.QueueUpdateDraw(func() {
+			a.appendAISystemSection("Unknown Command", input)
+			a.setAIStatus(defaultAIStatusText())
+		})
+	}
+	return true
 }
 
 // askAI sends a question to the AI and displays the response
@@ -25,92 +429,80 @@ func (a *App) askAI(question string) {
 	a.startLoading()
 	defer a.stopLoading()
 
-	// Preserve existing conversation history
-	existingText := a.aiPanel.GetText(false)
-	historyPrefix := ""
-	if strings.TrimSpace(existingText) != "" {
-		historyPrefix = existingText + "\n\n[gray]────────────────────────────────[white]\n\n"
-	}
-
-	// Show loading state
 	a.QueueUpdateDraw(func() {
-		a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Question:[white] %s\n\n[gray]Thinking...", question))
+		a.setAIStatus("[cyan]Collecting Kubernetes context...[-]")
 	})
 
-	// Get current context
-	a.mx.RLock()
-	resource := a.currentResource
-	ns := a.currentNamespace
-	a.mx.RUnlock()
+	promptCtx := a.loadDetailedAIContext(a.getAIPromptContext())
+	prompt := buildAIPrompt(question, promptCtx)
 
-	// Get selected resource info if available
-	var selectedInfo string
-	row, _ := a.table.GetSelection()
-	if row > 0 {
-		var parts []string
-		for c := 0; c < a.table.GetColumnCount(); c++ {
-			cell := a.table.GetCell(row, c)
-			if cell != nil {
-				parts = append(parts, cell.Text)
-			}
-		}
-		selectedInfo = strings.Join(parts, " | ")
-	}
-
-	// Build context for AI
-	ctx := a.getAppContext()
-	prompt := fmt.Sprintf(`User is viewing Kubernetes %s`, resource)
-	if ns != "" {
-		prompt += fmt.Sprintf(` in namespace "%s"`, ns)
-	}
-	if selectedInfo != "" {
-		prompt += fmt.Sprintf(`. Selected: %s`, selectedInfo)
-	}
-	prompt += fmt.Sprintf(`
-
-User question: %s
-
-Please provide a concise, helpful answer. If you suggest kubectl commands, wrap them in code blocks.`, question)
-
-	// Call AI
 	a.aiMx.RLock()
 	client := a.aiClient
 	a.aiMx.RUnlock()
 	if client == nil || !client.IsReady() {
 		a.QueueUpdateDraw(func() {
-			a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[red]AI is not available.[white]\n\nConfigure LLM in config file:\n[gray]~/.kube-ai-dashboard/config.yaml", question))
+			a.startAITurn(question, promptCtx, "chat")
+			a.appendAISystemSection("AI Unavailable", "Configure an LLM in ~/.config/k13d/config.yaml or open Settings (Shift+O) to connect a provider.")
+			a.setAIStatus(defaultAIStatusText())
+			a.applyAIChrome()
 		})
 		return
 	}
 
-	// Check if AI supports tool calling (agentic mode)
-	var fullResponse strings.Builder
-	var err error
-
+	mode := "chat"
 	if client.SupportsTools() {
-		// Use agentic mode with tool calling
-		a.QueueUpdateDraw(func() {
-			a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[cyan]🤖 Agentic Mode[white] - AI can execute kubectl commands\n\n[gray]Thinking...", question))
-		})
+		mode = "agentic"
+	}
+	a.QueueUpdateDraw(func() {
+		a.startAITurn(question, promptCtx, mode)
+		a.setAIStatus("[cyan]Thinking...[-]")
+		a.applyAIChrome()
+	})
 
-		err = client.AskWithTools(ctx, prompt, func(chunk string) {
-			fullResponse.WriteString(chunk)
-			// Throttle streaming draws to reduce ghosting (50ms minimum interval)
+	ctx := a.getAppContext()
+	var (
+		fullResponse strings.Builder
+		pending      strings.Builder
+		pendingMu    sync.Mutex
+		err          error
+	)
+
+	flushPending := func(force bool) {
+		pendingMu.Lock()
+		if pending.Len() == 0 {
+			pendingMu.Unlock()
+			return
+		}
+		if !force {
 			now := time.Now().UnixNano()
 			last := atomic.LoadInt64(&a.lastAIDraw)
-			if now-last < 50_000_000 {
-				return // Skip this draw, next chunk will catch up
+			if now-last < 120_000_000 {
+				pendingMu.Unlock()
+				return
 			}
 			atomic.StoreInt64(&a.lastAIDraw, now)
-			response := fullResponse.String()
-			a.QueueUpdateDraw(func() {
-				a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[cyan]🤖 Agentic Mode[white]\n\n[green]A:[white] %s", question, response))
-			})
-		}, func(toolName string, args string) bool {
-			// Tool approval callback - kubectl-ai style Decision Required
-			a.logger.Info("Tool callback invoked", "tool", toolName, "args", args)
+		}
+		delta := pending.String()
+		pending.Reset()
+		pendingMu.Unlock()
 
-			// Parse command from args
+		a.QueueUpdateDraw(func() {
+			a.appendAIEscaped(delta)
+		})
+	}
+
+	streamCallback := func(chunk string) {
+		fullResponse.WriteString(chunk)
+		pendingMu.Lock()
+		pending.WriteString(chunk)
+		pendingMu.Unlock()
+		flushPending(false)
+	}
+
+	if client.SupportsTools() {
+		err = client.AskWithToolsAndExecution(ctx, prompt, streamCallback, func(toolName string, args string) bool {
+			flushPending(true)
+
 			var cmdArgs struct {
 				Command   string `json:"command"`
 				Namespace string `json:"namespace,omitempty"`
@@ -120,139 +512,134 @@ Please provide a concise, helpful answer. If you suggest kubectl commands, wrap 
 			}
 
 			fullCmd := ""
-			if toolName == "kubectl" {
+			switch toolName {
+			case "kubectl":
 				fullCmd = "kubectl " + cmdArgs.Command
 				if cmdArgs.Namespace != "" && !strings.Contains(cmdArgs.Command, "-n ") {
 					fullCmd = "kubectl -n " + cmdArgs.Namespace + " " + cmdArgs.Command
 				}
-			} else if toolName == "bash" {
+			case "bash":
 				fullCmd = cmdArgs.Command
+			default:
+				fullCmd = cmdArgs.Command
+				if fullCmd == "" {
+					fullCmd = args
+				}
 			}
 
-			a.logger.Info("Analyzed command", "fullCmd", fullCmd)
-
-			// Analyze command safety
-			classification := safety.Classify(fullCmd)
-
-			// Read-only commands: auto-approve
-			if classification.IsReadOnly {
+			decision := a.evaluateAIToolDecision(toolName, fullCmd)
+			if decision.Allowed && !decision.RequiresApproval {
 				return true
 			}
 
-			// Store current tool info for approval (deadlock-safe)
+			if !decision.Allowed {
+				a.QueueUpdateDraw(func() {
+					a.appendAIMarkup("\n[red::b]Command Blocked[-::-]\n")
+					a.appendAIMarkup("[gray]Command:[-] ")
+					a.appendAIEscaped(trimAIBlock(fullCmd, 240))
+					a.appendAIMarkup("\n")
+					a.appendAIEscaped(decision.BlockReason)
+					a.appendAIMarkup("\n")
+					for _, warning := range decision.Warnings {
+						a.appendAIMarkup("[red]-[-] ")
+						a.appendAIEscaped(warning)
+						a.appendAIMarkup("\n")
+					}
+					a.setAIStatus("[red]Command blocked by policy[-]")
+				})
+				return false
+			}
+
 			a.setToolCallState(toolName, args, fullCmd)
-
-			// Show Decision Required UI
 			a.QueueUpdateDraw(func() {
-				var sb strings.Builder
-				sb.WriteString(historyPrefix)
-				sb.WriteString(fmt.Sprintf("[yellow]Q:[white] %s\n\n", question))
-				sb.WriteString(fullResponse.String())
-				sb.WriteString("\n\n[yellow::b]━━━ DECISION REQUIRED ━━━[white::-]\n\n")
-
-				if classification.IsDangerous {
-					sb.WriteString("[red]⚠ DANGEROUS COMMAND[white]\n")
-				} else if classification.Category == "write" {
-					sb.WriteString("[yellow]? WRITE OPERATION[white]\n")
+				a.appendAIMarkup("\n[yellow::b]Decision Required[-::-]\n")
+				if decision.Classification != nil && decision.Classification.IsDangerous {
+					a.appendAIMarkup("[red]Dangerous command detected[-]\n")
 				} else {
-					sb.WriteString("[gray]? COMMAND APPROVAL[white]\n")
+					a.appendAIMarkup("[#e0af68]Command requires approval[-]\n")
 				}
-
-				sb.WriteString(fmt.Sprintf("\n[cyan]%s[white]\n\n", fullCmd))
-
-				for _, w := range classification.Warnings {
-					sb.WriteString(fmt.Sprintf("[red]• %s[white]\n", w))
+				a.appendAIMarkup("[gray]Command:[-] ")
+				a.appendAIEscaped(trimAIBlock(fullCmd, 240))
+				a.appendAIMarkup("\n")
+				for _, warning := range decision.Warnings {
+					a.appendAIMarkup("[red]-[-] ")
+					a.appendAIEscaped(warning)
+					a.appendAIMarkup("\n")
 				}
-
-				sb.WriteString("\n[gray]Press [green]Y[gray] or [green]Enter[gray] to approve, [red]N[gray] or [red]Esc[gray] to cancel[white]")
-				a.setAIPanelText(sb.String())
-
-				// Focus AI panel for key input
+				a.setAIStatus("[yellow]Awaiting approval[-] Y/Enter approve | N/Esc cancel")
 				a.SetFocus(a.aiPanel)
 			})
 
-			// Wait for user decision (blocking)
-			// Clear any pending approvals first
 			select {
 			case <-a.pendingToolApproval:
 			default:
 			}
 
-			// Wait for approval with 5-minute timeout
-			approvalTimeout := time.After(5 * time.Minute)
+			approvalTimeout := time.After(a.getToolApprovalTimeout())
 			select {
 			case approved := <-a.pendingToolApproval:
 				if approved {
 					a.QueueUpdateDraw(func() {
-						currentText := a.aiPanel.GetText(false)
-						a.setAIPanelText(currentText + "\n\n[green]✓ Approved - Executing...[white]")
+						a.setAIStatus("[cyan]Executing approved tool...[-]")
 					})
 				} else {
 					a.QueueUpdateDraw(func() {
-						currentText := a.aiPanel.GetText(false)
-						a.setAIPanelText(currentText + "\n\n[red]✗ Cancelled by user[white]")
+						a.setAIStatus("[yellow]Command cancelled[-]")
 					})
 				}
 				return approved
 			case <-approvalTimeout:
 				a.clearToolCallState()
 				a.QueueUpdateDraw(func() {
-					currentText := a.aiPanel.GetText(false)
-					a.setAIPanelText(currentText + "\n\n[yellow]⏰ Approval timed out (5 min)[white]")
+					a.setAIStatus("[yellow]Approval timed out[-]")
 				})
 				return false
 			case <-ctx.Done():
+				a.clearToolCallState()
 				return false
 			}
+		}, func(toolName string, command string, result string, isError bool, toolType string, toolServerName string) {
+			a.QueueUpdateDraw(func() {
+				a.appendAIToolExecution(toolName, command, result, isError, toolType, toolServerName)
+				if isError {
+					a.setAIStatus("[yellow]Tool finished with warnings[-]")
+				} else {
+					a.setAIStatus("[cyan]Tool completed[-]")
+				}
+			})
 		})
 	} else {
-		// Fallback to regular streaming
-		err = client.Ask(ctx, prompt, func(chunk string) {
-			fullResponse.WriteString(chunk)
-			// Throttle streaming draws to reduce ghosting (50ms minimum interval)
-			now := time.Now().UnixNano()
-			last := atomic.LoadInt64(&a.lastAIDraw)
-			if now-last < 50_000_000 {
-				return // Skip this draw, next chunk will catch up
-			}
-			atomic.StoreInt64(&a.lastAIDraw, now)
-			response := fullResponse.String()
-			a.QueueUpdateDraw(func() {
-				a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[green]A:[white] %s", question, response))
-			})
-		})
+		err = client.Ask(ctx, prompt, streamCallback)
 	}
 
-	// Ensure final response is always drawn (in case last chunk was throttled)
-	if err == nil {
-		finalResponse := fullResponse.String()
-		if finalResponse != "" {
-			a.QueueUpdateDraw(func() {
-				prefix := "[cyan]🤖 Agentic Mode[white]\n\n"
-				if !client.SupportsTools() {
-					prefix = ""
-				}
-				a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n%s[green]A:[white] %s", question, prefix, finalResponse))
-			})
-		}
-	}
+	flushPending(true)
 
 	if err != nil {
 		a.QueueUpdateDraw(func() {
-			a.setAIPanelText(historyPrefix + fmt.Sprintf("[yellow]Q:[white] %s\n\n[red]Error:[white] %v", question, err))
+			a.appendAIMarkup("\n[red::b]Error[-::-]\n")
+			a.appendAIEscaped(err.Error())
+			a.appendAIMarkup("\n")
+			a.setAIStatus(defaultAIStatusText())
 		})
 		return
 	}
 
-	// After response complete, analyze for commands that need approval (fallback mode)
+	finalResponse := fullResponse.String()
+	a.QueueUpdateDraw(func() {
+		if finalResponse != "" && !strings.HasSuffix(finalResponse, "\n") {
+			a.appendAIMarkup("\n")
+		}
+		a.setAIStatus(defaultAIStatusText())
+		a.applyAIChrome()
+	})
+
 	if !client.SupportsTools() {
-		finalResponse := fullResponse.String()
-		a.analyzeAndShowDecisions(question, finalResponse)
+		a.analyzeAndShowDecisions(finalResponse)
 	}
 }
 
 // analyzeAndShowDecisions extracts commands from AI response and shows decision UI
-func (a *App) analyzeAndShowDecisions(question, response string) {
+func (a *App) analyzeAndShowDecisions(response string) {
 	// Extract kubectl commands from response
 	commands := ai.ExtractKubectlCommands(response)
 	if len(commands) == 0 {
@@ -265,14 +652,24 @@ func (a *App) analyzeAndShowDecisions(question, response string) {
 
 	var hasDecisions bool
 	for _, cmd := range commands {
-		classification := safety.Classify(cmd)
-		if classification.RequiresApproval || classification.IsDangerous {
+		decision := a.evaluateAIToolDecision("kubectl", cmd)
+		if !decision.Allowed {
+			a.QueueUpdateDraw(func() {
+				a.appendAIMarkup("\n[red::b]Command Blocked[-::-]\n")
+				a.appendAIEscaped(cmd)
+				a.appendAIMarkup("\n")
+				a.appendAIEscaped(decision.BlockReason)
+				a.appendAIMarkup("\n")
+			})
+			continue
+		}
+		if decision.RequiresApproval || (decision.Classification != nil && decision.Classification.IsDangerous) {
 			hasDecisions = true
 			a.pendingDecisions = append(a.pendingDecisions, PendingDecision{
 				Command:     cmd,
 				Description: getCommandDescription(cmd),
-				IsDangerous: classification.IsDangerous,
-				Warnings:    classification.Warnings,
+				IsDangerous: decision.Classification != nil && decision.Classification.IsDangerous,
+				Warnings:    decision.Warnings,
 			})
 		}
 	}
@@ -289,27 +686,27 @@ func (a *App) analyzeAndShowDecisions(question, response string) {
 
 	// Update AI panel with decision prompt
 	a.QueueUpdateDraw(func() {
-		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("[yellow]Q:[white] %s\n\n", question))
-		sb.WriteString(fmt.Sprintf("[green]A:[white] %s\n\n", response))
-		sb.WriteString("[yellow::b]━━━ DECISION REQUIRED ━━━[white::-]\n\n")
+		a.appendAIMarkup("\n[yellow::b]Decision Required[-::-]\n")
 
 		for i, decision := range decisions {
 			if decision.IsDangerous {
-				sb.WriteString(fmt.Sprintf("[red]⚠ [%d] DANGEROUS:[white] ", i+1))
+				a.appendAIMarkup(fmt.Sprintf("[red]⚠ [%d] DANGEROUS[-] ", i+1))
 			} else {
-				sb.WriteString(fmt.Sprintf("[yellow]? [%d] Confirm:[white] ", i+1))
+				a.appendAIMarkup(fmt.Sprintf("[yellow]? [%d] Confirm[-] ", i+1))
 			}
-			sb.WriteString(fmt.Sprintf("[cyan]%s[white]\n", decision.Command))
+			a.appendAIEscaped(decision.Command)
+			a.appendAIMarkup("\n")
 
 			for _, warning := range decision.Warnings {
-				sb.WriteString(fmt.Sprintf("   [red]• %s[white]\n", warning))
+				a.appendAIMarkup("   [red]-[-] ")
+				a.appendAIEscaped(warning)
+				a.appendAIMarkup("\n")
 			}
-			sb.WriteString("\n")
+			a.appendAIMarkup("\n")
 		}
 
-		sb.WriteString("[gray]Press [yellow]1-9[gray] to execute, [yellow]A[gray] to execute all, [yellow]Esc[gray] to cancel[white]")
-		a.setAIPanelText(sb.String())
+		a.appendAIMarkup("[gray]Press 1-9 to execute, A to execute all, Esc to cancel[-]\n")
+		a.setAIStatus("[yellow]Pending command approvals[-] 1-9 execute | A all | Esc cancel")
 	})
 }
 
@@ -326,6 +723,19 @@ func (a *App) executeDecision(idx int) {
 	a.pendingDecisions = append(a.pendingDecisions[:idx], a.pendingDecisions[idx+1:]...)
 	a.aiMx.Unlock()
 
+	runtimeDecision := a.evaluateAIToolDecision("kubectl", decision.Command)
+	if !runtimeDecision.Allowed {
+		a.QueueUpdateDraw(func() {
+			a.appendAIMarkup("\n[red::b]Command Blocked[-::-]\n")
+			a.appendAIEscaped(decision.Command)
+			a.appendAIMarkup("\n")
+			a.appendAIEscaped(runtimeDecision.BlockReason)
+			a.appendAIMarkup("\n")
+			a.setAIStatus("[red]Command blocked by policy[-]")
+		})
+		return
+	}
+
 	a.flashMsg(fmt.Sprintf("Executing: %s", decision.Command), false)
 
 	// Execute the command
@@ -341,10 +751,12 @@ func (a *App) executeDecision(idx int) {
 			result = fmt.Sprintf("[green]Success:[white]\n%s", string(output))
 		}
 
-		// Show execution result
-		currentText := a.aiPanel.GetText(false)
-		a.setAIPanelText(currentText + "\n\n[yellow]━━━ EXECUTION RESULT ━━━[white]\n" +
-			fmt.Sprintf("[cyan]%s[white]\n%s", decision.Command, result))
+		a.appendAIMarkup("\n[yellow::b]Execution Result[-::-]\n")
+		a.appendAIEscaped(decision.Command)
+		a.appendAIMarkup("\n")
+		a.appendAIEscaped(result)
+		a.appendAIMarkup("\n")
+		a.setAIStatus(defaultAIStatusText())
 	})
 
 	// Refresh if it was a modifying command
@@ -398,6 +810,13 @@ func (a *App) doExecuteAll() {
 	results.WriteString("\n\n[yellow]━━━ BATCH EXECUTION RESULTS ━━━[white]\n")
 
 	for _, decision := range decisions {
+		runtimeDecision := a.evaluateAIToolDecision("kubectl", decision.Command)
+		if !runtimeDecision.Allowed {
+			results.WriteString(fmt.Sprintf("\n[cyan]%s[white]\n", decision.Command))
+			results.WriteString(fmt.Sprintf("[red]Blocked:[white] %s\n", runtimeDecision.BlockReason))
+			continue
+		}
+
 		a.flashMsg(fmt.Sprintf("Executing: %s", decision.Command), false)
 
 		cmd := exec.Command("bash", "-c", decision.Command)
@@ -412,8 +831,8 @@ func (a *App) doExecuteAll() {
 	}
 
 	a.QueueUpdateDraw(func() {
-		currentText := a.aiPanel.GetText(false)
-		a.setAIPanelText(currentText + results.String())
+		a.appendAIMarkup(results.String())
+		a.setAIStatus(defaultAIStatusText())
 	})
 
 	a.flashMsg(fmt.Sprintf("Executed %d commands", len(decisions)), false)

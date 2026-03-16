@@ -273,6 +273,121 @@ func TestModels_POST_MissingFields(t *testing.T) {
 	}
 }
 
+func TestModels_GET_IncludesOllamaWarning(t *testing.T) {
+	s := setupSettingsTestServer(t)
+	s.cfg.Models = append(s.cfg.Models, config.ModelProfile{
+		Name:     "local-ollama",
+		Provider: "ollama",
+		Model:    "llama3.2",
+		Endpoint: "http://localhost:11434",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/models", nil)
+	w := httptest.NewRecorder()
+
+	s.handleModels(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /api/models: status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	models, ok := resp["models"].([]interface{})
+	if !ok {
+		t.Fatal("Expected 'models' array in response")
+	}
+
+	for _, raw := range models {
+		model := raw.(map[string]interface{})
+		if model["name"] != "local-ollama" {
+			continue
+		}
+		warning, ok := model["warning"].(string)
+		if !ok || warning == "" {
+			t.Fatalf("expected warning for Ollama profile, got %#v", model["warning"])
+		}
+		if !strings.Contains(warning, "tools/function calling") {
+			t.Fatalf("expected tool support warning, got %q", warning)
+		}
+		return
+	}
+
+	t.Fatal("expected local-ollama model in response")
+}
+
+func TestModels_POST_OllamaIncludesWarning(t *testing.T) {
+	t.Setenv("K13D_CONFIG", filepath.Join(t.TempDir(), "config.yaml"))
+
+	s := setupSettingsTestServer(t)
+
+	body := `{"name":"local-ollama","provider":"ollama","model":"llama3.2","endpoint":"http://localhost:11434"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/models", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	s.handleModels(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("POST /api/models: status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	warning, ok := resp["warning"].(string)
+	if !ok || warning == "" {
+		t.Fatalf("expected warning in response, got %#v", resp["warning"])
+	}
+	if !strings.Contains(warning, "gpt-oss:20b") {
+		t.Fatalf("expected recommended Ollama model in warning, got %q", warning)
+	}
+}
+
+func TestModels_POST_PersistsProfileToConfig(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	t.Setenv("K13D_CONFIG", configPath)
+
+	s := setupSettingsTestServer(t)
+
+	body := `{"name":"claude-sonnet","provider":"anthropic","model":"claude-sonnet-4-20250514","endpoint":"https://api.anthropic.com","description":"Anthropic Claude Sonnet"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/models", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	s.handleModels(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("POST /api/models: status = %d, want %d body=%s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	loaded, err := config.LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	for _, model := range loaded.Models {
+		if model.Name != "claude-sonnet" {
+			continue
+		}
+		if model.Provider != "anthropic" {
+			t.Fatalf("saved provider = %q, want anthropic", model.Provider)
+		}
+		if model.Model != "claude-sonnet-4-20250514" {
+			t.Fatalf("saved model = %q, want claude-sonnet-4-20250514", model.Model)
+		}
+		if model.Endpoint != "https://api.anthropic.com" {
+			t.Fatalf("saved endpoint = %q, want https://api.anthropic.com", model.Endpoint)
+		}
+		return
+	}
+
+	t.Fatalf("expected saved model profile in %s", configPath)
+}
+
 func TestModels_DELETE_MissingName(t *testing.T) {
 	s := setupSettingsTestServer(t)
 
@@ -434,6 +549,42 @@ func TestActiveModel_PUT_Success(t *testing.T) {
 		if s.cfg.LLM.Provider != "anthropic" {
 			t.Errorf("After failed client creation, LLM.Provider = %s, want anthropic", s.cfg.LLM.Provider)
 		}
+	}
+}
+
+func TestActiveModel_PUT_OllamaIncludesWarning(t *testing.T) {
+	t.Setenv("K13D_CONFIG", filepath.Join(t.TempDir(), "config.yaml"))
+
+	s := setupSettingsTestServer(t)
+	s.cfg.Models = append(s.cfg.Models, config.ModelProfile{
+		Name:        "local-ollama",
+		Provider:    "ollama",
+		Model:       "gpt-oss:20b",
+		Endpoint:    "http://localhost:11434",
+		Description: "Local Ollama model",
+	})
+
+	body := `{"name":"local-ollama"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/models/active", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	s.handleActiveModel(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("PUT /api/models/active: status = %d, want %d body=%s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	warning, ok := resp["warning"].(string)
+	if !ok || warning == "" {
+		t.Fatalf("expected warning in response, got %#v", resp["warning"])
+	}
+	if !strings.Contains(warning, "tools/function calling") {
+		t.Fatalf("expected tool support warning, got %q", warning)
 	}
 }
 

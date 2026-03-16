@@ -81,7 +81,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		MaxIterations:       10,
 		ApprovalTimeout:     30 * time.Second,
-		AutoApproveReadOnly: true,
+		AutoApproveReadOnly: false,
 	}
 }
 

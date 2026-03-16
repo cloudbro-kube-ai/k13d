@@ -12,6 +12,11 @@ The name follows the numeronym pattern like k8s (k + 8 letters + s = kubernetes)
 
 > **k**ube**a**i**d**ashboard = **k** + 13 letters + **d** = **k13d**
 
+!!! warning "Current support status"
+    k13d is currently focused on the **local single-binary experience** for the **TUI** and **Web UI**.
+    **Docker, Docker Compose, Kubernetes, Helm, and other in-cluster/container deployment paths are still Beta / in preparation and are not officially supported yet.**
+    There is **no official public Docker image repository** for end users at this time.
+
 ---
 
 ## Why k13d?
@@ -71,7 +76,7 @@ k13d solves these problems by:
 | AI Assistant | :white_check_mark: | :x: | :white_check_mark: | :x: |
 | Tool Execution | :white_check_mark: | :x: | :white_check_mark: | :x: |
 | MCP Support | :white_check_mark: | :x: | :x: | :x: |
-| Embedded LLM | :white_check_mark: | :x: | :x: | :x: |
+| Local Ollama | :white_check_mark: | :x: | :x: | :x: |
 | RBAC Authorization | :white_check_mark: | :x: | :x: | :warning: |
 | Audit Logging | :white_check_mark: | :x: | :x: | :x: |
 

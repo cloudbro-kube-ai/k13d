@@ -34,7 +34,7 @@ User → k13d (TUI/Web) → Kubernetes API Server
     - AI-first approach to Kubernetes troubleshooting
     - Dual interface (TUI + Web) with feature parity
     - Single binary, zero external dependencies
-    - Offline-capable with embedded LLM
+    - Works with local Ollama or remote LLM providers
 
 ### Teleport: Zero-Trust Infrastructure Gateway
 
@@ -92,7 +92,7 @@ k13d provides **deep Kubernetes resource management** with interactive navigatio
 | **Command Safety Analysis** | :material-check: | :material-close: |
 | **8+ LLM Providers** | :material-check: | :material-close: |
 | **Live Model Switching** | :material-check: | :material-close: |
-| **Embedded LLM (Offline)** | :material-check: | :material-close: |
+| **Local Ollama / Self-hosted LLM** | :material-check: | :material-close: |
 | **Streaming Responses** | :material-check: | :material-close: |
 | **AI Benchmarking** | :material-check: 125+ tasks | :material-close: |
 | **Session Summaries (AI)** | :material-close: | :material-check: Enterprise |
@@ -201,7 +201,7 @@ k13d is **Kubernetes-specialized** with the deepest management experience. Telep
 | **Single Binary** | :material-check: ~30MB | :material-check: ~100MB+ |
 | **Docker** | :material-check: | :material-check: |
 | **Kubernetes Manifests** | :material-check: | :material-check: Helm |
-| **Air-Gapped** | :material-check: Embedded LLM | :material-check: Self-hosted |
+| **Air-Gapped** | :material-check: Ollama / self-hosted LLM | :material-check: Self-hosted |
 | **Cloud SaaS** | :material-close: | :material-check: Enterprise Cloud |
 | **External DB Required** | :material-close: SQLite embedded | :material-check: etcd/DynamoDB |
 | **HA Setup** | :material-close: | :material-check: Multi-region |
@@ -239,7 +239,7 @@ k13d uses MCP to **extend AI capabilities** with external tools. Teleport uses M
 - :material-check: Helm Management
 - :material-check: Metrics Visualization
 - :material-check: Security Scanning
-- :material-check: Embedded LLM (Offline)
+- :material-check: Local Ollama / self-hosted LLM
 - :material-check: Report Generation
 
 ### Teleport Strengths (k13d Cannot Replace)

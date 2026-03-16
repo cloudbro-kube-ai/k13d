@@ -291,5 +291,5 @@ k13d bench --tasks benchmark-tasks.yaml
 ## Next Steps
 
 - [LLM Providers](providers.md) - Configure providers
-- [Embedded LLM](embedded.md) - Run locally
+- [Embedded LLM Removal](embedded.md) - Migration note
 - [Tool Calling](tool-calling.md) - How AI executes commands

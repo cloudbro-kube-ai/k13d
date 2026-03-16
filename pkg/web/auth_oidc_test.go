@@ -382,6 +382,14 @@ func TestOIDCHandleStatus(t *testing.T) {
 	if status["provider_name"] != "Test Provider" {
 		t.Errorf("Unexpected provider name: %v", status["provider_name"])
 	}
+
+	if status["client_id"] != "test-client" {
+		t.Errorf("Unexpected client ID: %v", status["client_id"])
+	}
+
+	if _, exposed := status["client_secret"]; exposed {
+		t.Error("client_secret must not be exposed in OIDC status")
+	}
 }
 
 func TestOIDCNotConfigured(t *testing.T) {
@@ -402,6 +410,45 @@ func TestOIDCNotConfigured(t *testing.T) {
 
 	if w.Code != http.StatusServiceUnavailable {
 		t.Errorf("Expected status 503 when OIDC not configured, got %d", w.Code)
+	}
+}
+
+func TestSetSessionCookieHonorsRequestScheme(t *testing.T) {
+	authManager := NewAuthManager(&AuthConfig{
+		Enabled:         true,
+		SessionDuration: time.Hour,
+		AuthMode:        "oidc",
+		Quiet:           true,
+	})
+	defer authManager.StopCleanup()
+
+	session := &Session{
+		ID:        "session-1",
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+
+	httpReq := httptest.NewRequest(http.MethodGet, "http://localhost:8080/api/auth/oidc/callback", nil)
+	httpW := httptest.NewRecorder()
+	authManager.setSessionCookie(httpW, session, httpReq)
+
+	httpCookies := httpW.Result().Cookies()
+	if len(httpCookies) != 1 {
+		t.Fatalf("expected 1 cookie for HTTP request, got %d", len(httpCookies))
+	}
+	if httpCookies[0].Secure {
+		t.Error("expected HTTP callback cookie to be non-secure")
+	}
+
+	httpsReq := httptest.NewRequest(http.MethodGet, "https://example.com/api/auth/oidc/callback", nil)
+	httpsW := httptest.NewRecorder()
+	authManager.setSessionCookie(httpsW, session, httpsReq)
+
+	httpsCookies := httpsW.Result().Cookies()
+	if len(httpsCookies) != 1 {
+		t.Fatalf("expected 1 cookie for HTTPS request, got %d", len(httpsCookies))
+	}
+	if !httpsCookies[0].Secure {
+		t.Error("expected HTTPS callback cookie to be secure")
 	}
 }
 

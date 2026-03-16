@@ -229,6 +229,14 @@ func TestProviderFactoryCreate(t *testing.T) {
 			wantErr:     true,
 			errContains: "unknown provider",
 		},
+		{
+			name: "removed embedded provider returns migration hint",
+			config: &ProviderConfig{
+				Provider: "embedded",
+			},
+			wantErr:     true,
+			errContains: "has been removed",
+		},
 	}
 
 	for _, tt := range tests {
@@ -675,8 +683,8 @@ func TestOllamaProviderDefaults(t *testing.T) {
 	if op.endpoint != "http://localhost:11434" {
 		t.Errorf("Expected default Ollama endpoint, got %q", op.endpoint)
 	}
-	if provider.GetModel() != "llama3.2" {
-		t.Errorf("Expected default model 'llama3.2', got %q", provider.GetModel())
+	if provider.GetModel() != "gpt-oss:20b" {
+		t.Errorf("Expected default model 'gpt-oss:20b', got %q", provider.GetModel())
 	}
 }
 
@@ -909,12 +917,11 @@ func TestFactoryCreateSolarProvider(t *testing.T) {
 var _ ToolProvider = (*OllamaProvider)(nil)
 var _ ToolProvider = (*GeminiProvider)(nil)
 var _ ToolProvider = (*OpenAIProvider)(nil)
-var _ ToolProvider = (*EmbeddedProvider)(nil)
 
 func TestOllamaToolProviderInterface(t *testing.T) {
 	provider, err := NewOllamaProvider(&ProviderConfig{
 		Provider: "ollama",
-		Model:    "llama3.2",
+		Model:    "gpt-oss:20b",
 		Endpoint: "http://localhost:11434",
 	})
 	if err != nil {

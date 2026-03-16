@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -39,7 +40,6 @@ func GetFactory() *ProviderFactory {
 		defaultFactory.Register("anthropic", NewAnthropicProvider)
 		defaultFactory.Register("azopenai", NewAzureOpenAIProvider)
 		defaultFactory.Register("azure", NewAzureOpenAIProvider) // alias
-		defaultFactory.Register("embedded", NewEmbeddedProvider) // Local llama.cpp server
 	})
 	return defaultFactory
 }
@@ -53,6 +53,12 @@ func (f *ProviderFactory) Register(name string, constructor func(*ProviderConfig
 
 // Create creates a provider instance based on the configuration
 func (f *ProviderFactory) Create(cfg *ProviderConfig) (Provider, error) {
+	cfg = applyEnvFallbacks(cfg)
+
+	if strings.EqualFold(cfg.Provider, "embedded") {
+		return nil, fmt.Errorf("provider %q has been removed; use ollama or a remote provider instead", cfg.Provider)
+	}
+
 	f.mu.RLock()
 	constructor, ok := f.providers[strings.ToLower(cfg.Provider)]
 	f.mu.RUnlock()
@@ -62,6 +68,56 @@ func (f *ProviderFactory) Create(cfg *ProviderConfig) (Provider, error) {
 	}
 
 	return constructor(cfg)
+}
+
+func applyEnvFallbacks(cfg *ProviderConfig) *ProviderConfig {
+	if cfg == nil {
+		return nil
+	}
+
+	clone := *cfg
+
+	switch strings.ToLower(clone.Provider) {
+	case "openai":
+		if clone.APIKey == "" {
+			clone.APIKey = os.Getenv("OPENAI_API_KEY")
+		}
+	case "solar", "upstage":
+		if clone.APIKey == "" {
+			clone.APIKey = os.Getenv("UPSTAGE_API_KEY")
+		}
+		if clone.APIKey == "" {
+			clone.APIKey = os.Getenv("OPENAI_API_KEY")
+		}
+	case "anthropic":
+		if clone.APIKey == "" {
+			clone.APIKey = os.Getenv("ANTHROPIC_API_KEY")
+		}
+	case "gemini":
+		if clone.APIKey == "" {
+			clone.APIKey = os.Getenv("GOOGLE_API_KEY")
+		}
+	case "azopenai", "azure":
+		if clone.APIKey == "" {
+			clone.APIKey = os.Getenv("AZURE_OPENAI_API_KEY")
+		}
+		if clone.Endpoint == "" {
+			clone.Endpoint = os.Getenv("AZURE_OPENAI_ENDPOINT")
+		}
+	case "ollama":
+		if clone.Endpoint == "" {
+			host := os.Getenv("OLLAMA_HOST")
+			if host != "" {
+				if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
+					clone.Endpoint = host
+				} else {
+					clone.Endpoint = "http://" + host
+				}
+			}
+		}
+	}
+
+	return &clone
 }
 
 // ListProviders returns a comma-separated list of available provider names

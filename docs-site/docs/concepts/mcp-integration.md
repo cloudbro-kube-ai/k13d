@@ -2,6 +2,9 @@
 
 This guide explains how MCP works in k13d and how to extend AI capabilities with custom tools.
 
+!!! note "Config path note"
+    When this guide refers to `config.yaml`, the default path is `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` on Linux and `~/.config/k13d/config.yaml` on macOS. Older macOS installs are copied from `~/Library/Application Support/k13d/config.yaml` on first startup.
+
 ## Table of Contents
 
 - [What is MCP?](#what-is-mcp)
@@ -907,7 +910,7 @@ type Report struct {
 }
 ```
 
-- **Read-only** commands (get, describe, logs) can be auto-approved
+- **Read-only** commands (get, describe, logs) require approval by default and can be auto-approved only if you enable that policy
 - **Write** commands (apply, create, patch) require confirmation
 - **Dangerous** commands (delete, drain) show extra warnings
 
@@ -915,7 +918,7 @@ type Report struct {
 
 ## Next Steps
 
-- [Configuration Guide](./CONFIGURATION_GUIDE.md)
-- [User Guide](./USER_GUIDE.md)
-- [Architecture Guide](./ARCHITECTURE.md)
+- [Configuration Guide](../getting-started/configuration.md)
+- [User Guide](../user-guide/tui.md)
+- [Architecture Guide](architecture.md)
 - [MCP Specification](https://modelcontextprotocol.io/docs)

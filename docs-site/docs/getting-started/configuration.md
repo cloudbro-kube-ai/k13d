@@ -1,6 +1,34 @@
 # Configuration
 
-k13d uses a YAML configuration file located at `~/.config/k13d/config.yaml`.
+k13d stores configuration under its config directory. The main file is `config.yaml`.
+
+## Where `config.yaml` Lives
+
+By default, k13d reads:
+
+| Platform | Default path |
+|----------|--------------|
+| Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
+| macOS | `~/.config/k13d/config.yaml` |
+| Windows | `%AppData%\\k13d\\config.yaml` |
+
+You can override the path with either:
+
+- `k13d --config /path/to/config.yaml`
+- `K13D_CONFIG=/path/to/config.yaml`
+
+On macOS, older installs may still have `~/Library/Application Support/k13d/config.yaml`. Current builds copy that legacy file to `~/.config/k13d/config.yaml` the first time they load it.
+
+### How to verify the active file
+
+When you start Web UI mode, the terminal now prints:
+
+- `Config File`
+- `Config Path Source`
+- `Env Overrides`
+- `LLM Settings`
+
+Use that startup output first if the Web UI seems to be reading a different file than expected.
 
 ## Quick Setup
 
@@ -13,15 +41,31 @@ The easiest way to get started with AI features:
 
 ```yaml title="~/.config/k13d/config.yaml"
 llm:
-  provider: solar
+  provider: upstage
   model: solar-pro2
   endpoint: https://api.upstage.ai/v1
-  api_key: your-upstage-api-key
+  api_key: ${UPSTAGE_API_KEY}
 
 language: en
 beginner_mode: true
 enable_audit: true
 ```
+
+`config.yaml` supports environment placeholders such as `${UPSTAGE_API_KEY}` and `${OPENAI_API_KEY}`.
+
+## Scope
+
+`config.yaml` currently controls:
+
+- LLM settings and saved model profiles
+- MCP servers
+- storage and audit persistence
+- Prometheus settings
+- RBAC, JWT, access requests, and tool approval under `authorization`
+
+`config.yaml` does **not** currently persist LDAP or OIDC provider settings from the Web UI. Those provider settings remain startup-configured in the current build.
+
+For the exact Web UI / TUI save behavior, field ownership, and file write rules, see [Model Settings & Storage](../ai-llm/model-settings-storage.md).
 
 ---
 
@@ -30,7 +74,7 @@ enable_audit: true
 ```yaml title="~/.config/k13d/config.yaml"
 # LLM Configuration
 llm:
-  provider: solar           # solar, openai, ollama, azure, anthropic
+  provider: upstage         # upstage, openai, ollama, azopenai, anthropic, gemini, bedrock
   model: solar-pro2         # Model name
   endpoint: ""              # Custom endpoint (optional)
   api_key: ""               # API key
@@ -51,18 +95,32 @@ authorization:
   impersonation:
     enabled: false          # K8s impersonation headers
   jwt:
+    secret: ${K13D_JWT_SECRET}
     token_duration: 1h
     refresh_window: 15m
-
-# Tool Approval Policy
-tool_approval:
-  auto_approve_read_only: true
-  require_approval_for_write: true
-  require_approval_for_unknown: true
-  block_dangerous: false
-  blocked_patterns: []
-  approval_timeout_seconds: 60
+  tool_approval:
+    auto_approve_read_only: false
+    require_approval_for_write: true
+    require_approval_for_unknown: true
+    block_dangerous: false
+    blocked_patterns: []
+    approval_timeout_seconds: 60
 ```
+
+## Authentication Note
+
+Use the Web server flags to choose the login mode:
+
+```bash
+k13d --web --auth-mode local
+k13d --web --auth-mode token
+```
+
+`--auth-mode local` shows the username/password login form only. The Kubernetes token input is shown when you use `--auth-mode token`.
+
+By default, k13d shows `Decision Required` even for read-only AI tool actions such as `kubectl get pods`. Turn on `authorization.tool_approval.auto_approve_read_only` only if you intentionally want to skip those approval prompts.
+
+`--auth-mode ldap` and `--auth-mode oidc` select those auth paths, but the stock binary does not yet expose every provider-specific LDAP/OIDC field as dedicated CLI flags. The Web UI settings page currently shows runtime auth status and does not persist provider configuration into `config.yaml`.
 
 ---
 
@@ -74,10 +132,10 @@ Best balance of quality, speed, and cost. Excellent tool calling support.
 
 ```yaml
 llm:
-  provider: solar
+  provider: upstage
   model: solar-pro2
   endpoint: https://api.upstage.ai/v1
-  api_key: your-key
+  api_key: ${UPSTAGE_API_KEY}
 ```
 
 ### OpenAI
@@ -88,7 +146,7 @@ Best tool support, industry standard.
 llm:
   provider: openai
   model: gpt-4              # or gpt-4o, gpt-3.5-turbo
-  api_key: sk-your-key
+  api_key: ${OPENAI_API_KEY}
 ```
 
 ### Anthropic
@@ -99,7 +157,7 @@ Strong reasoning and analysis capabilities.
 llm:
   provider: anthropic
   model: claude-3-sonnet     # or claude-3-opus, claude-3-haiku
-  api_key: your-anthropic-key
+  api_key: ${ANTHROPIC_API_KEY}
 ```
 
 ### Google Gemini
@@ -110,7 +168,7 @@ Multimodal capable with large context windows.
 llm:
   provider: gemini
   model: gemini-2.5-flash    # or gemini-2.5-pro, gemini-2.0-flash
-  api_key: your-gemini-key
+  api_key: ${GOOGLE_API_KEY}
 ```
 
 ### Azure OpenAI
@@ -119,10 +177,10 @@ For enterprise deployments with Azure infrastructure.
 
 ```yaml
 llm:
-  provider: azure
+  provider: azopenai
   model: gpt-4
-  endpoint: https://your-resource.openai.azure.com
-  api_key: your-azure-key
+  endpoint: ${AZURE_OPENAI_ENDPOINT}
+  api_key: ${AZURE_OPENAI_API_KEY}
 ```
 
 ### AWS Bedrock
@@ -143,45 +201,44 @@ Run models locally for air-gapped environments.
 ```bash
 # Install and run Ollama
 curl -fsSL https://ollama.com/install.sh | sh
-ollama pull qwen2.5:3b
+ollama pull gpt-oss:20b
 ```
 
 ```yaml
 llm:
   provider: ollama
-  model: qwen2.5:3b
-  endpoint: http://localhost:11434/v1
+  model: gpt-oss:20b
+  endpoint: http://localhost:11434
 ```
+
+Important: k13d requires an Ollama model with **tools/function calling** support. Text-only Ollama models may connect successfully, but the AI Assistant will not work correctly. Use `gpt-oss:20b` or another Ollama model whose model card explicitly lists tools support.
 
 **Recommended Ollama Models:**
 
 | Model | Size | Notes |
 |-------|------|-------|
-| `qwen2.5:3b` | 2GB | Best for low-spec machines |
-| `qwen2.5:7b` | 4.5GB | Better reasoning |
-| `llama3.2:3b` | 2GB | Good general model |
+| `gpt-oss:20b` | 14GB | Recommended default for local AI |
+| `qwen2.5:7b` | 4.5GB | Verify tools/function calling support before use |
+| `gemma2:2b` | 2GB | Lightweight fallback only if the specific Ollama tag supports tools |
 
-### Embedded LLM
+### Embedded LLM Removal
 
-Zero external dependencies - built-in llama.cpp.
+Embedded LLM support has been removed due to poor quality and maintenance cost.
 
-!!! warning "Limited Capability"
-    Embedded models have significantly reduced capabilities.
-    Use only for testing or when no other option is available.
-
-```bash
-# Download model (one-time)
-./k13d --download-model
-
-# Run with embedded LLM
-./k13d --embedded-llm -web -auth-mode local
-```
+- For local/private inference, use **Ollama**
+- If an old config still says `provider: embedded`, change it to `provider: ollama`
 
 ---
 
 ## Configuration Files
 
-k13d uses multiple configuration files in `~/.config/k13d/`:
+k13d uses multiple configuration files in the platform config directory:
+
+| Platform | Directory |
+|----------|-----------|
+| Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/` |
+| macOS | `~/.config/k13d/` |
+| Windows | `%AppData%\\k13d\\` |
 
 | File | Purpose |
 |------|---------|
@@ -455,23 +512,23 @@ Configure multiple LLM profiles and switch between them at runtime. This is usef
 ```yaml title="~/.config/k13d/config.yaml"
 models:
   - name: solar-pro2
-    provider: solar
+    provider: upstage
     model: solar-pro2
     endpoint: https://api.upstage.ai/v1
-    api_key: your-upstage-key
+    api_key: ${UPSTAGE_API_KEY}
     description: "Upstage Solar Pro2 (Recommended)"
 
   - name: gpt-4o
     provider: openai
     model: gpt-4o
-    api_key: sk-your-openai-key
+    api_key: ${OPENAI_API_KEY}
     description: "OpenAI GPT-4o (Faster)"
 
-  - name: qwen2.5-local
+  - name: gpt-oss-local
     provider: ollama
-    model: qwen2.5:3b
+    model: gpt-oss:20b
     endpoint: http://localhost:11434
-    description: "Local Ollama (Korean, low-spec friendly)"
+    description: "Local Ollama (recommended default)"
 
 active_model: solar-pro2
 ```
@@ -481,8 +538,8 @@ active_model: solar-pro2
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | Yes | Unique profile name (used in `:model <name>`) |
-| `provider` | Yes | LLM provider: `solar`, `openai`, `ollama`, `anthropic`, `azure` |
-| `model` | Yes | Model identifier (e.g., `gpt-4o`, `solar-pro2`, `qwen2.5:3b`) |
+| `provider` | Yes | LLM provider: `upstage`, `openai`, `ollama`, `anthropic`, `azopenai`, `gemini`, `bedrock` |
+| `model` | Yes | Model identifier (e.g., `gpt-4o`, `solar-pro2`, `gpt-oss:20b`) |
 | `endpoint` | No | Custom API endpoint (required for Ollama/Azure) |
 | `api_key` | No | API key (can also use environment variables) |
 | `description` | No | Human-readable description shown in model selector |
@@ -494,11 +551,14 @@ active_model: solar-pro2
 - Type `:model` to open the model selector modal (active model marked with `*`)
 - Type `:model gpt-4o` to switch directly to a named profile
 - The switch takes effect immediately and persists to `config.yaml`
+- Saving TUI LLM settings updates the currently active profile
 
 **Web UI:**
 
-- Go to Settings > LLM Settings to change the active model
-- Or use the model dropdown in the AI chat panel
+- Go to Settings > LLM Settings to add, delete, or switch profiles
+- Saving Web UI LLM settings updates the currently active profile
+
+For the full persistence details, including which fields stay global in `llm` and which fields are copied into `models[]`, see [Model Settings & Storage](../ai-llm/model-settings-storage.md).
 
 !!! tip "Cost Optimization"
     Use a lightweight model (e.g., Ollama local) for routine monitoring and switch to a powerful model (e.g., GPT-4o) only when you need deep analysis.
@@ -521,8 +581,8 @@ All configuration can be overridden with environment variables:
 | `K13D_PASSWORD` | Default admin password (local auth mode) |
 | `K13D_PORT` | Web server port (default: 8080) |
 | `K13D_CORS_ALLOWED_ORIGINS` | Allowed CORS origins |
-| `OPENAI_API_KEY` | OpenAI API key (alternative to config) |
-| `ANTHROPIC_API_KEY` | Anthropic API key (alternative to config) |
+| `OPENAI_API_KEY` | OpenAI API key fallback when `api_key` is omitted |
+| `ANTHROPIC_API_KEY` | Anthropic API key fallback when `api_key` is omitted |
 
 ---
 
@@ -536,3 +596,5 @@ Settings can also be changed via the Web UI:
 4. Click **Save Settings**
 
 Changes take effect immediately without restart.
+
+Important: saving from Web UI writes the current in-memory values back to `config.yaml`. If your file used `${ENV_VAR}` placeholders for API keys, those may be serialized as resolved literal values when you save. See [Model Settings & Storage](../ai-llm/model-settings-storage.md).

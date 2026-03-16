@@ -56,14 +56,12 @@ func NewBedrockProvider(cfg *ProviderConfig) (Provider, error) {
 		model = "anthropic.claude-3-sonnet-20240229-v1:0"
 	}
 
+	providerCfg := *cfg
+	providerCfg.Model = model
+	providerCfg.Region = region
+
 	return &BedrockProvider{
-		config: &ProviderConfig{
-			Provider: cfg.Provider,
-			Model:    model,
-			APIKey:   cfg.APIKey, // AWS Secret Access Key
-			Endpoint: cfg.Endpoint,
-			Region:   region,
-		},
+		config:     &providerCfg,
 		httpClient: newHTTPClient(cfg.SkipTLSVerify),
 		region:     region,
 	}, nil
@@ -210,6 +208,7 @@ type bedrockToolContent struct {
 func (p *BedrockProvider) AskWithTools(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
 	endpoint := fmt.Sprintf("https://bedrock-runtime.%s.amazonaws.com/model/%s/invoke",
 		p.region, p.config.Model)
+	tools = sortedToolDefinitions(tools)
 
 	// Convert tools to Bedrock format
 	bedrockTools := make([]bedrockTool, 0, len(tools))
@@ -230,12 +229,12 @@ func (p *BedrockProvider) AskWithTools(ctx context.Context, prompt string, tools
 		},
 	}
 
-	maxIterations := 10
+	maxIterations := effectiveMaxIterations(p.config)
 	for i := 0; i < maxIterations; i++ {
 		reqBody := bedrockClaudeToolRequest{
 			AnthropicVersion: "bedrock-2023-05-31",
 			MaxTokens:        4096,
-			System:           "You are a helpful Kubernetes assistant with DIRECT ACCESS to kubectl and bash tools. ALWAYS USE TOOLS to execute commands - NEVER just suggest commands.",
+			System:           toolAgentSystemPrompt(maxIterations),
 			Messages:         messages,
 			Tools:            bedrockTools,
 		}
@@ -364,7 +363,7 @@ func (p *BedrockProvider) AskWithTools(ctx context.Context, prompt string, tools
 		})
 	}
 
-	return fmt.Errorf("exceeded maximum iterations")
+	return fmt.Errorf("exceeded maximum iterations (%d)", maxIterations)
 }
 
 // signRequest signs the request with AWS Signature V4

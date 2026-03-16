@@ -60,7 +60,7 @@ func LoadPlugins() (*PluginsFile, error) {
 		return DefaultPlugins(), nil
 	}
 
-	pluginPath := filepath.Join(configDir, "plugins.yaml")
+	pluginPath := resolveConfigReadPath(configDir, "plugins.yaml")
 	data, err := os.ReadFile(pluginPath)
 	if err != nil {
 		if os.IsNotExist(err) {

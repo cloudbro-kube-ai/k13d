@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 
 	authv1 "k8s.io/api/authentication/v1"
+	authzv1 "k8s.io/api/authorization/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -28,7 +29,7 @@ const (
 
 // K8sTokenValidator validates Kubernetes service account tokens
 type K8sTokenValidator struct {
-	clientset   *kubernetes.Clientset
+	clientset   kubernetes.Interface
 	restConfig  *rest.Config
 	environment RuntimeEnvironment
 	// For local mode: cached user info from kubeconfig
@@ -143,6 +144,231 @@ type TokenReview struct {
 	Groups        []string `json:"groups"`
 }
 
+type tokenAccessReviewer interface {
+	CanI(ctx context.Context, attrs authzv1.ResourceAttributes) (bool, error)
+}
+
+type kubeTokenAccessReviewer struct {
+	clientset kubernetes.Interface
+}
+
+func (r *kubeTokenAccessReviewer) CanI(ctx context.Context, attrs authzv1.ResourceAttributes) (bool, error) {
+	review := &authzv1.SelfSubjectAccessReview{
+		Spec: authzv1.SelfSubjectAccessReviewSpec{
+			ResourceAttributes: &attrs,
+		},
+	}
+
+	result, err := r.clientset.AuthorizationV1().SelfSubjectAccessReviews().Create(ctx, review, metav1.CreateOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	return result.Status.Allowed, nil
+}
+
+func roleRank(role string) int {
+	switch role {
+	case "admin":
+		return 3
+	case "user":
+		return 2
+	default:
+		return 1
+	}
+}
+
+func higherRole(current, candidate string) string {
+	if roleRank(candidate) > roleRank(current) {
+		return candidate
+	}
+	return current
+}
+
+func determineRoleFromGroups(username string, groups []string) string {
+	role := "viewer"
+	for _, group := range groups {
+		group = strings.ToLower(group)
+		switch {
+		case group == "system:masters",
+			strings.Contains(group, "cluster-admin"),
+			strings.Contains(group, "admin"):
+			return "admin"
+		case strings.Contains(group, "edit"),
+			strings.Contains(group, "developer"):
+			role = higherRole(role, "user")
+		}
+	}
+
+	// ServiceAccounts typically present only system:* groups, so keep the
+	// fallback conservative and let live access reviews upgrade the role.
+	if strings.HasPrefix(username, "system:serviceaccount:") {
+		return role
+	}
+
+	return role
+}
+
+func determineRoleFromTokenAccess(ctx context.Context, reviewer tokenAccessReviewer) (string, error) {
+	if reviewer == nil {
+		return "", fmt.Errorf("token access reviewer not available")
+	}
+
+	checks := []struct {
+		role  string
+		attrs authzv1.ResourceAttributes
+	}{
+		{
+			role: "admin",
+			attrs: authzv1.ResourceAttributes{
+				Group:    "rbac.authorization.k8s.io",
+				Resource: "clusterrolebindings",
+				Verb:     "create",
+			},
+		},
+		{
+			role: "admin",
+			attrs: authzv1.ResourceAttributes{
+				Resource: "namespaces",
+				Verb:     "delete",
+			},
+		},
+		{
+			role: "admin",
+			attrs: authzv1.ResourceAttributes{
+				Resource: "nodes",
+				Verb:     "patch",
+			},
+		},
+		{
+			role: "admin",
+			attrs: authzv1.ResourceAttributes{
+				Resource: "nodes",
+				Verb:     "update",
+			},
+		},
+		{
+			role: "user",
+			attrs: authzv1.ResourceAttributes{
+				Group:    "apps",
+				Resource: "deployments",
+				Verb:     "patch",
+			},
+		},
+		{
+			role: "user",
+			attrs: authzv1.ResourceAttributes{
+				Group:    "apps",
+				Resource: "deployments",
+				Verb:     "update",
+			},
+		},
+		{
+			role: "user",
+			attrs: authzv1.ResourceAttributes{
+				Group:    "apps",
+				Resource: "deployments",
+				Verb:     "create",
+			},
+		},
+		{
+			role: "user",
+			attrs: authzv1.ResourceAttributes{
+				Group:    "apps",
+				Resource: "deployments",
+				Verb:     "delete",
+			},
+		},
+		{
+			role: "user",
+			attrs: authzv1.ResourceAttributes{
+				Resource:    "pods",
+				Subresource: "exec",
+				Verb:        "create",
+			},
+		},
+		{
+			role: "user",
+			attrs: authzv1.ResourceAttributes{
+				Resource:    "pods",
+				Subresource: "portforward",
+				Verb:        "create",
+			},
+		},
+		{
+			role: "viewer",
+			attrs: authzv1.ResourceAttributes{
+				Resource: "pods",
+				Verb:     "list",
+			},
+		},
+		{
+			role: "viewer",
+			attrs: authzv1.ResourceAttributes{
+				Resource: "pods",
+				Verb:     "get",
+			},
+		},
+		{
+			role: "viewer",
+			attrs: authzv1.ResourceAttributes{
+				Resource: "events",
+				Verb:     "list",
+			},
+		},
+		{
+			role: "viewer",
+			attrs: authzv1.ResourceAttributes{
+				Resource:    "pods",
+				Subresource: "log",
+				Verb:        "get",
+			},
+		},
+	}
+
+	role := "viewer"
+	for _, check := range checks {
+		allowed, err := reviewer.CanI(ctx, check.attrs)
+		if err != nil {
+			return "", err
+		}
+		if allowed {
+			role = higherRole(role, check.role)
+			if role == "admin" {
+				return role, nil
+			}
+		}
+	}
+
+	return role, nil
+}
+
+func buildTokenAccessReviewer(baseConfig *rest.Config, token string) (tokenAccessReviewer, error) {
+	if baseConfig == nil {
+		return nil, fmt.Errorf("rest config not available")
+	}
+
+	cfg := rest.CopyConfig(baseConfig)
+	cfg.BearerToken = token
+	cfg.BearerTokenFile = ""
+	cfg.Username = ""
+	cfg.Password = ""
+	cfg.AuthProvider = nil
+	cfg.ExecProvider = nil
+	cfg.Impersonate = rest.ImpersonationConfig{}
+	cfg.CertFile = ""
+	cfg.KeyFile = ""
+	cfg.CertData = nil
+	cfg.KeyData = nil
+
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &kubeTokenAccessReviewer{clientset: clientset}, nil
+}
+
 // ValidateK8sToken validates a Kubernetes service account token
 func (am *AuthManager) ValidateK8sToken(ctx context.Context, token string) (*Session, error) {
 	// Check cache first
@@ -165,15 +391,12 @@ func (am *AuthManager) ValidateK8sToken(ctx context.Context, token string) (*Ses
 		return nil, err
 	}
 
-	// Determine role from groups
-	role := "viewer"
-	for _, group := range review.Groups {
-		if strings.Contains(group, "admin") || strings.Contains(group, "cluster-admin") {
-			role = "admin"
-			break
-		}
-		if strings.Contains(group, "edit") || strings.Contains(group, "developer") {
-			role = "user"
+	// Start with conservative group heuristics, then upgrade from a live
+	// SelfSubjectAccessReview when the cluster allows it.
+	role := determineRoleFromGroups(review.Username, review.Groups)
+	if reviewer, err := buildTokenAccessReviewer(am.tokenValidator.restConfig, token); err == nil {
+		if accessRole, err := determineRoleFromTokenAccess(ctx, reviewer); err == nil {
+			role = higherRole(role, accessRole)
 		}
 	}
 

@@ -11,7 +11,7 @@ The k13d AI Assistant is an agentic AI that understands your Kubernetes cluster 
 | Capability | Description |
 |------------|-------------|
 | **Natural Language** | Ask questions in plain language |
-| **Tool Execution** | Runs kubectl, bash commands |
+| **Tool Execution** | Runs kubectl first, uses bash only as a last resort |
 | **Context Awareness** | Sees YAML, Events, Logs |
 | **Safety First** | Dangerous commands require approval |
 | **Multi-language** | English, Korean, Chinese, Japanese |
@@ -62,14 +62,14 @@ Enable debug mode to see raw tool calls:
 | Tool | Description | Examples |
 |------|-------------|----------|
 | **kubectl** | Kubernetes CLI | `kubectl get pods`, `kubectl describe` |
-| **bash** | Shell commands | `date`, `grep`, file operations |
+| **bash** | Last-resort shell commands | `date`, `grep`, file operations |
 | **MCP** | External tools | GitHub, databases, custom tools |
 
 ### Safety Classification
 
 | Level | Commands | Approval |
 |-------|----------|----------|
-| **Read-only** | get, describe, logs | Auto-approve |
+| **Read-only** | get, describe, logs | Approval required by default |
 | **Write** | apply, create, patch | Requires approval |
 | **Dangerous** | delete, drain, taint | Warning + approval |
 
@@ -196,7 +196,7 @@ models:
     model: gpt-4
   - name: local-llama
     provider: ollama
-    model: llama3.2
+    model: gpt-oss:20b
     endpoint: http://localhost:11434
 
 active_model: gpt-4
@@ -229,8 +229,9 @@ Real-time response streaming for immediate feedback.
 | **Anthropic** | ✅ | Claude models |
 | **Google Gemini** | ✅ | Fast responses |
 | **Azure OpenAI** | ✅ | Enterprise |
-| **Ollama** | ✅ | Local, air-gapped |
-| **Embedded SLLM** | ⚠️ | Zero-dependency |
+| **Ollama** | Model-dependent | Local, air-gapped with a tools-capable model |
+
+When using Ollama, choose a model that explicitly supports **tools/function calling**. A plain text-only model may connect successfully but still fail to operate the k13d AI Assistant.
 
 ### Configuration
 
