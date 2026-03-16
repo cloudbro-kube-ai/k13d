@@ -26,7 +26,7 @@ require (
 	k8s.io/kubectl v0.35.2
 	k8s.io/metrics v0.35.2
 	modernc.org/sqlite v1.46.1
-	mvdan.cc/sh/v3 v3.12.0
+	mvdan.cc/sh/v3 v3.13.0
 	sigs.k8s.io/yaml v1.6.0
 )
 
@@ -120,7 +120,7 @@ require (
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
