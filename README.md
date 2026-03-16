@@ -232,6 +232,77 @@ beginner_mode: true
 enable_audit: true
 ```
 
+#### Safe `config.yaml` setup patterns
+
+Use environment variables for API keys whenever possible, and keep `config.yaml` limited to provider/model/endpoint settings. That avoids accidentally committing secrets and makes it easier to rotate credentials later.
+
+**OpenAI**
+
+```bash
+export OPENAI_API_KEY=sk-...
+cat > ~/.config/k13d/config.yaml <<'YAML'
+llm:
+  provider: openai
+  model: gpt-4o
+  endpoint: https://api.openai.com/v1
+  api_key: ${OPENAI_API_KEY}
+
+models:
+  - name: gpt-4o
+    provider: openai
+    model: gpt-4o
+    endpoint: https://api.openai.com/v1
+
+active_model: gpt-4o
+YAML
+```
+
+**Anthropic**
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+cat > ~/.config/k13d/config.yaml <<'YAML'
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-6
+  endpoint: https://api.anthropic.com
+  api_key: ${ANTHROPIC_API_KEY}
+
+models:
+  - name: claude-sonnet
+    provider: anthropic
+    model: claude-sonnet-4-6
+    endpoint: https://api.anthropic.com
+
+active_model: claude-sonnet
+YAML
+```
+
+Anthropic model IDs are exact strings and can be longer than the marketing names. If you are unsure which ID to use, query Anthropic's `GET /v1/models` endpoint and copy the `id` field exactly. On March 17, 2026, examples returned by that API included `claude-sonnet-4-6`, `claude-opus-4-6`, `claude-opus-4-5-20251101`, `claude-haiku-4-5-20251001`, and `claude-sonnet-4-5-20250929`.
+
+**Ollama**
+
+```bash
+ollama serve
+ollama pull gpt-oss:20b
+cat > ~/.config/k13d/config.yaml <<'YAML'
+llm:
+  provider: ollama
+  model: gpt-oss:20b
+  endpoint: http://localhost:11434
+
+models:
+  - name: gpt-oss-local
+    provider: ollama
+    model: gpt-oss:20b
+    endpoint: http://localhost:11434
+
+active_model: gpt-oss-local
+YAML
+```
+
+Remember that Ollama models must support **tools/function calling** for k13d's AI Assistant to work correctly.
+
 Web UI and TUI both rewrite this file when you save settings. For exact field ownership, profile switching behavior, and how `llm`, `models[]`, and `active_model` interact, see:
 
 - [Configuration](https://cloudbro-kube-ai.github.io/k13d/getting-started/configuration/)
@@ -294,11 +365,20 @@ export K13D_LLM_MODEL=gpt-4o
 export K13D_LLM_API_KEY=sk-...
 ./k13d --web --auth-mode local
 
+# Anthropic
+export K13D_LLM_PROVIDER=anthropic
+export K13D_LLM_MODEL=claude-sonnet-4-6
+export K13D_LLM_ENDPOINT=https://api.anthropic.com
+export K13D_LLM_API_KEY=sk-ant-...
+./k13d --web --auth-mode local
+
 # Ollama (local, free, no API key)
 ollama pull gpt-oss:20b && ollama serve
 ./k13d --web --auth-mode local
 # Set Provider: "ollama" in Settings > AI
 ```
+
+When you use Anthropic, copy the exact model ID, not just the family name. Anthropic IDs can be long and change over time. If you need to verify current IDs, query Anthropic's `GET /v1/models` API and use the returned `id` value exactly.
 
 For **Ollama**, choose a model that explicitly supports **tools/function calling**. Some Ollama models can connect and generate text, but k13d's AI Assistant will not work correctly unless the model supports tools. `gpt-oss:20b` is the recommended default.
 
@@ -321,7 +401,7 @@ Adding a profile does **not** auto-activate it. After creating it, click **Use**
 | Provider | Models | Notes |
 |----------|--------|-------|
 | **OpenAI** | GPT-4o, GPT-4, o3-mini | Best tool calling support |
-| **Anthropic** | Claude Opus 4, Sonnet 4, Haiku 4.5 | Native Messages API, strong reasoning |
+| **Anthropic** | Claude Sonnet 4.6, Opus 4.6, Haiku 4.5 | Native Messages API, strong reasoning |
 | **Google Gemini** | Gemini 2.5, 2.0 | Multimodal capable |
 | **Upstage Solar** | Solar Pro2, Solar Pro | Good balance of quality/cost |
 | **Azure OpenAI** | GPT-4, GPT-3.5 | Enterprise Azure deployments |

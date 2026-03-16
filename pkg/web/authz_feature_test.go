@@ -1142,20 +1142,26 @@ func TestDefaultToolApprovalPolicy(t *testing.T) {
 	}
 }
 
-func TestEffectiveToolApprovalPolicy_ZeroValueFallsBackToDefault(t *testing.T) {
+func TestEffectiveToolApprovalPolicy_ExplicitDisabledFlagsArePreserved(t *testing.T) {
 	policy := effectiveToolApprovalPolicy(config.ToolApprovalPolicy{})
 
 	if policy.AutoApproveReadOnly {
-		t.Error("expected zero-value policy to fall back to AutoApproveReadOnly=false")
+		t.Error("expected AutoApproveReadOnly=false to be preserved")
 	}
-	if !policy.RequireApprovalForWrite {
-		t.Error("expected zero-value policy to fall back to RequireApprovalForWrite=true")
+	if policy.RequireApprovalForWrite {
+		t.Error("expected RequireApprovalForWrite=false to be preserved")
 	}
-	if !policy.RequireApprovalForUnknown {
-		t.Error("expected zero-value policy to fall back to RequireApprovalForUnknown=true")
+	if policy.RequireApprovalForUnknown {
+		t.Error("expected RequireApprovalForUnknown=false to be preserved")
 	}
-	if policy.ApprovalTimeoutSeconds != 60 {
-		t.Errorf("expected fallback timeout=60, got %d", policy.ApprovalTimeoutSeconds)
+	if policy.BlockDangerous {
+		t.Error("expected BlockDangerous=false to be preserved")
+	}
+	if policy.ApprovalTimeoutSeconds != config.DefaultToolApprovalPolicy().ApprovalTimeoutSeconds {
+		t.Errorf("expected timeout defaulting to %d, got %d", config.DefaultToolApprovalPolicy().ApprovalTimeoutSeconds, policy.ApprovalTimeoutSeconds)
+	}
+	if policy.BlockedPatterns == nil {
+		t.Error("expected BlockedPatterns to default to an empty slice")
 	}
 }
 

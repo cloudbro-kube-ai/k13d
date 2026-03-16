@@ -196,7 +196,7 @@ func TestMaskAPIKey(t *testing.T) {
 	}{
 		{"", ""},
 		{"short", "***"},
-		{"sk-1234567890abcdefghij", "sk-1...ghij"},
+		{"abcd1234567890wxyz", "abcd...wxyz"},
 	}
 
 	for _, test := range tests {

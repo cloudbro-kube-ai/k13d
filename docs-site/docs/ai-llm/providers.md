@@ -9,7 +9,7 @@ Need the exact save/switch/storage behavior across Web UI and TUI? See [Model Se
 | Provider | Models | Local | API Key |
 |----------|--------|-------|---------|
 | **OpenAI** | GPT-4o, o3-mini, GPT-4 | No | Required |
-| **Anthropic** | Claude Opus 4, Sonnet 4, Haiku 4.5 | No | Required |
+| **Anthropic** | Claude Sonnet 4.6, Opus 4.6, Haiku 4.5 | No | Required |
 | **Google Gemini** | Gemini 2.5 Flash, 2.0 | No | Required |
 | **Upstage Solar** | Solar Pro2, Solar Pro | No | Required |
 | **Ollama** | Llama, Qwen, Mistral, etc. | Yes | Not needed |
@@ -24,7 +24,8 @@ Need the exact save/switch/storage behavior across Web UI and TUI? See [Model Se
 # ~/.config/k13d/config.yaml
 llm:
   provider: openai
-  model: gpt-4
+  model: gpt-4o
+  endpoint: https://api.openai.com/v1
   api_key: ${OPENAI_API_KEY}
 ```
 
@@ -40,12 +41,20 @@ k13d --web
 ```yaml
 llm:
   provider: anthropic
-  model: claude-sonnet-4-20250514
+  model: claude-sonnet-4-6
+  endpoint: https://api.anthropic.com
   api_key: ${ANTHROPIC_API_KEY}
-  # endpoint: https://api.anthropic.com  # default
 ```
 
-Available models: `claude-opus-4-20250514`, `claude-sonnet-4-20250514`, `claude-haiku-4-5-20251001`, `claude-3-5-sonnet-20241022`
+Anthropic model IDs are exact and can be longer than the product names shown in marketing pages. If you are unsure which one to use, query Anthropic's `GET /v1/models` endpoint and copy the `id` field exactly.
+
+Examples verified against Anthropic's Models API on March 17, 2026:
+
+- `claude-sonnet-4-6`
+- `claude-opus-4-6`
+- `claude-opus-4-5-20251101`
+- `claude-haiku-4-5-20251001`
+- `claude-sonnet-4-5-20250929`
 
 ### Google Gemini
 
@@ -117,9 +126,10 @@ Configure multiple models and switch between them:
 
 ```yaml
 models:
-  - name: gpt-4
+  - name: gpt-4o
     provider: openai
-    model: gpt-4
+    model: gpt-4o
+    endpoint: https://api.openai.com/v1
     api_key: ${OPENAI_API_KEY}
 
   - name: local-ollama
@@ -129,18 +139,19 @@ models:
 
   - name: claude
     provider: anthropic
-    model: claude-sonnet-4-20250514
+    model: claude-sonnet-4-6
+    endpoint: https://api.anthropic.com
     api_key: ${ANTHROPIC_API_KEY}
 
 # Default model
-active_model: gpt-4
+active_model: gpt-4o
 ```
 
 Switch models at runtime:
 
 **TUI:**
 ```
-:model local-llama
+:model local-ollama
 ```
 
 **Web:**
@@ -200,7 +211,7 @@ AI: [Calls kubectl scale deployment nginx --replicas=5]
 ```yaml
 llm:
   provider: openai
-  model: gpt-4-turbo
+  model: gpt-4o
 ```
 
 ### For Speed
@@ -208,7 +219,7 @@ llm:
 ```yaml
 llm:
   provider: openai
-  model: gpt-3.5-turbo
+  model: gpt-4o-mini
 ```
 
 ### For Privacy (Local)
@@ -300,6 +311,12 @@ k13d --web
 # Bad - key in config file
 llm:
   api_key: sk-actual-key-here
+```
+
+The same pattern applies to Anthropic:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ### 2. Rotate Keys Regularly

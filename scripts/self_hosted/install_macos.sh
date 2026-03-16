@@ -38,8 +38,8 @@ if ! brew list caddy >/dev/null 2>&1; then
 fi
 
 if [[ ! -f "$ENV_FILE" ]]; then
-  EXISTING_USER="$(ps -Ao command | awk '/k13d .* -web/ && /-admin-user/ {for (i=1; i<=NF; i++) if ($i == "-admin-user") print $(i+1)}' | tail -n1)"
-  EXISTING_PASS="$(ps -Ao command | awk '/k13d .* -web/ && /-admin-password/ {for (i=1; i<=NF; i++) if ($i == "-admin-password") print $(i+1)}' | tail -n1)"
+  EXISTING_USER="$(ps -Ao command | awk '/k13d/ && /(^|[[:space:]])--?web([[:space:]]|$)/ && /--?admin-user/ {for (i=1; i<=NF; i++) if ($i == "--admin-user" || $i == "-admin-user") print $(i+1)}' | tail -n1)"
+  EXISTING_PASS="$(ps -Ao command | awk '/k13d/ && /(^|[[:space:]])--?web([[:space:]]|$)/ && /--?admin-password/ {for (i=1; i<=NF; i++) if ($i == "--admin-password" || $i == "-admin-password") print $(i+1)}' | tail -n1)"
   ADMIN_USER="${EXISTING_USER:-admin}"
   ADMIN_PASS="${EXISTING_PASS:-$(openssl rand -base64 24 | tr -d '\n' | cut -c1-24)}"
   cat >"$ENV_FILE" <<EOF
@@ -137,17 +137,24 @@ launchctl bootout "gui/$UID_VALUE" "$K13D_PLIST" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/$UID_VALUE" "$K13D_PLIST"
 launchctl kickstart -k "gui/$UID_VALUE/$K13D_LABEL"
 
+healthy=0
 for _ in {1..30}; do
   if curl -fsS "http://127.0.0.1:$INTERNAL_PORT/api/health" >/dev/null 2>&1; then
+    healthy=1
     break
   fi
   sleep 1
 done
 
+if [[ "$healthy" -ne 1 ]]; then
+  echo "k13d did not become ready on http://127.0.0.1:$INTERNAL_PORT/api/health" >&2
+  exit 1
+fi
+
 OLD_PORT80_PID="$(lsof -nP -iTCP:80 -sTCP:LISTEN -t 2>/dev/null || true)"
 if [[ -n "$OLD_PORT80_PID" ]]; then
   OLD_CMD="$(ps -p "$OLD_PORT80_PID" -o command= || true)"
-  if [[ "$OLD_CMD" == *"k13d"* && "$OLD_CMD" == *"-port 80"* ]]; then
+  if [[ "$OLD_CMD" == *"k13d"* ]] && [[ "$OLD_CMD" =~ (^|[[:space:]])--?port[[:space:]]+80([[:space:]]|$) ]]; then
     kill "$OLD_PORT80_PID" || true
     sleep 1
   fi
