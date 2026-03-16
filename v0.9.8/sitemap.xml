@@ -442,6 +442,20 @@
         <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v0.9.8getting-started/quick-start/"/>
     </url>
     <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.8/ko/user-guide/tui/</loc>
+        <lastmod>2026-03-16</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v0.9.8/ko/user-guide/tui/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v0.9.8user-guide/tui/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.8/ko/user-guide/web/</loc>
+        <lastmod>2026-03-16</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v0.9.8/ko/user-guide/web/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v0.9.8user-guide/web/"/>
+    </url>
+    <url>
         <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.8/ko/reference/ENTERPRISE_OPERATIONS/</loc>
         <lastmod>2026-03-16</lastmod>
         <changefreq>daily</changefreq>
@@ -531,19 +545,5 @@
         <changefreq>daily</changefreq>
         <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v0.9.8/ko/user-guide/shortcuts/"/>
         <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v0.9.8user-guide/shortcuts/"/>
-    </url>
-    <url>
-        <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.8/ko/user-guide/tui/</loc>
-        <lastmod>2026-03-16</lastmod>
-        <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v0.9.8/ko/user-guide/tui/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v0.9.8user-guide/tui/"/>
-    </url>
-    <url>
-        <loc>https://cloudbro-kube-ai.github.io/k13d/v0.9.8/ko/user-guide/web/</loc>
-        <lastmod>2026-03-16</lastmod>
-        <changefreq>daily</changefreq>
-        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v0.9.8/ko/user-guide/web/"/>
-        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v0.9.8user-guide/web/"/>
     </url>
 </urlset>
