@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+      - 'codex/**'
       - 'feature/**'
       - 'fix/**'
       - 'docs/**'
@@ -49,9 +50,6 @@ jobs:
     needs: lint
     env:
       CI: "true"
-      XDG_CONFIG_HOME: ${{ runner.temp }}/xdg-config
-      XDG_DATA_HOME: ${{ runner.temp }}/xdg-data
-      XDG_CACHE_HOME: ${{ runner.temp }}/xdg-cache
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -66,7 +64,14 @@ jobs:
         run: go mod download
 
       - name: Prepare isolated XDG dirs
-        run: mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME"
+        run: |
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/xdg-config"
+          export XDG_DATA_HOME="$RUNNER_TEMP/xdg-data"
+          export XDG_CACHE_HOME="$RUNNER_TEMP/xdg-cache"
+          echo "XDG_CONFIG_HOME=$XDG_CONFIG_HOME" >> "$GITHUB_ENV"
+          echo "XDG_DATA_HOME=$XDG_DATA_HOME" >> "$GITHUB_ENV"
+          echo "XDG_CACHE_HOME=$XDG_CACHE_HOME" >> "$GITHUB_ENV"
+          mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME"
 
       - name: Run tests
         run: go test -race -timeout 600s ./...
@@ -77,9 +82,6 @@ jobs:
     timeout-minutes: 45
     env:
       CI: "true"
-      XDG_CONFIG_HOME: ${{ runner.temp }}/xdg-config
-      XDG_DATA_HOME: ${{ runner.temp }}/xdg-data
-      XDG_CACHE_HOME: ${{ runner.temp }}/xdg-cache
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -99,7 +101,14 @@ jobs:
         run: go mod download
 
       - name: Prepare isolated XDG dirs
-        run: mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME"
+        run: |
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/xdg-config"
+          export XDG_DATA_HOME="$RUNNER_TEMP/xdg-data"
+          export XDG_CACHE_HOME="$RUNNER_TEMP/xdg-cache"
+          echo "XDG_CONFIG_HOME=$XDG_CONFIG_HOME" >> "$GITHUB_ENV"
+          echo "XDG_DATA_HOME=$XDG_DATA_HOME" >> "$GITHUB_ENV"
+          echo "XDG_CACHE_HOME=$XDG_CACHE_HOME" >> "$GITHUB_ENV"
+          mkdir -p "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME"
 
       - name: Set up kind cluster
         uses: helm/kind-action@v1.12.0
