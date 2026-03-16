@@ -15,6 +15,10 @@ import (
 )
 
 func (c *Client) GetContextInfo() (ctxName, cluster, user string, err error) {
+	if c.CurrentContextOverride != "" || c.CurrentClusterOverride != "" || c.CurrentUserOverride != "" {
+		return c.CurrentContextOverride, c.CurrentClusterOverride, c.CurrentUserOverride, nil
+	}
+
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	configOverrides := &clientcmd.ConfigOverrides{}
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
@@ -39,6 +43,10 @@ func (c *Client) GetCurrentContext() (string, error) {
 }
 
 func (c *Client) GetCurrentNamespace() string {
+	if c.CurrentNamespaceOverride != "" {
+		return c.CurrentNamespaceOverride
+	}
+
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	configOverrides := &clientcmd.ConfigOverrides{}
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
@@ -80,6 +88,14 @@ func (c *Client) ListNodes(ctx context.Context) ([]corev1.Node, error) {
 }
 
 func (c *Client) ListContexts() ([]string, string, error) {
+	if len(c.ContextsOverride) > 0 || c.CurrentContextOverride != "" {
+		contexts := append([]string(nil), c.ContextsOverride...)
+		if len(contexts) == 0 && c.CurrentContextOverride != "" {
+			contexts = []string{c.CurrentContextOverride}
+		}
+		return contexts, c.CurrentContextOverride, nil
+	}
+
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	config, err := loadingRules.Load()
 	if err != nil {

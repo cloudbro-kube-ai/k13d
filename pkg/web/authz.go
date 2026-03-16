@@ -123,7 +123,8 @@ func (az *Authorizer) registerDefaultRoles() {
 		Deny: []ResourceRule{},
 		AllowedFeatures: []Feature{
 			FeatureDashboard, FeatureTopology, FeatureMetrics,
-			FeatureEventTimeline, FeatureAuditLogs, FeatureSettingsGeneral,
+			FeatureEventTimeline, FeatureAuditLogs, FeatureAIAssistant,
+			FeatureSettingsGeneral,
 		},
 	}
 

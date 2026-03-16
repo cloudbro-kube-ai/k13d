@@ -42,14 +42,17 @@ func TestFeaturePermissions_ViewerLimitedFeatures(t *testing.T) {
 
 	// Viewer should NOT have helm, terminal, AI, etc.
 	deniedFeatures := []Feature{
-		FeatureHelmManagement, FeatureSecurityScan, FeatureAIAssistant,
-		FeatureTerminal, FeatureReports,
+		FeatureHelmManagement, FeatureSecurityScan, FeatureTerminal, FeatureReports,
 		FeaturePortForward, FeatureGitOps, FeatureVelero,
 	}
 	for _, f := range deniedFeatures {
 		if az.IsFeatureAllowed("viewer", f) {
 			t.Errorf("viewer should NOT have access to feature %s", f)
 		}
+	}
+
+	if !az.IsFeatureAllowed("viewer", FeatureAIAssistant) {
+		t.Error("viewer should have access to AI assistant")
 	}
 }
 
@@ -777,6 +780,54 @@ func TestHandleToolApprovalSettings_TimeoutBounds(t *testing.T) {
 	}
 }
 
+func TestGetToolApprovalDecision_ReadOnlyCanRequireApproval(t *testing.T) {
+	s := setupRoleTestServer(t)
+	s.cfg.Authorization.ToolApproval.AutoApproveReadOnly = false
+
+	decision := s.getToolApprovalDecision("kubectl get pods -n default")
+	if !decision.Allowed {
+		t.Fatal("expected read-only command to remain allowed")
+	}
+	if !decision.RequiresApproval {
+		t.Fatal("expected read-only command to require approval when auto-approve is disabled")
+	}
+	if decision.Category != "read-only" {
+		t.Fatalf("decision.Category = %s, want read-only", decision.Category)
+	}
+}
+
+func TestGetToolApprovalDecision_WriteCanSkipApproval(t *testing.T) {
+	s := setupRoleTestServer(t)
+	s.cfg.Authorization.ToolApproval.RequireApprovalForWrite = false
+
+	decision := s.getToolApprovalDecision("kubectl scale deployment nginx --replicas=2")
+	if !decision.Allowed {
+		t.Fatal("expected write command to remain allowed")
+	}
+	if decision.RequiresApproval {
+		t.Fatal("expected write command to skip approval when policy disables it")
+	}
+	if decision.Category != "write" {
+		t.Fatalf("decision.Category = %s, want write", decision.Category)
+	}
+}
+
+func TestGetToolApprovalDecision_CanBlockDangerousCommands(t *testing.T) {
+	s := setupRoleTestServer(t)
+	s.cfg.Authorization.ToolApproval.BlockDangerous = true
+
+	decision := s.getToolApprovalDecision("kubectl delete namespace kube-system")
+	if decision.Allowed {
+		t.Fatal("expected dangerous command to be blocked")
+	}
+	if decision.BlockReason == "" {
+		t.Fatal("expected blocked command to include a reason")
+	}
+	if decision.Category != "dangerous" {
+		t.Fatalf("decision.Category = %s, want dangerous", decision.Category)
+	}
+}
+
 func TestHandleToolApprovalSettings_InvalidBody(t *testing.T) {
 	s := setupRoleTestServer(t)
 
@@ -1071,8 +1122,8 @@ func TestNewAuthorizerWithRoles(t *testing.T) {
 func TestDefaultToolApprovalPolicy(t *testing.T) {
 	policy := config.DefaultToolApprovalPolicy()
 
-	if !policy.AutoApproveReadOnly {
-		t.Error("expected AutoApproveReadOnly=true by default")
+	if policy.AutoApproveReadOnly {
+		t.Error("expected AutoApproveReadOnly=false by default")
 	}
 	if !policy.RequireApprovalForWrite {
 		t.Error("expected RequireApprovalForWrite=true by default")
@@ -1088,6 +1139,43 @@ func TestDefaultToolApprovalPolicy(t *testing.T) {
 	}
 	if policy.BlockedPatterns == nil {
 		t.Error("expected BlockedPatterns non-nil")
+	}
+}
+
+func TestEffectiveToolApprovalPolicy_ZeroValueFallsBackToDefault(t *testing.T) {
+	policy := effectiveToolApprovalPolicy(config.ToolApprovalPolicy{})
+
+	if policy.AutoApproveReadOnly {
+		t.Error("expected zero-value policy to fall back to AutoApproveReadOnly=false")
+	}
+	if !policy.RequireApprovalForWrite {
+		t.Error("expected zero-value policy to fall back to RequireApprovalForWrite=true")
+	}
+	if !policy.RequireApprovalForUnknown {
+		t.Error("expected zero-value policy to fall back to RequireApprovalForUnknown=true")
+	}
+	if policy.ApprovalTimeoutSeconds != 60 {
+		t.Errorf("expected fallback timeout=60, got %d", policy.ApprovalTimeoutSeconds)
+	}
+}
+
+func TestEffectiveToolApprovalPolicy_PreservesExplicitValues(t *testing.T) {
+	policy := effectiveToolApprovalPolicy(config.ToolApprovalPolicy{
+		RequireApprovalForWrite:   false,
+		RequireApprovalForUnknown: true,
+	})
+
+	if policy.RequireApprovalForWrite {
+		t.Error("expected explicit RequireApprovalForWrite=false to be preserved")
+	}
+	if !policy.RequireApprovalForUnknown {
+		t.Error("expected explicit RequireApprovalForUnknown=true to be preserved")
+	}
+	if policy.ApprovalTimeoutSeconds != 60 {
+		t.Errorf("expected timeout defaulting to 60, got %d", policy.ApprovalTimeoutSeconds)
+	}
+	if policy.BlockedPatterns == nil {
+		t.Error("expected BlockedPatterns to default to an empty slice")
 	}
 }
 
@@ -1140,5 +1228,41 @@ func TestHandleToolApprovalSettings_WithBlockedPatterns(t *testing.T) {
 
 	if len(patterns) != 2 {
 		t.Errorf("expected 2 blocked patterns, got %d", len(patterns))
+	}
+}
+
+func TestHandleToolApprovalSettings_UpdateAffectsRuntimeDecisions(t *testing.T) {
+	s := setupRoleTestServer(t)
+
+	policyJSON := `{
+		"auto_approve_read_only": true,
+		"require_approval_for_write": false,
+		"require_approval_for_unknown": false,
+		"block_dangerous": true,
+		"approval_timeout_seconds": 45
+	}`
+	req := httptest.NewRequest(http.MethodPut, "/api/settings/tool-approval", strings.NewReader(policyJSON))
+	req.Header.Set("X-User-Role", "admin")
+	w := httptest.NewRecorder()
+
+	s.handleToolApprovalSettings(w, req)
+
+	readOnlyDecision := s.evaluateAIToolDecision("admin", "kubectl", "get pods -n default")
+	if readOnlyDecision.RequiresApproval {
+		t.Fatal("expected saved auto_approve_read_only=true to skip approval for read-only command")
+	}
+
+	writeDecision := s.evaluateAIToolDecision("admin", "kubectl", "scale deployment nginx --replicas=2")
+	if writeDecision.RequiresApproval {
+		t.Fatal("expected saved require_approval_for_write=false to skip approval for write command")
+	}
+
+	dangerousDecision := s.evaluateAIToolDecision("admin", "kubectl", "delete namespace kube-system")
+	if dangerousDecision.Allowed {
+		t.Fatal("expected saved block_dangerous=true to block dangerous command")
+	}
+
+	if got := s.getToolApprovalTimeout(); got != 45*time.Second {
+		t.Fatalf("getToolApprovalTimeout() = %v, want %v", got, 45*time.Second)
 	}
 }

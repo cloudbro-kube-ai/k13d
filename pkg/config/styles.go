@@ -204,7 +204,7 @@ func LoadStyles(skinName string) (*StyleConfig, error) {
 		return DefaultStyles(), nil
 	}
 
-	skinPath := filepath.Join(configDir, "skins", skinName+".yaml")
+	skinPath := resolveConfigReadPath(configDir, "skins", skinName+".yaml")
 	data, err := os.ReadFile(skinPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -253,7 +253,7 @@ func ListSkins() ([]string, error) {
 		return []string{"default"}, nil
 	}
 
-	skinDir := filepath.Join(configDir, "skins")
+	skinDir := resolveConfigReadDir(configDir, "skins")
 	entries, err := os.ReadDir(skinDir)
 	if err != nil {
 		if os.IsNotExist(err) {

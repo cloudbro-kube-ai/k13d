@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 	"github.com/cloudbro-kube-ai/k13d/pkg/i18n"
@@ -167,6 +166,9 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 				"is_active":       m.Name == s.cfg.ActiveModel,
 				"skip_tls_verify": m.SkipTLSVerify,
 			}
+			if warning := modelRegistrationWarning(m.Provider, m.Model); warning != "" {
+				models[i]["warning"] = warning
+			}
 		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"models":       models,
@@ -201,7 +203,15 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 			Details:  fmt.Sprintf("Added model profile: %s (%s/%s)", profile.Name, profile.Provider, profile.Model),
 		})
 
-		_ = json.NewEncoder(w).Encode(map[string]string{"status": "created", "name": profile.Name})
+		response := map[string]interface{}{
+			"status": "created",
+			"name":   profile.Name,
+		}
+		if warning := modelRegistrationWarning(profile.Provider, profile.Model); warning != "" {
+			response["warning"] = warning
+		}
+
+		_ = json.NewEncoder(w).Encode(response)
 
 	case http.MethodDelete:
 		// Delete model profile
@@ -277,13 +287,17 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Recreate AI client with new model
-		newClient, err := ai.NewClient(&s.cfg.LLM)
+		newClient, ready, err := createUsableAIClient(&s.cfg.LLM)
 		if err != nil {
 			s.aiMu.Unlock()
 			WriteErrorSimple(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create AI client: %v", err))
 			return
 		}
-		s.aiClient = newClient
+		if ready {
+			s.aiClient = newClient
+		} else {
+			s.aiClient = nil
+		}
 
 		s.aiMu.Unlock()
 
@@ -306,7 +320,15 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 			Details:  fmt.Sprintf("Switched to model: %s", req.Name),
 		})
 
-		_ = json.NewEncoder(w).Encode(map[string]string{"status": "switched", "active_model": req.Name})
+		response := map[string]interface{}{
+			"status":       "switched",
+			"active_model": req.Name,
+		}
+		if warning := modelRegistrationWarning(s.cfg.LLM.Provider, s.cfg.LLM.Model); warning != "" {
+			response["warning"] = warning
+		}
+
+		_ = json.NewEncoder(w).Encode(response)
 
 	default:
 		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")

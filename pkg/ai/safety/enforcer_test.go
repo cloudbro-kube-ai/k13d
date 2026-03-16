@@ -18,12 +18,12 @@ func TestPolicyEnforcer_Evaluate(t *testing.T) {
 		expectedApproval bool
 		expectedCategory string
 	}{
-		// Read-only should auto-approve with default policy
+		// Read-only should require approval with the default policy
 		{
-			name:             "kubectl get pods auto-approved",
+			name:             "kubectl get pods requires approval",
 			command:          "kubectl get pods",
 			expectedAllowed:  true,
-			expectedApproval: false,
+			expectedApproval: true,
 			expectedCategory: "read-only",
 		},
 		// Write should require approval
@@ -271,9 +271,9 @@ func TestPolicyEnforcer_PipedCommands(t *testing.T) {
 		expectedApproval bool
 	}{
 		{
-			name:             "simple get - no approval",
+			name:             "simple get - requires approval",
 			command:          "kubectl get pods",
-			expectedApproval: false,
+			expectedApproval: true,
 		},
 		{
 			name:             "piped get - requires approval",
@@ -312,7 +312,7 @@ func TestDefaultEnforcer(t *testing.T) {
 		t.Error("Expected command to be allowed")
 	}
 
-	if decision.RequiresApproval {
-		t.Error("Expected no approval required for kubectl get pods")
+	if !decision.RequiresApproval {
+		t.Error("Expected approval required for kubectl get pods")
 	}
 }

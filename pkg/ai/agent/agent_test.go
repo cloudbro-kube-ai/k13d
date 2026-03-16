@@ -81,6 +81,9 @@ func TestAgentNew(t *testing.T) {
 	if agent.approvalTimeout != 30*time.Second {
 		t.Errorf("approvalTimeout = %v, want 30s", agent.approvalTimeout)
 	}
+	if agent.autoApproveReadOnly {
+		t.Error("autoApproveReadOnly should be false by default")
+	}
 
 	if agent.Input == nil {
 		t.Error("Input channel is nil")
@@ -709,9 +712,11 @@ func (l *testAgentListener) AgentApprovalTimeout(choiceID string) {
 
 // testApprovalHandler is a test approval handler
 type testApprovalHandler struct {
-	autoApprove bool
+	autoApprove  bool
+	requestCount int
 }
 
 func (h *testApprovalHandler) RequestApproval(choice *ChoiceRequest, callback func(approved bool)) {
+	h.requestCount++
 	callback(h.autoApprove)
 }

@@ -2,10 +2,15 @@
 
 This guide provides best practices for deploying, monitoring, and operating k13d in production environments.
 
+!!! warning "Reference status"
+    This document is primarily a forward-looking operational reference.
+    The officially supported product path today remains **local single-binary usage** for the **TUI** and **Web UI**.
+    Docker, Docker Compose, Kubernetes, and Helm deployment flows are still **Beta / in preparation**.
+
 ## Table of Contents
 
 - [Production Deployment Checklist](#production-deployment-checklist)
-- [Monitoring & Observability](#monitoring--observability)
+- [Monitoring & Observability](#monitoring-observability)
 - [Troubleshooting Guide](#troubleshooting-guide)
 - [Performance Tuning](#performance-tuning)
 - [Security Hardening](#security-hardening)
@@ -118,7 +123,7 @@ Before deploying k13d to production, verify the following:
   syft packages k13d | grype
   ```
 
-- [ ] Review security policy: [SECURITY.md](../SECURITY.md)
+- [ ] Review security policy: [SECURITY.md](https://github.com/cloudbro-kube-ai/k13d/blob/main/SECURITY.md)
 
 ---
 
@@ -425,8 +430,8 @@ Future releases will include Prometheus metrics at `/metrics`:
    ```
 
 2. **Use faster LLM models**:
-   - OpenAI: `gpt-3.5-turbo` (faster than `gpt-4`)
-   - Local: `qwen2.5:3b` (faster than `7b` models)
+   - OpenAI: `gpt-4o-mini` (faster than larger GPT-4 class models)
+   - Local: `gemma2:2b` for the lightest fallback, or `gpt-oss:20b` when you need the recommended tools-capable local default
 
 3. **Increase resources**:
    - Allocate 2 CPU cores
@@ -486,7 +491,7 @@ Future releases will include Prometheus metrics at `/metrics`:
    llm:
      provider: ollama
      endpoint: http://localhost:11434
-     model: qwen2.5:3b
+     model: gpt-oss:20b
    ```
 
 3. **Persistent Connections**:
@@ -776,9 +781,9 @@ tar czf - "$BACKUP_DIR" | aws s3 cp - s3://my-bucket/k13d-backup-$(date +%Y-%m-%
 ## Support & Resources
 
 - **GitHub Issues**: https://github.com/kube-ai-dashboard/k13d/issues
-- **Security Reports**: See [SECURITY.md](../SECURITY.md)
-- **Documentation**: [User Guide](./USER_GUIDE.md), [Architecture](./ARCHITECTURE.md)
-- **Contributing**: [CONTRIBUTING.md](../CONTRIBUTING.md)
+- **Security Reports**: See [SECURITY.md](https://github.com/cloudbro-kube-ai/k13d/blob/main/SECURITY.md)
+- **Documentation**: [User Guide](../user-guide/tui.md), [Architecture](../concepts/architecture.md)
+- **Contributing**: [CONTRIBUTING.md](https://github.com/cloudbro-kube-ai/k13d/blob/main/CONTRIBUTING.md)
 
 ---
 

@@ -642,6 +642,34 @@ func TestHandleToolCall(t *testing.T) {
 		}
 	})
 
+	t.Run("ReadOnly tool requires approval by default", func(t *testing.T) {
+		freshAgent := New(nil)
+		freshAgent.ctx = context.Background()
+		freshAgent.toolRegistry = tools.NewRegistry()
+		freshAgent.StartSession("test", "model")
+
+		handler := &testApprovalHandler{autoApprove: true}
+		freshAgent.SetApprovalHandler(handler)
+
+		call := providers.ToolCall{
+			ID:   "tc-readonly-default",
+			Type: "function",
+			Function: providers.FunctionCall{
+				Name:      "kubectl",
+				Arguments: `{"command": "kubectl get pods"}`,
+			},
+		}
+
+		result := freshAgent.handleToolCall(call)
+
+		if result.ToolCallID != "tc-readonly-default" {
+			t.Errorf("ToolCallID = %s, want tc-readonly-default", result.ToolCallID)
+		}
+		if handler.requestCount != 1 {
+			t.Errorf("requestCount = %d, want 1", handler.requestCount)
+		}
+	})
+
 	t.Run("Write tool needs approval - with handler", func(t *testing.T) {
 		// Set approval handler that auto-approves
 		agent.SetApprovalHandler(&testApprovalHandler{autoApprove: true})

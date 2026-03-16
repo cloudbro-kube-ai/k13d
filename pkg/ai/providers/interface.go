@@ -145,6 +145,7 @@ type ProviderConfig struct {
 	AzureDeployment string `yaml:"azure_deployment" json:"azure_deployment"` // For Azure OpenAI
 	SkipTLSVerify   bool   `yaml:"skip_tls_verify" json:"skip_tls_verify"`
 	ReasoningEffort string `yaml:"reasoning_effort" json:"reasoning_effort"` // For Solar Pro2: "minimal" or "high"
+	MaxIterations   int    `yaml:"max_iterations" json:"max_iterations"`
 	// Discovery indicates this provider is created only for model discovery (ListModels).
 	// Providers may use this to skip strict model validation or expensive setup.
 	Discovery bool `yaml:"-" json:"-"`
