@@ -47,7 +47,7 @@ func runLocalAuthBrowserFlow(t *testing.T, server *processLocalAuthE2EServer) {
 	playwrightDir := setupPlaywrightWorkspace(t, server.repoRoot)
 	ensurePlaywrightChromium(t, playwrightDir)
 
-	cmd := exec.Command("npx", "playwright", "test", "web-local-auth.spec.js", "--config=playwright.config.cjs", "--workers=1", "--reporter=line")
+	cmd := exec.Command("npx", "playwright", "test", "web-local-auth.spec.js", "web-settings.spec.js", "--config=playwright.config.cjs", "--workers=1", "--reporter=line")
 	cmd.Dir = playwrightDir
 	cmd.Env = append(os.Environ(),
 		"K13D_E2E_BASE_URL="+server.baseURL,
@@ -105,7 +105,7 @@ func setupPlaywrightWorkspace(t *testing.T, repoRoot string) string {
 		t.Fatalf("failed to write Playwright package.json: %v", err)
 	}
 
-	for _, name := range []string{"playwright.config.cjs", "web-local-auth.spec.js"} {
+	for _, name := range []string{"playwright.config.cjs", "web-local-auth.spec.js", "web-settings.spec.js"} {
 		sourcePath := filepath.Join(repoRoot, "tests", "e2e", name)
 		content, err := os.ReadFile(sourcePath)
 		if err != nil {

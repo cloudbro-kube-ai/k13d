@@ -41,14 +41,49 @@ function switchSettingsTab(tab) {
     } else if (tab === 'security') {
         checkTrivyStatus();
         loadTrivyInstructions();
+        loadSecurityPreferences();
     } else if (tab === 'metrics') {
         loadPrometheusSettings();
+    } else if (tab === 'notifications') {
+        loadNotificationSettings();
     } else if (tab === 'general') {
         // Load saved theme
         const saved = localStorage.getItem('k13d_theme') || 'light';
         const sel = document.getElementById('setting-theme');
         if (sel) sel.value = saved;
     }
+}
+
+const SECURITY_PREFERENCES_STORAGE_KEY = 'k13d-security-preferences';
+
+function loadSecurityPreferences() {
+    let prefs = {
+        scan_images: true,
+        min_severity: 'HIGH'
+    };
+
+    try {
+        const saved = localStorage.getItem(SECURITY_PREFERENCES_STORAGE_KEY);
+        if (saved) {
+            prefs = { ...prefs, ...JSON.parse(saved) };
+        }
+    } catch (e) {
+        console.warn('Failed to load security preferences:', e);
+    }
+
+    const scanImages = document.getElementById('security-scan-images');
+    const minSeverity = document.getElementById('security-min-severity');
+    if (scanImages) scanImages.checked = prefs.scan_images !== false;
+    if (minSeverity) minSeverity.value = prefs.min_severity || 'HIGH';
+}
+
+function saveSecurityPreferences() {
+    const prefs = {
+        scan_images: document.getElementById('security-scan-images')?.checked ?? true,
+        min_severity: document.getElementById('security-min-severity')?.value || 'HIGH'
+    };
+    localStorage.setItem(SECURITY_PREFERENCES_STORAGE_KEY, JSON.stringify(prefs));
+    showToast('Security preferences saved');
 }
 
 // Theme / Skin support
@@ -388,7 +423,7 @@ function updateEndpointPlaceholder(setDefaults = true) {
 
     const defaults = {
         'upstage': { placeholder: 'https://api.upstage.ai/v1', hint: '(Default: Upstage Solar API)', model: 'solar-pro2', apiKeyHint: 'up_...' },
-        'openai': { placeholder: 'https://api.openai.com/v1', hint: '(Default: OpenAI API)', model: 'gpt-4', apiKeyHint: 'sk-...' },
+        'openai': { placeholder: 'https://api.openai.com/v1', hint: '(Default: OpenAI API)', model: 'gpt-4o', apiKeyHint: 'sk-...' },
         'ollama': { placeholder: 'http://localhost:11434', hint: '(Required for Ollama)', model: 'gpt-oss:20b', apiKeyHint: '' },
         'gemini': { placeholder: 'https://generativelanguage.googleapis.com/v1beta', hint: '(Default: Gemini API)', model: 'gemini-2.5-flash', apiKeyHint: 'AIza...' },
         'anthropic': { placeholder: 'https://api.anthropic.com', hint: '(Default: Anthropic API)', model: 'claude-3-opus', apiKeyHint: 'sk-ant-...' },
@@ -943,24 +978,57 @@ async function loadRoles() {
     }
 }
 
-async function showCreateRoleModal() {
-    const allFeatures = ['dashboard', 'topology', 'reports', 'metrics', 'helm', 'terminal', 'rbac_viewer', 'network_policy', 'event_timeline', 'ai_assistant', 'security_scanning', 'audit_logs', 'settings_general', 'settings_ai', 'settings_metrics', 'settings_mcp', 'settings_notifications'];
+function closeRoleModal() {
+    document.getElementById('role-editor-modal')?.remove();
+}
 
-    let checkboxes = allFeatures.map(f => `<label style="display:block;margin:4px 0;"><input type="checkbox" value="${f}" checked> ${f.replace(/_/g, ' ')}</label>`).join('');
+function buildRoleFeatureCheckboxes(selectedFeatures = []) {
+    const allFeatures = ['dashboard', 'topology', 'reports', 'metrics', 'helm', 'terminal', 'rbac_viewer', 'network_policy', 'event_timeline', 'ai_assistant', 'security_scanning', 'audit_logs', 'settings_general', 'settings_ai', 'settings_metrics', 'settings_mcp', 'settings_notifications'];
+    const selectAll = selectedFeatures.includes('*');
+    return allFeatures.map(f => {
+        const checked = selectAll || selectedFeatures.includes(f) ? 'checked' : '';
+        return `<label style="display:block;margin:4px 0;"><input type="checkbox" value="${f}" ${checked}> ${f.replace(/_/g, ' ')}</label>`;
+    }).join('');
+}
+
+function showRoleModal(options = {}) {
+    const {
+        title = 'Create Custom Role',
+        name = '',
+        description = '',
+        selectedFeatures = [],
+        submitLabel = 'Create',
+        submitAction = "createRole()"
+    } = options;
+
+    closeRoleModal();
 
     const modal = document.createElement('div');
+    modal.id = 'role-editor-modal';
     modal.className = 'modal-overlay';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
     modal.innerHTML = `<div class="modal-content" style="max-width:500px;max-height:80vh;overflow-y:auto;">
-                <h3>Create Custom Role</h3>
-                <div class="form-group"><label>Role Name</label><input type="text" id="new-role-name" class="form-control" placeholder="e.g., developer"></div>
-                <div class="form-group"><label>Description</label><input type="text" id="new-role-desc" class="form-control" placeholder="e.g., Developer with limited access"></div>
-                <div class="form-group"><label>Allowed Features</label><div id="new-role-features" style="max-height:300px;overflow-y:auto;border:1px solid var(--border-color);padding:8px;border-radius:4px;">${checkboxes}</div></div>
+                <h3>${escapeHtml(title)}</h3>
+                <div class="form-group"><label>Role Name</label><input type="text" id="new-role-name" class="form-control" placeholder="e.g., developer" value="${escapeHtml(name)}" ${name ? 'readonly' : ''}></div>
+                <div class="form-group"><label>Description</label><input type="text" id="new-role-desc" class="form-control" placeholder="e.g., Developer with limited access" value="${escapeHtml(description)}"></div>
+                <div class="form-group"><label>Allowed Features</label><div id="new-role-features" style="max-height:300px;overflow-y:auto;border:1px solid var(--border-color);padding:8px;border-radius:4px;">${buildRoleFeatureCheckboxes(selectedFeatures)}</div></div>
                 <div style="display:flex;gap:8px;margin-top:16px;">
-                    <button class="btn btn-primary" onclick="createRole()">Create</button>
-                    <button class="btn" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                    <button class="btn btn-primary" onclick="${submitAction}">${escapeHtml(submitLabel)}</button>
+                    <button class="btn" onclick="closeRoleModal()">Cancel</button>
                 </div>
             </div>`;
     document.body.appendChild(modal);
+    modal.classList.add('active');
+}
+
+async function showCreateRoleModal() {
+    showRoleModal({
+        title: 'Create Custom Role',
+        selectedFeatures: ['dashboard', 'topology', 'reports', 'metrics', 'helm', 'terminal', 'rbac_viewer', 'network_policy', 'event_timeline', 'ai_assistant', 'security_scanning', 'audit_logs', 'settings_general', 'settings_ai', 'settings_metrics', 'settings_mcp', 'settings_notifications'],
+        submitLabel: 'Create',
+        submitAction: 'createRole()'
+    });
 }
 
 async function createRole() {
@@ -979,7 +1047,7 @@ async function createRole() {
         });
         if (resp.ok) {
             showToast('Role created successfully');
-            document.querySelector('.modal-overlay').remove();
+            closeRoleModal();
             loadRoles();
         } else {
             const err = await resp.text();
@@ -987,6 +1055,50 @@ async function createRole() {
         }
     } catch (e) {
         showToast('Failed to create role', 'error');
+    }
+}
+
+async function editRole(name) {
+    try {
+        const resp = await fetchWithAuth('/api/roles/' + encodeURIComponent(name));
+        if (!resp.ok) {
+            showToast('Failed to load role', 'error');
+            return;
+        }
+        const role = await resp.json();
+        showRoleModal({
+            title: `Edit Role: ${name}`,
+            name,
+            description: role.description || '',
+            selectedFeatures: role.allowed_features || [],
+            submitLabel: 'Save',
+            submitAction: `updateRole(${JSON.stringify(name)})`
+        });
+    } catch (e) {
+        showToast('Failed to load role', 'error');
+    }
+}
+
+async function updateRole(name) {
+    const desc = document.getElementById('new-role-desc').value.trim();
+    const features = [];
+    document.querySelectorAll('#new-role-features input:checked').forEach(cb => features.push(cb.value));
+
+    try {
+        const resp = await fetchWithAuth('/api/roles/' + encodeURIComponent(name), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: desc, allowed_features: features, is_custom: true })
+        });
+        if (resp.ok) {
+            showToast('Role updated successfully');
+            closeRoleModal();
+            loadRoles();
+        } else {
+            showToast(await resp.text(), 'error');
+        }
+    } catch (e) {
+        showToast('Failed to update role', 'error');
     }
 }
 
@@ -1368,7 +1480,7 @@ async function loadSettings() {
             // Set model and endpoint with defaults based on provider
             const defaults = {
                 'upstage': { model: 'solar-pro2', endpoint: 'https://api.upstage.ai/v1' },
-                'openai': { model: 'gpt-4', endpoint: 'https://api.openai.com/v1' },
+                'openai': { model: 'gpt-4o', endpoint: 'https://api.openai.com/v1' },
                 'ollama': { model: 'gpt-oss:20b', endpoint: 'http://localhost:11434' },
                 'gemini': { model: 'gemini-2.5-flash', endpoint: 'https://generativelanguage.googleapis.com/v1beta' },
                 'anthropic': { model: 'claude-3-opus', endpoint: 'https://api.anthropic.com' }
@@ -1418,12 +1530,21 @@ async function loadPrometheusSettings() {
         document.getElementById('prometheus-external-url').value = data.external_url || '';
         document.getElementById('prometheus-collect-k8s').checked = data.collect_k8s_metrics !== false;
         document.getElementById('prometheus-collection-interval').value = data.collection_interval || 60;
+        document.getElementById('prometheus-retention-days').value = data.metrics_retention_days || 30;
 
         updatePrometheusExposeInfo();
         updatePrometheusStatus(data.expose_metrics, data.external_url);
+        updateMetricsStorageInfo();
     } catch (e) {
         console.error('Failed to load Prometheus settings:', e);
     }
+}
+
+function updateMetricsStorageInfo() {
+    const info = document.getElementById('metrics-storage-info');
+    const retention = parseInt(document.getElementById('prometheus-retention-days')?.value || '30', 10);
+    if (!info) return;
+    info.textContent = `Metrics are stored in local SQLite and retained for ${retention} day${retention === 1 ? '' : 's'}.`;
 }
 
 function updatePrometheusExposeInfo() {
@@ -1519,7 +1640,8 @@ async function savePrometheusSettings() {
         username: document.getElementById('prometheus-username').value,
         password: document.getElementById('prometheus-password').value,
         collect_k8s_metrics: document.getElementById('prometheus-collect-k8s').checked,
-        collection_interval: parseInt(document.getElementById('prometheus-collection-interval').value)
+        collection_interval: parseInt(document.getElementById('prometheus-collection-interval').value),
+        metrics_retention_days: parseInt(document.getElementById('prometheus-retention-days').value)
     };
 
     try {
@@ -1536,6 +1658,7 @@ async function savePrometheusSettings() {
         }
         showToast(t('msg_settings_saved') || 'Settings saved');
         updatePrometheusStatus(settings.expose_metrics, settings.external_url);
+        updateMetricsStorageInfo();
     } catch (e) {
         showToast('Failed to save Prometheus settings', 'error');
     }

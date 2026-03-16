@@ -13,12 +13,13 @@ import (
 
 // NotificationConfig represents webhook notification settings (API contract)
 type NotificationConfig struct {
-	Enabled    bool            `json:"enabled"`
-	WebhookURL string          `json:"webhook_url"`
-	Channel    string          `json:"channel,omitempty"`
-	Events     []string        `json:"events"`
-	Provider   string          `json:"provider"`
-	SMTP       *SMTPConfigJSON `json:"smtp,omitempty"`
+	Enabled            bool            `json:"enabled"`
+	WebhookURL         string          `json:"webhook_url"`
+	Channel            string          `json:"channel,omitempty"`
+	Events             []string        `json:"events"`
+	Provider           string          `json:"provider"`
+	SMTP               *SMTPConfigJSON `json:"smtp,omitempty"`
+	PreserveWebhookURL bool            `json:"preserve_webhook_url,omitempty"`
 }
 
 // SMTPConfigJSON is the JSON API contract for SMTP settings
@@ -76,6 +77,10 @@ func (s *Server) handleNotificationConfig(w http.ResponseWriter, r *http.Request
 			return
 		}
 
+		if cfg.PreserveWebhookURL && cfg.Provider != "email" && cfg.WebhookURL == "" {
+			cfg.WebhookURL = s.cfg.Notifications.WebhookURL
+		}
+
 		// Email provider doesn't need webhook URL
 		if cfg.Enabled && cfg.Provider != "email" && cfg.WebhookURL == "" {
 			http.Error(w, "Webhook URL is required when notifications are enabled", http.StatusBadRequest)
@@ -91,6 +96,7 @@ func (s *Server) handleNotificationConfig(w http.ResponseWriter, r *http.Request
 
 		// Update in-memory config
 		notifConfigMu.Lock()
+		cfg.PreserveWebhookURL = false
 		notifConfig = &cfg
 		notifConfigMu.Unlock()
 
