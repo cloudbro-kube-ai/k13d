@@ -307,7 +307,7 @@ _kubectl_k13d_completions() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    opts="-n --namespace -A -web -port --version --completion"
+    opts="-n --namespace -A --web --port --version --completion"
 
     if [[ "${prev}" == "-n" ]] || [[ "${prev}" == "--namespace" ]]; then
         namespaces=$(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
@@ -335,8 +335,8 @@ _kubectl_k13d() {
         '-n[Initial namespace]:namespace:->namespaces'
         '--namespace[Initial namespace]:namespace:->namespaces'
         '-A[Start with all namespaces]'
-        '-web[Start web server mode]'
-        '-port[Web server port]:port:'
+        '--web[Start web server mode]'
+        '--port[Web server port]:port:'
         '--version[Show version information]'
         '--completion[Generate shell completion]:shell:(bash zsh fish)'
     )
