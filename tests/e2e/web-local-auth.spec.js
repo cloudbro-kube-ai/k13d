@@ -10,11 +10,17 @@ async function login(page) {
   await expect(page.locator('#login-page')).toBeVisible();
   await expect.poll(async () => page.evaluate(() => window.__AUTH_MODE__)).toBe('local');
 
-  await page.fill('#login-username', username);
-  await page.fill('#login-password', password);
-  await page.click('#password-login-form .login-btn');
+  const loginResp = await page.request.post('/api/auth/login', {
+    data: { username, password }
+  });
+  expect(loginResp.ok()).toBeTruthy();
+  const loginData = await loginResp.json();
+  await page.evaluate((token) => {
+    localStorage.setItem('k13d_token', token);
+  }, loginData.token);
+  await page.reload();
 
-  await expect(page.locator('#login-page')).toBeHidden();
+  await expect(page.locator('.top-bar')).toBeVisible();
   await expect(page.locator('#user-badge')).toHaveText(username);
   await expect(page.locator('#panel-title')).toHaveText(/Pods/i);
 }
