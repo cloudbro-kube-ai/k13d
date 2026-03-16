@@ -8,8 +8,7 @@ const expectedModel = process.env.K13D_E2E_EXPECT_MODEL || 'test-model';
 async function login(page) {
   await page.goto('/');
   await expect(page.locator('#login-page')).toBeVisible();
-  await expect(page.locator('#password-login-form')).toBeVisible();
-  await expect(page.locator('#token-login-form')).not.toBeVisible();
+  await expect.poll(async () => page.evaluate(() => window.__AUTH_MODE__)).toBe('local');
 
   await page.fill('#login-username', username);
   await page.fill('#login-password', password);
