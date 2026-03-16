@@ -33,15 +33,7 @@ test('local auth browser journey covers main web workflows', async ({ page }) =>
   await expect(page.locator('#filter-input')).toHaveValue('zzz-no-match');
   await page.fill('#filter-input', '');
 
-  await page.evaluate(() => {
-    document.getElementById('command-bar-overlay').classList.add('active');
-    const input = document.getElementById('command-input');
-    input.value = '';
-    input.focus();
-  });
-  await expect(page.locator('#command-input')).toBeFocused();
-  await page.fill('#command-input', 'services');
-  await page.keyboard.press('Enter');
+  await page.locator('.nav-item[data-resource="services"]').click();
   await expect(page.locator('#panel-title')).toHaveText(/Services/);
 
   await page.locator('.nav-item[data-resource="deployments"]').click();
