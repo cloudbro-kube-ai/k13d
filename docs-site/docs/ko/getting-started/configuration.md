@@ -45,6 +45,23 @@ enable_audit: true
 - `models`: 저장된 모델 프로필 목록
 - `active_model`: 현재 선택된 프로필 이름
 
+권장 방식은 `api_key`를 파일에 평문으로 넣지 않고 환경 변수 placeholder를 쓰는 것입니다.
+
+```yaml
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-6
+  endpoint: https://api.anthropic.com
+  api_key: ${ANTHROPIC_API_KEY}
+```
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+./k13d --web --auth-mode local
+```
+
+Anthropic 모델 이름은 길고 자주 바뀔 수 있으므로, 축약형 별칭보다 정확한 model ID를 그대로 쓰는 편이 안전합니다. 현재 ID가 헷갈리면 Anthropic `GET /v1/models` 응답의 `id`를 확인하세요.
+
 ## 실제 적용 파일 확인 방법
 
 Web UI를 시작하면 터미널 로그에 다음 항목이 표시됩니다.
