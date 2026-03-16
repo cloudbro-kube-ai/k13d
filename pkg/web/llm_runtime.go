@@ -17,5 +17,6 @@ func createUsableAIClient(cfg *config.LLMConfig) (*ai.Client, bool, error) {
 		return nil, false, err
 	}
 
-	return client, client.IsReady(), nil
+	ready := client.IsReady()
+	return client, ready, nil
 }
