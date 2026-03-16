@@ -535,6 +535,32 @@ func TestLoadConfigMigratesLegacyMacOSConfigPath(t *testing.T) {
 	}
 }
 
+func TestLoadConfigWithCustomPathDoesNotCopyDefaultConfig(t *testing.T) {
+	homeDir, _ := useDarwinConfigPathsForTest(t)
+
+	defaultPath := filepath.Join(homeDir, ".config", "k13d", "config.yaml")
+	if err := os.MkdirAll(filepath.Dir(defaultPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(defaultPath, []byte("llm:\n  provider: anthropic\n  model: claude-sonnet-4\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	customPath := filepath.Join(t.TempDir(), "custom-config.yaml")
+	t.Setenv("K13D_CONFIG", customPath)
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.LLM.Provider != "upstage" {
+		t.Fatalf("LLM.Provider = %s, want upstage defaults for missing custom config", cfg.LLM.Provider)
+	}
+	if _, err := os.Stat(customPath); !os.IsNotExist(err) {
+		t.Fatalf("custom config path should remain absent until saved, stat err = %v", err)
+	}
+}
+
 func TestLoadAliasesFallsBackToLegacyMacOSConfigDir(t *testing.T) {
 	_, legacyBase := useDarwinConfigPathsForTest(t)
 	legacyPath := filepath.Join(legacyBase, "k13d", "aliases.yaml")

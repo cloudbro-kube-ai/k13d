@@ -181,16 +181,15 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, versionInfo
 	fmt.Printf("  LLM Provider: %s, Model: %s\n", cfg.LLM.Provider, cfg.LLM.Model)
 	fmt.Printf("  Login UI: %s\n", describeLoginUI(authConfig))
 
-	if cfg.LLM.Endpoint != "" {
-		aiClient, err = ai.NewClient(&cfg.LLM)
-		if err != nil {
-			fmt.Printf("  AI client creation failed: %v\n", err)
-			aiClient = nil
-		} else {
-			fmt.Printf("  AI client: Ready\n")
-		}
+	aiClient, ready, err := createUsableAIClient(&cfg.LLM)
+	if err != nil {
+		fmt.Printf("  AI client creation failed: %v\n", err)
+		aiClient = nil
+	} else if ready {
+		fmt.Printf("  AI client: Ready\n")
 	} else {
-		fmt.Printf("  AI client: Not configured\n")
+		aiClient = nil
+		fmt.Printf("  AI client: Not configured (missing endpoint or credentials)\n")
 	}
 
 	k8sClient, err := k8s.NewClient()

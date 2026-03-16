@@ -151,21 +151,30 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 		s.cfg.SyncActiveModelProfileFromLLM()
 
 		// Recreate AI client
-		newClient, err := ai.NewClient(&s.cfg.LLM)
+		newClient, ready, err := createUsableAIClient(&s.cfg.LLM)
 		if err != nil {
 			s.aiMu.Unlock()
 			apiErr := ParseLLMError(err, llmSettings.Provider)
 			WriteError(w, apiErr)
 			return
 		}
-		s.aiClient = newClient
+		if ready {
+			s.aiClient = newClient
+		} else {
+			s.aiClient = nil
+		}
 
 		// Capture values under lock for the response
 		respProvider := s.cfg.LLM.Provider
 		respModel := s.cfg.LLM.Model
-		respEndpoint := s.aiClient.GetEndpoint()
-		respReady := s.aiClient.IsReady()
-		respSupportsTools := s.aiClient.SupportsTools()
+		respEndpoint := s.cfg.LLM.Endpoint
+		respReady := false
+		respSupportsTools := false
+		if newClient != nil {
+			respEndpoint = newClient.GetEndpoint()
+			respReady = newClient.IsReady()
+			respSupportsTools = newClient.SupportsTools()
+		}
 
 		// Save config while still under lock to prevent concurrent mutation
 		saveErr := s.cfg.Save()

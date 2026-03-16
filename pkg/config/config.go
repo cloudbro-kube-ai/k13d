@@ -773,6 +773,9 @@ func ensurePrimaryConfigPath() string {
 	if pathExists(path) {
 		return path
 	}
+	if strings.TrimSpace(os.Getenv("K13D_CONFIG")) != "" {
+		return path
+	}
 
 	legacyPath := resolveConfigReadPath(preferredConfigDir(), "config.yaml")
 	if legacyPath == path || !pathExists(legacyPath) {

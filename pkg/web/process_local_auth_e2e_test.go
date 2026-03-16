@@ -334,6 +334,24 @@ func processE2EEnv(configPath string) []string {
 		if strings.HasPrefix(entry, "K13D_") {
 			continue
 		}
+		key, _, found := strings.Cut(entry, "=")
+		if !found {
+			continue
+		}
+		switch key {
+		case "OPENAI_API_KEY",
+			"UPSTAGE_API_KEY",
+			"ANTHROPIC_API_KEY",
+			"GOOGLE_API_KEY",
+			"AZURE_OPENAI_API_KEY",
+			"AZURE_OPENAI_ENDPOINT",
+			"OLLAMA_HOST",
+			"AWS_ACCESS_KEY_ID",
+			"AWS_SECRET_ACCESS_KEY",
+			"AWS_SESSION_TOKEN",
+			"AWS_REGION":
+			continue
+		}
 		env = append(env, entry)
 	}
 	env = append(env, "K13D_CONFIG="+configPath)
