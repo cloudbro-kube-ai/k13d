@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 	"github.com/cloudbro-kube-ai/k13d/pkg/i18n"
@@ -288,13 +287,17 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Recreate AI client with new model
-		newClient, err := ai.NewClient(&s.cfg.LLM)
+		newClient, ready, err := createUsableAIClient(&s.cfg.LLM)
 		if err != nil {
 			s.aiMu.Unlock()
 			WriteErrorSimple(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create AI client: %v", err))
 			return
 		}
-		s.aiClient = newClient
+		if ready {
+			s.aiClient = newClient
+		} else {
+			s.aiClient = nil
+		}
 
 		s.aiMu.Unlock()
 

@@ -73,7 +73,7 @@ func TestTUIJourney_OperatorWorkflow(t *testing.T) {
 	})
 
 	ctx.Submit("/context").Wait(150 * time.Millisecond)
-	aiText := ctx.app.aiPanel.GetText(false)
+	aiText := ctx.textViewText(ctx.app.aiPanel)
 	for _, want := range []string{"Context Preview", "View: deployments", "Namespace: default"} {
 		if !strings.Contains(aiText, want) {
 			t.Fatalf("AI panel context preview missing %q\n%s", want, aiText)

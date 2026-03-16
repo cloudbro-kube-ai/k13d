@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -217,18 +218,57 @@ func (r *retryProvider) AskNonStreaming(ctx context.Context, prompt string) (str
 	return "", fmt.Errorf("max retries exceeded: %w", lastErr)
 }
 
-// AskWithTools implements ToolProvider interface by delegating to the underlying provider
-// if it supports tool calling. Tool calls have side effects (executing commands), so
-// retrying could cause duplicate executions. We do NOT retry this method.
+// AskWithTools implements ToolProvider interface by delegating to the underlying provider.
+// Tool calls have side effects, so retries are only allowed before any tool execution
+// or streamed output has been emitted to the caller.
 func (r *retryProvider) AskWithTools(ctx context.Context, prompt string, tools []ToolDefinition, callback func(string), toolCallback ToolCallback) error {
 	toolProvider, ok := r.provider.(ToolProvider)
 	if !ok {
 		return fmt.Errorf("underlying provider does not support tool calling")
 	}
 
-	// Do not retry — tool calls have side effects and retrying could
-	// cause duplicate tool executions.
-	return toolProvider.AskWithTools(ctx, prompt, tools, callback, toolCallback)
+	var lastErr error
+	for attempt := 0; attempt < r.config.MaxAttempts; attempt++ {
+		if attempt > 0 {
+			backoff := r.calculateBackoff(attempt)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff):
+			}
+		}
+
+		var streamStarted atomic.Bool
+		var toolExecuted atomic.Bool
+
+		var wrappedCallback func(string)
+		if callback != nil {
+			wrappedCallback = func(chunk string) {
+				streamStarted.Store(true)
+				callback(chunk)
+			}
+		}
+
+		wrappedToolCallback := toolCallback
+		if toolCallback != nil {
+			wrappedToolCallback = func(call ToolCall) ToolResult {
+				toolExecuted.Store(true)
+				return toolCallback(call)
+			}
+		}
+
+		err := toolProvider.AskWithTools(ctx, prompt, tools, wrappedCallback, wrappedToolCallback)
+		if err == nil {
+			return nil
+		}
+		if streamStarted.Load() || toolExecuted.Load() || !isRetryableError(err) {
+			return err
+		}
+
+		lastErr = err
+	}
+
+	return fmt.Errorf("max retries exceeded: %w", lastErr)
 }
 
 // SupportsTools returns true if the underlying provider supports tool calling

@@ -60,6 +60,23 @@ func safeGetTable(app *App) *tview.Table {
 	return app.table
 }
 
+func safeGetCurrentNamespace(app *App) string {
+	app.mx.RLock()
+	defer app.mx.RUnlock()
+	return app.currentNamespace
+}
+
+func waitForNamespace(app *App, expected string, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if safeGetCurrentNamespace(app) == expected {
+			return true
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	return safeGetCurrentNamespace(app) == expected
+}
+
 // Comprehensive E2E tests for TUI functionality.
 // These tests verify real user interactions with the TUI.
 //
@@ -349,12 +366,11 @@ func TestE2ENamespaceSwitching(t *testing.T) {
 
 	t.Run("switch-to-all-namespaces", func(t *testing.T) {
 		screen.InjectKey(tcell.KeyRune, '0', tcell.ModNone)
-		time.Sleep(100 * time.Millisecond)
+		if !waitForNamespace(app, "", 2*time.Second) {
+			t.Fatalf("Expected empty namespace (all), got %q", safeGetCurrentNamespace(app))
+		}
 
-		app.mx.RLock()
-		ns := app.currentNamespace
-		app.mx.RUnlock()
-
+		ns := safeGetCurrentNamespace(app)
 		if ns != "" {
 			t.Errorf("Expected empty namespace (all), got %q", ns)
 		}
@@ -372,15 +388,18 @@ func TestE2ENamespaceSwitching(t *testing.T) {
 
 		// Assuming namespace 1 is "default" in the test setup
 		screen.InjectKey(tcell.KeyRune, '1', tcell.ModNone)
-		time.Sleep(100 * time.Millisecond)
 
-		app.mx.RLock()
-		ns := app.currentNamespace
-		namespaces = app.namespaces
-		app.mx.RUnlock()
+		expected := ""
+		if len(namespaces) > 1 {
+			expected = namespaces[1]
+		}
+		if expected != "" && !waitForNamespace(app, expected, 2*time.Second) {
+			t.Fatalf("Expected namespace %q, got %q", expected, safeGetCurrentNamespace(app))
+		}
 
 		// Verify namespace was switched
 		if len(namespaces) > 1 {
+			ns := safeGetCurrentNamespace(app)
 			expected := namespaces[1]
 			if ns != expected {
 				t.Errorf("Expected namespace %q, got %q", expected, ns)
