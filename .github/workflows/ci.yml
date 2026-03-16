@@ -129,6 +129,7 @@ jobs:
         run: go test -v ./pkg/web -run 'TestProcessE2E_LocalAuthBrowserFlow(_NoConfigFile)?' -count=1
 
   build:
+    if: github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'dev')
     runs-on: ubuntu-latest
     needs: [test, e2e]
     strategy:
@@ -156,6 +157,7 @@ jobs:
         run: go build -ldflags="-w -s" -o k13d-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/kube-ai-dashboard-cli/main.go
 
   docker:
+    if: github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'dev')
     runs-on: ubuntu-latest
     needs: [test, e2e]
     steps:
