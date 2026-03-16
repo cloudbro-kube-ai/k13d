@@ -1,0 +1,40 @@
+name: CD Self-Hosted
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-fingerscore
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, macOS, ARM64, k13d-prod]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.8'
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build frontend bundle
+        run: go run scripts/build-frontend.go
+
+      - name: Build k13d
+        run: |
+          mkdir -p build
+          go build -o build/k13d ./cmd/kube-ai-dashboard-cli
+
+      - name: Deploy on self-hosted macOS
+        run: bash scripts/self_hosted/deploy_macos.sh build/k13d
