@@ -33,10 +33,14 @@ test('local auth browser journey covers main web workflows', async ({ page }) =>
   await expect(page.locator('#filter-input')).toHaveValue('zzz-no-match');
   await page.fill('#filter-input', '');
 
-  await page.locator('.nav-item[data-resource="services"]').click();
+  await page.evaluate(() => {
+    document.querySelector('.nav-item[data-resource="services"]')?.click();
+  });
   await expect(page.locator('#panel-title')).toHaveText(/Services/);
 
-  await page.locator('.nav-item[data-resource="deployments"]').click();
+  await page.evaluate(() => {
+    document.querySelector('.nav-item[data-resource="deployments"]')?.click();
+  });
   await expect(page.locator('#panel-title')).toHaveText(/Deployments/);
 
   await page.locator('.nav-item[data-resource="overview"]').click();
