@@ -2,6 +2,9 @@
 
 k13d integrates an intelligent AI assistant that helps you manage Kubernetes clusters with natural language commands and intelligent analysis.
 
+!!! note "Config path note"
+    This page uses Linux-style `~/.config/k13d/...` examples when showing `config.yaml`. On macOS, the default path is `~/Library/Application Support/k13d/config.yaml`.
+
 ## Overview
 
 The AI assistant provides:

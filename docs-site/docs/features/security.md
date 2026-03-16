@@ -23,7 +23,7 @@ k13d combines authentication, RBAC, audit logging, and AI command safety control
 
 ### `config.yaml`
 
-`~/.config/k13d/config.yaml` is the source of truth for:
+`<XDG config home>/k13d/config.yaml` is the source of truth for:
 
 - LLM settings and saved model profiles
 - MCP servers
@@ -31,6 +31,8 @@ k13d combines authentication, RBAC, audit logging, and AI command safety control
 - Prometheus settings
 - RBAC and JWT settings under `authorization`
 - AI tool approval policy under `authorization.tool_approval`
+
+On macOS, this default path is `~/Library/Application Support/k13d/config.yaml`.
 
 ### Web authentication provider settings
 

@@ -1,6 +1,34 @@
 # Configuration
 
-k13d uses a YAML configuration file located at `~/.config/k13d/config.yaml`.
+k13d stores configuration under the platform XDG config directory. The main file is `config.yaml`.
+
+## Where `config.yaml` Lives
+
+By default, k13d reads:
+
+| Platform | Default path |
+|----------|--------------|
+| Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
+| macOS | `~/Library/Application Support/k13d/config.yaml` |
+| Windows | `%AppData%\\k13d\\config.yaml` |
+
+You can override the path with either:
+
+- `k13d --config /path/to/config.yaml`
+- `K13D_CONFIG=/path/to/config.yaml`
+
+Examples in this page use Linux-style `~/.config/k13d/...` paths for brevity. On macOS, replace that with `~/Library/Application Support/k13d/...`.
+
+### How to verify the active file
+
+When you start Web UI mode, the terminal now prints:
+
+- `Config File`
+- `Config Path Source`
+- `Env Overrides`
+- `LLM Settings`
+
+Use that startup output first if the Web UI seems to be reading a different file than expected.
 
 ## Quick Setup
 
@@ -87,6 +115,8 @@ Use the Web server flags to choose the login mode:
 k13d --web --auth-mode local
 k13d --web --auth-mode token
 ```
+
+`--auth-mode local` shows the username/password login form only. The Kubernetes token input is shown when you use `--auth-mode token`.
 
 `--auth-mode ldap` and `--auth-mode oidc` select those auth paths, but the stock binary does not yet expose every provider-specific LDAP/OIDC field as dedicated CLI flags. The Web UI settings page currently shows runtime auth status and does not persist provider configuration into `config.yaml`.
 
@@ -200,7 +230,13 @@ Embedded LLM support has been removed due to poor quality and maintenance cost.
 
 ## Configuration Files
 
-k13d uses multiple configuration files in `~/.config/k13d/`:
+k13d uses multiple configuration files in the platform config directory:
+
+| Platform | Directory |
+|----------|-----------|
+| Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/` |
+| macOS | `~/Library/Application Support/k13d/` |
+| Windows | `%AppData%\\k13d\\` |
 
 | File | Purpose |
 |------|---------|

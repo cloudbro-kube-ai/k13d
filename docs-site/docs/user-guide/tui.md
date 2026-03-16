@@ -2,6 +2,9 @@
 
 The Terminal User Interface (TUI) provides a k9s-like experience for managing Kubernetes clusters directly from your terminal.
 
+!!! note "Path note"
+    This page uses Linux-style `~/.config/k13d/...` examples in code blocks. On macOS, the default config directory is `~/Library/Application Support/k13d/`.
+
 ## Overview
 
 ```

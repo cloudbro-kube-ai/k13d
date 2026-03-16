@@ -28,6 +28,16 @@ type Config struct {
 	Timezone      string              `yaml:"timezone" json:"timezone"`
 }
 
+// RuntimeSourceInfo describes where runtime configuration came from.
+type RuntimeSourceInfo struct {
+	ConfigPath       string
+	ConfigPathSource string
+	ConfigFileExists bool
+	XDGConfigHome    string
+	EnvOverrides     []string
+	LLMEnvOverrides  []string
+}
+
 // AnonymizationConfig holds settings for data anonymization before LLM calls
 type AnonymizationConfig struct {
 	Enabled bool `yaml:"enabled" json:"enabled"` // Default: false
@@ -233,6 +243,48 @@ func GetConfigPath() string {
 		return path
 	}
 	return filepath.Join(xdg.ConfigHome, "k13d", "config.yaml")
+}
+
+// GetRuntimeSourceInfo returns diagnostic metadata about config loading.
+// It is intended for startup/status output so users can tell which file/path
+// and which environment overrides are affecting the effective runtime config.
+func GetRuntimeSourceInfo() RuntimeSourceInfo {
+	info := RuntimeSourceInfo{
+		ConfigPath:       GetConfigPath(),
+		ConfigPathSource: "xdg default",
+		XDGConfigHome:    os.Getenv("XDG_CONFIG_HOME"),
+	}
+
+	if strings.TrimSpace(os.Getenv("K13D_CONFIG")) != "" {
+		info.ConfigPathSource = "K13D_CONFIG"
+	}
+
+	if _, err := os.Stat(info.ConfigPath); err == nil {
+		info.ConfigFileExists = true
+	}
+
+	for _, key := range []string{
+		"K13D_LLM_PROVIDER",
+		"K13D_LLM_MODEL",
+		"K13D_LLM_ENDPOINT",
+		"K13D_LLM_API_KEY",
+	} {
+		if strings.TrimSpace(os.Getenv(key)) != "" {
+			info.EnvOverrides = append(info.EnvOverrides, key)
+			info.LLMEnvOverrides = append(info.LLMEnvOverrides, key)
+		}
+	}
+
+	for _, key := range []string{
+		"K13D_JWT_SECRET",
+		"K13D_DEFAULT_ROLE",
+	} {
+		if strings.TrimSpace(os.Getenv(key)) != "" {
+			info.EnvOverrides = append(info.EnvOverrides, key)
+		}
+	}
+
+	return info
 }
 
 // GetConfigDir returns the k13d configuration directory

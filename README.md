@@ -131,6 +131,28 @@ If you're evaluating k13d today, focus on:
 
 That's it. Your kubeconfig is auto-detected.
 
+#### Config File Locations
+
+k13d stores `config.yaml` under the platform XDG config directory unless you override it with `--config` or `K13D_CONFIG`.
+
+| Platform | Default config path |
+|----------|---------------------|
+| Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
+| macOS | `~/Library/Application Support/k13d/config.yaml` |
+| Windows | `%AppData%\\k13d\\config.yaml` |
+| Custom | `k13d --config /path/to/config.yaml` or `K13D_CONFIG=/path/to/config.yaml` |
+
+Many examples below use Linux-style `~/.config/k13d/...` paths for brevity. On macOS, the equivalent default directory is `~/Library/Application Support/k13d/`.
+
+When you start Web UI mode, k13d now prints:
+
+- `Config File`
+- `Config Path Source`
+- `Env Overrides`
+- `LLM Settings`
+
+That startup output is the fastest way to confirm which file is actually being used.
+
 ---
 
 ## Why k13d?
@@ -198,6 +220,18 @@ For **Ollama**, choose a model that explicitly supports **tools/function calling
 
 Embedded LLM support has been removed. For local/private inference, use **Ollama** instead.
 
+### Web UI Model Profiles
+
+In **Settings > AI**:
+
+- **Save Settings** updates the active `llm` connection
+- **Add Model Profile** writes a saved entry under `models:` in `config.yaml`
+- **Use** switches that saved profile into the active `llm` connection and updates `active_model`
+
+The **Add Model Profile** form mirrors the same provider list as the main LLM form and opens prefilled from the current provider/model/endpoint so it is easier to save the current connection as a named profile.
+
+Adding a profile does **not** auto-activate it. After creating it, click **Use** if you want that profile to become the active model.
+
 ### Supported AI Providers
 
 | Provider | Models | Notes |
@@ -229,7 +263,7 @@ k13d supports MCP for extending AI capabilities with external tools. Run k13d as
 ./k13d --mcp
 ```
 
-Configure MCP servers in `~/.config/k13d/config.yaml`:
+Configure MCP servers in your active `config.yaml`:
 
 ```yaml
 mcp:
@@ -298,7 +332,13 @@ make build
 
 ## Configuration
 
-k13d uses `~/.config/k13d/config.yaml` for configuration:
+k13d uses `<XDG config home>/k13d/config.yaml` for configuration by default:
+
+| Platform | Default config directory |
+|----------|--------------------------|
+| Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/` |
+| macOS | `~/Library/Application Support/k13d/` |
+| Windows | `%AppData%\\k13d\\` |
 
 | File | Purpose |
 |------|---------|

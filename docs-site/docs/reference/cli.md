@@ -14,6 +14,14 @@ kubectl k13d [flags]
 - one-letter flags: `-n`, `-A`
 - multi-letter flags: `--web`, `--auth-mode`
 
+Default file paths are resolved from the platform XDG config directory:
+
+| Platform | Config path | DB path |
+|----------|-------------|---------|
+| Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` | `${XDG_CONFIG_HOME:-~/.config}/k13d/audit.db` |
+| macOS | `~/Library/Application Support/k13d/config.yaml` | `~/Library/Application Support/k13d/audit.db` |
+| Windows | `%AppData%\\k13d\\config.yaml` | `%AppData%\\k13d\\audit.db` |
+
 ## Modes
 
 | Mode | Example | Description |
@@ -32,7 +40,7 @@ kubectl k13d [flags]
 | `--tui` | `false` | Start TUI mode explicitly |
 | `--mcp` | `false` | Start MCP server mode |
 | `--port` | `8080` | Web server port |
-| `--config` | `~/.config/k13d/config.yaml` | Config file path |
+| `--config` | `<XDG config home>/k13d/config.yaml` | Config file path |
 | `--namespace`, `-n` | current/default | Initial namespace |
 | `--all-namespaces`, `-A` | `false` | Start with all namespaces |
 
@@ -45,11 +53,13 @@ kubectl k13d [flags]
 | `--admin-user` | `admin` in local mode | Default admin username |
 | `--admin-password` | random in local mode | Default admin password |
 
+`--auth-mode local` shows the username/password login form. `--auth-mode token` shows the Kubernetes token form.
+
 ### Storage
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--db-path` | `~/.config/k13d/audit.db` | SQLite database path |
+| `--db-path` | `<XDG config home>/k13d/audit.db` | SQLite database path |
 | `--no-db` | `false` | Disable database-backed persistence |
 | `--storage-info` | `false` | Print storage paths and exit |
 
@@ -123,6 +133,7 @@ These environment variables are read directly by the CLI:
 ## Notes
 
 - `KUBECONFIG` is supported through Kubernetes client-go loading rules.
+- Web UI startup logs print `Config File`, `Config Path Source`, and `Env Overrides`, which is helpful when you are unsure which config file is active.
 - `--auth-mode ldap` and `--auth-mode oidc` select those auth paths, but the stock binary does not yet expose every provider-specific LDAP/OIDC field as first-class CLI flags.
 - Embedded LLM flags were removed. For local inference, use Ollama instead.
 - There is no `--kubeconfig`, `--context`, `--debug`, `--host`, `--tls`, `--password`, `report`, or `bench` CLI in the current binary.

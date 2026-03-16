@@ -2,17 +2,25 @@
 
 Reference for environment variables that `k13d` currently reads.
 
+Default file paths are based on the platform XDG config directory:
+
+| Platform | Default config path |
+|----------|---------------------|
+| Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
+| macOS | `~/Library/Application Support/k13d/config.yaml` |
+| Windows | `%AppData%\\k13d\\config.yaml` |
+
 ## Config & Startup
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `K13D_CONFIG` | Override `config.yaml` path | `~/.config/k13d/config.yaml` |
+| `K13D_CONFIG` | Override `config.yaml` path | `<XDG config home>/k13d/config.yaml` |
 | `K13D_WEB` | Start in Web UI mode | `false` |
 | `K13D_PORT` | Web server port | `8080` |
 | `K13D_NAMESPACE` | Initial namespace | cluster default |
 | `K13D_ALL_NAMESPACES` | Start with all namespaces | `false` |
 | `KUBECONFIG` | Kubeconfig path used by client-go | client-go default |
-| `XDG_CONFIG_HOME` | XDG config base directory | `~/.config` |
+| `XDG_CONFIG_HOME` | XDG config base directory override | platform default |
 
 ## Authentication
 
@@ -30,7 +38,7 @@ Reference for environment variables that `k13d` currently reads.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `K13D_DB_PATH` | SQLite database path | `~/.config/k13d/audit.db` |
+| `K13D_DB_PATH` | SQLite database path | `<XDG config home>/k13d/audit.db` |
 | `K13D_NO_DB` | Disable DB-backed persistence | `false` |
 
 ## Generic LLM Overrides
@@ -110,5 +118,6 @@ k13d --web
 
 - `config.yaml` values support shell-style placeholders such as `${OPENAI_API_KEY}`.
 - Environment variables override values loaded from `config.yaml`.
+- Web UI startup logs print `Config File`, `Config Path Source`, and `Env Overrides`, which is useful when debugging unexpected config values.
 - `K13D_AUTH_MODE=ldap` and `K13D_AUTH_MODE=oidc` select those auth paths, but the stock binary does not yet expose every provider-specific LDAP/OIDC field as environment variables.
 - Variables not listed here are not currently wired into the runtime.

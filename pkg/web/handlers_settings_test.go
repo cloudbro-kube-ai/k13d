@@ -348,6 +348,46 @@ func TestModels_POST_OllamaIncludesWarning(t *testing.T) {
 	}
 }
 
+func TestModels_POST_PersistsProfileToConfig(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	t.Setenv("K13D_CONFIG", configPath)
+
+	s := setupSettingsTestServer(t)
+
+	body := `{"name":"claude-sonnet","provider":"anthropic","model":"claude-sonnet-4-20250514","endpoint":"https://api.anthropic.com","description":"Anthropic Claude Sonnet"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/models", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	s.handleModels(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("POST /api/models: status = %d, want %d body=%s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	loaded, err := config.LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	for _, model := range loaded.Models {
+		if model.Name != "claude-sonnet" {
+			continue
+		}
+		if model.Provider != "anthropic" {
+			t.Fatalf("saved provider = %q, want anthropic", model.Provider)
+		}
+		if model.Model != "claude-sonnet-4-20250514" {
+			t.Fatalf("saved model = %q, want claude-sonnet-4-20250514", model.Model)
+		}
+		if model.Endpoint != "https://api.anthropic.com" {
+			t.Fatalf("saved endpoint = %q, want https://api.anthropic.com", model.Endpoint)
+		}
+		return
+	}
+
+	t.Fatalf("expected saved model profile in %s", configPath)
+}
+
 func TestModels_DELETE_MissingName(t *testing.T) {
 	s := setupSettingsTestServer(t)
 

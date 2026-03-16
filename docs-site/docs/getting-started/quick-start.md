@@ -38,6 +38,7 @@ Before you begin, ensure you have:
     ```
 
     Default username: `admin` — a random password is generated and printed in the terminal on startup.
+    In `--auth-mode local`, the login screen shows the username/password form only. The token form is used with `--auth-mode token`.
 
 ---
 
@@ -93,6 +94,14 @@ The AI will:
 ## Step 4: Configure LLM (Optional)
 
 For the best AI experience, configure an LLM provider:
+
+Default config file path:
+
+- Linux: `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml`
+- macOS: `~/Library/Application Support/k13d/config.yaml`
+- Windows: `%AppData%\\k13d\\config.yaml`
+
+You can override that with `--config /path/to/config.yaml` or `K13D_CONFIG=/path/to/config.yaml`.
 
 === "Upstage Solar (Recommended)"
 

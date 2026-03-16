@@ -5,7 +5,7 @@
 ## 한눈에 보기
 
 - 모델 설정의 단일 source of truth는 `config.yaml` 입니다.
-- 기본 경로는 `~/.config/k13d/config.yaml` 입니다.
+- 기본 경로는 `<XDG config home>/k13d/config.yaml` 입니다.
 - `--config /path/to/config.yaml` 또는 `K13D_CONFIG=/path/to/config.yaml` 으로 경로를 바꿀 수 있습니다.
 - Web UI와 TUI는 모두 이 YAML 파일을 다시 써서 저장합니다.
 - 현재 빌드는 활성 모델 설정의 권위 있는 저장소로 SQLite를 사용하지 않습니다.
@@ -13,7 +13,17 @@
 
 ## Source Of Truth
 
-k13d는 기본적으로 다음 파일에서 모델 설정을 읽습니다.
+k13d는 기본적으로 플랫폼 XDG config 디렉터리 아래의 파일에서 모델 설정을 읽습니다.
+
+| 플랫폼 | 기본 경로 |
+|--------|-----------|
+| Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
+| macOS | `~/Library/Application Support/k13d/config.yaml` |
+| Windows | `%AppData%\\k13d\\config.yaml` |
+
+아래 예시에는 가독성을 위해 Linux 스타일 `~/.config/k13d/...` 경로를 사용합니다. macOS에서는 `~/Library/Application Support/k13d/...` 로 보면 됩니다.
+
+기본 파일은 다음과 같습니다.
 
 ```text
 ~/.config/k13d/config.yaml
@@ -32,6 +42,8 @@ export K13D_CONFIG=/path/to/config.yaml
 ```
 
 저장할 때는 상위 디렉터리를 자동으로 만들고, 파일 권한 `0600` 으로 씁니다.
+
+또한 Web UI 모드로 시작하면 터미널에 `Config File`, `Config Path Source`, `Env Overrides`가 함께 출력됩니다. Web UI가 다른 파일을 읽는 것처럼 보일 때는 이 로그를 먼저 확인하는 것이 가장 빠릅니다.
 
 !!! note "SQLite는 현재 활성 설정의 source가 아닙니다"
     k13d는 `web_settings`, `model_profiles` 같은 SQLite 테이블을 만들 수 있지만, 현재 Web UI/TUI의 실제 LLM 설정은 `config.yaml`에서 읽습니다. SQLite 값이 런타임 LLM 설정을 덮어쓰지는 않습니다.

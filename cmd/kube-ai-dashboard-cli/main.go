@@ -69,7 +69,7 @@ func main() {
 	tuiMode := flag.Bool("tui", false, "Start TUI mode (default when no mode specified)")
 	mcpMode := flag.Bool("mcp", false, "Start MCP server mode (stdio transport)")
 	webPort := flag.Int("port", envIntDefault("K13D_PORT", 8080), "Web server port (used with --web)")
-	configPath := flag.String("config", envDefault("K13D_CONFIG", ""), "Config file path (default: ~/.config/k13d/config.yaml)")
+	configPath := flag.String("config", envDefault("K13D_CONFIG", ""), "Config file path (default: platform XDG config dir + /k13d/config.yaml)")
 
 	// Namespace flags (k9s compatible)
 	namespace := flag.String("namespace", envDefault("K13D_NAMESPACE", ""), "Initial namespace (use 'all' for all namespaces)")
@@ -88,7 +88,7 @@ func main() {
 	adminPass := flag.String("admin-password", envDefault("K13D_PASSWORD", ""), "Default admin password for local auth mode")
 
 	// Storage flags
-	dbPath := flag.String("db-path", envDefault("K13D_DB_PATH", ""), "SQLite database path (default: ~/.config/k13d/audit.db)")
+	dbPath := flag.String("db-path", envDefault("K13D_DB_PATH", ""), "SQLite database path (default: platform XDG config dir + /k13d/audit.db)")
 	disableDB := flag.Bool("no-db", envBoolDefault("K13D_NO_DB", false), "Disable database persistence entirely")
 	showStorageInfo := flag.Bool("storage-info", false, "Show storage configuration and data locations")
 

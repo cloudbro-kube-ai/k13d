@@ -5,7 +5,7 @@ This page explains how k13d stores AI model settings, how the **Web UI** and **T
 ## Short Version
 
 - The single source of truth for model configuration is `config.yaml`.
-- The default path is `~/.config/k13d/config.yaml`.
+- The default path is `<XDG config home>/k13d/config.yaml`.
 - You can override that path with `--config /path/to/config.yaml` or `K13D_CONFIG=/path/to/config.yaml`.
 - Web UI and TUI both save by rewriting that YAML file.
 - The current build does **not** use SQLite as the authoritative source for active model settings.
@@ -13,7 +13,17 @@ This page explains how k13d stores AI model settings, how the **Web UI** and **T
 
 ## Source Of Truth
 
-k13d loads model configuration from:
+k13d loads model configuration from the platform XDG config directory:
+
+| Platform | Default path |
+|----------|--------------|
+| Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
+| macOS | `~/Library/Application Support/k13d/config.yaml` |
+| Windows | `%AppData%\\k13d\\config.yaml` |
+
+Examples below use Linux-style `~/.config/k13d/...` paths for readability. On macOS, replace that with `~/Library/Application Support/k13d/...`.
+
+The default file is:
 
 ```text
 ~/.config/k13d/config.yaml
@@ -32,6 +42,8 @@ export K13D_CONFIG=/path/to/config.yaml
 ```
 
 When k13d saves configuration, it creates the parent directory if needed and writes the file with mode `0600`.
+
+When you start Web UI mode, the terminal also prints `Config File`, `Config Path Source`, and `Env Overrides`. Check those lines first if the Web UI looks out of sync with the file you edited.
 
 !!! note "SQLite is not the active config source"
     k13d creates SQLite tables such as `web_settings` and `model_profiles`, but current Web UI and TUI model configuration is still read from `config.yaml`. Those tables do not override the runtime LLM settings in the current build.
@@ -170,6 +182,8 @@ Path:
 ```text
 Settings -> AI -> Add Model Profile
 ```
+
+The form uses the same provider list as the main LLM settings form and is prefilled from the current provider, model, and endpoint to make profile creation less error-prone.
 
 This writes a new entry into `models[]`.
 

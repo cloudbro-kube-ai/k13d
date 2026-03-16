@@ -351,6 +351,85 @@ func TestGetConfigPathUsesEnvOverride(t *testing.T) {
 	}
 }
 
+func TestGetRuntimeSourceInfo_ReportsEnvAndFileStatus(t *testing.T) {
+	customPath := filepath.Join(t.TempDir(), "custom-config.yaml")
+	if err := os.WriteFile(customPath, []byte("llm:\n  provider: openai\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	t.Setenv("K13D_CONFIG", customPath)
+	t.Setenv("K13D_LLM_PROVIDER", "anthropic")
+	t.Setenv("K13D_LLM_MODEL", "claude-sonnet")
+	t.Setenv("K13D_LLM_API_KEY", "redacted")
+	t.Setenv("K13D_DEFAULT_ROLE", "viewer")
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(t.TempDir(), "xdg-home"))
+
+	info := GetRuntimeSourceInfo()
+	if info.ConfigPath != customPath {
+		t.Fatalf("ConfigPath = %s, want %s", info.ConfigPath, customPath)
+	}
+	if info.ConfigPathSource != "K13D_CONFIG" {
+		t.Fatalf("ConfigPathSource = %s, want K13D_CONFIG", info.ConfigPathSource)
+	}
+	if !info.ConfigFileExists {
+		t.Fatal("ConfigFileExists = false, want true")
+	}
+	if info.XDGConfigHome == "" {
+		t.Fatal("XDGConfigHome should be reported when set")
+	}
+
+	wantOverrides := []string{
+		"K13D_LLM_PROVIDER",
+		"K13D_LLM_MODEL",
+		"K13D_LLM_API_KEY",
+		"K13D_DEFAULT_ROLE",
+	}
+	if len(info.EnvOverrides) != len(wantOverrides) {
+		t.Fatalf("len(EnvOverrides) = %d, want %d (%v)", len(info.EnvOverrides), len(wantOverrides), info.EnvOverrides)
+	}
+	for i, want := range wantOverrides {
+		if info.EnvOverrides[i] != want {
+			t.Fatalf("EnvOverrides[%d] = %s, want %s", i, info.EnvOverrides[i], want)
+		}
+	}
+	wantLLMOverrides := []string{
+		"K13D_LLM_PROVIDER",
+		"K13D_LLM_MODEL",
+		"K13D_LLM_API_KEY",
+	}
+	if len(info.LLMEnvOverrides) != len(wantLLMOverrides) {
+		t.Fatalf("len(LLMEnvOverrides) = %d, want %d (%v)", len(info.LLMEnvOverrides), len(wantLLMOverrides), info.LLMEnvOverrides)
+	}
+	for i, want := range wantLLMOverrides {
+		if info.LLMEnvOverrides[i] != want {
+			t.Fatalf("LLMEnvOverrides[%d] = %s, want %s", i, info.LLMEnvOverrides[i], want)
+		}
+	}
+}
+
+func TestGetRuntimeSourceInfo_MissingConfigFile(t *testing.T) {
+	customPath := filepath.Join(t.TempDir(), "missing-config.yaml")
+	t.Setenv("K13D_CONFIG", customPath)
+	t.Setenv("K13D_LLM_PROVIDER", "")
+	t.Setenv("K13D_LLM_MODEL", "")
+	t.Setenv("K13D_LLM_ENDPOINT", "")
+	t.Setenv("K13D_LLM_API_KEY", "")
+	t.Setenv("K13D_JWT_SECRET", "")
+	t.Setenv("K13D_DEFAULT_ROLE", "")
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	info := GetRuntimeSourceInfo()
+	if info.ConfigFileExists {
+		t.Fatal("ConfigFileExists = true, want false")
+	}
+	if len(info.EnvOverrides) != 0 {
+		t.Fatalf("EnvOverrides = %v, want empty", info.EnvOverrides)
+	}
+	if len(info.LLMEnvOverrides) != 0 {
+		t.Fatalf("LLMEnvOverrides = %v, want empty", info.LLMEnvOverrides)
+	}
+}
+
 func TestGetConfigDir(t *testing.T) {
 	dir, err := GetConfigDir()
 	if err != nil {

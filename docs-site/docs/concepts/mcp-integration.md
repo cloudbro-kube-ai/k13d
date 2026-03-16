@@ -2,6 +2,9 @@
 
 This guide explains how MCP works in k13d and how to extend AI capabilities with custom tools.
 
+!!! note "Config path note"
+    When this guide refers to `config.yaml`, the default path is platform-specific: Linux uses `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml`, while macOS uses `~/Library/Application Support/k13d/config.yaml`.
+
 ## Table of Contents
 
 - [What is MCP?](#what-is-mcp)

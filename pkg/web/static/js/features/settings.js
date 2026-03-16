@@ -644,6 +644,8 @@ async function deleteModel(name) {
 }
 
 function showAddModelForm() {
+    syncNewModelProviderOptions();
+    prefillNewModelFormFromCurrentLLM();
     document.getElementById('add-model-form').style.display = 'block';
     updateNewModelToolSupportWarning();
 }
@@ -658,6 +660,38 @@ function hideAddModelForm() {
     document.getElementById('new-model-description').value = '';
     document.getElementById('new-model-skip-tls').checked = false;
     updateNewModelToolSupportWarning();
+}
+
+function syncNewModelProviderOptions() {
+    const currentProviderSelect = document.getElementById('setting-llm-provider');
+    const newProviderSelect = document.getElementById('new-model-provider');
+    if (!currentProviderSelect || !newProviderSelect) return;
+
+    newProviderSelect.innerHTML = currentProviderSelect.innerHTML;
+}
+
+function prefillNewModelFormFromCurrentLLM() {
+    const currentProvider = document.getElementById('setting-llm-provider');
+    const currentModel = document.getElementById('setting-llm-model');
+    const currentEndpoint = document.getElementById('setting-llm-endpoint');
+    const currentAPIKey = document.getElementById('setting-llm-apikey');
+    const newProvider = document.getElementById('new-model-provider');
+    const newModel = document.getElementById('new-model-model');
+    const newEndpoint = document.getElementById('new-model-endpoint');
+    const newAPIKey = document.getElementById('new-model-apikey');
+
+    if (currentProvider && newProvider) {
+        newProvider.value = currentProvider.value;
+    }
+    if (currentModel && newModel) {
+        newModel.value = currentModel.value || '';
+    }
+    if (currentEndpoint && newEndpoint) {
+        newEndpoint.value = currentEndpoint.value || '';
+    }
+    if (currentAPIKey && newAPIKey) {
+        newAPIKey.value = currentAPIKey.value || '';
+    }
 }
 
 async function addModelProfile() {
@@ -1359,6 +1393,7 @@ async function loadSettings() {
         }
         // Update endpoint placeholder/hints without overwriting loaded values
         updateEndpointPlaceholder(false);
+        syncNewModelProviderOptions();
         updateLLMToolSupportWarning();
         // Load local settings
         updateSettingsUI();

@@ -2,6 +2,9 @@
 
 Complete feature reference for k13d Terminal User Interface (TUI).
 
+!!! note "Path note"
+    This page uses Linux-style `~/.config/k13d/...` examples in code blocks. On macOS, the default config directory is `~/Library/Application Support/k13d/`.
+
 ---
 
 ## Dashboard Overview
