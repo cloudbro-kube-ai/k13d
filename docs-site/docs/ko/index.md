@@ -243,9 +243,9 @@ k13d/
 
 | 주제 | 링크 |
 |------|------|
-| Web UI 기능 상세 | [Web UI Features](../features/web-ui.md) |
-| TUI 기능 상세 | [TUI Features](../features/tui.md) |
-| AI Assistant | [AI Guide](../features/ai-assistant.md) |
-| Configuration | [Config Guide](../getting-started/configuration.md) |
-| Docker 배포 | [Docker Guide](../deployment/docker.md) |
-| Kubernetes 배포 | [K8s Guide](../deployment/kubernetes.md) |
+| Web UI 기능 상세 | [Web UI Features](features/web-ui.md) |
+| TUI 기능 상세 | [TUI Features](features/tui.md) |
+| AI Assistant | [AI Guide](features/ai-assistant.md) |
+| Configuration | [Config Guide](getting-started/configuration.md) |
+| Docker 배포 | [Docker Guide](deployment/docker.md) |
+| Kubernetes 배포 | [K8s Guide](deployment/kubernetes.md) |

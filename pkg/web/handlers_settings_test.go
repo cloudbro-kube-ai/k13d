@@ -172,6 +172,52 @@ func TestSettings_PUT_InvalidBody(t *testing.T) {
 	}
 }
 
+func TestSettings_PUT_PreservesHiddenFieldsWhenOmitted(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	t.Setenv("K13D_CONFIG", configPath)
+
+	s := setupSettingsTestServer(t)
+	s.cfg.BeginnerMode = true
+	s.cfg.EnableAudit = true
+	s.cfg.Timezone = "Asia/Seoul"
+
+	req := httptest.NewRequest(http.MethodPut, "/api/settings", strings.NewReader(`{"language":"ko","log_level":"debug","timezone":"UTC"}`))
+	w := httptest.NewRecorder()
+
+	s.handleSettings(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("PUT /api/settings: status = %d, want %d body=%s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	if s.cfg.Language != "ko" {
+		t.Fatalf("Language = %q, want ko", s.cfg.Language)
+	}
+	if s.cfg.LogLevel != "debug" {
+		t.Fatalf("LogLevel = %q, want debug", s.cfg.LogLevel)
+	}
+	if s.cfg.Timezone != "UTC" {
+		t.Fatalf("Timezone = %q, want UTC", s.cfg.Timezone)
+	}
+	if !s.cfg.BeginnerMode {
+		t.Fatal("BeginnerMode should remain true when omitted from request")
+	}
+	if !s.cfg.EnableAudit {
+		t.Fatal("EnableAudit should remain true when omitted from request")
+	}
+
+	loaded, err := config.LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if !loaded.BeginnerMode {
+		t.Fatal("saved BeginnerMode should remain true")
+	}
+	if !loaded.EnableAudit {
+		t.Fatal("saved EnableAudit should remain true")
+	}
+}
+
 func TestSettings_ContentType(t *testing.T) {
 	s := setupSettingsTestServer(t)
 

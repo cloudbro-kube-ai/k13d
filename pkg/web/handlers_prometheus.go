@@ -139,21 +139,23 @@ func (s *Server) handlePrometheusSettings(w http.ResponseWriter, r *http.Request
 	switch r.Method {
 	case http.MethodGet:
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"expose_metrics":      s.cfg.Prometheus.ExposeMetrics,
-			"external_url":        s.cfg.Prometheus.ExternalURL,
-			"has_auth":            s.cfg.Prometheus.Username != "",
-			"collect_k8s_metrics": s.cfg.Prometheus.CollectK8sMetrics,
-			"collection_interval": s.cfg.Prometheus.CollectionInterval,
+			"expose_metrics":         s.cfg.Prometheus.ExposeMetrics,
+			"external_url":           s.cfg.Prometheus.ExternalURL,
+			"has_auth":               s.cfg.Prometheus.Username != "",
+			"collect_k8s_metrics":    s.cfg.Prometheus.CollectK8sMetrics,
+			"collection_interval":    s.cfg.Prometheus.CollectionInterval,
+			"metrics_retention_days": s.cfg.Storage.MetricsRetentionDays,
 		})
 
 	case http.MethodPut:
 		var settings struct {
-			ExposeMetrics      bool   `json:"expose_metrics"`
-			ExternalURL        string `json:"external_url"`
-			Username           string `json:"username"`
-			Password           string `json:"password"`
-			CollectK8sMetrics  bool   `json:"collect_k8s_metrics"`
-			CollectionInterval int    `json:"collection_interval"`
+			ExposeMetrics        bool   `json:"expose_metrics"`
+			ExternalURL          string `json:"external_url"`
+			Username             string `json:"username"`
+			Password             string `json:"password"`
+			CollectK8sMetrics    bool   `json:"collect_k8s_metrics"`
+			CollectionInterval   int    `json:"collection_interval"`
+			MetricsRetentionDays int    `json:"metrics_retention_days"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
@@ -172,6 +174,9 @@ func (s *Server) handlePrometheusSettings(w http.ResponseWriter, r *http.Request
 		s.cfg.Prometheus.CollectK8sMetrics = settings.CollectK8sMetrics
 		if settings.CollectionInterval > 0 {
 			s.cfg.Prometheus.CollectionInterval = settings.CollectionInterval
+		}
+		if settings.MetricsRetentionDays > 0 {
+			s.cfg.Storage.MetricsRetentionDays = settings.MetricsRetentionDays
 		}
 
 		if err := s.cfg.Save(); err != nil {

@@ -95,11 +95,11 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodPut:
 		var newSettings struct {
-			Language     string `json:"language"`
-			BeginnerMode bool   `json:"beginner_mode"`
-			EnableAudit  bool   `json:"enable_audit"`
-			LogLevel     string `json:"log_level"`
-			Timezone     string `json:"timezone"`
+			Language     *string `json:"language"`
+			BeginnerMode *bool   `json:"beginner_mode"`
+			EnableAudit  *bool   `json:"enable_audit"`
+			LogLevel     *string `json:"log_level"`
+			Timezone     *string `json:"timezone"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&newSettings); err != nil {
@@ -109,17 +109,27 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 		// Update settings (protected by mutex for concurrent access)
 		s.aiMu.Lock()
-		s.cfg.Language = newSettings.Language
-		s.cfg.BeginnerMode = newSettings.BeginnerMode
-		s.cfg.EnableAudit = newSettings.EnableAudit
-		s.cfg.LogLevel = newSettings.LogLevel
-		if newSettings.Timezone != "" {
-			s.cfg.Timezone = newSettings.Timezone
+		if newSettings.Language != nil {
+			s.cfg.Language = *newSettings.Language
+		}
+		if newSettings.BeginnerMode != nil {
+			s.cfg.BeginnerMode = *newSettings.BeginnerMode
+		}
+		if newSettings.EnableAudit != nil {
+			s.cfg.EnableAudit = *newSettings.EnableAudit
+		}
+		if newSettings.LogLevel != nil {
+			s.cfg.LogLevel = *newSettings.LogLevel
+		}
+		if newSettings.Timezone != nil && *newSettings.Timezone != "" {
+			s.cfg.Timezone = *newSettings.Timezone
 		}
 		s.aiMu.Unlock()
 
 		// Apply language change to i18n system
-		i18n.SetLanguage(newSettings.Language)
+		if newSettings.Language != nil && *newSettings.Language != "" {
+			i18n.SetLanguage(*newSettings.Language)
+		}
 
 		// Save to YAML
 		if err := s.cfg.Save(); err != nil {
@@ -133,7 +143,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			User:     username,
 			Action:   "update_settings",
 			Resource: "settings",
-			Details:  fmt.Sprintf("Settings updated (timezone: %s)", newSettings.Timezone),
+			Details:  fmt.Sprintf("Settings updated (timezone: %s)", s.cfg.Timezone),
 		})
 
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "saved"})

@@ -171,6 +171,17 @@ The Web UI saves active LLM settings back to `config.yaml` immediately and can a
 
 For the full storage model, including how `llm`, `models[]`, and `active_model` change, see [Model Settings & Storage](../ai-llm/model-settings-storage.md).
 
+### AI Input History
+
+The AI input box supports shell-like history recall:
+
+- ++arrow-up++ loads the previous submitted prompt
+- ++arrow-down++ moves forward again
+- on a single-line draft, history works even when the cursor is at the end of the line
+- in a multi-line draft, history only takes over from the first line on ++arrow-up++ and the last line on ++arrow-down++, so normal caret movement still works inside the textarea
+
+The recent prompt history is stored in browser `localStorage` under `k13d_query_history`, so it survives reloads in the same browser profile.
+
 ### MCP Servers
 
 Settings → AI → MCP Servers
