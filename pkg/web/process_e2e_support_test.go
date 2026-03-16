@@ -91,7 +91,7 @@ func startProcessLocalAuthE2EServerWithOptions(t *testing.T, opts processLocalAu
 	adminUser := "e2e-admin"
 	adminPass := "e2e-password-123"
 
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := processE2ECommandContext(t)
 	t.Cleanup(cancel)
 
 	cmd := exec.CommandContext(ctx, binaryPath,
@@ -141,6 +141,21 @@ func startProcessLocalAuthE2EServerWithOptions(t *testing.T, opts processLocalAu
 	}
 
 	return server
+}
+
+func processE2ECommandContext(t *testing.T) (context.Context, context.CancelFunc) {
+	t.Helper()
+
+	if deadline, ok := t.Deadline(); ok {
+		// Leave a small buffer so cleanup can still stop the child process cleanly
+		// before the testing framework tears the test down.
+		buffer := 15 * time.Second
+		if boundedDeadline := deadline.Add(-buffer); time.Now().Before(boundedDeadline) {
+			return context.WithDeadline(context.Background(), boundedDeadline)
+		}
+	}
+
+	return context.WithCancel(context.Background())
 }
 
 func (s *processLocalAuthE2EServer) Close(t *testing.T) {

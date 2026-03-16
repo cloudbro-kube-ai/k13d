@@ -18,11 +18,12 @@ func TestProcessE2E_LocalAuthBrowserFlow(t *testing.T) {
 	}
 
 	requireProcessE2EClusterAccess(t)
+	playwrightDir := prepareLocalAuthBrowserFlow(t)
 
 	server := startProcessLocalAuthE2EServer(t)
 	defer server.Close(t)
 
-	runLocalAuthBrowserFlow(t, server)
+	runLocalAuthBrowserFlow(t, server, playwrightDir)
 }
 
 func TestProcessE2E_LocalAuthBrowserFlow_NoConfigFile(t *testing.T) {
@@ -34,18 +35,25 @@ func TestProcessE2E_LocalAuthBrowserFlow_NoConfigFile(t *testing.T) {
 	}
 
 	requireProcessE2EClusterAccess(t)
+	playwrightDir := prepareLocalAuthBrowserFlow(t)
 
 	server := startProcessLocalAuthE2EServerWithoutConfig(t)
 	defer server.Close(t)
 
-	runLocalAuthBrowserFlow(t, server)
+	runLocalAuthBrowserFlow(t, server, playwrightDir)
 }
 
-func runLocalAuthBrowserFlow(t *testing.T, server *processLocalAuthE2EServer) {
+func prepareLocalAuthBrowserFlow(t *testing.T) string {
 	t.Helper()
 
-	playwrightDir := setupPlaywrightWorkspace(t, server.repoRoot)
+	repoRoot := processE2ERepoRoot(t)
+	playwrightDir := setupPlaywrightWorkspace(t, repoRoot)
 	ensurePlaywrightChromium(t, playwrightDir)
+	return playwrightDir
+}
+
+func runLocalAuthBrowserFlow(t *testing.T, server *processLocalAuthE2EServer, playwrightDir string) {
+	t.Helper()
 
 	cmd := exec.Command("npx", "playwright", "test", "web-local-auth.spec.js", "web-settings.spec.js", "--config=playwright.config.cjs", "--workers=1", "--reporter=line")
 	cmd.Dir = playwrightDir
