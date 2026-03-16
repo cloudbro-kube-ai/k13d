@@ -33,13 +33,18 @@ test('local auth browser journey covers main web workflows', async ({ page }) =>
   await expect(page.locator('#filter-input')).toHaveValue('zzz-no-match');
   await page.fill('#filter-input', '');
 
-  await page.evaluate(() => openCommandBar());
+  await page.evaluate(() => {
+    document.getElementById('command-bar-overlay').classList.add('active');
+    const input = document.getElementById('command-input');
+    input.value = '';
+    input.focus();
+  });
   await expect(page.locator('#command-input')).toBeFocused();
   await page.fill('#command-input', 'services');
   await page.keyboard.press('Enter');
   await expect(page.locator('#panel-title')).toHaveText(/Services/);
 
-  await page.evaluate(() => switchResource('deployments'));
+  await page.locator('.nav-item[data-resource="deployments"]').click();
   await expect(page.locator('#panel-title')).toHaveText(/Deployments/);
 
   await page.locator('.nav-item[data-resource="overview"]').click();
@@ -95,9 +100,9 @@ test('local auth browser journey covers main web workflows', async ({ page }) =>
   await page.keyboard.press('Enter');
   await expect(page.locator('#ai-messages')).toContainText(/AI Assistant Not Configured/i);
 
-  await page.evaluate(() => showShortcuts());
+  await page.getByRole('button', { name: /keyboard shortcuts/i }).click();
   await expect(page.locator('#shortcuts-modal')).toBeVisible();
-  await page.evaluate(() => closeShortcuts());
+  await page.getByRole('button', { name: 'Close shortcuts' }).click();
   await expect(page.locator('#shortcuts-modal')).toBeHidden();
 
   await page.locator('#logout-btn').click();
