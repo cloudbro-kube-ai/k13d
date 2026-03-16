@@ -107,10 +107,10 @@ You can override that with `--config /path/to/config.yaml` or `K13D_CONFIG=/path
 
     ```yaml title="~/.config/k13d/config.yaml"
     llm:
-      provider: solar
+      provider: upstage
       model: solar-pro2
       endpoint: https://api.upstage.ai/v1
-      api_key: your-upstage-api-key
+      api_key: ${UPSTAGE_API_KEY}
     ```
 
 === "OpenAI"
@@ -118,8 +118,9 @@ You can override that with `--config /path/to/config.yaml` or `K13D_CONFIG=/path
     ```yaml title="~/.config/k13d/config.yaml"
     llm:
       provider: openai
-      model: gpt-4
-      api_key: your-openai-api-key
+      model: gpt-4o
+      endpoint: https://api.openai.com/v1
+      api_key: ${OPENAI_API_KEY}
     ```
 
 === "Ollama (Local)"
@@ -137,6 +138,8 @@ You can override that with `--config /path/to/config.yaml` or `K13D_CONFIG=/path
     ```
 
     Use an Ollama model that explicitly supports **tools/function calling**. Text-only Ollama models may connect, but the k13d AI Assistant will not work correctly.
+
+The file is only created when you first save settings if it does not already exist. To verify the active path at startup, check the startup log lines `Config File`, `Config Path Source`, `Env Overrides`, and `LLM Settings`.
 
 ---
 

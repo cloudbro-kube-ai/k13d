@@ -19,6 +19,67 @@ You can override the path with either:
 
 On macOS, older installs may still have `~/Library/Application Support/k13d/config.yaml`. Current builds copy that legacy file to `~/.config/k13d/config.yaml` the first time they load it.
 
+## Resolution Order
+
+k13d resolves the active config file in this order:
+
+1. `--config /path/to/config.yaml`
+2. `K13D_CONFIG=/path/to/config.yaml`
+3. `XDG_CONFIG_HOME=/custom/config-home` -> `$XDG_CONFIG_HOME/k13d/config.yaml`
+4. macOS default `~/.config/k13d/config.yaml`
+5. platform XDG/AppData default
+
+Important details:
+
+- The CLI flag `--config` is applied by exporting `K13D_CONFIG` before `LoadConfig()` runs.
+- If you pass `--config`, startup logs usually show `Config Path Source: K13D_CONFIG`.
+- `XDG_CONFIG_HOME` changes the base config directory, but only when `K13D_CONFIG` is not explicitly set.
+- The legacy macOS copy from `~/Library/Application Support/k13d/config.yaml` only happens when you are using the default path and the new file does not already exist.
+
+## What Happens When `config.yaml` Is Missing
+
+If the selected `config.yaml` path does not exist:
+
+- k13d starts with built-in defaults from `NewDefaultConfig()`
+- environment overrides such as `K13D_LLM_PROVIDER` are still applied
+- the missing file is **not** created just by starting the app
+- the file is created later when Web UI or TUI saves settings, or any code path calls `Save()`
+
+This is important for CI and E2E:
+
+- `k13d --config /tmp/missing.yaml --web ...` is expected to boot successfully
+- the file should remain absent until the first successful save
+- a missing explicit custom path does **not** trigger the default macOS legacy copy
+
+## Config Directory Layout
+
+The main config file is only part of the runtime state. A typical config directory looks like this:
+
+```text
+~/.config/k13d/
+├── config.yaml
+├── aliases.yaml
+├── hotkeys.yaml
+├── plugins.yaml
+├── views.yaml
+├── skins/
+├── audit.db
+└── audit.log
+```
+
+| File | Purpose |
+|------|---------|
+| `config.yaml` | Main runtime configuration |
+| `aliases.yaml` | TUI resource aliases |
+| `hotkeys.yaml` | TUI key bindings |
+| `plugins.yaml` | TUI plugins |
+| `views.yaml` | TUI view/sort defaults |
+| `skins/` | TUI theme overrides |
+| `audit.db` | Default SQLite audit/metrics/session database |
+| `audit.log` | Plain-text audit log when enabled |
+
+AI chat sessions are stored under the data directory, usually `<XDG data home>/k13d/sessions`, not next to `config.yaml`.
+
 ### How to verify the active file
 
 When you start Web UI mode, the terminal now prints:
@@ -29,6 +90,12 @@ When you start Web UI mode, the terminal now prints:
 - `LLM Settings`
 
 Use that startup output first if the Web UI seems to be reading a different file than expected.
+
+You can also inspect the effective storage paths without launching the full UI:
+
+```bash
+k13d --storage-info
+```
 
 ## Quick Setup
 
@@ -53,6 +120,8 @@ enable_audit: true
 
 `config.yaml` supports environment placeholders such as `${UPSTAGE_API_KEY}` and `${OPENAI_API_KEY}`.
 
+When k13d reads the file, it expands `${ENV_VAR}` placeholders before runtime use. If you later save from Web UI or TUI, the rewritten file may contain resolved literal values instead of the original placeholder strings. If you need placeholders to remain untouched, keep a template copy outside the app and avoid in-app saves for those secret-bearing fields.
+
 ## Scope
 
 `config.yaml` currently controls:
@@ -66,6 +135,30 @@ enable_audit: true
 `config.yaml` does **not** currently persist LDAP or OIDC provider settings from the Web UI. Those provider settings remain startup-configured in the current build.
 
 For the exact Web UI / TUI save behavior, field ownership, and file write rules, see [Model Settings & Storage](../ai-llm/model-settings-storage.md).
+
+## Save Behavior
+
+When Web UI or TUI saves settings:
+
+1. k13d updates the in-memory config
+2. it recreates the runtime AI client when LLM settings changed
+3. it creates the parent directory if needed
+4. it rewrites the active `config.yaml`
+5. it writes the file with mode `0600`
+
+That means:
+
+- Web UI and TUI share the same file
+- saving in one interface is immediately visible in the other
+- there is no separate SQLite source of truth for active LLM settings in the current build
+
+Typical save paths:
+
+- Web UI `Settings -> AI -> Save Settings` updates `llm` and syncs the active profile if present
+- Web UI `Add Model Profile` appends or updates `models[]`
+- Web UI `Use` updates `active_model` and copies the selected profile into `llm`
+- TUI `Shift+O` saves the current runtime settings
+- TUI `:model <name>` switches `active_model` and rewrites `llm`
 
 ---
 

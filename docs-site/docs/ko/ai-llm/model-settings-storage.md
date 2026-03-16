@@ -360,7 +360,7 @@ active_model: gpt-oss-local
 
 ## 관련 문서
 
-- [Configuration](../../getting-started/configuration.md)
-- [LLM Providers](../../ai-llm/providers.md)
-- [Web Dashboard](../../user-guide/web.md)
-- [TUI Dashboard](../../user-guide/tui.md)
+- [Configuration](../getting-started/configuration.md)
+- [LLM Providers](providers.md)
+- [Web Dashboard](../user-guide/web.md)
+- [TUI Dashboard](../user-guide/tui.md)

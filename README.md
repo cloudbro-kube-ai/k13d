@@ -144,6 +144,47 @@ k13d stores `config.yaml` under the config directory unless you override it with
 
 On macOS, older installs may still have `~/Library/Application Support/k13d/config.yaml`. Current builds automatically copy that legacy file to `~/.config/k13d/config.yaml` on first startup.
 
+#### Config Resolution Order
+
+When k13d chooses the active `config.yaml`, it resolves the path in this order:
+
+1. `--config /path/to/config.yaml`
+2. `K13D_CONFIG=/path/to/config.yaml`
+3. `XDG_CONFIG_HOME=/custom/config-home` -> `$XDG_CONFIG_HOME/k13d/config.yaml`
+4. macOS default `~/.config/k13d/config.yaml`
+5. platform XDG/AppData default
+
+The CLI flag is applied by exporting `K13D_CONFIG` before config loading, so startup logs will usually show `Config Path Source: K13D_CONFIG` when you passed `--config`.
+
+#### What Happens If The File Does Not Exist
+
+- k13d still starts with built-in defaults
+- environment overrides such as `K13D_LLM_PROVIDER` still apply
+- the file is **not** created just by starting the app
+- `config.yaml` is created on the first successful save from Web UI, TUI, or any internal `Save()` path
+- if you point to a missing custom file with `--config` or `K13D_CONFIG`, k13d keeps using that path and still waits until the first save to create it
+
+On macOS only, the legacy `~/Library/Application Support/k13d/config.yaml` is copied into `~/.config/k13d/config.yaml` automatically, but only when you are using the default path and the new file does not already exist.
+
+#### Typical Config Directory Layout
+
+The config directory is usually `~/.config/k13d` on macOS and `${XDG_CONFIG_HOME:-~/.config}/k13d` on Linux.
+
+| File | Purpose |
+|------|---------|
+| `config.yaml` | Main runtime config: LLM, models, MCP, storage, auth/tool approval, notifications |
+| `aliases.yaml` | TUI resource aliases |
+| `hotkeys.yaml` | TUI custom hotkeys |
+| `plugins.yaml` | TUI plugins |
+| `views.yaml` | TUI per-resource sort/view preferences |
+| `skins/*` | TUI theme overrides |
+| `audit.db` | SQLite audit/metrics/session database when default SQLite storage is used |
+| `audit.log` | Plain-text audit log when enabled |
+
+AI chat session files are stored under the data directory, not the config directory. By default that is `<XDG data home>/k13d/sessions`.
+
+#### How To Verify Which File Is Active
+
 When you start Web UI mode, k13d now prints:
 
 - `Config File`
@@ -151,7 +192,50 @@ When you start Web UI mode, k13d now prints:
 - `Env Overrides`
 - `LLM Settings`
 
-That startup output is the fastest way to confirm which file is actually being used.
+That startup output is the fastest way to confirm which file is actually being used. `k13d --storage-info` is also useful when you want to inspect the effective config directory, audit DB path, audit log path, and sessions path without starting the full UI.
+
+#### Example `config.yaml`
+
+```yaml
+llm:
+  provider: openai
+  model: gpt-4o
+  endpoint: https://api.openai.com/v1
+  api_key: ${OPENAI_API_KEY}
+  retry_enabled: true
+  max_retries: 5
+  max_backoff: 10.0
+  temperature: 0.7
+  max_tokens: 4096
+  max_iterations: 10
+
+models:
+  - name: gpt-4o
+    provider: openai
+    model: gpt-4o
+    endpoint: https://api.openai.com/v1
+    description: "OpenAI GPT-4o"
+
+  - name: gpt-oss-local
+    provider: ollama
+    model: gpt-oss:20b
+    endpoint: http://localhost:11434
+    description: "Local Ollama with tool support"
+
+active_model: gpt-4o
+
+mcp:
+  servers: []
+
+language: ko
+beginner_mode: true
+enable_audit: true
+```
+
+Web UI and TUI both rewrite this file when you save settings. For exact field ownership, profile switching behavior, and how `llm`, `models[]`, and `active_model` interact, see:
+
+- [Configuration](https://cloudbro-kube-ai.github.io/k13d/getting-started/configuration/)
+- [Model Settings & Storage](https://cloudbro-kube-ai.github.io/k13d/ai-llm/model-settings-storage/)
 
 ---
 

@@ -10,6 +10,7 @@ This page explains how k13d stores AI model settings, how the **Web UI** and **T
 - Web UI and TUI both save by rewriting that YAML file.
 - The current build does **not** use SQLite as the authoritative source for active model settings.
 - Saving from Web UI or TUI takes effect immediately and recreates the in-process AI client. No restart is required.
+- The file is created on first save if it does not already exist.
 
 ## Source Of Truth
 
@@ -41,12 +42,31 @@ or:
 export K13D_CONFIG=/path/to/config.yaml
 ```
 
+The path resolution order is:
+
+1. `--config /path/to/config.yaml`
+2. `K13D_CONFIG=/path/to/config.yaml`
+3. `XDG_CONFIG_HOME=/custom/config-home` -> `$XDG_CONFIG_HOME/k13d/config.yaml`
+4. macOS default `~/.config/k13d/config.yaml`
+5. platform XDG/AppData default
+
 When k13d saves configuration, it creates the parent directory if needed and writes the file with mode `0600`.
 
 When you start Web UI mode, the terminal also prints `Config File`, `Config Path Source`, and `Env Overrides`. Check those lines first if the Web UI looks out of sync with the file you edited.
 
 !!! note "SQLite is not the active config source"
     k13d creates SQLite tables such as `web_settings` and `model_profiles`, but current Web UI and TUI model configuration is still read from `config.yaml`. Those tables do not override the runtime LLM settings in the current build.
+
+## Missing File Behavior
+
+If the selected `config.yaml` does not exist yet:
+
+- k13d loads built-in defaults
+- it still applies `K13D_LLM_*` environment overrides
+- it does not create the file just from reading it
+- the file appears only after the first save
+
+This is true for both the default path and an explicit custom `--config` path.
 
 ## What Lives In `config.yaml`
 
@@ -175,6 +195,16 @@ If you save the form with the API key field still blank:
 
 This matters if the original key came from `${ENV_VAR}` or from a `K13D_LLM_*` override.
 
+### Important nuance: placeholder expansion and rewrites
+
+`config.yaml` supports values such as `${OPENAI_API_KEY}`. k13d expands those placeholders when it loads the file. If you later save from Web UI or TUI, the rewritten YAML may contain the resolved in-memory value instead of the original placeholder string.
+
+If preserving placeholders matters to you:
+
+- use environment variables as the runtime source of truth
+- or keep a template copy of `config.yaml` outside k13d
+- or avoid saving secret-bearing fields from Web UI/TUI
+
 ### Add a saved model profile
 
 Path:
@@ -250,6 +280,8 @@ When you press **Save**:
 2. the active profile is synced from `llm` if `active_model` matches an existing profile
 3. `config.yaml` is rewritten
 4. the AI client is recreated immediately
+
+The write path is exactly the same active path used by the Web UI. There is no separate TUI-only config file.
 
 The TUI settings modal does **not** create or delete named model profiles.
 
