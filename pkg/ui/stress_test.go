@@ -218,7 +218,10 @@ func TestStress_MixedConcurrentOperations(t *testing.T) {
 	ctx := NewTUITestContext(t)
 	defer ctx.Cleanup()
 
-	ctx.ExpectNoDeadlock(15*time.Second,
+	// This scenario serializes a large amount of input through the shared
+	// simulation screen. Under `go test -race` in CI it can take noticeably
+	// longer than local runs without indicating a real deadlock.
+	ctx.ExpectNoDeadlock(35*time.Second,
 		// Resource switching goroutine
 		func(c *TUITestContext) {
 			resources := []string{"pods", "deploy", "svc"}
