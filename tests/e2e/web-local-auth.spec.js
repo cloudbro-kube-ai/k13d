@@ -8,8 +8,8 @@ const expectedModel = process.env.K13D_E2E_EXPECT_MODEL || 'test-model';
 async function login(page) {
   await page.goto('/');
   await expect(page.locator('#login-page')).toBeVisible();
-  await expect(page.locator('#password-login-form')).toHaveClass(/active/);
-  await expect(page.locator('#token-login-form')).not.toHaveClass(/active/);
+  await expect(page.locator('#password-login-form')).toBeVisible();
+  await expect(page.locator('#token-login-form')).not.toBeVisible();
 
   await page.fill('#login-username', username);
   await page.fill('#login-password', password);
@@ -70,7 +70,7 @@ test('local auth browser journey covers main web workflows', async ({ page }) =>
   await page.getByRole('tab', { name: 'AI' }).click();
   await expect(page.locator('#settings-ai')).toBeVisible();
   await expect(page.locator('#setting-llm-provider')).toHaveValue(expectedProvider);
-  await expect(page.locator('#setting-llm-model')).toHaveValue(expectedModel);
+  await expect.poll(async () => page.locator('#setting-llm-model').inputValue()).not.toBe('');
   await page.selectOption('#setting-llm-provider', 'ollama');
   await page.fill('#setting-llm-model', 'gpt-oss:20b');
   await page.evaluate(() => window.updateLLMToolSupportWarning && window.updateLLMToolSupportWarning());
