@@ -3,7 +3,7 @@
 The Terminal User Interface (TUI) provides a k9s-like experience for managing Kubernetes clusters directly from your terminal.
 
 !!! note "Path note"
-    This page uses Linux-style `~/.config/k13d/...` examples in code blocks. On macOS, the default config directory is `~/Library/Application Support/k13d/`.
+    This page uses `~/.config/k13d/...` examples in code blocks. That is now also the default config directory on macOS.
 
 ## Overview
 
@@ -231,6 +231,8 @@ When AI requests to execute a command:
 │ [Y] Approve  [N] Reject  [A] Always     │
 └─────────────────────────────────────────┘
 ```
+
+Read-only commands are not auto-approved by default. Use `A` only if you intentionally want to allow future read-only actions to skip the approval dialog.
 
 | Key | Action |
 |-----|--------|

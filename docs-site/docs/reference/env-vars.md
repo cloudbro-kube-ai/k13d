@@ -2,19 +2,19 @@
 
 Reference for environment variables that `k13d` currently reads.
 
-Default file paths are based on the platform XDG config directory:
+Default config paths are:
 
 | Platform | Default config path |
 |----------|---------------------|
 | Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
-| macOS | `~/Library/Application Support/k13d/config.yaml` |
+| macOS | `~/.config/k13d/config.yaml` |
 | Windows | `%AppData%\\k13d\\config.yaml` |
 
 ## Config & Startup
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `K13D_CONFIG` | Override `config.yaml` path | `<XDG config home>/k13d/config.yaml` |
+| `K13D_CONFIG` | Override `config.yaml` path | `~/.config/k13d/config.yaml` on macOS, `<XDG config home>/k13d/config.yaml` otherwise |
 | `K13D_WEB` | Start in Web UI mode | `false` |
 | `K13D_PORT` | Web server port | `8080` |
 | `K13D_NAMESPACE` | Initial namespace | cluster default |

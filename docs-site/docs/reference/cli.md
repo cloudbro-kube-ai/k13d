@@ -14,12 +14,12 @@ kubectl k13d [flags]
 - one-letter flags: `-n`, `-A`
 - multi-letter flags: `--web`, `--auth-mode`
 
-Default file paths are resolved from the platform XDG config directory:
+Default file paths are resolved from the platform config directory:
 
 | Platform | Config path | DB path |
 |----------|-------------|---------|
 | Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` | `${XDG_CONFIG_HOME:-~/.config}/k13d/audit.db` |
-| macOS | `~/Library/Application Support/k13d/config.yaml` | `~/Library/Application Support/k13d/audit.db` |
+| macOS | `~/.config/k13d/config.yaml` | `~/Library/Application Support/k13d/audit.db` |
 | Windows | `%AppData%\\k13d\\config.yaml` | `%AppData%\\k13d\\audit.db` |
 
 ## Modes
@@ -40,7 +40,7 @@ Default file paths are resolved from the platform XDG config directory:
 | `--tui` | `false` | Start TUI mode explicitly |
 | `--mcp` | `false` | Start MCP server mode |
 | `--port` | `8080` | Web server port |
-| `--config` | `<XDG config home>/k13d/config.yaml` | Config file path |
+| `--config` | `~/.config/k13d/config.yaml` on macOS, `<XDG config home>/k13d/config.yaml` otherwise | Config file path |
 | `--namespace`, `-n` | current/default | Initial namespace |
 | `--all-namespaces`, `-A` | `false` | Start with all namespaces |
 

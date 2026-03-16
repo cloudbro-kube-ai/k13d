@@ -472,6 +472,7 @@ func int32Ptr(i int32) *int32 {
 // This is useful for testing individual methods without full TUI setup.
 func CreateMinimalTestApp() *App {
 	return &App{
+		config:              config.NewDefaultConfig(),
 		currentResource:     "pods",
 		currentNamespace:    "default",
 		namespaces:          []string{"", "default", "kube-system"},

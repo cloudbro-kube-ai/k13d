@@ -37,6 +37,8 @@ func buildAgenticPrompt(prompt string, registry *tools.Registry, maxIterations i
 	sb.WriteString("- Prefer autonomous progress and non-interactive commands that can complete in one step.\n")
 	sb.WriteString("- Use tools instead of only suggesting commands.\n")
 	sb.WriteString("- Always format kubectl commands as 'kubectl <verb> ...'; never place flags before the kubectl verb.\n")
+	sb.WriteString("- Prefer the kubectl tool for Kubernetes work. Do not use bash for kubectl/helm operations when a dedicated tool exists.\n")
+	sb.WriteString("- Use bash only as a last resort for host-level tasks that kubectl and other available tools cannot perform.\n")
 
 	if registry != nil {
 		toolList := registry.List()

@@ -699,8 +699,8 @@ func TestSafetyAnalysis_ReadOnlyCommand(t *testing.T) {
 	if resp.Category != "read-only" {
 		t.Errorf("Expected category=read-only, got %s", resp.Category)
 	}
-	if resp.RequiresApproval {
-		t.Error("Expected read-only command to not require approval")
+	if !resp.RequiresApproval {
+		t.Error("Expected read-only command to require approval by default")
 	}
 }
 

@@ -5,7 +5,7 @@
 ## 한눈에 보기
 
 - 모델 설정의 단일 source of truth는 `config.yaml` 입니다.
-- 기본 경로는 `<XDG config home>/k13d/config.yaml` 입니다.
+- 기본 경로는 config 디렉터리의 `config.yaml` 입니다.
 - `--config /path/to/config.yaml` 또는 `K13D_CONFIG=/path/to/config.yaml` 으로 경로를 바꿀 수 있습니다.
 - Web UI와 TUI는 모두 이 YAML 파일을 다시 써서 저장합니다.
 - 현재 빌드는 활성 모델 설정의 권위 있는 저장소로 SQLite를 사용하지 않습니다.
@@ -13,15 +13,15 @@
 
 ## Source Of Truth
 
-k13d는 기본적으로 플랫폼 XDG config 디렉터리 아래의 파일에서 모델 설정을 읽습니다.
+k13d는 기본적으로 설정 디렉터리 아래의 파일에서 모델 설정을 읽습니다.
 
 | 플랫폼 | 기본 경로 |
 |--------|-----------|
 | Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
-| macOS | `~/Library/Application Support/k13d/config.yaml` |
+| macOS | `~/.config/k13d/config.yaml` |
 | Windows | `%AppData%\\k13d\\config.yaml` |
 
-아래 예시에는 가독성을 위해 Linux 스타일 `~/.config/k13d/...` 경로를 사용합니다. macOS에서는 `~/Library/Application Support/k13d/...` 로 보면 됩니다.
+이전 macOS 빌드가 `~/Library/Application Support/k13d/config.yaml` 을 사용하고 있었다면, 현재 빌드는 첫 시작 시 그 파일을 `~/.config/k13d/config.yaml` 로 복사합니다.
 
 기본 파일은 다음과 같습니다.
 

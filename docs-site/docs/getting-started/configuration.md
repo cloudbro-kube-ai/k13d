@@ -1,6 +1,6 @@
 # Configuration
 
-k13d stores configuration under the platform XDG config directory. The main file is `config.yaml`.
+k13d stores configuration under its config directory. The main file is `config.yaml`.
 
 ## Where `config.yaml` Lives
 
@@ -9,7 +9,7 @@ By default, k13d reads:
 | Platform | Default path |
 |----------|--------------|
 | Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
-| macOS | `~/Library/Application Support/k13d/config.yaml` |
+| macOS | `~/.config/k13d/config.yaml` |
 | Windows | `%AppData%\\k13d\\config.yaml` |
 
 You can override the path with either:
@@ -17,7 +17,7 @@ You can override the path with either:
 - `k13d --config /path/to/config.yaml`
 - `K13D_CONFIG=/path/to/config.yaml`
 
-Examples in this page use Linux-style `~/.config/k13d/...` paths for brevity. On macOS, replace that with `~/Library/Application Support/k13d/...`.
+On macOS, older installs may still have `~/Library/Application Support/k13d/config.yaml`. Current builds copy that legacy file to `~/.config/k13d/config.yaml` the first time they load it.
 
 ### How to verify the active file
 
@@ -99,7 +99,7 @@ authorization:
     token_duration: 1h
     refresh_window: 15m
   tool_approval:
-    auto_approve_read_only: true
+    auto_approve_read_only: false
     require_approval_for_write: true
     require_approval_for_unknown: true
     block_dangerous: false
@@ -117,6 +117,8 @@ k13d --web --auth-mode token
 ```
 
 `--auth-mode local` shows the username/password login form only. The Kubernetes token input is shown when you use `--auth-mode token`.
+
+By default, k13d shows `Decision Required` even for read-only AI tool actions such as `kubectl get pods`. Turn on `authorization.tool_approval.auto_approve_read_only` only if you intentionally want to skip those approval prompts.
 
 `--auth-mode ldap` and `--auth-mode oidc` select those auth paths, but the stock binary does not yet expose every provider-specific LDAP/OIDC field as dedicated CLI flags. The Web UI settings page currently shows runtime auth status and does not persist provider configuration into `config.yaml`.
 
@@ -235,7 +237,7 @@ k13d uses multiple configuration files in the platform config directory:
 | Platform | Directory |
 |----------|-----------|
 | Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/` |
-| macOS | `~/Library/Application Support/k13d/` |
+| macOS | `~/.config/k13d/` |
 | Windows | `%AppData%\\k13d\\` |
 
 | File | Purpose |

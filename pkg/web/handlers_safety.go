@@ -17,7 +17,7 @@ func (s *Server) handleToolApprovalSettings(w http.ResponseWriter, r *http.Reque
 	switch r.Method {
 	case http.MethodGet:
 		s.aiMu.RLock()
-		policy := s.cfg.Authorization.ToolApproval
+		policy := effectiveToolApprovalPolicy(s.cfg.Authorization.ToolApproval)
 		s.aiMu.RUnlock()
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(policy)
@@ -80,9 +80,10 @@ func (s *Server) handleToolApprovalSettings(w http.ResponseWriter, r *http.Reque
 // Used by handleAgenticChat to replace the hardcoded 60s timeout.
 func (s *Server) getToolApprovalTimeout() time.Duration {
 	s.aiMu.RLock()
-	seconds := s.cfg.Authorization.ToolApproval.ApprovalTimeoutSeconds
+	policy := effectiveToolApprovalPolicy(s.cfg.Authorization.ToolApproval)
 	s.aiMu.RUnlock()
 
+	seconds := policy.ApprovalTimeoutSeconds
 	if seconds <= 0 {
 		seconds = 60
 	}
@@ -91,8 +92,30 @@ func (s *Server) getToolApprovalTimeout() time.Duration {
 
 func (s *Server) getToolApprovalDecision(command string) *safety.Decision {
 	s.aiMu.RLock()
-	policy := s.cfg.Authorization.ToolApproval
+	policy := effectiveToolApprovalPolicy(s.cfg.Authorization.ToolApproval)
 	s.aiMu.RUnlock()
 
 	return safety.NewPolicyEnforcer(policy).Evaluate(command)
+}
+
+func effectiveToolApprovalPolicy(policy config.ToolApprovalPolicy) config.ToolApprovalPolicy {
+	if isZeroToolApprovalPolicy(policy) {
+		return config.DefaultToolApprovalPolicy()
+	}
+	if policy.ApprovalTimeoutSeconds <= 0 {
+		policy.ApprovalTimeoutSeconds = config.DefaultToolApprovalPolicy().ApprovalTimeoutSeconds
+	}
+	if policy.BlockedPatterns == nil {
+		policy.BlockedPatterns = []string{}
+	}
+	return policy
+}
+
+func isZeroToolApprovalPolicy(policy config.ToolApprovalPolicy) bool {
+	return !policy.AutoApproveReadOnly &&
+		!policy.RequireApprovalForWrite &&
+		!policy.RequireApprovalForUnknown &&
+		!policy.BlockDangerous &&
+		policy.ApprovalTimeoutSeconds == 0 &&
+		len(policy.BlockedPatterns) == 0
 }

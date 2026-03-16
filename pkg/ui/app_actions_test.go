@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 )
 
 func TestGetCommandDescription(t *testing.T) {
@@ -128,5 +131,84 @@ func TestBuildLLMInfoTextOmitsOllamaWarningForOpenAI(t *testing.T) {
 	got := buildLLMInfoText("openai", "gpt-4o", "https://api.openai.com/v1", true)
 	if strings.Contains(got, "Tools Required") {
 		t.Fatalf("did not expect Ollama-only note for OpenAI config, got %q", got)
+	}
+}
+
+func TestBuildToolApprovalInfoTextReflectsPolicy(t *testing.T) {
+	got := buildToolApprovalInfoText(config.ToolApprovalPolicy{
+		AutoApproveReadOnly:       true,
+		RequireApprovalForWrite:   false,
+		RequireApprovalForUnknown: true,
+		BlockDangerous:            true,
+		ApprovalTimeoutSeconds:    90,
+	})
+
+	for _, want := range []string{
+		"Tool Approval Policy",
+		"Read-only auto-approve",
+		"Write approval required",
+		"Dangerous commands blocked",
+		"90s",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected tool approval summary to include %q, got %q", want, got)
+		}
+	}
+}
+
+func TestEvaluateAIToolDecision_ReadOnlyCanSkipApproval(t *testing.T) {
+	app := CreateMinimalTestApp()
+	app.config.Authorization.ToolApproval.AutoApproveReadOnly = true
+
+	decision := app.evaluateAIToolDecision("kubectl", "kubectl get pods -n default")
+	if !decision.Allowed {
+		t.Fatalf("expected read-only kubectl command to stay allowed, got blocked: %s", decision.BlockReason)
+	}
+	if decision.RequiresApproval {
+		t.Fatal("expected read-only kubectl command to skip approval when auto-approve is enabled")
+	}
+}
+
+func TestEvaluateAIToolDecision_WriteCanSkipApproval(t *testing.T) {
+	app := CreateMinimalTestApp()
+	app.config.Authorization.ToolApproval.RequireApprovalForWrite = false
+
+	decision := app.evaluateAIToolDecision("kubectl", "kubectl scale deployment nginx --replicas=2")
+	if !decision.Allowed {
+		t.Fatalf("expected write kubectl command to stay allowed, got blocked: %s", decision.BlockReason)
+	}
+	if decision.RequiresApproval {
+		t.Fatal("expected write kubectl command to skip approval when write approval is disabled")
+	}
+}
+
+func TestEvaluateAIToolDecision_DangerousCanBeBlocked(t *testing.T) {
+	app := CreateMinimalTestApp()
+	app.config.Authorization.ToolApproval.BlockDangerous = true
+
+	decision := app.evaluateAIToolDecision("kubectl", "kubectl delete namespace kube-system")
+	if decision.Allowed {
+		t.Fatal("expected dangerous command to be blocked")
+	}
+}
+
+func TestEvaluateAIToolDecision_BashKubectlIsBlocked(t *testing.T) {
+	app := CreateMinimalTestApp()
+
+	decision := app.evaluateAIToolDecision("bash", "kubectl get pods -A")
+	if decision.Allowed {
+		t.Fatal("expected bash-wrapped kubectl command to be blocked")
+	}
+	if !strings.Contains(decision.BlockReason, "kubectl tool") {
+		t.Fatalf("unexpected block reason: %q", decision.BlockReason)
+	}
+}
+
+func TestGetToolApprovalTimeoutUsesConfigPolicy(t *testing.T) {
+	app := CreateMinimalTestApp()
+	app.config.Authorization.ToolApproval.ApprovalTimeoutSeconds = 123
+
+	if got := app.getToolApprovalTimeout(); got != 123*time.Second {
+		t.Fatalf("getToolApprovalTimeout() = %v, want %v", got, 123*time.Second)
 	}
 }

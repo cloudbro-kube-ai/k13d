@@ -118,7 +118,7 @@ func (r *Registry) registerDefaultTools() {
 	// Bash tool - for general shell commands
 	r.Register(&Tool{
 		Name:        "bash",
-		Description: "Execute bash shell commands. Use for non-kubectl operations like file operations, curl, jq, etc. Be cautious with destructive commands.",
+		Description: "Execute bash shell commands as a last resort. Use only for non-kubectl host operations such as file inspection, curl, jq, or local diagnostics. Do not use bash for Kubernetes operations when the kubectl tool can do the job.",
 		Type:        ToolTypeBash,
 		InputSchema: map[string]interface{}{
 			"type": "object",

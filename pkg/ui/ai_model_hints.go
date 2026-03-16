@@ -19,7 +19,7 @@ func ollamaModelToolsHint(model string) string {
 func buildLLMInfoText(provider, model, endpoint string, hasAPIKey bool) string {
 	infoText := fmt.Sprintf(` [cyan::b]LLM Configuration[white::-]
  Provider: [yellow]%s[white]  Model: [yellow]%s[white]
- API Key: %s  Endpoint: %s
+API Key: %s  Endpoint: %s
 `,
 		provider, model,
 		map[bool]string{true: "[green]Set[white]", false: "[red]Not set[white]"}[hasAPIKey],
@@ -30,4 +30,22 @@ func buildLLMInfoText(provider, model, endpoint string, hasAPIKey bool) string {
 	}
 
 	return infoText
+}
+
+func buildToolApprovalInfoText(policy config.ToolApprovalPolicy) string {
+	policy = effectiveUIToolApprovalPolicy(policy)
+
+	return fmt.Sprintf(` [cyan::b]Tool Approval Policy[white::-]
+ Read-only auto-approve: %s
+ Write approval required: %s
+ Dangerous commands blocked: %s
+ Unknown approval required: %s
+ Approval timeout: [yellow]%ds[white]
+`,
+		map[bool]string{true: "[green]On[white]", false: "[red]Off[white]"}[policy.AutoApproveReadOnly],
+		map[bool]string{true: "[green]On[white]", false: "[red]Off[white]"}[policy.RequireApprovalForWrite],
+		map[bool]string{true: "[green]On[white]", false: "[red]Off[white]"}[policy.BlockDangerous],
+		map[bool]string{true: "[green]On[white]", false: "[red]Off[white]"}[policy.RequireApprovalForUnknown],
+		policy.ApprovalTimeoutSeconds,
+	)
 }

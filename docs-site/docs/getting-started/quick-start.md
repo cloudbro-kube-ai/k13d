@@ -98,7 +98,7 @@ For the best AI experience, configure an LLM provider:
 Default config file path:
 
 - Linux: `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml`
-- macOS: `~/Library/Application Support/k13d/config.yaml`
+- macOS: `~/.config/k13d/config.yaml`
 - Windows: `%AppData%\\k13d\\config.yaml`
 
 You can override that with `--config /path/to/config.yaml` or `K13D_CONFIG=/path/to/config.yaml`.

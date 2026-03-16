@@ -133,16 +133,16 @@ That's it. Your kubeconfig is auto-detected.
 
 #### Config File Locations
 
-k13d stores `config.yaml` under the platform XDG config directory unless you override it with `--config` or `K13D_CONFIG`.
+k13d stores `config.yaml` under the config directory unless you override it with `--config` or `K13D_CONFIG`.
 
 | Platform | Default config path |
 |----------|---------------------|
 | Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
-| macOS | `~/Library/Application Support/k13d/config.yaml` |
+| macOS | `~/.config/k13d/config.yaml` |
 | Windows | `%AppData%\\k13d\\config.yaml` |
 | Custom | `k13d --config /path/to/config.yaml` or `K13D_CONFIG=/path/to/config.yaml` |
 
-Many examples below use Linux-style `~/.config/k13d/...` paths for brevity. On macOS, the equivalent default directory is `~/Library/Application Support/k13d/`.
+On macOS, older installs may still have `~/Library/Application Support/k13d/config.yaml`. Current builds automatically copy that legacy file to `~/.config/k13d/config.yaml` on first startup.
 
 When you start Web UI mode, k13d now prints:
 
@@ -168,7 +168,7 @@ That startup output is the fastest way to confirm which file is actually being u
 ### Web UI — Everything in the browser
 
 - **Dashboard** — Pods, Deployments, Services, all resources with real-time status
-- **AI Assistant** — Ask questions, AI executes kubectl with your approval
+- **AI Assistant** — Ask questions, AI executes kubectl with explicit approval by default
 - **Topology** — Graph & tree visualization of resource relationships
 - **Reports** — Cluster health, security audit, FinOps cost analysis
 - **Metrics** — Historical CPU/Memory/Pods/Nodes charts (SQLite-backed, 7-day retention)
@@ -248,6 +248,8 @@ The AI assistant can:
 
 - Diagnose pod crashes and suggest fixes
 - Execute kubectl commands with your approval
+- Keep read-only `kubectl get` style actions behind `Decision Required` unless you explicitly enable auto-approve
+- Prefer `kubectl` over `bash`; shell access is treated as a last resort
 - Scale deployments, restart rollouts
 - Analyze YAML, events, and logs in context
 - Use MCP tools for extended capabilities
@@ -332,12 +334,12 @@ make build
 
 ## Configuration
 
-k13d uses `<XDG config home>/k13d/config.yaml` for configuration by default:
+k13d uses this config directory by default:
 
 | Platform | Default config directory |
 |----------|--------------------------|
 | Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/` |
-| macOS | `~/Library/Application Support/k13d/` |
+| macOS | `~/.config/k13d/` |
 | Windows | `%AppData%\\k13d\\` |
 
 | File | Purpose |

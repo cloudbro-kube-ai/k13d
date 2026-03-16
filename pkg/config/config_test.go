@@ -8,6 +8,39 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func useDarwinConfigPathsForTest(t *testing.T) (homeDir string, legacyBase string) {
+	t.Helper()
+
+	homeDir = filepath.Join(t.TempDir(), "home")
+	legacyBase = filepath.Join(t.TempDir(), "legacy-config-home")
+	if err := os.MkdirAll(homeDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(homeDir) error = %v", err)
+	}
+	if err := os.MkdirAll(legacyBase, 0o755); err != nil {
+		t.Fatalf("MkdirAll(legacyBase) error = %v", err)
+	}
+
+	t.Setenv("HOME", homeDir)
+	t.Setenv("K13D_CONFIG", "")
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	oldUserHomeDirFunc := userHomeDirFunc
+	oldXDGConfigHomeFn := xdgConfigHomeFn
+	oldRuntimeGOOS := runtimeGOOS
+
+	userHomeDirFunc = func() (string, error) { return homeDir, nil }
+	xdgConfigHomeFn = func() string { return legacyBase }
+	runtimeGOOS = "darwin"
+
+	t.Cleanup(func() {
+		userHomeDirFunc = oldUserHomeDirFunc
+		xdgConfigHomeFn = oldXDGConfigHomeFn
+		runtimeGOOS = oldRuntimeGOOS
+	})
+
+	return homeDir, legacyBase
+}
+
 func TestNewDefaultConfig(t *testing.T) {
 	cfg := NewDefaultConfig()
 
@@ -78,6 +111,12 @@ func TestNewDefaultConfig(t *testing.T) {
 	}
 	if !cfg.EnableAudit {
 		t.Error("EnableAudit should be true by default")
+	}
+	if cfg.Authorization.ToolApproval.AutoApproveReadOnly {
+		t.Error("ToolApproval.AutoApproveReadOnly should be false by default")
+	}
+	if !cfg.Authorization.ToolApproval.RequireApprovalForWrite {
+		t.Error("ToolApproval.RequireApprovalForWrite should be true by default")
 	}
 }
 
@@ -332,13 +371,12 @@ func TestMCPServerOperations(t *testing.T) {
 }
 
 func TestGetConfigPath(t *testing.T) {
-	t.Setenv("K13D_CONFIG", "")
-	path := GetConfigPath()
-	if path == "" {
-		t.Error("GetConfigPath() returned empty string")
-	}
-	if filepath.Base(path) != "config.yaml" {
-		t.Errorf("GetConfigPath() base = %s, want config.yaml", filepath.Base(path))
+	homeDir, _ := useDarwinConfigPathsForTest(t)
+
+	got := GetConfigPath()
+	want := filepath.Join(homeDir, ".config", "k13d", "config.yaml")
+	if got != want {
+		t.Errorf("GetConfigPath() = %s, want %s", got, want)
 	}
 }
 
@@ -348,6 +386,19 @@ func TestGetConfigPathUsesEnvOverride(t *testing.T) {
 
 	if got := GetConfigPath(); got != customPath {
 		t.Errorf("GetConfigPath() = %s, want %s", got, customPath)
+	}
+}
+
+func TestGetConfigPathUsesXDGConfigHomeOverride(t *testing.T) {
+	homeDir, _ := useDarwinConfigPathsForTest(t)
+	xdgHome := filepath.Join(t.TempDir(), "xdg-home")
+	t.Setenv("XDG_CONFIG_HOME", xdgHome)
+	userHomeDirFunc = func() (string, error) { return homeDir, nil }
+
+	got := GetConfigPath()
+	want := filepath.Join(xdgHome, "k13d", "config.yaml")
+	if got != want {
+		t.Errorf("GetConfigPath() = %s, want %s", got, want)
 	}
 }
 
@@ -430,16 +481,76 @@ func TestGetRuntimeSourceInfo_MissingConfigFile(t *testing.T) {
 	}
 }
 
+func TestGetRuntimeSourceInfo_UsesMacOSDotConfigSource(t *testing.T) {
+	homeDir, _ := useDarwinConfigPathsForTest(t)
+
+	info := GetRuntimeSourceInfo()
+	wantPath := filepath.Join(homeDir, ".config", "k13d", "config.yaml")
+	if info.ConfigPath != wantPath {
+		t.Fatalf("ConfigPath = %s, want %s", info.ConfigPath, wantPath)
+	}
+	if info.ConfigPathSource != "macOS default (~/.config)" {
+		t.Fatalf("ConfigPathSource = %s, want macOS default (~/.config)", info.ConfigPathSource)
+	}
+}
+
 func TestGetConfigDir(t *testing.T) {
+	homeDir, _ := useDarwinConfigPathsForTest(t)
+
 	dir, err := GetConfigDir()
 	if err != nil {
 		t.Errorf("GetConfigDir() error = %v", err)
 	}
-	if dir == "" {
-		t.Error("GetConfigDir() returned empty string")
+	want := filepath.Join(homeDir, ".config", "k13d")
+	if dir != want {
+		t.Errorf("GetConfigDir() = %s, want %s", dir, want)
 	}
-	if filepath.Base(dir) != "k13d" {
-		t.Errorf("GetConfigDir() base = %s, want k13d", filepath.Base(dir))
+}
+
+func TestLoadConfigMigratesLegacyMacOSConfigPath(t *testing.T) {
+	homeDir, legacyBase := useDarwinConfigPathsForTest(t)
+	legacyPath := filepath.Join(legacyBase, "k13d", "config.yaml")
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(legacyPath, []byte("llm:\n  provider: anthropic\n  model: claude-sonnet-4\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+	if cfg.LLM.Provider != "anthropic" {
+		t.Fatalf("LLM.Provider = %s, want anthropic", cfg.LLM.Provider)
+	}
+
+	newPath := filepath.Join(homeDir, ".config", "k13d", "config.yaml")
+	data, err := os.ReadFile(newPath)
+	if err != nil {
+		t.Fatalf("ReadFile(newPath) error = %v", err)
+	}
+	if len(data) == 0 {
+		t.Fatal("migrated config file is empty")
+	}
+}
+
+func TestLoadAliasesFallsBackToLegacyMacOSConfigDir(t *testing.T) {
+	_, legacyBase := useDarwinConfigPathsForTest(t)
+	legacyPath := filepath.Join(legacyBase, "k13d", "aliases.yaml")
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(legacyPath, []byte("aliases:\n  pp: pods\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	aliases, err := LoadAliases()
+	if err != nil {
+		t.Fatalf("LoadAliases() error = %v", err)
+	}
+	if got := aliases.Resolve("pp"); got != "pods" {
+		t.Fatalf("aliases.Resolve(pp) = %s, want pods", got)
 	}
 }
 

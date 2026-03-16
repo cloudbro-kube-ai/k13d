@@ -1122,8 +1122,8 @@ func TestNewAuthorizerWithRoles(t *testing.T) {
 func TestDefaultToolApprovalPolicy(t *testing.T) {
 	policy := config.DefaultToolApprovalPolicy()
 
-	if !policy.AutoApproveReadOnly {
-		t.Error("expected AutoApproveReadOnly=true by default")
+	if policy.AutoApproveReadOnly {
+		t.Error("expected AutoApproveReadOnly=false by default")
 	}
 	if !policy.RequireApprovalForWrite {
 		t.Error("expected RequireApprovalForWrite=true by default")
@@ -1139,6 +1139,43 @@ func TestDefaultToolApprovalPolicy(t *testing.T) {
 	}
 	if policy.BlockedPatterns == nil {
 		t.Error("expected BlockedPatterns non-nil")
+	}
+}
+
+func TestEffectiveToolApprovalPolicy_ZeroValueFallsBackToDefault(t *testing.T) {
+	policy := effectiveToolApprovalPolicy(config.ToolApprovalPolicy{})
+
+	if policy.AutoApproveReadOnly {
+		t.Error("expected zero-value policy to fall back to AutoApproveReadOnly=false")
+	}
+	if !policy.RequireApprovalForWrite {
+		t.Error("expected zero-value policy to fall back to RequireApprovalForWrite=true")
+	}
+	if !policy.RequireApprovalForUnknown {
+		t.Error("expected zero-value policy to fall back to RequireApprovalForUnknown=true")
+	}
+	if policy.ApprovalTimeoutSeconds != 60 {
+		t.Errorf("expected fallback timeout=60, got %d", policy.ApprovalTimeoutSeconds)
+	}
+}
+
+func TestEffectiveToolApprovalPolicy_PreservesExplicitValues(t *testing.T) {
+	policy := effectiveToolApprovalPolicy(config.ToolApprovalPolicy{
+		RequireApprovalForWrite:   false,
+		RequireApprovalForUnknown: true,
+	})
+
+	if policy.RequireApprovalForWrite {
+		t.Error("expected explicit RequireApprovalForWrite=false to be preserved")
+	}
+	if !policy.RequireApprovalForUnknown {
+		t.Error("expected explicit RequireApprovalForUnknown=true to be preserved")
+	}
+	if policy.ApprovalTimeoutSeconds != 60 {
+		t.Errorf("expected timeout defaulting to 60, got %d", policy.ApprovalTimeoutSeconds)
+	}
+	if policy.BlockedPatterns == nil {
+		t.Error("expected BlockedPatterns to default to an empty slice")
 	}
 }
 
@@ -1191,5 +1228,41 @@ func TestHandleToolApprovalSettings_WithBlockedPatterns(t *testing.T) {
 
 	if len(patterns) != 2 {
 		t.Errorf("expected 2 blocked patterns, got %d", len(patterns))
+	}
+}
+
+func TestHandleToolApprovalSettings_UpdateAffectsRuntimeDecisions(t *testing.T) {
+	s := setupRoleTestServer(t)
+
+	policyJSON := `{
+		"auto_approve_read_only": true,
+		"require_approval_for_write": false,
+		"require_approval_for_unknown": false,
+		"block_dangerous": true,
+		"approval_timeout_seconds": 45
+	}`
+	req := httptest.NewRequest(http.MethodPut, "/api/settings/tool-approval", strings.NewReader(policyJSON))
+	req.Header.Set("X-User-Role", "admin")
+	w := httptest.NewRecorder()
+
+	s.handleToolApprovalSettings(w, req)
+
+	readOnlyDecision := s.evaluateAIToolDecision("admin", "kubectl", "get pods -n default")
+	if readOnlyDecision.RequiresApproval {
+		t.Fatal("expected saved auto_approve_read_only=true to skip approval for read-only command")
+	}
+
+	writeDecision := s.evaluateAIToolDecision("admin", "kubectl", "scale deployment nginx --replicas=2")
+	if writeDecision.RequiresApproval {
+		t.Fatal("expected saved require_approval_for_write=false to skip approval for write command")
+	}
+
+	dangerousDecision := s.evaluateAIToolDecision("admin", "kubectl", "delete namespace kube-system")
+	if dangerousDecision.Allowed {
+		t.Fatal("expected saved block_dangerous=true to block dangerous command")
+	}
+
+	if got := s.getToolApprovalTimeout(); got != 45*time.Second {
+		t.Fatalf("getToolApprovalTimeout() = %v, want %v", got, 45*time.Second)
 	}
 }

@@ -17,16 +17,23 @@ func buildAIRestrictionPrompt(role string) string {
 }
 
 func allowAIToolExecution(role, toolName, command string) (bool, string) {
+	if isAllowedAIToolExecution(role, toolName, command) {
+		return true, ""
+	}
+	return false, toolExecutionDeniedReason(role, toolName, command)
+}
+
+func isAllowedAIToolExecution(role, toolName, command string) bool {
 	if role == "" {
 		role = "viewer"
 	}
 
 	if role == "admin" || role == "user" {
-		return true, ""
+		return true
 	}
 
 	if toolName != "kubectl" {
-		return false, fmt.Sprintf("role %s can only use read-only kubectl commands in AI Assistant", role)
+		return false
 	}
 
 	normalizedCommand := strings.TrimSpace(command)
@@ -35,22 +42,51 @@ func allowAIToolExecution(role, toolName, command string) (bool, string) {
 	}
 
 	if hasRestrictedKubectlFlags(normalizedCommand) {
-		return false, fmt.Sprintf("role %s cannot override kubectl authentication or cluster targeting in AI Assistant", role)
+		return false
 	}
 
 	category := classifyCommand(normalizedCommand)
 	if isReadOnlyKubectlCommand(normalizedCommand) {
-		return true, ""
+		return true
 	}
 
 	switch category {
 	case "read-only":
-		return true, ""
+		return true
 	case "interactive":
-		return false, fmt.Sprintf("role %s cannot run interactive AI commands", role)
+		return false
 	default:
-		return false, fmt.Sprintf("role %s is limited to read-only AI actions", role)
+		return false
 	}
+}
+
+func toolExecutionDeniedReason(role, toolName, command string) string {
+	if role == "" {
+		role = "viewer"
+	}
+
+	if role == "admin" || role == "user" {
+		return ""
+	}
+
+	if toolName != "kubectl" {
+		return fmt.Sprintf("role %s can only use read-only kubectl commands in AI Assistant", role)
+	}
+
+	normalizedCommand := strings.TrimSpace(command)
+	if normalizedCommand != "" && !strings.HasPrefix(normalizedCommand, "kubectl ") {
+		normalizedCommand = "kubectl " + normalizedCommand
+	}
+
+	if hasRestrictedKubectlFlags(normalizedCommand) {
+		return fmt.Sprintf("role %s cannot override kubectl authentication or cluster targeting in AI Assistant", role)
+	}
+
+	if classifyCommand(normalizedCommand) == "interactive" {
+		return fmt.Sprintf("role %s cannot run interactive AI commands", role)
+	}
+
+	return fmt.Sprintf("role %s is limited to read-only AI actions", role)
 }
 
 func isReadOnlyKubectlCommand(command string) bool {

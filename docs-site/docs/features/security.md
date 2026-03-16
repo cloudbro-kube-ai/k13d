@@ -23,7 +23,7 @@ k13d combines authentication, RBAC, audit logging, and AI command safety control
 
 ### `config.yaml`
 
-`<XDG config home>/k13d/config.yaml` is the source of truth for:
+`config.yaml` is the source of truth for:
 
 - LLM settings and saved model profiles
 - MCP servers
@@ -32,7 +32,7 @@ k13d combines authentication, RBAC, audit logging, and AI command safety control
 - RBAC and JWT settings under `authorization`
 - AI tool approval policy under `authorization.tool_approval`
 
-On macOS, this default path is `~/Library/Application Support/k13d/config.yaml`.
+On macOS, the default config path is `~/.config/k13d/config.yaml`.
 
 ### Web authentication provider settings
 
@@ -471,7 +471,7 @@ AI-generated commands are classified before execution.
 
 | Category | Examples | Default behavior |
 |----------|----------|------------------|
-| Read-only | `get`, `describe`, `logs` | Auto-approve |
+| Read-only | `get`, `describe`, `logs` | Approval required by default |
 | Write | `apply`, `create`, `patch`, `scale` | Approval required |
 | Dangerous | `delete`, `drain`, destructive shell patterns | Approval required or blocked |
 | Unknown | Non-recognized tool commands | Approval required |
@@ -481,7 +481,7 @@ AI-generated commands are classified before execution.
 ```yaml
 authorization:
   tool_approval:
-    auto_approve_read_only: true
+    auto_approve_read_only: false
     require_approval_for_write: true
     require_approval_for_unknown: true
     block_dangerous: false
@@ -491,7 +491,7 @@ authorization:
     approval_timeout_seconds: 60
 ```
 
-The Web UI setting for skipping `Decision Required` now maps to the same backend policy used by tool execution.
+The Web UI setting for skipping `Decision Required` now maps to the same backend policy used by tool execution. Unless you explicitly enable `auto_approve_read_only`, both read-only and write AI tool actions stop at the approval modal first.
 
 ---
 

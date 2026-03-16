@@ -3,7 +3,7 @@
 Complete feature reference for k13d Terminal User Interface (TUI).
 
 !!! note "Path note"
-    This page uses Linux-style `~/.config/k13d/...` examples in code blocks. On macOS, the default config directory is `~/Library/Application Support/k13d/`.
+    This page uses `~/.config/k13d/...` examples in code blocks. That is now also the default config directory on macOS.
 
 ---
 
@@ -146,7 +146,7 @@ The AI panel is accessible by pressing `Tab` to switch focus.
 |---------|-------------|
 | **Input Field** | Type questions in natural language |
 | **Output View** | Streaming AI responses |
-| **Tool Execution** | AI executes kubectl/bash commands |
+| **Tool Execution** | AI executes kubectl first and only falls back to bash when needed |
 | **Context** | AI receives selected resource context |
 | **Chat History** | Previous Q&A preserved within session |
 

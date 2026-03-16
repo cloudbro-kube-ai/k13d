@@ -53,7 +53,7 @@ func LoadHotkeys() (*HotkeysFile, error) {
 		return DefaultHotkeys(), nil
 	}
 
-	hotkeyPath := filepath.Join(configDir, "hotkeys.yaml")
+	hotkeyPath := resolveConfigReadPath(configDir, "hotkeys.yaml")
 	data, err := os.ReadFile(hotkeyPath)
 	if err != nil {
 		if os.IsNotExist(err) {

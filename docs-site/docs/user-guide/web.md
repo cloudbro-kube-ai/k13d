@@ -131,6 +131,8 @@ When AI needs to execute a command:
 └──────────────────────────────────────┘
 ```
 
+By default, this modal appears for both read-only and write AI tool actions. You only skip it for read-only commands if you explicitly enable auto-approve in Settings.
+
 ## Features
 
 ### Dark/Light Theme

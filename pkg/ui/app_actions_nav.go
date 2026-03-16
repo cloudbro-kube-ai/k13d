@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -456,6 +457,10 @@ func (a *App) aiBriefing() {
 
 // showSettings displays settings modal with LLM connection test and save functionality
 func (a *App) showSettings() {
+	if err := a.reloadConfigFromDisk(); err != nil {
+		a.flashMsg(fmt.Sprintf("Failed to reload config: %v", err), true)
+	}
+
 	// Create settings form
 	form := tview.NewForm()
 
@@ -472,6 +477,12 @@ func (a *App) showSettings() {
 	endpoint := a.config.LLM.Endpoint
 	apiKey := "" // Don't show existing API key
 	hasAPIKey := a.config.LLM.APIKey != ""
+	toolPolicy := effectiveUIToolApprovalPolicy(a.config.Authorization.ToolApproval)
+	autoApproveReadOnly := toolPolicy.AutoApproveReadOnly
+	requireApprovalForWrite := toolPolicy.RequireApprovalForWrite
+	blockDangerous := toolPolicy.BlockDangerous
+	requireApprovalForUnknown := toolPolicy.RequireApprovalForUnknown
+	approvalTimeoutSeconds := toolPolicy.ApprovalTimeoutSeconds
 	var infoView *tview.TextView
 
 	updateInfoView := func() {
@@ -482,7 +493,16 @@ func (a *App) showSettings() {
 		if apiKey != "" {
 			currentAPIKey = true
 		}
-		infoView.SetText(buildLLMInfoText(provider, model, endpoint, currentAPIKey))
+		infoView.SetText(
+			buildLLMInfoText(provider, model, endpoint, currentAPIKey) + "\n" +
+				buildToolApprovalInfoText(config.ToolApprovalPolicy{
+					AutoApproveReadOnly:       autoApproveReadOnly,
+					RequireApprovalForWrite:   requireApprovalForWrite,
+					RequireApprovalForUnknown: requireApprovalForUnknown,
+					BlockDangerous:            blockDangerous,
+					ApprovalTimeoutSeconds:    approvalTimeoutSeconds,
+				}),
+		)
 	}
 
 	// Provider dropdown
@@ -567,10 +587,33 @@ func (a *App) showSettings() {
 		apiKey = text
 		updateInfoView()
 	})
+	form.AddCheckbox("Auto-approve Read-only", autoApproveReadOnly, func(checked bool) {
+		autoApproveReadOnly = checked
+		updateInfoView()
+	})
+	form.AddCheckbox("Require Write Approval", requireApprovalForWrite, func(checked bool) {
+		requireApprovalForWrite = checked
+		updateInfoView()
+	})
+	form.AddCheckbox("Block Dangerous", blockDangerous, func(checked bool) {
+		blockDangerous = checked
+		updateInfoView()
+	})
+	form.AddCheckbox("Require Unknown Approval", requireApprovalForUnknown, func(checked bool) {
+		requireApprovalForUnknown = checked
+		updateInfoView()
+	})
+	form.AddInputField("Approval Timeout (s)", strconv.Itoa(approvalTimeoutSeconds), 8, nil, func(text string) {
+		value, err := strconv.Atoi(strings.TrimSpace(text))
+		if err == nil && value > 0 {
+			approvalTimeoutSeconds = value
+		}
+		updateInfoView()
+	})
 
 	infoView = tview.NewTextView().
 		SetDynamicColors(true).
-		SetText(buildLLMInfoText(provider, model, endpoint, hasAPIKey))
+		SetText(buildLLMInfoText(provider, model, endpoint, hasAPIKey) + "\n" + buildToolApprovalInfoText(toolPolicy))
 	infoView.SetBackgroundColor(tcell.ColorDefault)
 
 	// Add Save button
@@ -579,6 +622,14 @@ func (a *App) showSettings() {
 		a.QueueUpdateDraw(func() {})
 
 		a.safeGo("saveConfig", func() {
+			timeout := approvalTimeoutSeconds
+			if timeout <= 0 {
+				timeout = config.DefaultToolApprovalPolicy().ApprovalTimeoutSeconds
+			}
+			if timeout > 600 {
+				timeout = 600
+			}
+
 			// Update config
 			a.config.LLM.Provider = provider
 			a.config.LLM.Model = model
@@ -586,6 +637,14 @@ func (a *App) showSettings() {
 			if apiKey != "" {
 				a.config.LLM.APIKey = apiKey
 				hasAPIKey = true
+			}
+			a.config.Authorization.ToolApproval = config.ToolApprovalPolicy{
+				AutoApproveReadOnly:       autoApproveReadOnly,
+				RequireApprovalForWrite:   requireApprovalForWrite,
+				RequireApprovalForUnknown: requireApprovalForUnknown,
+				BlockDangerous:            blockDangerous,
+				BlockedPatterns:           append([]string(nil), a.config.Authorization.ToolApproval.BlockedPatterns...),
+				ApprovalTimeoutSeconds:    timeout,
 			}
 			a.config.SyncActiveModelProfileFromLLM()
 
@@ -611,6 +670,7 @@ func (a *App) showSettings() {
 
 			a.QueueUpdateDraw(func() {
 				statusView.SetText("[green]●[white] Configuration saved! Press 'Test Connection' to verify")
+				approvalTimeoutSeconds = timeout
 				updateInfoView()
 				a.updateHeader() // Update AI status in header
 				a.applyAIChrome()
@@ -662,7 +722,7 @@ func (a *App) showSettings() {
 
 	// Combine into flex layout
 	flex := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(infoView, 6, 0, false).
+		AddItem(infoView, 12, 0, false).
 		AddItem(statusView, 2, 0, false).
 		AddItem(form, 0, 1, true)
 
@@ -670,7 +730,7 @@ func (a *App) showSettings() {
 	flex.SetBackgroundColor(tcell.ColorDefault)
 
 	// Wrap in centered container
-	a.showModal("settings", centered(flex, 80, 30), true)
+	a.showModal("settings", centered(flex, 88, 38), true)
 	a.SetFocus(form)
 
 	// Handle escape

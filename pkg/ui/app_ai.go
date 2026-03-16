@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
-	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -528,23 +527,41 @@ func (a *App) askAI(question string) {
 				}
 			}
 
-			classification := safety.Classify(fullCmd)
-			if classification.IsReadOnly {
+			decision := a.evaluateAIToolDecision(toolName, fullCmd)
+			if decision.Allowed && !decision.RequiresApproval {
 				return true
+			}
+
+			if !decision.Allowed {
+				a.QueueUpdateDraw(func() {
+					a.appendAIMarkup("\n[red::b]Command Blocked[-::-]\n")
+					a.appendAIMarkup("[gray]Command:[-] ")
+					a.appendAIEscaped(trimAIBlock(fullCmd, 240))
+					a.appendAIMarkup("\n")
+					a.appendAIEscaped(decision.BlockReason)
+					a.appendAIMarkup("\n")
+					for _, warning := range decision.Warnings {
+						a.appendAIMarkup("[red]-[-] ")
+						a.appendAIEscaped(warning)
+						a.appendAIMarkup("\n")
+					}
+					a.setAIStatus("[red]Command blocked by policy[-]")
+				})
+				return false
 			}
 
 			a.setToolCallState(toolName, args, fullCmd)
 			a.QueueUpdateDraw(func() {
 				a.appendAIMarkup("\n[yellow::b]Decision Required[-::-]\n")
-				if classification.IsDangerous {
+				if decision.Classification != nil && decision.Classification.IsDangerous {
 					a.appendAIMarkup("[red]Dangerous command detected[-]\n")
 				} else {
-					a.appendAIMarkup("[#e0af68]Write operation requires approval[-]\n")
+					a.appendAIMarkup("[#e0af68]Command requires approval[-]\n")
 				}
 				a.appendAIMarkup("[gray]Command:[-] ")
 				a.appendAIEscaped(trimAIBlock(fullCmd, 240))
 				a.appendAIMarkup("\n")
-				for _, warning := range classification.Warnings {
+				for _, warning := range decision.Warnings {
 					a.appendAIMarkup("[red]-[-] ")
 					a.appendAIEscaped(warning)
 					a.appendAIMarkup("\n")
@@ -558,7 +575,7 @@ func (a *App) askAI(question string) {
 			default:
 			}
 
-			approvalTimeout := time.After(5 * time.Minute)
+			approvalTimeout := time.After(a.getToolApprovalTimeout())
 			select {
 			case approved := <-a.pendingToolApproval:
 				if approved {
@@ -635,14 +652,24 @@ func (a *App) analyzeAndShowDecisions(response string) {
 
 	var hasDecisions bool
 	for _, cmd := range commands {
-		classification := safety.Classify(cmd)
-		if classification.RequiresApproval || classification.IsDangerous {
+		decision := a.evaluateAIToolDecision("kubectl", cmd)
+		if !decision.Allowed {
+			a.QueueUpdateDraw(func() {
+				a.appendAIMarkup("\n[red::b]Command Blocked[-::-]\n")
+				a.appendAIEscaped(cmd)
+				a.appendAIMarkup("\n")
+				a.appendAIEscaped(decision.BlockReason)
+				a.appendAIMarkup("\n")
+			})
+			continue
+		}
+		if decision.RequiresApproval || (decision.Classification != nil && decision.Classification.IsDangerous) {
 			hasDecisions = true
 			a.pendingDecisions = append(a.pendingDecisions, PendingDecision{
 				Command:     cmd,
 				Description: getCommandDescription(cmd),
-				IsDangerous: classification.IsDangerous,
-				Warnings:    classification.Warnings,
+				IsDangerous: decision.Classification != nil && decision.Classification.IsDangerous,
+				Warnings:    decision.Warnings,
 			})
 		}
 	}
@@ -695,6 +722,19 @@ func (a *App) executeDecision(idx int) {
 	// Remove executed decision
 	a.pendingDecisions = append(a.pendingDecisions[:idx], a.pendingDecisions[idx+1:]...)
 	a.aiMx.Unlock()
+
+	runtimeDecision := a.evaluateAIToolDecision("kubectl", decision.Command)
+	if !runtimeDecision.Allowed {
+		a.QueueUpdateDraw(func() {
+			a.appendAIMarkup("\n[red::b]Command Blocked[-::-]\n")
+			a.appendAIEscaped(decision.Command)
+			a.appendAIMarkup("\n")
+			a.appendAIEscaped(runtimeDecision.BlockReason)
+			a.appendAIMarkup("\n")
+			a.setAIStatus("[red]Command blocked by policy[-]")
+		})
+		return
+	}
 
 	a.flashMsg(fmt.Sprintf("Executing: %s", decision.Command), false)
 
@@ -770,6 +810,13 @@ func (a *App) doExecuteAll() {
 	results.WriteString("\n\n[yellow]━━━ BATCH EXECUTION RESULTS ━━━[white]\n")
 
 	for _, decision := range decisions {
+		runtimeDecision := a.evaluateAIToolDecision("kubectl", decision.Command)
+		if !runtimeDecision.Allowed {
+			results.WriteString(fmt.Sprintf("\n[cyan]%s[white]\n", decision.Command))
+			results.WriteString(fmt.Sprintf("[red]Blocked:[white] %s\n", runtimeDecision.BlockReason))
+			continue
+		}
+
 		a.flashMsg(fmt.Sprintf("Executing: %s", decision.Command), false)
 
 		cmd := exec.Command("bash", "-c", decision.Command)

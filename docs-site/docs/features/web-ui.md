@@ -187,7 +187,7 @@ Integrated AI assistant with natural language understanding and tool execution.
 | **Natural Language** | Ask questions in plain English/Korean/Chinese/Japanese |
 | **Streaming Responses** | Real-time SSE streaming with live cursor |
 | **Context Awareness** | AI receives YAML, Events, Logs context |
-| **Tool Calling** | Executes kubectl, bash commands |
+| **Tool Calling** | Executes kubectl first, keeps bash as a last resort |
 | **History** | Conversation history within session |
 
 ### MCP Tool Calling (Debug Mode)

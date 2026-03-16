@@ -1016,7 +1016,7 @@ async function loadToolApprovalSettings() {
             const el = document.getElementById(id);
             if (el) el.classList.toggle('active', active);
         };
-        setToggle('ta-auto-approve-ro', policy.auto_approve_read_only !== false);
+        setToggle('ta-auto-approve-ro', policy.auto_approve_read_only === true);
         setToggle('ta-require-write', policy.require_approval_for_write !== false);
         setToggle('ta-block-dangerous', policy.block_dangerous === true);
         setToggle('ta-require-unknown', policy.require_approval_for_unknown !== false);
@@ -1037,7 +1037,7 @@ function toggleToolApproval(el) {
 
 async function saveToolApprovalSettings() {
     const policy = {
-        auto_approve_read_only: document.getElementById('ta-auto-approve-ro')?.classList.contains('active') ?? true,
+        auto_approve_read_only: document.getElementById('ta-auto-approve-ro')?.classList.contains('active') ?? false,
         require_approval_for_write: document.getElementById('ta-require-write')?.classList.contains('active') ?? true,
         block_dangerous: document.getElementById('ta-block-dangerous')?.classList.contains('active') ?? false,
         require_approval_for_unknown: document.getElementById('ta-require-unknown')?.classList.contains('active') ?? true,

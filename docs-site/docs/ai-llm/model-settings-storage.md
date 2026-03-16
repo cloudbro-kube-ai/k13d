@@ -13,15 +13,15 @@ This page explains how k13d stores AI model settings, how the **Web UI** and **T
 
 ## Source Of Truth
 
-k13d loads model configuration from the platform XDG config directory:
+k13d loads model configuration from the config directory:
 
 | Platform | Default path |
 |----------|--------------|
 | Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
-| macOS | `~/Library/Application Support/k13d/config.yaml` |
+| macOS | `~/.config/k13d/config.yaml` |
 | Windows | `%AppData%\\k13d\\config.yaml` |
 
-Examples below use Linux-style `~/.config/k13d/...` paths for readability. On macOS, replace that with `~/Library/Application Support/k13d/...`.
+If you previously used a macOS build that wrote `~/Library/Application Support/k13d/config.yaml`, k13d copies that legacy file into `~/.config/k13d/config.yaml` on first startup.
 
 The default file is:
 

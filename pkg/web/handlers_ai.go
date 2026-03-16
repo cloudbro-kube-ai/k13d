@@ -435,25 +435,8 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 		if cmd, ok := args["command"].(string); ok {
 			command = cmd
 		}
-
-		if allowed, reason := allowAIToolExecution(role, toolName, command); !allowed {
-			category := "restricted"
-			if command != "" {
-				category = classifyCommand(command)
-			}
-			blockedJSON, _ := json.Marshal(map[string]interface{}{
-				"type":      "approval_blocked",
-				"tool_name": toolName,
-				"command":   command,
-				"category":  category,
-				"reason":    reason,
-				"warnings":  []string{"This session is running in read-only AI mode."},
-			})
-			_ = sse.WriteEvent("approval", string(blockedJSON))
-			return false
-		}
-
-		decision := s.getToolApprovalDecision(command)
+		displayCommand := normalizeAIToolCommand(toolName, command)
+		decision := s.evaluateAIToolDecision(role, toolName, command)
 
 		// Policy allows the command without prompting the user.
 		if decision.Allowed && !decision.RequiresApproval {
@@ -464,7 +447,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			blockedJSON, _ := json.Marshal(map[string]interface{}{
 				"type":      "approval_blocked",
 				"tool_name": toolName,
-				"command":   command,
+				"command":   displayCommand,
 				"category":  decision.Category,
 				"reason":    decision.BlockReason,
 				"warnings":  decision.Warnings,
@@ -478,7 +461,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 		approval := &PendingToolApproval{
 			ID:        approvalID,
 			ToolName:  toolName,
-			Command:   command,
+			Command:   displayCommand,
 			Category:  decision.Category,
 			Timestamp: time.Now(),
 			Response:  make(chan bool, 1),
@@ -493,7 +476,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			"type":      "approval_required",
 			"id":        approvalID,
 			"tool_name": toolName,
-			"command":   command,
+			"command":   displayCommand,
 			"category":  decision.Category,
 			"warnings":  decision.Warnings,
 		})
@@ -514,12 +497,12 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 				Action:      map[bool]string{true: "tool_approved", false: "tool_rejected"}[approved],
 				ActionType:  db.ActionTypeLLM,
 				Resource:    toolName,
-				Details:     fmt.Sprintf("LLM requested: %s", command),
+				Details:     fmt.Sprintf("LLM requested: %s", displayCommand),
 				K8sUser:     k8sUser,
 				K8sContext:  k8sContext,
 				K8sCluster:  k8sCluster,
 				LLMTool:     toolName,
-				LLMCommand:  command,
+				LLMCommand:  displayCommand,
 				LLMApproved: approved,
 				LLMRequest:  req.Message,
 			})
@@ -545,12 +528,13 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 
 	// Tool execution callback - sends tool execution info via SSE and records audit
 	toolExecutionCallback := func(toolName string, command string, result string, isError bool, toolType string, toolServerName string) {
+		displayCommand := normalizeAIToolCommand(toolName, command)
 		execJSON, _ := json.Marshal(map[string]interface{}{
 			"type":      "tool_execution",
 			"tool":      toolName,
 			"tool_type": toolType,
 			"server":    toolServerName,
-			"command":   command,
+			"command":   displayCommand,
 			"result":    result,
 			"is_error":  isError,
 		})
@@ -559,7 +543,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 		// Record tool execution in audit log
 		actionType := db.ActionTypeLLM
 		// Determine if this is a mutation (create, delete, apply, scale, etc.)
-		cmdCategory := classifyCommand(command)
+		cmdCategory := classifyCommand(displayCommand)
 		if cmdCategory == "write" || cmdCategory == "dangerous" {
 			actionType = db.ActionTypeMutation
 		}
@@ -569,9 +553,9 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			Action:      "tool_executed",
 			ActionType:  actionType,
 			Resource:    toolName,
-			Details:     fmt.Sprintf("Command: %s", truncateString(command, 200)),
+			Details:     fmt.Sprintf("Command: %s", truncateString(displayCommand, 200)),
 			LLMTool:     toolName,
-			LLMCommand:  command,
+			LLMCommand:  displayCommand,
 			LLMApproved: true,
 			LLMRequest:  req.Message,
 			Success:     !isError,
@@ -1300,6 +1284,15 @@ func (s *Server) handleSafetyAnalysis(w http.ResponseWriter, r *http.Request) {
 
 	// Analyze the command
 	response := analyzeK8sSafety(req)
+	decision := s.getToolApprovalDecision(req.Command)
+	response.RequiresApproval = decision.RequiresApproval
+	if !decision.Allowed && decision.BlockReason != "" {
+		response.Safe = false
+		if response.RiskLevel == "safe" {
+			response.RiskLevel = "dangerous"
+		}
+		response.Warnings = append(response.Warnings, decision.BlockReason)
+	}
 
 	_ = json.NewEncoder(w).Encode(response)
 }
