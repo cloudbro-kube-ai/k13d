@@ -780,15 +780,17 @@ async function loadMCPServers() {
             return;
         }
 
-        container.innerHTML = data.servers.map(s => `
+        container.innerHTML = data.servers.map(s => {
+            const argsStr = s.args ? s.args.join(', ') : '';
+            return `
                     <div class="settings-row" style="background:var(--bg-primary);padding:12px;border-radius:8px;margin-bottom:8px;">
                         <div style="flex:1;">
                             <div style="font-weight:bold;display:flex;align-items:center;gap:8px;">
-                                ${escapeHtml(s.name)}
+                                <span onclick="showEditMCPForm('${s.name.replace(/'/g, "\\'")}', '${s.command.replace(/'/g, "\\'")}', '${argsStr.replace(/'/g, "\\'")}', '${(s.description || '').replace(/'/g, "\\'")}')" 
+                                      style="cursor:pointer;color:var(--accent-blue);text-decoration:underline;" title="Click to edit">
+                                    ${escapeHtml(s.name)}
+                                </span>
                                 ${s.connected ? '<span style="background:var(--accent-green);color:var(--bg-primary);padding:2px 8px;border-radius:4px;font-size:10px;">CONNECTED</span>' : s.enabled ? '<span style="background:var(--accent-yellow);color:var(--bg-primary);padding:2px 8px;border-radius:4px;font-size:10px;">DISCONNECTED</span>' : '<span style="background:var(--bg-tertiary);padding:2px 8px;border-radius:4px;font-size:10px;">DISABLED</span>'}
-                            </div>
-                            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
-                                ${escapeHtml(s.command)} ${s.args ? escapeHtml(s.args.join(' ')) : ''} ${s.description ? '- ' + escapeHtml(s.description) : ''}
                             </div>
                         </div>
                         <div style="display:flex;gap:8px;">
@@ -797,9 +799,69 @@ async function loadMCPServers() {
                             <button class="btn btn-secondary" onclick="deleteMCPServer('${s.name}')" style="padding:4px 12px;font-size:12px;color:var(--accent-red);">Delete</button>
                         </div>
                     </div>
-                `).join('');
+                `;
+        }).join('');
     } catch (e) {
         console.error('Failed to load MCP servers:', e);
+    }
+}
+
+function showEditMCPForm(name, command, args, description) {
+    document.getElementById('edit-mcp-old-name').value = name;
+    document.getElementById('edit-mcp-name').value = name;
+    document.getElementById('edit-mcp-command').value = command;
+    document.getElementById('edit-mcp-args').value = args;
+    document.getElementById('edit-mcp-description').value = description;
+
+    document.getElementById('edit-mcp-form').style.display = 'block';
+    document.getElementById('add-mcp-form').style.display = 'none';
+    document.getElementById('edit-mcp-form').scrollIntoView({ behavior: 'smooth' });
+}
+
+function hideEditMCPForm() {
+    document.getElementById('edit-mcp-form').style.display = 'none';
+}
+
+async function updateMCPServer() {
+    const oldName = document.getElementById('edit-mcp-old-name').value;
+    const name = document.getElementById('edit-mcp-name').value;
+    const command = document.getElementById('edit-mcp-command').value;
+    const argsInput = document.getElementById('edit-mcp-args').value;
+    const description = document.getElementById('edit-mcp-description').value;
+
+    if (!name || !command) {
+        showToast('Name and command are required', 'error');
+        return;
+    }
+
+    const args = argsInput ? argsInput.split(',').map(a => a.trim()).filter(a => a) : [];
+
+    try {
+        const resp = await fetchWithAuth('/api/mcp/servers', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'update',
+                name: oldName,
+                new_name: name,
+                command: command,
+                args: args,
+                description: description
+            })
+        });
+
+        if (!resp.ok) {
+            const err = await resp.json();
+            showToast(err.error || 'Failed to update MCP server', 'error');
+            return;
+        }
+
+        hideEditMCPForm();
+        loadMCPServers();
+        loadMCPTools();
+        showToast('MCP server updated', 'success');
+    } catch (e) {
+        showToast('Failed to update MCP server: ' + e.message, 'error');
     }
 }
 
@@ -871,6 +933,7 @@ async function deleteMCPServer(name) {
 
 function showAddMCPForm() {
     document.getElementById('add-mcp-form').style.display = 'block';
+    document.getElementById('edit-mcp-form').style.display = 'none';
 }
 
 function hideAddMCPForm() {
