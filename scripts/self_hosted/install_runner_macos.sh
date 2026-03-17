@@ -17,9 +17,10 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 REPO="${K13D_RUNNER_REPO:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}"
-RUNNER_ROOT="${K13D_RUNNER_ROOT:-$HOME/Library/Application Support/k13d-deploy/github-runner}"
-RUNNER_WORKDIR="${K13D_RUNNER_WORKDIR:-$HOME/Library/Application Support/k13d-deploy/github-runner-work}"
-RUNNER_LOG_DIR="${K13D_RUNNER_LOG_DIR:-$HOME/Library/Application Support/k13d-deploy/log}"
+RUNNER_BASE="${K13D_RUNNER_BASE:-$HOME/.k13d-deploy}"
+RUNNER_ROOT="${K13D_RUNNER_ROOT:-$RUNNER_BASE/github-runner}"
+RUNNER_WORKDIR="${K13D_RUNNER_WORKDIR:-$RUNNER_BASE/github-runner-work}"
+RUNNER_LOG_DIR="${K13D_RUNNER_LOG_DIR:-$RUNNER_BASE/log}"
 RUNNER_NAME="${K13D_RUNNER_NAME:-$(hostname -s)-k13d-prod}"
 RUNNER_LABELS="${K13D_RUNNER_LABELS:-k13d-prod,fingerscore}"
 LAUNCH_LABEL="${K13D_RUNNER_LAUNCH_LABEL:-net.fingerscore.k13d.runner}"
