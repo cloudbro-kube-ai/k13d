@@ -144,6 +144,47 @@ k13d stores `config.yaml` under the config directory unless you override it with
 
 On macOS, older installs may still have `~/Library/Application Support/k13d/config.yaml`. Current builds automatically copy that legacy file to `~/.config/k13d/config.yaml` on first startup.
 
+#### Config Resolution Order
+
+When k13d chooses the active `config.yaml`, it resolves the path in this order:
+
+1. `--config /path/to/config.yaml`
+2. `K13D_CONFIG=/path/to/config.yaml`
+3. `XDG_CONFIG_HOME=/custom/config-home` -> `$XDG_CONFIG_HOME/k13d/config.yaml`
+4. macOS default `~/.config/k13d/config.yaml`
+5. platform XDG/AppData default
+
+The CLI flag is applied by exporting `K13D_CONFIG` before config loading, so startup logs will usually show `Config Path Source: K13D_CONFIG` when you passed `--config`.
+
+#### What Happens If The File Does Not Exist
+
+- k13d still starts with built-in defaults
+- environment overrides such as `K13D_LLM_PROVIDER` still apply
+- the file is **not** created just by starting the app
+- `config.yaml` is created on the first successful save from Web UI, TUI, or any internal `Save()` path
+- if you point to a missing custom file with `--config` or `K13D_CONFIG`, k13d keeps using that path and still waits until the first save to create it
+
+On macOS only, the legacy `~/Library/Application Support/k13d/config.yaml` is copied into `~/.config/k13d/config.yaml` automatically, but only when you are using the default path and the new file does not already exist.
+
+#### Typical Config Directory Layout
+
+The config directory is usually `~/.config/k13d` on macOS and `${XDG_CONFIG_HOME:-~/.config}/k13d` on Linux.
+
+| File | Purpose |
+|------|---------|
+| `config.yaml` | Main runtime config: LLM, models, MCP, storage, auth/tool approval, notifications |
+| `aliases.yaml` | TUI resource aliases |
+| `hotkeys.yaml` | TUI custom hotkeys |
+| `plugins.yaml` | TUI plugins |
+| `views.yaml` | TUI per-resource sort/view preferences |
+| `skins/*` | TUI theme overrides |
+| `audit.db` | SQLite audit/metrics/session database when default SQLite storage is used |
+| `audit.log` | Plain-text audit log when enabled |
+
+AI chat session files are stored under the data directory, not the config directory. By default that is `<XDG data home>/k13d/sessions`.
+
+#### How To Verify Which File Is Active
+
 When you start Web UI mode, k13d now prints:
 
 - `Config File`
@@ -151,7 +192,121 @@ When you start Web UI mode, k13d now prints:
 - `Env Overrides`
 - `LLM Settings`
 
-That startup output is the fastest way to confirm which file is actually being used.
+That startup output is the fastest way to confirm which file is actually being used. `k13d --storage-info` is also useful when you want to inspect the effective config directory, audit DB path, audit log path, and sessions path without starting the full UI.
+
+#### Example `config.yaml`
+
+```yaml
+llm:
+  provider: openai
+  model: gpt-4o
+  endpoint: https://api.openai.com/v1
+  api_key: ${OPENAI_API_KEY}
+  retry_enabled: true
+  max_retries: 5
+  max_backoff: 10.0
+  temperature: 0.7
+  max_tokens: 4096
+  max_iterations: 10
+
+models:
+  - name: gpt-4o
+    provider: openai
+    model: gpt-4o
+    endpoint: https://api.openai.com/v1
+    description: "OpenAI GPT-4o"
+
+  - name: gpt-oss-local
+    provider: ollama
+    model: gpt-oss:20b
+    endpoint: http://localhost:11434
+    description: "Local Ollama with tool support"
+
+active_model: gpt-4o
+
+mcp:
+  servers: []
+
+language: ko
+beginner_mode: true
+enable_audit: true
+```
+
+#### Safe `config.yaml` setup patterns
+
+Use environment variables for API keys whenever possible, and keep `config.yaml` limited to provider/model/endpoint settings. That avoids accidentally committing secrets and makes it easier to rotate credentials later.
+
+**OpenAI**
+
+```bash
+export OPENAI_API_KEY=sk-...
+cat > ~/.config/k13d/config.yaml <<'YAML'
+llm:
+  provider: openai
+  model: gpt-4o
+  endpoint: https://api.openai.com/v1
+  api_key: ${OPENAI_API_KEY}
+
+models:
+  - name: gpt-4o
+    provider: openai
+    model: gpt-4o
+    endpoint: https://api.openai.com/v1
+
+active_model: gpt-4o
+YAML
+```
+
+**Anthropic**
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+cat > ~/.config/k13d/config.yaml <<'YAML'
+llm:
+  provider: anthropic
+  model: claude-sonnet-4-6
+  endpoint: https://api.anthropic.com
+  api_key: ${ANTHROPIC_API_KEY}
+
+models:
+  - name: claude-sonnet
+    provider: anthropic
+    model: claude-sonnet-4-6
+    endpoint: https://api.anthropic.com
+
+active_model: claude-sonnet
+YAML
+```
+
+Anthropic model IDs are exact strings and can be longer than the marketing names. If you are unsure which ID to use, query Anthropic's `GET /v1/models` endpoint and copy the `id` field exactly. On March 17, 2026, examples returned by that API included `claude-sonnet-4-6`, `claude-opus-4-6`, `claude-opus-4-5-20251101`, `claude-haiku-4-5-20251001`, and `claude-sonnet-4-5-20250929`.
+
+**Ollama**
+
+```bash
+ollama serve
+ollama pull gpt-oss:20b
+cat > ~/.config/k13d/config.yaml <<'YAML'
+llm:
+  provider: ollama
+  model: gpt-oss:20b
+  endpoint: http://localhost:11434
+
+models:
+  - name: gpt-oss-local
+    provider: ollama
+    model: gpt-oss:20b
+    endpoint: http://localhost:11434
+
+active_model: gpt-oss-local
+YAML
+```
+
+Remember that Ollama models must support **tools/function calling** for k13d's AI Assistant to work correctly.
+
+Web UI and TUI both rewrite this file when you save settings. For exact field ownership, profile switching behavior, and how `llm`, `models[]`, and `active_model` interact, see:
+
+- [Configuration](https://cloudbro-kube-ai.github.io/k13d/getting-started/configuration/)
+- [Model Settings & Storage](https://cloudbro-kube-ai.github.io/k13d/ai-llm/model-settings-storage/)
 
 ---
 
@@ -210,11 +365,20 @@ export K13D_LLM_MODEL=gpt-4o
 export K13D_LLM_API_KEY=sk-...
 ./k13d --web --auth-mode local
 
+# Anthropic
+export K13D_LLM_PROVIDER=anthropic
+export K13D_LLM_MODEL=claude-sonnet-4-6
+export K13D_LLM_ENDPOINT=https://api.anthropic.com
+export K13D_LLM_API_KEY=sk-ant-...
+./k13d --web --auth-mode local
+
 # Ollama (local, free, no API key)
 ollama pull gpt-oss:20b && ollama serve
 ./k13d --web --auth-mode local
 # Set Provider: "ollama" in Settings > AI
 ```
+
+When you use Anthropic, copy the exact model ID, not just the family name. Anthropic IDs can be long and change over time. If you need to verify current IDs, query Anthropic's `GET /v1/models` API and use the returned `id` value exactly.
 
 For **Ollama**, choose a model that explicitly supports **tools/function calling**. Some Ollama models can connect and generate text, but k13d's AI Assistant will not work correctly unless the model supports tools. `gpt-oss:20b` is the recommended default.
 
@@ -237,7 +401,7 @@ Adding a profile does **not** auto-activate it. After creating it, click **Use**
 | Provider | Models | Notes |
 |----------|--------|-------|
 | **OpenAI** | GPT-4o, GPT-4, o3-mini | Best tool calling support |
-| **Anthropic** | Claude Opus 4, Sonnet 4, Haiku 4.5 | Native Messages API, strong reasoning |
+| **Anthropic** | Claude Sonnet 4.6, Opus 4.6, Haiku 4.5 | Native Messages API, strong reasoning |
 | **Google Gemini** | Gemini 2.5, 2.0 | Multimodal capable |
 | **Upstage Solar** | Solar Pro2, Solar Pro | Good balance of quality/cost |
 | **Azure OpenAI** | GPT-4, GPT-3.5 | Enterprise Azure deployments |

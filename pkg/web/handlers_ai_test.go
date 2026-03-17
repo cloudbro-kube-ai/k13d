@@ -28,6 +28,9 @@ func setupAITestServer(t *testing.T, withSessions bool) *Server {
 			Endpoint: "https://api.openai.com/v1",
 			APIKey:   "test-key",
 		},
+		Authorization: config.AuthorizationConfig{
+			ToolApproval: config.DefaultToolApprovalPolicy(),
+		},
 	}
 
 	authConfig := &AuthConfig{

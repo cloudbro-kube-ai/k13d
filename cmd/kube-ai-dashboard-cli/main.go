@@ -338,7 +338,7 @@ _k13d_completions() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # Main options
-    opts="-n --namespace -A -web -port --version --completion"
+    opts="-n --namespace -A --web --port --version --completion"
 
     # Complete namespace after -n or --namespace
     if [[ "${prev}" == "-n" ]] || [[ "${prev}" == "--namespace" ]]; then
@@ -372,8 +372,8 @@ _k13d() {
         '-n[Initial namespace]:namespace:->namespaces'
         '--namespace[Initial namespace]:namespace:->namespaces'
         '-A[Start with all namespaces]'
-        '-web[Start web server mode]'
-        '-port[Web server port]:port:'
+        '--web[Start web server mode]'
+        '--port[Web server port]:port:'
         '--version[Show version information]'
         '--completion[Generate shell completion]:shell:(bash zsh fish)'
     )

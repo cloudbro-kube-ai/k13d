@@ -100,9 +100,31 @@ test('local auth browser journey covers main web workflows', async ({ page }) =>
   }
   await expect(aiPanel).toBeVisible();
 
-  await page.fill('#ai-input', 'hello from browser e2e');
-  await page.keyboard.press('Enter');
-  await expect(page.locator('#ai-messages')).toContainText(/AI Assistant Not Configured/i);
+  const firstPrompt = `history first ${Date.now()}`;
+  const secondPrompt = `history second ${Date.now()}`;
+
+  await page.evaluate(({ firstPrompt, secondPrompt }) => {
+    localStorage.setItem('k13d_query_history', JSON.stringify([firstPrompt, secondPrompt]));
+  }, { firstPrompt, secondPrompt });
+  await page.reload();
+  await expect(page.locator('.top-bar')).toBeVisible();
+  if (!(await aiPanel.isVisible())) {
+    await page.locator('#ai-toggle-btn').click();
+  }
+  await expect(aiPanel).toBeVisible();
+
+  const storedHistory = await page.evaluate(() => JSON.parse(localStorage.getItem('k13d_query_history') || '[]').slice(-2));
+  expect(storedHistory).toEqual([firstPrompt, secondPrompt]);
+
+  await page.fill('#ai-input', 'draft prompt');
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('#ai-input')).toHaveValue(secondPrompt);
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('#ai-input')).toHaveValue(firstPrompt);
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('#ai-input')).toHaveValue(secondPrompt);
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('#ai-input')).toHaveValue('draft prompt');
 
   await page.getByRole('button', { name: /keyboard shortcuts/i }).click();
   await expect(page.locator('#shortcuts-modal')).toBeVisible();

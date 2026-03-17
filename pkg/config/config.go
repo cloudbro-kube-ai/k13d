@@ -542,6 +542,17 @@ func (c *Config) RemoveMCPServer(name string) bool {
 	return false
 }
 
+// UpdateMCPServer updates an existing MCP server configuration
+func (c *Config) UpdateMCPServer(oldName string, updated MCPServer) bool {
+	for i, s := range c.MCP.Servers {
+		if s.Name == oldName {
+			c.MCP.Servers[i] = updated
+			return true
+		}
+	}
+	return false
+}
+
 // ToggleMCPServer enables or disables an MCP server
 func (c *Config) ToggleMCPServer(name string, enabled bool) bool {
 	for i, s := range c.MCP.Servers {
