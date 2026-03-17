@@ -3,27 +3,27 @@ name: CD Self-Hosted
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-    types: [closed]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: deploy-fingerscore-${{ github.event.pull_request.merge_commit_sha || github.sha }}
+  group: deploy-fingerscore-main
   cancel-in-progress: true
 
 jobs:
   deploy:
-    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: [self-hosted, macOS, ARM64, k13d-prod]
+    env:
+      RUNNER_TOOL_CACHE: /tmp/k13d-actions-toolcache
+      RUNNER_TEMP: /tmp/k13d-actions-temp
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+
+      - name: Prepare runner tool cache
+        run: mkdir -p "$RUNNER_TOOL_CACHE" "$RUNNER_TEMP"
 
       - name: Set up Go
         uses: actions/setup-go@v6
