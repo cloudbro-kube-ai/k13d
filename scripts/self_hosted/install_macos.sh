@@ -50,6 +50,27 @@ EOF
   echo "Created $ENV_FILE"
 fi
 
+upsert_env_var() {
+  local key="$1"
+  local value="$2"
+  if grep -q "^${key}=" "$ENV_FILE"; then
+    sed -i '' "s|^${key}=.*$|${key}=${value}|" "$ENV_FILE"
+  else
+    printf '%s=%s\n' "$key" "$value" >>"$ENV_FILE"
+  fi
+}
+
+ensure_env_var() {
+  local key="$1"
+  local value="$2"
+  if ! grep -q "^${key}=" "$ENV_FILE"; then
+    printf '%s=%s\n' "$key" "$value" >>"$ENV_FILE"
+  fi
+}
+
+upsert_env_var "K13D_DOMAIN" "$DOMAIN"
+ensure_env_var "K13D_WS_ALLOWED_ORIGINS" "https://$DOMAIN"
+
 pushd "$REPO_ROOT" >/dev/null
 go run scripts/build-frontend.go
 mkdir -p build
@@ -62,7 +83,7 @@ chmod 0755 "$BIN_DIR/k13d"
 cat >"$RUN_WRAPPER" <<EOF
 #!/bin/zsh
 set -euo pipefail
-export PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin"
 if [[ -f "$ENV_FILE" ]]; then
   set -a
   source "$ENV_FILE"

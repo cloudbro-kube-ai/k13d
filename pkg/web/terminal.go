@@ -23,11 +23,50 @@ var allowedOrigins = getWebSocketAllowedOrigins()
 
 // getWebSocketAllowedOrigins returns allowed origins from environment or defaults
 func getWebSocketAllowedOrigins() []string {
-	if origins := os.Getenv("K13D_WS_ALLOWED_ORIGINS"); origins != "" {
-		return strings.Split(origins, ",")
+	origins := []string{
+		"http://localhost",
+		"https://localhost",
+		"http://127.0.0.1",
+		"https://127.0.0.1",
 	}
-	// Default: allow localhost for development
-	return []string{"http://localhost", "https://localhost", "http://127.0.0.1", "https://127.0.0.1"}
+	if extraOrigins := strings.TrimSpace(os.Getenv("K13D_WS_ALLOWED_ORIGINS")); extraOrigins != "" {
+		return appendUniqueOrigins(origins, strings.Split(extraOrigins, ",")...)
+	}
+	if domain := strings.TrimSpace(os.Getenv("K13D_DOMAIN")); domain != "" {
+		if strings.HasPrefix(domain, "http://") || strings.HasPrefix(domain, "https://") {
+			return appendUniqueOrigins(origins, domain)
+		}
+		return appendUniqueOrigins(origins, "https://"+domain)
+	}
+	return origins
+}
+
+func appendUniqueOrigins(origins []string, candidates ...string) []string {
+	seen := make(map[string]struct{}, len(origins))
+	result := make([]string, 0, len(origins)+len(candidates))
+	for _, origin := range origins {
+		trimmed := strings.TrimSpace(origin)
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		result = append(result, trimmed)
+	}
+	for _, candidate := range candidates {
+		trimmed := strings.TrimSpace(candidate)
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		result = append(result, trimmed)
+	}
+	return result
 }
 
 // checkOrigin validates WebSocket origin against allowed list
