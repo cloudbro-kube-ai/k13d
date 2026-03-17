@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
@@ -420,8 +421,12 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut:
 		// Toggle MCP server enabled/disabled or reconnect
 		var req struct {
-			Name   string `json:"name"`
-			Action string `json:"action"` // "enable", "disable", "reconnect"
+			Name        string   `json:"name"`
+			Action      string   `json:"action"` // "enable", "disable", "reconnect", "update"
+			NewName     string   `json:"new_name,omitempty"`
+			Command     string   `json:"command,omitempty"`
+			Args        []string `json:"args,omitempty"`
+			Description string   `json:"description,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			WriteErrorSimple(w, http.StatusBadRequest, "Invalid request body")
@@ -429,6 +434,65 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch req.Action {
+		case "update":
+			// Find existing server
+			var existing *config.MCPServer
+			for i, srv := range s.cfg.MCP.Servers {
+				if srv.Name == req.Name {
+					existing = &s.cfg.MCP.Servers[i]
+					break
+				}
+			}
+			if existing == nil {
+				WriteErrorSimple(w, http.StatusNotFound, "Server not found")
+				return
+			}
+
+			// Disconnect if name or command/args changed
+			configChanged := (req.NewName != "" && req.NewName != req.Name) ||
+				(req.Command != "" && req.Command != existing.Command) ||
+				(req.Args != nil && !reflect.DeepEqual(req.Args, existing.Args))
+
+			if configChanged && existing.Enabled {
+				_ = s.mcpClient.Disconnect(req.Name)
+				if s.aiClient != nil {
+					s.aiClient.GetToolRegistry().UnregisterMCPTools(req.Name)
+				}
+			}
+
+			// Update fields
+			updated := *existing
+			if req.NewName != "" {
+				updated.Name = req.NewName
+			}
+			if req.Command != "" {
+				updated.Command = req.Command
+			}
+			if req.Args != nil {
+				updated.Args = req.Args
+			}
+			if req.Description != "" {
+				updated.Description = req.Description
+			}
+
+			s.cfg.UpdateMCPServer(req.Name, updated)
+
+			// Reconnect if it was enabled and config changed
+			if configChanged && updated.Enabled {
+				ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+				if err := s.mcpClient.Connect(ctx, updated); err != nil {
+					cancel()
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
+						"status":  "updated",
+						"warning": fmt.Sprintf("Updated but failed to reconnect: %v", err),
+					})
+					_ = s.cfg.Save()
+					return
+				}
+				cancel()
+				s.registerMCPTools(updated.Name)
+			}
+
 		case "enable":
 			if !s.cfg.ToggleMCPServer(req.Name, true) {
 				WriteErrorSimple(w, http.StatusNotFound, "Server not found")
