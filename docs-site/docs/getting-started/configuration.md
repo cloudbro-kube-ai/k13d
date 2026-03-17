@@ -122,6 +122,12 @@ enable_audit: true
 
 When k13d reads the file, it expands `${ENV_VAR}` placeholders before runtime use. If you later save from Web UI or TUI, the rewritten file may contain resolved literal values instead of the original placeholder strings. If you need placeholders to remain untouched, keep a template copy outside the app and avoid in-app saves for those secret-bearing fields.
 
+Recommended pattern:
+
+- keep API keys in environment variables
+- keep `config.yaml` focused on provider, model, endpoint, and profile names
+- avoid committing a literal `api_key:` value into the repository
+
 ## Scope
 
 `config.yaml` currently controls:
@@ -238,7 +244,8 @@ Best tool support, industry standard.
 ```yaml
 llm:
   provider: openai
-  model: gpt-4              # or gpt-4o, gpt-3.5-turbo
+  model: gpt-4o             # or gpt-4o-mini
+  endpoint: https://api.openai.com/v1
   api_key: ${OPENAI_API_KEY}
 ```
 
@@ -249,9 +256,12 @@ Strong reasoning and analysis capabilities.
 ```yaml
 llm:
   provider: anthropic
-  model: claude-3-sonnet     # or claude-3-opus, claude-3-haiku
+  model: claude-sonnet-4-6
+  endpoint: https://api.anthropic.com
   api_key: ${ANTHROPIC_API_KEY}
 ```
+
+Anthropic model names can be long and change over time. Use the exact model `id`, not a shortened family name. If you need to verify current IDs, query Anthropic's `GET /v1/models` endpoint. Examples verified on March 17, 2026 include `claude-sonnet-4-6`, `claude-opus-4-6`, `claude-opus-4-5-20251101`, `claude-haiku-4-5-20251001`, and `claude-sonnet-4-5-20250929`.
 
 ### Google Gemini
 

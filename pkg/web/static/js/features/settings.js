@@ -426,7 +426,7 @@ function updateEndpointPlaceholder(setDefaults = true) {
         'openai': { placeholder: 'https://api.openai.com/v1', hint: '(Default: OpenAI API)', model: 'gpt-4o', apiKeyHint: 'sk-...' },
         'ollama': { placeholder: 'http://localhost:11434', hint: '(Required for Ollama)', model: 'gpt-oss:20b', apiKeyHint: '' },
         'gemini': { placeholder: 'https://generativelanguage.googleapis.com/v1beta', hint: '(Default: Gemini API)', model: 'gemini-2.5-flash', apiKeyHint: 'AIza...' },
-        'anthropic': { placeholder: 'https://api.anthropic.com', hint: '(Default: Anthropic API)', model: 'claude-3-opus', apiKeyHint: 'sk-ant-...' },
+        'anthropic': { placeholder: 'https://api.anthropic.com', hint: '(Default: Anthropic API)', model: 'claude-sonnet-4-6', apiKeyHint: 'sk-ant-...' },
         'bedrock': { placeholder: '', hint: '(Uses AWS credentials)', model: '', apiKeyHint: '' },
         'azopenai': { placeholder: 'https://your-resource.openai.azure.com', hint: '(Azure resource endpoint required)', model: '', apiKeyHint: '' }
     };
@@ -1483,7 +1483,7 @@ async function loadSettings() {
                 'openai': { model: 'gpt-4o', endpoint: 'https://api.openai.com/v1' },
                 'ollama': { model: 'gpt-oss:20b', endpoint: 'http://localhost:11434' },
                 'gemini': { model: 'gemini-2.5-flash', endpoint: 'https://generativelanguage.googleapis.com/v1beta' },
-                'anthropic': { model: 'claude-3-opus', endpoint: 'https://api.anthropic.com' }
+                'anthropic': { model: 'claude-sonnet-4-6', endpoint: 'https://api.anthropic.com' }
             };
             const providerDefaults = defaults[provider] || { model: '', endpoint: '' };
 

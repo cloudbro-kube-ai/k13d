@@ -99,9 +99,6 @@ func (s *Server) getToolApprovalDecision(command string) *safety.Decision {
 }
 
 func effectiveToolApprovalPolicy(policy config.ToolApprovalPolicy) config.ToolApprovalPolicy {
-	if isZeroToolApprovalPolicy(policy) {
-		return config.DefaultToolApprovalPolicy()
-	}
 	if policy.ApprovalTimeoutSeconds <= 0 {
 		policy.ApprovalTimeoutSeconds = config.DefaultToolApprovalPolicy().ApprovalTimeoutSeconds
 	}
@@ -109,13 +106,4 @@ func effectiveToolApprovalPolicy(policy config.ToolApprovalPolicy) config.ToolAp
 		policy.BlockedPatterns = []string{}
 	}
 	return policy
-}
-
-func isZeroToolApprovalPolicy(policy config.ToolApprovalPolicy) bool {
-	return !policy.AutoApproveReadOnly &&
-		!policy.RequireApprovalForWrite &&
-		!policy.RequireApprovalForUnknown &&
-		!policy.BlockDangerous &&
-		policy.ApprovalTimeoutSeconds == 0 &&
-		len(policy.BlockedPatterns) == 0
 }
