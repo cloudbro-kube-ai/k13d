@@ -249,11 +249,13 @@ function onColumnSort(column, headerElement) {
 
 // Apply filter and sort to items
 function applyFilterAndSort() {
-    const filterText = document.getElementById('filter-input').value.toLowerCase();
+    const filterInput = document.getElementById('filter-input');
+    const filterText = filterInput ? filterInput.value.toLowerCase() : '';
 
     // Filter items by global filter
     filteredItems = allItems.filter(item => {
         if (!filterText) return true;
+        // Search in all values of the item
         return Object.values(item).some(val =>
             val && val.toString().toLowerCase().includes(filterText)
         );
@@ -280,8 +282,36 @@ function applyFilterAndSort() {
     // Render current page
     renderCurrentPage();
 
-    // Update active column filters display
+    // Update active column filters display (chips)
     updateActiveColumnFiltersDisplay();
+}
+
+// Render table headers and column filter row
+function renderTableHeaders(resource) {
+    const headers = tableHeaders[resource] || ['NAME', 'NAMESPACE', 'STATUS', 'AGE'];
+    const headerRow = `<tr>${headers.map(h => {
+        const sortClass = sortColumn === h ? (sortDirection === 'asc' ? 'sort-asc' : 'sort-desc') : '';
+        return `<th class="${sortClass}" onclick="onColumnSort('${h}', this)">${h}<span class="sort-icon"></span></th>`;
+    }).join('')}</tr>`;
+
+    const filterRow = `<tr class="column-filter-row ${columnFiltersVisible ? 'active' : ''}" id="column-filter-row">
+                ${headers.map(h => {
+        const filterValue = columnFilters[h] || '';
+        const placeholder = h === 'ACTIONS' ? '' : `Filter ${h.toLowerCase()}...`;
+        const disabled = h === 'ACTIONS' ? 'disabled style="visibility:hidden"' : '';
+        return `<th><input type="text" class="column-filter-input" placeholder="${placeholder}"
+                        value="${filterValue}"
+                        data-column="${h}"
+                        ${disabled}
+                        onkeyup="onColumnFilterChange(event, '${h}')"
+                        onclick="event.stopPropagation()"></th>`;
+    }).join('')}
+            </tr>`;
+
+    const headerEl = document.getElementById('table-header');
+    if (headerEl) {
+        headerEl.innerHTML = headerRow + filterRow;
+    }
 }
 
 // Toggle column filters visibility
@@ -1272,251 +1302,23 @@ function updateResourceSummary(resource, items) {
 }
 
 function renderTable(resource, items) {
-    // Delegate to renderTableBody (defined later, hoisted at runtime)
-    if (typeof renderTableBody === 'function') {
-        renderTableBody(resource, items);
-        return;
-    }
-    // Fallback (should not reach here)
-    switch (resource) {
-        case 'pods':
-            const containers = item.containers || ['default'];
-            const containersJson = JSON.stringify(containers).replace(/'/g, "\\'");
-            return `<tr data-index="${index}" data-containers='${containersJson}'>
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.ready}</td>
-                            <td class="status-${item.status.toLowerCase()}">${item.status}</td>
-                            <td>${item.restarts}</td>
-                            <td>${item.age}</td>
-                            <td>${item.ip || '-'}</td>
-                            <td class="resource-actions">
-                                <button class="resource-action-btn terminal" onclick="event.stopPropagation(); openTerminal('${item.name}', '${item.namespace}')">Terminal</button>
-                                <button class="resource-action-btn logs" onclick="event.stopPropagation(); openLogViewerFromRow(this, '${item.name}', '${item.namespace}')">Logs</button>
-                                <button class="resource-action-btn portforward" onclick="event.stopPropagation(); openPortForward('${item.name}', '${item.namespace}')">Forward</button>
-                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Pod', '${item.name}', '${item.namespace}')">Topo</button>
-                            </td>
-                        </tr>`;
-        case 'deployments':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.ready}</td>
-                            <td>${item.upToDate || item.up_to_date || '-'}</td>
-                            <td>${item.available || '-'}</td>
-                            <td>${item.age}</td>
-                            <td class="resource-actions">
-                                <button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button>
-                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Deployment', '${item.name}', '${item.namespace}')">Topo</button>
-                            </td>
-                        </tr>`;
-        case 'daemonsets':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.desired || '-'}</td>
-                            <td>${item.current || '-'}</td>
-                            <td>${item.ready || '-'}</td>
-                            <td>${item.age}</td>
-                            <td class="resource-actions">
-                                <button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button>
-                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('DaemonSet', '${item.name}', '${item.namespace}')">Topo</button>
-                            </td>
-                        </tr>`;
-        case 'statefulsets':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.ready || '-'}</td>
-                            <td>${item.age}</td>
-                            <td class="resource-actions">
-                                <button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button>
-                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('StatefulSet', '${item.name}', '${item.namespace}')">Topo</button>
-                            </td>
-                        </tr>`;
-        case 'replicasets':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.desired || '-'}</td>
-                            <td>${item.current || '-'}</td>
-                            <td>${item.ready || '-'}</td>
-                            <td>${item.age}</td>
-                            <td class="resource-actions">
-                                <button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button>
-                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('ReplicaSet', '${item.name}', '${item.namespace}')">Topo</button>
-                            </td>
-                        </tr>`;
-        case 'jobs':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.completions || '-'}</td>
-                            <td>${item.duration || '-'}</td>
-                            <td>${item.age}</td>
-                        </tr>`;
-        case 'cronjobs':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.schedule || '-'}</td>
-                            <td>${item.suspend ? 'Yes' : 'No'}</td>
-                            <td>${item.active || 0}</td>
-                            <td>${item.lastSchedule || '-'}</td>
-                        </tr>`;
-        case 'services':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.type}</td>
-                            <td>${item.clusterIP}</td>
-                            <td>${item.ports}</td>
-                            <td>${item.age}</td>
-                            <td class="resource-actions">
-                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Service', '${item.name}', '${item.namespace}')">Topo</button>
-                            </td>
-                        </tr>`;
-        case 'ingresses':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.class || item.ingressClass || '-'}</td>
-                            <td>${item.hosts || '-'}</td>
-                            <td>${item.address || '-'}</td>
-                            <td>${item.age}</td>
-                            <td class="resource-actions">
-                                <button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Ingress', '${item.name}', '${item.namespace}')">Topo</button>
-                            </td>
-                        </tr>`;
-        case 'networkpolicies':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.podSelector || '-'}</td>
-                            <td>${item.age}</td>
-                        </tr>`;
-        case 'configmaps':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.data || item.dataCount || 0}</td>
-                            <td>${item.age}</td>
-                        </tr>`;
-        case 'secrets':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.type || '-'}</td>
-                            <td>${item.data || item.dataCount || 0}</td>
-                            <td>${item.age}</td>
-                        </tr>`;
-        case 'serviceaccounts':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.secrets || 0}</td>
-                            <td>${item.age}</td>
-                        </tr>`;
-        case 'persistentvolumes':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.capacity || '-'}</td>
-                            <td>${item.accessModes || '-'}</td>
-                            <td>${item.reclaimPolicy || '-'}</td>
-                            <td class="status-${(item.status || '').toLowerCase()}">${item.status || '-'}</td>
-                            <td>${item.claim || '-'}</td>
-                        </tr>`;
-        case 'persistentvolumeclaims':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td class="status-${(item.status || '').toLowerCase()}">${item.status || '-'}</td>
-                            <td>${item.volume || '-'}</td>
-                            <td>${item.capacity || '-'}</td>
-                            <td>${item.accessModes || '-'}</td>
-                        </tr>`;
-        case 'nodes':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td class="status-${(item.status || '').toLowerCase()}">${item.status}</td>
-                            <td>${item.roles}</td>
-                            <td>${item.version}</td>
-                            <td>${item.age}</td>
-                        </tr>`;
-        case 'namespaces':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td class="status-active">${item.status}</td>
-                            <td>${item.age}</td>
-                        </tr>`;
-        case 'events':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.type}</td>
-                            <td>${item.reason}</td>
-                            <td>${item.message?.substring(0, 50) || '-'}${item.message?.length > 50 ? '...' : ''}</td>
-                            <td>${item.count}</td>
-                            <td>${item.lastSeen}</td>
-                        </tr>`;
-        case 'roles':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.age}</td>
-                        </tr>`;
-        case 'rolebindings':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.namespace}</td>
-                            <td>${item.role || item.roleRef || '-'}</td>
-                            <td>${item.age}</td>
-                        </tr>`;
-        case 'clusterroles':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.age}</td>
-                        </tr>`;
-        case 'clusterrolebindings':
-            return `<tr data-index="${index}">
-                            <td>${item.name}</td>
-                            <td>${item.role || item.roleRef || '-'}</td>
-                            <td>${item.age}</td>
-                        </tr>`;
-        default:
-            // Handle Custom Resources (crd:xxx format) and unknown types
-            if (resource.startsWith('crd:')) {
-                const crdInfo = currentCRD;
-                const extra = item.extra || {};
-                const extraCols = crdInfo?._extraColumns || [];
-                const extraCells = extraCols.map(col => {
-                    const key = col.toLowerCase().replace(/[- ]/g, '_');
-                    return `<td>${escapeHtml(extra[key] || '-')}</td>`;
-                }).join('');
-                const statusVal = item.status || '-';
-                const statusClass = statusVal.toLowerCase().includes('ready') || statusVal.toLowerCase() === 'true' ? 'status-running' :
-                    statusVal.toLowerCase().includes('failed') || statusVal.toLowerCase() === 'false' ? 'status-failed' : '';
-                if (crdInfo && crdInfo.namespaced) {
-                    return `<tr data-index="${index}" onclick="showCRDetail('${crdInfo.name}', '${item.namespace || ''}', '${item.name}')">
-                                    <td>${item.name}</td>
-                                    <td>${item.namespace || '-'}</td>
-                                    ${extraCells}
-                                    <td class="${statusClass}">${escapeHtml(statusVal)}</td>
-                                    <td>${item.age || '-'}</td>
-                                </tr>`;
-                } else {
-                    return `<tr data-index="${index}" onclick="showCRDetail('${crdInfo?.name || ''}', '', '${item.name}')">
-                                    <td>${item.name}</td>
-                                    ${extraCells}
-                                    <td class="${statusClass}">${escapeHtml(statusVal)}</td>
-                                    <td>${item.age || '-'}</td>
-                                </tr>`;
-                }
-            }
-            // Generic fallback for unknown resource types
-            const defaultHeaders = tableHeaders[resource] || ['NAME'];
-            return `<tr data-index="${index}">${defaultHeaders.map(h => `<td>${item[h.toLowerCase().replace(/[- ]/g, '')] || item.name || '-'}</td>`).join('')}</tr>`;
+    // Standardize items and update state
+    allItems = items || [];
+    
+    // Render headers for standard resources
+    // CRD headers are handled in renderCRDInstances, but we support both here
+    renderTableHeaders(resource);
+    
+    // Apply initial filtering and sorting, then render body via renderCurrentPage
+    applyFilterAndSort();
+    
+    // Add summary count
+    const summaryEl = document.getElementById('resource-summary');
+    if (summaryEl) {
+        summaryEl.innerHTML = `<span class="summary-item"><span class="summary-count">${allItems.length}</span> ${resource}</span>`;
     }
 }
+
 
 // Show Custom Resource detail using the shared detail-modal
 async function showCRDetail(crdName, namespace, name) {
