@@ -22,11 +22,11 @@
 </p>
 
 <p align="center">
-  <a href="https://cloudbro-kube-ai.github.io/k13d"><strong>Documentation</strong></a> ·
+  <a href="docs-site/docs/index.md"><strong>Documentation</strong></a> ·
   <a href="https://github.com/cloudbro-kube-ai/k13d/releases"><strong>Download</strong></a> ·
-  <a href="https://cloudbro-kube-ai.github.io/k13d/features/web-ui/"><strong>Web UI Guide</strong></a> ·
-  <a href="https://cloudbro-kube-ai.github.io/k13d/features/tui/"><strong>TUI Guide</strong></a> ·
-  <a href="https://cloudbro-kube-ai.github.io/k13d/ko/"><strong>한국어</strong></a>
+  <a href="docs-site/docs/user-guide/web.md"><strong>Web UI Guide</strong></a> ·
+  <a href="docs-site/docs/user-guide/tui.md"><strong>TUI Guide</strong></a> ·
+  <a href="docs-site/docs/ko/index.md"><strong>한국어</strong></a>
 </p>
 
 ---
@@ -305,8 +305,8 @@ Remember that Ollama models must support **tools/function calling** for k13d's A
 
 Web UI and TUI both rewrite this file when you save settings. For exact field ownership, profile switching behavior, and how `llm`, `models[]`, and `active_model` interact, see:
 
-- [Configuration](https://cloudbro-kube-ai.github.io/k13d/getting-started/configuration/)
-- [Model Settings & Storage](https://cloudbro-kube-ai.github.io/k13d/ai-llm/model-settings-storage/)
+- [Configuration](docs-site/docs/getting-started/configuration.md)
+- [Model Settings & Storage](docs-site/docs/ai-llm/model-settings-storage.md)
 
 ---
 
@@ -442,7 +442,7 @@ mcp:
       args: ["-y", "@modelcontextprotocol/server-sequential-thinking"]
 ```
 
-See the [MCP Guide](https://cloudbro-kube-ai.github.io/k13d/concepts/mcp-integration/) for details.
+See the [MCP Guide](docs-site/docs/concepts/mcp-integration.md) for details.
 
 ---
 
@@ -514,23 +514,25 @@ k13d uses this config directory by default:
 | `aliases.yaml` | Resource command aliases |
 | `views.yaml` | Per-resource view settings (sort defaults) |
 
-See the [Configuration Guide](https://cloudbro-kube-ai.github.io/k13d/getting-started/configuration/) for full reference.
+See the [Configuration Guide](docs-site/docs/getting-started/configuration.md) for full reference.
 
 ---
 
 ## Documentation
 
-**Full documentation: [https://cloudbro-kube-ai.github.io/k13d](https://cloudbro-kube-ai.github.io/k13d)**
+**Documentation site:** [https://cloudbro-kube-ai.github.io/k13d](https://cloudbro-kube-ai.github.io/k13d)
 
-- [Installation Guide](https://cloudbro-kube-ai.github.io/k13d/getting-started/installation/)
-- [Web UI Features](https://cloudbro-kube-ai.github.io/k13d/features/web-ui/)
-- [TUI Features](https://cloudbro-kube-ai.github.io/k13d/features/tui/)
-- [AI Assistant](https://cloudbro-kube-ai.github.io/k13d/features/ai-assistant/)
-- [Configuration](https://cloudbro-kube-ai.github.io/k13d/getting-started/configuration/)
-- [MCP Integration](https://cloudbro-kube-ai.github.io/k13d/concepts/mcp-integration/)
-- [Docker Deployment (Beta / not officially supported)](https://cloudbro-kube-ai.github.io/k13d/deployment/docker/)
-- [Kubernetes Deployment (Beta / not officially supported)](https://cloudbro-kube-ai.github.io/k13d/deployment/kubernetes/)
-- [한국어 가이드](https://cloudbro-kube-ai.github.io/k13d/ko/)
+Use the repository-backed links below if you want stable links directly from GitHub:
+
+- [Installation Guide](docs-site/docs/getting-started/installation.md)
+- [Web UI Guide](docs-site/docs/user-guide/web.md)
+- [TUI Guide](docs-site/docs/user-guide/tui.md)
+- [AI Assistant](docs-site/docs/features/ai-assistant.md)
+- [Configuration](docs-site/docs/getting-started/configuration.md)
+- [MCP Integration](docs-site/docs/concepts/mcp-integration.md)
+- [Docker Deployment (Beta / not officially supported)](docs-site/docs/deployment/docker.md)
+- [Kubernetes Deployment (Beta / not officially supported)](docs-site/docs/deployment/kubernetes.md)
+- [한국어 가이드](docs-site/docs/ko/index.md)
 
 ---
 
