@@ -125,6 +125,9 @@ func setupK8sTestServer(t *testing.T) (*Server, http.Handler) {
 			Spec: corev1.ServiceSpec{
 				Type:      corev1.ServiceTypeClusterIP,
 				ClusterIP: "10.96.0.1",
+				Selector: map[string]string{
+					"app": "test",
+				},
 				Ports: []corev1.ServicePort{
 					{Port: 80, Protocol: corev1.ProtocolTCP},
 					{Port: 443, Protocol: corev1.ProtocolTCP},
@@ -652,6 +655,11 @@ func TestK8sResourceHandlerServices(t *testing.T) {
 	// Check LoadBalancer service has external IP
 	for _, item := range items {
 		svc := item.(map[string]interface{})
+		if svc["name"] == "test-service" {
+			if svc["selector"] != "app=test" {
+				t.Errorf("Expected selector 'app=test', got %v", svc["selector"])
+			}
+		}
 		if svc["name"] == "lb-service" {
 			if svc["externalIP"] != "203.0.113.1" {
 				t.Errorf("Expected externalIP '203.0.113.1', got %v", svc["externalIP"])

@@ -54,11 +54,88 @@ test('local auth browser journey covers main web workflows', async ({ page }) =>
   await expect(page.locator('#filter-input')).toHaveValue('zzz-no-match');
   await page.fill('#filter-input', '');
 
+  const deploymentsNav = page.locator('.nav-item[data-resource="deployments"]');
+  await expect(deploymentsNav).toBeVisible();
+  await deploymentsNav.click({ force: true });
+  await expect(page.locator('#panel-title')).toHaveText(/Deployments/i);
+  await expect(page.locator('#table-body tr[data-index]')).not.toHaveCount(0);
+  await expect(page.locator('#table-body tr[data-spacer]')).toHaveCount(0);
+
+  const initialRowTexts = await page.locator('#table-body tr').evaluateAll((rows) =>
+    rows.map((row) => row.textContent.trim()).filter(Boolean)
+  );
+  expect(initialRowTexts.some((text) => text === '+')).toBeFalsy();
+
+  await page.evaluate((value) => {
+    document.getElementById('filter-input').value = value;
+    currentFilter = value.toLowerCase();
+    applyFilterAndSort();
+  }, 'zzz-no-match-deployments');
+  await expect(page.locator('#table-body')).toContainText(/No deployments found/i);
+  await expect(page.locator('#table-body .add-context-btn')).toHaveCount(0);
+  await page.evaluate(() => {
+    document.getElementById('filter-input').value = '';
+    currentFilter = '';
+    applyFilterAndSort();
+  });
+
+  const deploymentWithPods = await page.evaluate(async () => {
+    const depResp = await fetchWithAuth('/api/k8s/deployments');
+    const depData = await depResp.json();
+    for (const item of depData.items || []) {
+      if (!item.selector || item.selector === '*') continue;
+      const podsResp = await fetchWithAuth(`/api/k8s/pods?namespace=${encodeURIComponent(item.namespace || '')}&labelSelector=${encodeURIComponent(item.selector)}`);
+      const podsData = await podsResp.json();
+      if ((podsData.items || []).length > 0) {
+        return {
+          name: item.name,
+          namespace: item.namespace || '',
+          selector: item.selector,
+          podCount: podsData.items.length
+        };
+      }
+    }
+    return null;
+  });
+  expect(deploymentWithPods).not.toBeNull();
+
+  await page.evaluate((value) => {
+    document.getElementById('filter-input').value = value;
+    currentFilter = value.toLowerCase();
+    applyFilterAndSort();
+  }, deploymentWithPods.name);
+
+  await page.evaluate((deployment) => {
+    currentResource = 'deployments';
+    showResourceDetail(deployment);
+  }, deploymentWithPods);
+  await expect(page.locator('#detail-modal')).toBeVisible();
+
+  await page.locator('#detail-pods-tab').click();
+  await expect(page.locator('#detail-pods')).toContainText(`Selector: ${deploymentWithPods.selector}`);
+  await expect(page.locator('#detail-pods tbody tr')).toHaveCount(deploymentWithPods.podCount);
+
+  await page.locator('#detail-modal .detail-tab').getByText('Events', { exact: true }).click();
+  await expect(page.locator('#detail-events')).not.toContainText(/Error loading events/i);
+  await page.locator('#detail-modal .modal-close').click();
+  await expect(page.locator('#detail-modal')).toBeHidden();
+  await page.evaluate(() => {
+    document.getElementById('filter-input').value = '';
+    currentFilter = '';
+    applyFilterAndSort();
+  });
+
   await openCustomView(page, 'overview', '#overview-container', 'showOverviewPanel');
 
   await openCustomView(page, 'applications', '#applications-container', 'showApplicationsView');
 
   await openCustomView(page, 'topology', '#topology-container', 'showTopology');
+
+  await page.evaluate(() => {
+    showTimelineView();
+  });
+  await expect(page.locator('#timeline-container')).toBeVisible();
+  await expect(page.locator('#timeline-body')).not.toContainText(/Failed:/i);
 
   await page.getByText('Reports', { exact: true }).click();
   await expect(page.locator('#reports-modal')).toBeVisible();

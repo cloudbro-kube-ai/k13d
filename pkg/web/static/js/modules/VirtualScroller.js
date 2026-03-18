@@ -49,12 +49,24 @@ class TableVirtualScroller {
             rowsHtml += this.renderRowFn(this.items[i], i);
         }
 
-        // Use standard dummy tr elements for spacing to maintain table structure
-        this.tbody.innerHTML = `
-            <tr style="height: ${topPadding}px; border: none !important;"><td colspan="100%" style="border: none !important; padding: 0;"></td></tr>
-            ${rowsHtml}
-            <tr style="height: ${bottomPadding}px; border: none !important;"><td colspan="100%" style="border: none !important; padding: 0;"></td></tr>
-        `;
+        const parts = [];
+        if (topPadding > 0) {
+            parts.push(
+                `<tr data-spacer="true" aria-hidden="true" style="height: ${topPadding}px; border: none !important;"><td colspan="100" style="border: none !important; padding: 0;"></td></tr>`
+            );
+        }
+        parts.push(rowsHtml);
+        if (bottomPadding > 0) {
+            parts.push(
+                `<tr data-spacer="true" aria-hidden="true" style="height: ${bottomPadding}px; border: none !important;"><td colspan="100" style="border: none !important; padding: 0;"></td></tr>`
+            );
+        }
+
+        this.tbody.innerHTML = parts.join('');
+
+        if (typeof window.addRowClickHandlers === 'function') {
+            window.addRowClickHandlers();
+        }
     }
 }
 

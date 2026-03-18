@@ -419,6 +419,7 @@ function renderCurrentPage() {
     } else {
         // Fallback
         document.getElementById('table-body').innerHTML = filteredItems.slice(0, 100).map((item, index) => generateRowHTML(currentResource, item, index)).join('');
+        addRowClickHandlers();
     }
 }
 
@@ -4376,17 +4377,12 @@ async function switchDetailTab(tab) {
             try {
                 const ns = selectedResource.namespace || '';
                 const url = `/api/k8s/events?namespace=${encodeURIComponent(ns)}`;
-                const response = await fetch(url, { credentials: 'include' });
+                const response = await fetchWithAuth(url);
                 if (!response.ok) {
                     throw new Error(await response.text());
                 }
                 const data = await response.json();
-                // Filter events related to this resource
-                const resourceName = selectedResource.name;
-                const relatedEvents = (data.items || []).filter(e =>
-                    (e.involvedObject && e.involvedObject.name === resourceName) ||
-                    (e.message && e.message.includes(resourceName))
-                );
+                const relatedEvents = getRelatedEvents(data.items || [], currentResource, selectedResource);
 
                 if (relatedEvents.length === 0) {
                     eventsEl.innerHTML = '<p style="color: var(--text-secondary);">No events found for this resource.</p>';
@@ -4417,44 +4413,15 @@ async function switchDetailTab(tab) {
             podsEl.innerHTML = '<p style="color: var(--text-secondary);">Loading related pods...</p>';
             try {
                 const ns = selectedResource.namespace || '';
-                // First, get the resource's YAML to extract the selector
-                const yamlUrl = `/api/k8s/${currentResource}?name=${encodeURIComponent(selectedResource.name)}&namespace=${encodeURIComponent(ns)}&format=yaml`;
-                const yamlResp = await fetch(yamlUrl, { credentials: 'include' });
-                if (!yamlResp.ok) {
-                    throw new Error('Failed to fetch resource details');
-                }
-                const yamlText = await yamlResp.text();
-
-                // Parse selector from YAML (simple parsing for common patterns)
-                let labelSelector = '';
-                if (currentResource === 'services') {
-                    // Services use spec.selector
-                    const selectorMatch = yamlText.match(/spec:\s*[\s\S]*?selector:\s*\n((?:\s+\w+:\s*\S+\n?)+)/);
-                    if (selectorMatch) {
-                        const selectorLines = selectorMatch[1].trim().split('\n');
-                        const selectors = [];
-                        for (const line of selectorLines) {
-                            const match = line.trim().match(/^(\S+):\s*(.+)$/);
-                            if (match && !match[1].startsWith('match')) {
-                                selectors.push(`${match[1]}=${match[2].trim()}`);
-                            }
-                        }
-                        labelSelector = selectors.join(',');
+                let labelSelector = resolveRelatedPodsSelector(currentResource, selectedResource, '');
+                if (!labelSelector) {
+                    const yamlUrl = `/api/k8s/${currentResource}?name=${encodeURIComponent(selectedResource.name)}&namespace=${encodeURIComponent(ns)}&format=yaml`;
+                    const yamlResp = await fetchWithAuth(yamlUrl);
+                    if (!yamlResp.ok) {
+                        throw new Error('Failed to fetch resource details');
                     }
-                } else {
-                    // Deployments, StatefulSets, etc. use spec.selector.matchLabels
-                    const matchLabelsMatch = yamlText.match(/matchLabels:\s*\n((?:\s+\w[\w.-]*:\s*\S+\n?)+)/);
-                    if (matchLabelsMatch) {
-                        const labelLines = matchLabelsMatch[1].trim().split('\n');
-                        const selectors = [];
-                        for (const line of labelLines) {
-                            const match = line.trim().match(/^([\w.-]+):\s*(.+)$/);
-                            if (match) {
-                                selectors.push(`${match[1]}=${match[2].trim()}`);
-                            }
-                        }
-                        labelSelector = selectors.join(',');
-                    }
+                    const yamlText = await yamlResp.text();
+                    labelSelector = resolveRelatedPodsSelector(currentResource, selectedResource, yamlText);
                 }
 
                 if (!labelSelector) {
@@ -4595,6 +4562,117 @@ function openLogViewerDirect(podName, namespace) {
 function closeDetail() {
     document.getElementById('detail-modal').classList.remove('active');
     selectedResource = null;
+}
+
+function resourceKindForEvents(resource) {
+    const kindMap = {
+        pods: 'Pod',
+        deployments: 'Deployment',
+        daemonsets: 'DaemonSet',
+        statefulsets: 'StatefulSet',
+        replicasets: 'ReplicaSet',
+        services: 'Service',
+        ingresses: 'Ingress',
+        cronjobs: 'CronJob',
+        jobs: 'Job',
+        configmaps: 'ConfigMap',
+        secrets: 'Secret',
+        namespaces: 'Namespace',
+        nodes: 'Node',
+    };
+    return kindMap[resource] || '';
+}
+
+function leadingSpaceCount(line) {
+    const match = line.match(/^\s*/);
+    return match ? match[0].length : 0;
+}
+
+function extractSelectorFromYAMLBlock(yamlText, blockName) {
+    const lines = yamlText.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim() !== blockName) {
+            continue;
+        }
+
+        const blockIndent = leadingSpaceCount(lines[i]);
+        const selectors = [];
+
+        for (let j = i + 1; j < lines.length; j++) {
+            const rawLine = lines[j];
+            const trimmed = rawLine.trim();
+
+            if (!trimmed) {
+                continue;
+            }
+
+            const indent = leadingSpaceCount(rawLine);
+            if (indent <= blockIndent) {
+                break;
+            }
+
+            const match = trimmed.match(/^([\w.-]+):\s*(.+)$/);
+            if (!match || match[2].endsWith(':')) {
+                continue;
+            }
+
+            selectors.push(`${match[1]}=${match[2].trim().replace(/^['"]|['"]$/g, '')}`);
+        }
+
+        if (selectors.length > 0) {
+            return selectors.join(',');
+        }
+    }
+
+    return '';
+}
+
+function resolveRelatedPodsSelector(resource, item, yamlText) {
+    const directSelector = item && typeof item.selector === 'string' ? item.selector.trim() : '';
+    if (directSelector && directSelector !== '*') {
+        return directSelector;
+    }
+
+    if (!yamlText) {
+        return '';
+    }
+
+    if (resource === 'services') {
+        return extractSelectorFromYAMLBlock(yamlText, 'selector:');
+    }
+
+    return extractSelectorFromYAMLBlock(yamlText, 'matchLabels:');
+}
+
+function getRelatedEvents(events, resource, item) {
+    const resourceName = item?.name || '';
+    const resourceNamespace = item?.namespace || '';
+    const resourceKind = resourceKindForEvents(resource);
+
+    const directMatches = (events || []).filter((event) => {
+        const involved = event.involvedObject || {};
+        if (involved.name !== resourceName) {
+            return false;
+        }
+        if (resourceNamespace && involved.namespace && involved.namespace !== resourceNamespace) {
+            return false;
+        }
+        if (!resourceKind || !involved.kind) {
+            return true;
+        }
+        return involved.kind.toLowerCase() === resourceKind.toLowerCase();
+    });
+
+    if (directMatches.length > 0) {
+        return directMatches;
+    }
+
+    return (events || []).filter((event) => {
+        const involved = event.involvedObject || {};
+        return involved.name === resourceName ||
+            (event.message && event.message.includes(resourceName));
+    });
 }
 
 function analyzeWithAI() {
@@ -4797,17 +4875,20 @@ function getContextForAI() {
 
 // Update addRowClickHandlers - explicit button for AI context only
 function addRowClickHandlers() {
-    document.querySelectorAll('#table-body tr').forEach((row, index) => {
+    document.querySelectorAll('#table-body tr[data-index]').forEach((row) => {
+        const dataIndex = parseInt(row.dataset.index || '', 10);
+        const item = Number.isNaN(dataIndex) ? null : cachedData[dataIndex];
+        if (!item) {
+            return;
+        }
+
         // Left click - show detail modal (but not if clicking on action buttons)
         row.onclick = (e) => {
             // Ignore clicks on action buttons or their container
             if (e.target.closest('.resource-actions') || e.target.closest('.resource-action-btn')) {
                 return;
             }
-            const item = cachedData[index];
-            if (item) {
-                showResourceDetail(item);
-            }
+            showResourceDetail(item);
         };
 
         // Add explicit + button for adding to context
@@ -4819,17 +4900,14 @@ function addRowClickHandlers() {
             btn.title = 'Add to AI context';
             btn.onclick = (e) => {
                 e.stopPropagation();
-                const item = cachedData[index];
-                if (item) {
-                    addToAIContext(item);
-                    // Visual feedback
-                    btn.textContent = '✓';
-                    btn.style.background = 'var(--accent-green)';
-                    setTimeout(() => {
-                        btn.textContent = '+';
-                        btn.style.background = '';
-                    }, 1000);
-                }
+                addToAIContext(item);
+                // Visual feedback
+                btn.textContent = '✓';
+                btn.style.background = 'var(--accent-green)';
+                setTimeout(() => {
+                    btn.textContent = '+';
+                    btn.style.background = '';
+                }, 1000);
             };
             firstCell.prepend(btn);
             firstCell.prepend(document.createTextNode(' '));

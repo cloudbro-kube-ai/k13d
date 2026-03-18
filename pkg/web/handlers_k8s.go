@@ -130,6 +130,10 @@ func (s *Server) handleK8sResource(w http.ResponseWriter, r *http.Request) {
 				for j, p := range svc.Spec.Ports {
 					ports[j] = fmt.Sprintf("%d/%s", p.Port, p.Protocol)
 				}
+				selector := ""
+				if len(svc.Spec.Selector) > 0 {
+					selector = formatLabelsMap(svc.Spec.Selector)
+				}
 				items[i] = map[string]interface{}{
 					"name":       svc.Name,
 					"namespace":  svc.Namespace,
@@ -137,6 +141,7 @@ func (s *Server) handleK8sResource(w http.ResponseWriter, r *http.Request) {
 					"clusterIP":  svc.Spec.ClusterIP,
 					"externalIP": getExternalIPs(&svc),
 					"ports":      strings.Join(ports, ", "),
+					"selector":   selector,
 					"age":        formatAge(svc.CreationTimestamp.Time),
 				}
 			}
