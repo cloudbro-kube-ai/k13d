@@ -1,7 +1,7 @@
 <h1 align="center">k13d</h1>
 
 <p align="center">
-  <strong>The all-in-one Kubernetes dashboard — Terminal & Web UI with AI built in.</strong>
+  <strong>The all-in-one Kubernetes dashboard for terminal and browser, with AI built in.</strong>
 </p>
 
 <p align="center">
@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  Download a single binary, run one command, and get a full-featured Kubernetes dashboard<br>
-  with an AI assistant that actually executes commands for you.
+  One binary, one command.<br>
+  Get a full Kubernetes dashboard in TUI or Web UI, plus an AI assistant that can actually take action.
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <a href="docs-site/docs/index.md"><strong>Documentation</strong></a> ·
+  <a href="https://cloudbro-kube-ai.github.io/k13d/"><strong>Official Docs</strong></a> ·
   <a href="https://github.com/cloudbro-kube-ai/k13d/releases"><strong>Download</strong></a> ·
   <a href="docs-site/docs/user-guide/web.md"><strong>Web UI Guide</strong></a> ·
   <a href="docs-site/docs/user-guide/tui.md"><strong>TUI Guide</strong></a> ·
@@ -109,6 +109,7 @@ If you're evaluating k13d today, focus on:
 
 - Local **TUI** with your existing kubeconfig
 - Local **Web UI** via `./k13d --web --auth-mode local`
+- Official docs at [cloudbro-kube-ai.github.io/k13d](https://cloudbro-kube-ai.github.io/k13d/)
 
 #### Flags
 
@@ -133,182 +134,25 @@ If you're evaluating k13d today, focus on:
 
 That's it. Your kubeconfig is auto-detected.
 
-#### Config File Locations
+#### Configuration
 
-k13d stores `config.yaml` under the config directory unless you override it with `--config` or `K13D_CONFIG`.
+k13d stores `config.yaml` in the platform config directory by default and creates it on the first successful save from Web UI, TUI, or any internal `Save()` path.
 
 | Platform | Default config path |
 |----------|---------------------|
 | Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
 | macOS | `~/.config/k13d/config.yaml` |
 | Windows | `%AppData%\\k13d\\config.yaml` |
-| Custom | `k13d --config /path/to/config.yaml` or `K13D_CONFIG=/path/to/config.yaml` |
 
-On macOS, older installs may still have `~/Library/Application Support/k13d/config.yaml`. Current builds automatically copy that legacy file to `~/.config/k13d/config.yaml` on first startup.
+For configuration details, model profiles, storage paths, and example `config.yaml` files, use the official docs:
 
-#### Config Resolution Order
-
-When k13d chooses the active `config.yaml`, it resolves the path in this order:
-
-1. `--config /path/to/config.yaml`
-2. `K13D_CONFIG=/path/to/config.yaml`
-3. `XDG_CONFIG_HOME=/custom/config-home` -> `$XDG_CONFIG_HOME/k13d/config.yaml`
-4. macOS default `~/.config/k13d/config.yaml`
-5. platform XDG/AppData default
-
-The CLI flag is applied by exporting `K13D_CONFIG` before config loading, so startup logs will usually show `Config Path Source: K13D_CONFIG` when you passed `--config`.
-
-#### What Happens If The File Does Not Exist
-
-- k13d still starts with built-in defaults
-- environment overrides such as `K13D_LLM_PROVIDER` still apply
-- the file is **not** created just by starting the app
-- `config.yaml` is created on the first successful save from Web UI, TUI, or any internal `Save()` path
-- if you point to a missing custom file with `--config` or `K13D_CONFIG`, k13d keeps using that path and still waits until the first save to create it
-
-On macOS only, the legacy `~/Library/Application Support/k13d/config.yaml` is copied into `~/.config/k13d/config.yaml` automatically, but only when you are using the default path and the new file does not already exist.
-
-#### Typical Config Directory Layout
-
-The config directory is usually `~/.config/k13d` on macOS and `${XDG_CONFIG_HOME:-~/.config}/k13d` on Linux.
-
-| File | Purpose |
-|------|---------|
-| `config.yaml` | Main runtime config: LLM, models, MCP, storage, auth/tool approval, notifications |
-| `aliases.yaml` | TUI resource aliases |
-| `hotkeys.yaml` | TUI custom hotkeys |
-| `plugins.yaml` | TUI plugins |
-| `views.yaml` | TUI per-resource sort/view preferences |
-| `skins/*` | TUI theme overrides |
-| `audit.db` | SQLite audit/metrics/session database when default SQLite storage is used |
-| `audit.log` | Plain-text audit log when enabled |
-
-AI chat session files are stored under the data directory, not the config directory. By default that is `<XDG data home>/k13d/sessions`.
-
-#### How To Verify Which File Is Active
-
-When you start Web UI mode, k13d now prints:
-
-- `Config File`
-- `Config Path Source`
-- `Env Overrides`
-- `LLM Settings`
-
-That startup output is the fastest way to confirm which file is actually being used. `k13d --storage-info` is also useful when you want to inspect the effective config directory, audit DB path, audit log path, and sessions path without starting the full UI.
-
-#### Example `config.yaml`
-
-```yaml
-llm:
-  provider: openai
-  model: gpt-4o
-  endpoint: https://api.openai.com/v1
-  api_key: ${OPENAI_API_KEY}
-  retry_enabled: true
-  max_retries: 5
-  max_backoff: 10.0
-  temperature: 0.7
-  max_tokens: 4096
-  max_iterations: 10
-
-models:
-  - name: gpt-4o
-    provider: openai
-    model: gpt-4o
-    endpoint: https://api.openai.com/v1
-    description: "OpenAI GPT-4o"
-
-  - name: gpt-oss-local
-    provider: ollama
-    model: gpt-oss:20b
-    endpoint: http://localhost:11434
-    description: "Local Ollama with tool support"
-
-active_model: gpt-4o
-
-mcp:
-  servers: []
-
-language: ko
-beginner_mode: true
-enable_audit: true
-```
-
-#### Safe `config.yaml` setup patterns
-
-Use environment variables for API keys whenever possible, and keep `config.yaml` limited to provider/model/endpoint settings. That avoids accidentally committing secrets and makes it easier to rotate credentials later.
-
-**OpenAI**
-
-```bash
-export OPENAI_API_KEY=sk-...
-cat > ~/.config/k13d/config.yaml <<'YAML'
-llm:
-  provider: openai
-  model: gpt-4o
-  endpoint: https://api.openai.com/v1
-  api_key: ${OPENAI_API_KEY}
-
-models:
-  - name: gpt-4o
-    provider: openai
-    model: gpt-4o
-    endpoint: https://api.openai.com/v1
-
-active_model: gpt-4o
-YAML
-```
-
-**Anthropic**
-
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-cat > ~/.config/k13d/config.yaml <<'YAML'
-llm:
-  provider: anthropic
-  model: claude-sonnet-4-6
-  endpoint: https://api.anthropic.com
-  api_key: ${ANTHROPIC_API_KEY}
-
-models:
-  - name: claude-sonnet
-    provider: anthropic
-    model: claude-sonnet-4-6
-    endpoint: https://api.anthropic.com
-
-active_model: claude-sonnet
-YAML
-```
-
-Anthropic model IDs are exact strings and can be longer than the marketing names. If you are unsure which ID to use, query Anthropic's `GET /v1/models` endpoint and copy the `id` field exactly. On March 17, 2026, examples returned by that API included `claude-sonnet-4-6`, `claude-opus-4-6`, `claude-opus-4-5-20251101`, `claude-haiku-4-5-20251001`, and `claude-sonnet-4-5-20250929`.
-
-**Ollama**
-
-```bash
-ollama serve
-ollama pull gpt-oss:20b
-cat > ~/.config/k13d/config.yaml <<'YAML'
-llm:
-  provider: ollama
-  model: gpt-oss:20b
-  endpoint: http://localhost:11434
-
-models:
-  - name: gpt-oss-local
-    provider: ollama
-    model: gpt-oss:20b
-    endpoint: http://localhost:11434
-
-active_model: gpt-oss-local
-YAML
-```
-
-Remember that Ollama models must support **tools/function calling** for k13d's AI Assistant to work correctly.
-
-Web UI and TUI both rewrite this file when you save settings. For exact field ownership, profile switching behavior, and how `llm`, `models[]`, and `active_model` interact, see:
-
-- [Configuration](docs-site/docs/getting-started/configuration.md)
-- [Model Settings & Storage](docs-site/docs/ai-llm/model-settings-storage.md)
+- [Official Docs (GitHub Pages)](https://cloudbro-kube-ai.github.io/k13d/)
+- [Installation Guide](docs-site/docs/getting-started/installation.md)
+- [Configuration Guide](docs-site/docs/getting-started/configuration.md)
+- [Web UI Guide](docs-site/docs/user-guide/web.md)
+- [TUI Guide](docs-site/docs/user-guide/tui.md)
+- [MCP Integration](docs-site/docs/concepts/mcp-integration.md)
+- [한국어 가이드](docs-site/docs/ko/index.md)
 
 ---
 
@@ -380,23 +224,15 @@ ollama pull gpt-oss:20b && ollama serve
 # Set Provider: "ollama" in Settings > AI
 ```
 
-When you use Anthropic, copy the exact model ID, not just the family name. Anthropic IDs can be long and change over time. If you need to verify current IDs, query Anthropic's `GET /v1/models` API and use the returned `id` value exactly.
-
 For **Ollama**, choose a model that explicitly supports **tools/function calling**. Some Ollama models can connect and generate text, but k13d's AI Assistant will not work correctly unless the model supports tools. `gpt-oss:20b` is the recommended default.
 
 Embedded LLM support has been removed. For local/private inference, use **Ollama** instead.
 
-### Web UI Model Profiles
+Model profiles, provider-specific examples, and config ownership are documented in:
 
-In **Settings > AI**:
-
-- **Save Settings** updates the active `llm` connection
-- **Add Model Profile** writes a saved entry under `models:` in `config.yaml`
-- **Use** switches that saved profile into the active `llm` connection and updates `active_model`
-
-The **Add Model Profile** form mirrors the same provider list as the main LLM form and opens prefilled from the current provider/model/endpoint so it is easier to save the current connection as a named profile.
-
-Adding a profile does **not** auto-activate it. After creating it, click **Use** if you want that profile to become the active model.
+- [Official Docs](https://cloudbro-kube-ai.github.io/k13d/)
+- [Configuration Guide](docs-site/docs/getting-started/configuration.md)
+- [Model Settings & Storage](docs-site/docs/ai-llm/model-settings-storage.md)
 
 ### Supported AI Providers
 
@@ -498,43 +334,10 @@ make build
 
 ---
 
-## Configuration
-
-k13d uses this config directory by default:
-
-| Platform | Default config directory |
-|----------|--------------------------|
-| Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/` |
-| macOS | `~/.config/k13d/` |
-| Windows | `%AppData%\\k13d\\` |
-
-| File | Purpose |
-|------|---------|
-| `config.yaml` | Main config (LLM provider, language, model profiles, storage) |
-| `hotkeys.yaml` | Custom hotkey bindings |
-| `plugins.yaml` | External plugin definitions |
-| `aliases.yaml` | Resource command aliases |
-| `views.yaml` | Per-resource view settings (sort defaults) |
-
-See the [Configuration Guide](docs-site/docs/getting-started/configuration.md) for full reference.
-
----
-
 ## Documentation
 
-**Documentation site:** [https://cloudbro-kube-ai.github.io/k13d](https://cloudbro-kube-ai.github.io/k13d)
-
-Use the repository-backed links below if you want stable links directly from GitHub:
-
-- [Installation Guide](docs-site/docs/getting-started/installation.md)
-- [Web UI Guide](docs-site/docs/user-guide/web.md)
-- [TUI Guide](docs-site/docs/user-guide/tui.md)
-- [AI Assistant](docs-site/docs/features/ai-assistant.md)
-- [Configuration](docs-site/docs/getting-started/configuration.md)
-- [MCP Integration](docs-site/docs/concepts/mcp-integration.md)
-- [Docker Deployment (Beta / not officially supported)](docs-site/docs/deployment/docker.md)
-- [Kubernetes Deployment (Beta / not officially supported)](docs-site/docs/deployment/kubernetes.md)
-- [한국어 가이드](docs-site/docs/ko/index.md)
+- Official docs site: [cloudbro-kube-ai.github.io/k13d](https://cloudbro-kube-ai.github.io/k13d/)
+- Repository docs: [Installation](docs-site/docs/getting-started/installation.md), [Web UI](docs-site/docs/user-guide/web.md), [TUI](docs-site/docs/user-guide/tui.md), [Configuration](docs-site/docs/getting-started/configuration.md), [MCP](docs-site/docs/concepts/mcp-integration.md), [한국어](docs-site/docs/ko/index.md)
 
 ---
 
