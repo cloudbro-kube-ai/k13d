@@ -126,6 +126,7 @@ type App struct {
 	recentNamespaces    []string // Recently used namespaces (most recent first)
 	maxRecentNamespaces int      // Max number of recent namespaces to track
 	showAIPanel         bool
+	aiPanelWidth        int               // Width of the right-side AI panel in columns
 	filterText          string            // Current filter text
 	filterRegex         bool              // True if filter is regex (e.g., /pattern/)
 	tableHeaders        []string          // Original headers
@@ -148,6 +149,10 @@ type App struct {
 	// Navigation history (protected by navMx)
 	navMx           sync.Mutex
 	navigationStack []navHistory
+
+	// Redraw scheduling
+	redrawMx     sync.Mutex
+	redrawBroker *redrawBroker
 
 	// Atomic guards (k9s pattern for lock-free update deduplication)
 	inUpdate    int32
@@ -174,6 +179,7 @@ type App struct {
 	pendingDecisions    []PendingDecision
 	pendingToolApproval chan bool
 	aiConversationTurns int
+	toolApprovalFocus   tview.Primitive
 	currentToolCallInfo struct {
 		Name    string
 		Args    string
@@ -296,6 +302,7 @@ func NewAppWithNamespace(initialNamespace string) *App {
 		recentNamespaces:    make([]string, 0),
 		maxRecentNamespaces: 9,
 		showAIPanel:         true,
+		aiPanelWidth:        defaultAIPanelWidth,
 		selectedRows:        make(map[int]bool),
 		sortColumn:          -1,
 		sortAscending:       true,
@@ -363,6 +370,7 @@ func (a *App) Run() error {
 
 	defer func() {
 		atomic.StoreInt32(&a.stopping, 1)
+		a.stopRedrawBroker()
 		if a.briefing != nil {
 			a.briefing.stopPulseAnimation()
 		}
@@ -415,6 +423,7 @@ func (a *App) Run() error {
 // Stop stops the application gracefully
 func (a *App) Stop() {
 	atomic.StoreInt32(&a.stopping, 1)
+	a.stopRedrawBroker()
 	if a.appCancel != nil {
 		a.appCancel()
 	}
@@ -436,4 +445,30 @@ func (a *App) Stop() {
 // IsRunning returns true if the application is active
 func (a *App) IsRunning() bool {
 	return atomic.LoadInt32(&a.running) == 1 && atomic.LoadInt32(&a.stopping) == 0
+}
+
+func (a *App) ensureRedrawBroker() *redrawBroker {
+	a.redrawMx.Lock()
+	defer a.redrawMx.Unlock()
+
+	if a.redrawBroker != nil {
+		return a.redrawBroker
+	}
+
+	a.redrawBroker = newRedrawBroker(defaultRedrawBatchWindow, func(f func()) {
+		a.queueUpdateDrawDirect(f)
+	})
+
+	return a.redrawBroker
+}
+
+func (a *App) stopRedrawBroker() {
+	a.redrawMx.Lock()
+	broker := a.redrawBroker
+	a.redrawBroker = nil
+	a.redrawMx.Unlock()
+
+	if broker != nil {
+		broker.Stop()
+	}
 }

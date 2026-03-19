@@ -5,9 +5,24 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
+
+func aiPanelWidthForTest(t *testing.T, app *App) int {
+	t.Helper()
+
+	done := make(chan struct{})
+	width := 0
+	app.QueueUpdate(func() {
+		_, _, width, _ = app.aiContainer.GetRect()
+		close(done)
+	})
+	<-done
+
+	return width
+}
 
 func focusTUITable(t *testing.T, ctx *TUITestContext) {
 	t.Helper()
@@ -127,4 +142,123 @@ func TestTUIJourney_CommandHistoryNamespaceHintAndSelection(t *testing.T) {
 	ctx.Press(tcell.KeyUp).Wait(50 * time.Millisecond)
 	ctx.ExpectContentContains("namespaces")
 	ctx.Press(tcell.KeyEsc).Wait(50 * time.Millisecond)
+}
+
+func TestTUIJourney_ToolApprovalModal(t *testing.T) {
+	ctx := NewTUITestContext(t)
+	defer ctx.Cleanup()
+
+	done := make(chan struct{})
+	ctx.app.QueueUpdate(func() {
+		ctx.app.mx.Lock()
+		ctx.app.showAIPanel = true
+		ctx.app.mx.Unlock()
+		ctx.app.rebuildContentLayout(true)
+		ctx.app.SetFocus(ctx.app.aiInput)
+		ctx.app.setToolCallState("kubectl", `{"command":"scale deployment nginx --replicas=3"}`, "kubectl scale deployment nginx --replicas=3")
+		ctx.app.showToolApprovalModal("kubectl", "kubectl scale deployment nginx --replicas=3", &safety.Decision{
+			Category: "write",
+			Warnings: []string{"This changes live cluster state."},
+		})
+		close(done)
+	})
+	<-done
+
+	ctx.ExpectPage(toolApprovalModalName).ExpectNoFreeze()
+
+	ctx.PressRune('n').Wait(100 * time.Millisecond)
+
+	select {
+	case approved := <-ctx.app.pendingToolApproval:
+		if approved {
+			t.Fatal("expected modal rejection to send false approval")
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("expected rejection approval signal to be delivered")
+	}
+
+	if safeHasPage(ctx.app, toolApprovalModalName) {
+		t.Fatal("expected tool approval modal to close after rejection")
+	}
+
+	ctx.ExpectFocus(func(primitive tview.Primitive) bool {
+		return primitive == ctx.app.aiInput
+	})
+
+	done = make(chan struct{})
+	ctx.app.QueueUpdate(func() {
+		ctx.app.SetFocus(ctx.app.aiInput)
+		ctx.app.setToolCallState("kubectl", `{"command":"scale deployment nginx --replicas=5"}`, "kubectl scale deployment nginx --replicas=5")
+		ctx.app.showToolApprovalModal("kubectl", "kubectl scale deployment nginx --replicas=5", &safety.Decision{
+			Category: "write",
+			Warnings: []string{"This changes live cluster state."},
+		})
+		close(done)
+	})
+	<-done
+
+	ctx.ExpectPage(toolApprovalModalName).ExpectNoFreeze()
+
+	ctx.Press(tcell.KeyEnter).Wait(100 * time.Millisecond)
+
+	select {
+	case approved := <-ctx.app.pendingToolApproval:
+		if !approved {
+			t.Fatal("expected modal approval to send true approval")
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("expected approval signal to be delivered")
+	}
+
+	if safeHasPage(ctx.app, toolApprovalModalName) {
+		t.Fatal("expected tool approval modal to close after approval")
+	}
+
+	ctx.ExpectFocus(func(primitive tview.Primitive) bool {
+		return primitive == ctx.app.aiInput
+	})
+}
+
+func TestTUIJourney_AIPanelResize(t *testing.T) {
+	ctx := NewTUITestContext(t)
+	defer ctx.Cleanup()
+	focusTUITable(t, ctx)
+
+	ctx.Press(tcell.KeyCtrlE).Wait(100 * time.Millisecond).ExpectNoFreeze()
+
+	initialStateWidth := ctx.app.currentAIPanelWidth()
+	initialRectWidth := aiPanelWidthForTest(t, ctx.app)
+	if initialRectWidth <= 0 {
+		t.Fatalf("expected AI panel to have a visible width, got %d", initialRectWidth)
+	}
+
+	ctx.PressAlt('l').Wait(100 * time.Millisecond).ExpectNoFreeze()
+	widerStateWidth := ctx.app.currentAIPanelWidth()
+	widerRectWidth := aiPanelWidthForTest(t, ctx.app)
+	if widerStateWidth <= initialStateWidth {
+		t.Fatalf("expected Alt+L to increase AI panel width, before=%d after=%d", initialStateWidth, widerStateWidth)
+	}
+	if widerRectWidth <= initialRectWidth {
+		t.Fatalf("expected AI panel rect width to increase, before=%d after=%d", initialRectWidth, widerRectWidth)
+	}
+
+	ctx.PressAlt('h').Wait(100 * time.Millisecond).ExpectNoFreeze()
+	shrunkStateWidth := ctx.app.currentAIPanelWidth()
+	shrunkRectWidth := aiPanelWidthForTest(t, ctx.app)
+	if shrunkStateWidth >= widerStateWidth {
+		t.Fatalf("expected Alt+H to decrease AI panel width, before=%d after=%d", widerStateWidth, shrunkStateWidth)
+	}
+	if shrunkRectWidth >= widerRectWidth {
+		t.Fatalf("expected AI panel rect width to decrease, before=%d after=%d", widerRectWidth, shrunkRectWidth)
+	}
+
+	ctx.PressAlt('0').Wait(100 * time.Millisecond).ExpectNoFreeze()
+	resetStateWidth := ctx.app.currentAIPanelWidth()
+	resetRectWidth := aiPanelWidthForTest(t, ctx.app)
+	if resetStateWidth != defaultAIPanelWidth {
+		t.Fatalf("expected Alt+0 to reset AI panel width to %d, got %d", defaultAIPanelWidth, resetStateWidth)
+	}
+	if resetRectWidth != initialRectWidth {
+		t.Fatalf("expected AI panel rect width to reset to %d, got %d", initialRectWidth, resetRectWidth)
+	}
 }

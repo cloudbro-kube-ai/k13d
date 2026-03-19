@@ -52,6 +52,7 @@ k13d -A
 | ++k++ / ++arrow-up++ | Move up |
 | ++tab++ | Switch focus between panels |
 | ++esc++ | Close modal / Return to main view |
+| ++ctrl+e++ | Toggle AI panel |
 | ++q++ | Quit (with confirmation) |
 
 ### Resource Navigation
@@ -72,6 +73,14 @@ k13d -A
 | ++tab++ | Cycle focus between panels |
 | ++arrow-left++ / ++arrow-right++ | Switch panels |
 | ++1++ - ++9++ | Quick switch to specific panel |
+
+### AI Panel Width
+
+| Key | Action |
+|-----|--------|
+| ++alt+h++ | Make the AI panel narrower |
+| ++alt+l++ | Make the AI panel wider |
+| ++alt+0++ | Reset the AI panel to its default width |
 
 ## Resource Commands
 
@@ -195,6 +204,8 @@ aliases:
 3. Press ++enter++ to send
 4. View the response in the output area
 
+You can keep the table readable while chatting by resizing the right-side AI panel with ++alt+h++, ++alt+l++, and ++alt+0++.
+
 ### Chat History
 
 Previous Q&A sessions are preserved within each TUI session. Scroll up to review past conversations, separated by visual dividers.
@@ -223,22 +234,21 @@ For the exact file persistence behavior, including when TUI updates `llm`, when 
 When AI requests to execute a command:
 
 ```
-┌─────────────────────────────────────────┐
-│ Tool Approval Required                   │
-│                                         │
-│ kubectl get pods -n production          │
-│                                         │
-│ [Y] Approve  [N] Reject  [A] Always     │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│ Decision Required                            │
+│                                              │
+│ kubectl get pods -n production               │
+│                                              │
+│ Reject (N / Esc)      Approve (Y / Enter)    │
+└──────────────────────────────────────────────┘
 ```
 
-Read-only commands are not auto-approved by default. Use `A` only if you intentionally want to allow future read-only actions to skip the approval dialog.
+The request opens as a centered modal, matching the Web UI approval flow more closely.
 
 | Key | Action |
 |-----|--------|
-| ++y++ | Approve this command |
-| ++n++ | Reject this command |
-| ++a++ | Always approve read-only commands |
+| ++y++ / ++enter++ | Approve this command |
+| ++n++ / ++esc++ | Reject this command |
 
 ## Filtering and Search
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -201,6 +202,107 @@ func TestApproveToolCallKeepsStateWhenChannelIsFull(t *testing.T) {
 	app.aiMx.RUnlock()
 	if info.Command != "kubectl delete pod nginx" {
 		t.Fatalf("expected tool call state to remain untouched, got %+v", info)
+	}
+}
+
+func TestShowToolApprovalModalOpensAndStoresFocus(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+	app.showAIPanel = true
+	app.SetFocus(app.aiInput)
+
+	app.showToolApprovalModal("kubectl", "kubectl scale deployment api --replicas=3", &safety.Decision{
+		Category: "write",
+		Warnings: []string{"This changes live cluster state."},
+	})
+
+	if !app.pages.HasPage(toolApprovalModalName) {
+		t.Fatal("expected tool approval modal page to be present")
+	}
+
+	app.aiMx.RLock()
+	focus := app.toolApprovalFocus
+	app.aiMx.RUnlock()
+	if focus != app.aiInput {
+		t.Fatalf("expected tool approval modal to remember prior focus, got %T", focus)
+	}
+}
+
+func TestApproveToolCallClosesModalAndRestoresFocus(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+	app.showAIPanel = true
+	app.SetFocus(app.aiInput)
+	app.setToolCallState("kubectl", `{"command":"get pods"}`, "kubectl get pods")
+	app.showToolApprovalModal("kubectl", "kubectl get pods", &safety.Decision{Category: "read-only"})
+
+	app.approveToolCall(true)
+
+	if app.pages.HasPage(toolApprovalModalName) {
+		t.Fatal("expected tool approval modal to close after approval is delivered")
+	}
+	if got := app.GetFocus(); got != app.aiInput {
+		t.Fatalf("expected focus to return to AI input, got %T", got)
+	}
+}
+
+func TestApproveToolCallKeepsModalWhenChannelIsFull(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+	app.showAIPanel = true
+	app.pendingToolApproval <- true
+	app.setToolCallState("kubectl", `{"command":"delete pod nginx"}`, "kubectl delete pod nginx")
+	app.showToolApprovalModal("kubectl", "kubectl delete pod nginx", &safety.Decision{Category: "dangerous"})
+
+	app.approveToolCall(false)
+
+	if !app.pages.HasPage(toolApprovalModalName) {
+		t.Fatal("expected tool approval modal to remain open when approval could not be delivered")
+	}
+}
+
+func TestAdjustAIPanelWidthClampsAndResets(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+	app.showAIPanel = true
+
+	app.adjustAIPanelWidth(-10_000)
+	if got := app.currentAIPanelWidth(); got != minAIPanelWidth {
+		t.Fatalf("expected AI panel width to clamp to minimum %d, got %d", minAIPanelWidth, got)
+	}
+
+	app.adjustAIPanelWidth(10_000)
+	if got := app.currentAIPanelWidth(); got != maxAIPanelWidth {
+		t.Fatalf("expected AI panel width to clamp to maximum %d, got %d", maxAIPanelWidth, got)
+	}
+
+	app.resetAIPanelWidth()
+	if got := app.currentAIPanelWidth(); got != defaultAIPanelWidth {
+		t.Fatalf("expected AI panel width to reset to default %d, got %d", defaultAIPanelWidth, got)
+	}
+}
+
+func TestAdjustAIPanelWidthPreservesAIPanelFocus(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+	app.showAIPanel = true
+	app.rebuildContentLayout(true)
+	app.SetFocus(app.aiPanel)
+
+	app.adjustAIPanelWidth(aiPanelResizeStep)
+
+	if got := app.GetFocus(); got != app.aiPanel {
+		t.Fatalf("expected AI panel focus to be preserved while resizing, got %T", got)
 	}
 }
 

@@ -123,6 +123,15 @@ func (ctx *TUITestContext) PressRune(r rune) *TUITestContext {
 	return ctx
 }
 
+// PressAlt sends an Alt+key combination.
+func (ctx *TUITestContext) PressAlt(r rune) *TUITestContext {
+	ctx.withInputLock(func() {
+		ctx.injectKeyWithMod(tcell.KeyRune, r, tcell.ModAlt)
+		time.Sleep(20 * time.Millisecond)
+	})
+	return ctx
+}
+
 // Submit sends text followed by Enter.
 func (ctx *TUITestContext) Submit(text string) *TUITestContext {
 	ctx.withInputLock(func() {
@@ -159,7 +168,11 @@ func (ctx *TUITestContext) Wait(d time.Duration) *TUITestContext {
 }
 
 func (ctx *TUITestContext) injectKey(key tcell.Key, r rune) {
-	ctx.screen.InjectKey(key, r, tcell.ModNone)
+	ctx.injectKeyWithMod(key, r, tcell.ModNone)
+}
+
+func (ctx *TUITestContext) injectKeyWithMod(key tcell.Key, r rune, mod tcell.ModMask) {
+	ctx.screen.InjectKey(key, r, mod)
 }
 
 func (ctx *TUITestContext) withInputLock(fn func()) {

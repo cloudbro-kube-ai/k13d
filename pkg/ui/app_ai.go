@@ -75,7 +75,7 @@ func summarizeAIToolResult(result string) string {
 }
 
 func defaultAIStatusText() string {
-	return "[gray]Ready[-] Enter send | Esc close | Up/Down history | Ctrl+E toggle | /help commands"
+	return "[gray]Ready[-] Enter send | Esc close | Up/Down history | Alt+H/L resize | /help"
 }
 
 func (a *App) resetAIConversation() {
@@ -409,7 +409,7 @@ func (a *App) handleAICommand(input string) bool {
 		})
 	case "help":
 		a.QueueUpdateDraw(func() {
-			a.appendAISystemSection("AI Help", "Commands:\n/context  show the resource context that will be attached\n/clear    reset the current transcript\n/new      start a fresh conversation\n/help     show this help\n\nTips:\n- Select a row before asking for richer YAML/events/log context\n- Up/Down recall previous prompts\n- Ctrl+E toggles the AI panel")
+			a.appendAISystemSection("AI Help", "Commands:\n/context  show the resource context that will be attached\n/clear    reset the current transcript\n/new      start a fresh conversation\n/help     show this help\n\nTips:\n- Select a row before asking for richer YAML/events/log context\n- Up/Down recall previous prompts\n- Ctrl+E toggles the AI panel\n- Alt+H / Alt+L resize the AI panel\n- Alt+0 resets the AI panel width")
 			a.setAIStatus(defaultAIStatusText())
 			a.applyAIChrome()
 		})
@@ -552,22 +552,8 @@ func (a *App) askAI(question string) {
 
 			a.setToolCallState(toolName, args, fullCmd)
 			a.QueueUpdateDraw(func() {
-				a.appendAIMarkup("\n[yellow::b]Decision Required[-::-]\n")
-				if decision.Classification != nil && decision.Classification.IsDangerous {
-					a.appendAIMarkup("[red]Dangerous command detected[-]\n")
-				} else {
-					a.appendAIMarkup("[#e0af68]Command requires approval[-]\n")
-				}
-				a.appendAIMarkup("[gray]Command:[-] ")
-				a.appendAIEscaped(trimAIBlock(fullCmd, 240))
-				a.appendAIMarkup("\n")
-				for _, warning := range decision.Warnings {
-					a.appendAIMarkup("[red]-[-] ")
-					a.appendAIEscaped(warning)
-					a.appendAIMarkup("\n")
-				}
+				a.showToolApprovalModal(toolName, fullCmd, decision)
 				a.setAIStatus("[yellow]Awaiting approval[-] Y/Enter approve | N/Esc cancel")
-				a.SetFocus(a.aiPanel)
 			})
 
 			select {
@@ -591,11 +577,15 @@ func (a *App) askAI(question string) {
 			case <-approvalTimeout:
 				a.clearToolCallState()
 				a.QueueUpdateDraw(func() {
+					a.closeToolApprovalModal()
 					a.setAIStatus("[yellow]Approval timed out[-]")
 				})
 				return false
 			case <-ctx.Done():
 				a.clearToolCallState()
+				a.QueueUpdateDraw(func() {
+					a.closeToolApprovalModal()
+				})
 				return false
 			}
 		}, func(toolName string, command string, result string, isError bool, toolType string, toolServerName string) {
@@ -853,6 +843,7 @@ func (a *App) approveToolCall(approved bool) {
 			Command string
 		}{}
 		a.aiMx.Unlock()
+		a.closeToolApprovalModal()
 	default:
 		// Channel full or no receiver, ignore
 	}

@@ -11,6 +11,13 @@ import (
 	"github.com/rivo/tview"
 )
 
+const (
+	defaultAIPanelWidth = 52
+	minAIPanelWidth     = 36
+	maxAIPanelWidth     = 90
+	aiPanelResizeStep   = 4
+)
+
 // setupUI initializes all UI components
 func (a *App) setupUI() {
 	// Color scheme: use per-context skin if loaded, otherwise Tokyo Night defaults
@@ -129,7 +136,7 @@ func (a *App) setupUI() {
 	a.contentFlex = tview.NewFlex()
 	a.contentFlex.AddItem(a.table, 0, 3, true)
 	if a.showAIPanel {
-		a.contentFlex.AddItem(a.aiContainer, 52, 0, false)
+		a.contentFlex.AddItem(a.aiContainer, a.currentAIPanelWidth(), 0, false)
 	}
 
 	// Command bar with hint overlay
@@ -298,6 +305,8 @@ func (a *App) updateStatusBar() {
 	sortAsc := a.sortAscending
 	headers := a.tableHeaders
 	filter := a.filterText
+	showAI := a.showAIPanel
+	aiWidth := clampAIPanelWidth(a.aiPanelWidth)
 	a.mx.RUnlock()
 
 	// Enhanced status bar with Tokyo Night colors (dark text on green background)
@@ -334,6 +343,9 @@ func (a *App) updateStatusBar() {
 		default:
 			indicators = append(indicators, fmt.Sprintf("[#1a1b26]Filter:%s[-]", filter))
 		}
+	}
+	if showAI {
+		indicators = append(indicators, fmt.Sprintf("[#1a1b26]AI:%dcol[-]", aiWidth))
 	}
 	if len(indicators) > 0 {
 		shortcuts += " │ " + strings.Join(indicators, " ")
@@ -442,7 +454,7 @@ func (a *App) QueueUpdateDraw(f func()) {
 		f()
 		return
 	}
-	go a.queueUpdateDrawDirect(f)
+	a.ensureRedrawBroker().Schedule(f)
 }
 
 // queueUpdateDrawDirect queues an update without spawning a goroutine.
@@ -457,6 +469,71 @@ func (a *App) queueUpdateDrawDirect(f func()) {
 	a.Application.QueueUpdateDraw(f)
 }
 
+func clampAIPanelWidth(width int) int {
+	if width == 0 {
+		width = defaultAIPanelWidth
+	}
+	if width < minAIPanelWidth {
+		return minAIPanelWidth
+	}
+	if width > maxAIPanelWidth {
+		return maxAIPanelWidth
+	}
+	return width
+}
+
+func (a *App) currentAIPanelWidth() int {
+	a.mx.RLock()
+	width := a.aiPanelWidth
+	a.mx.RUnlock()
+	return clampAIPanelWidth(width)
+}
+
+func (a *App) isAIFocused(primitive tview.Primitive) bool {
+	switch primitive {
+	case a.aiInput, a.aiPanel, a.aiContainer, a.aiMetaBar, a.aiStatusBar:
+		return true
+	default:
+		return false
+	}
+}
+
+func (a *App) resizeAIPanelTo(width int) {
+	currentFocus := a.GetFocus()
+	focusAI := a.isAIFocused(currentFocus)
+
+	a.mx.Lock()
+	currentWidth := clampAIPanelWidth(a.aiPanelWidth)
+	nextWidth := clampAIPanelWidth(width)
+	showAI := a.showAIPanel
+	a.aiPanelWidth = nextWidth
+	a.mx.Unlock()
+
+	if showAI {
+		a.QueueUpdateDraw(func() {
+			a.rebuildContentLayout(focusAI)
+			if focusAI && currentFocus != nil {
+				a.SetFocus(currentFocus)
+			}
+		})
+	}
+
+	if nextWidth != currentWidth {
+		a.flashMsg(fmt.Sprintf("AI panel width: %d columns", nextWidth), false)
+	}
+}
+
+func (a *App) adjustAIPanelWidth(delta int) {
+	if delta == 0 {
+		return
+	}
+	a.resizeAIPanelTo(a.currentAIPanelWidth() + delta)
+}
+
+func (a *App) resetAIPanelWidth() {
+	a.resizeAIPanelTo(defaultAIPanelWidth)
+}
+
 func (a *App) rebuildContentLayout(focusAI bool) {
 	if a.contentFlex == nil {
 		return
@@ -464,7 +541,7 @@ func (a *App) rebuildContentLayout(focusAI bool) {
 	a.contentFlex.Clear()
 	a.contentFlex.AddItem(a.table, 0, 3, !focusAI)
 	if a.showAIPanel && a.aiContainer != nil {
-		a.contentFlex.AddItem(a.aiContainer, 52, 0, focusAI)
+		a.contentFlex.AddItem(a.aiContainer, a.currentAIPanelWidth(), 0, focusAI)
 	}
 	if focusAI && a.showAIPanel {
 		a.SetFocus(a.aiInput)
