@@ -85,6 +85,7 @@ main        ← Production releases only
   ```bash
   go test ./...
   ```
+- **Headless TUI note**: if your local environment launches an interactive editor during TUI tests, run `EDITOR=true go test ./pkg/ui` for non-interactive validation of edit paths.
 
 ## 📥 Pull Request Process
 

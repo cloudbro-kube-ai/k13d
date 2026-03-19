@@ -276,6 +276,7 @@ func (a *App) showHelp() {
   [yellow]/[white]        Filter mode         [yellow]Esc[white]      Back/Clear/Cancel
   [yellow]Tab[white]      AI Panel focus      [yellow]Enter[white]    Select/Drill-down
   [yellow]Ctrl+E[white]   Toggle AI panel     [yellow]Shift+O[white]  Settings/LLM Config
+  [yellow]Alt+H/L[white] Resize AI panel     [yellow]Alt+0[white]    Reset AI width
   [yellow]q/Ctrl+C[white] Quit application
 
 [cyan::b]NAVIGATION[white::-]
@@ -334,7 +335,7 @@ func (a *App) showHelp() {
   - "Scale deployment nginx to 3 replicas"
   - "Show recent events for this deployment"
 
-  [gray]AI will suggest commands. Press Y to execute, N to cancel.[white]
+  [gray]Tool approvals open in a centered modal. Press Y/Enter to approve, N/Esc to cancel.[white]
 
 [gray]Press Esc, q, or ? to close this help[white]
 `, LogoColors())

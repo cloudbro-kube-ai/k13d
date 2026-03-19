@@ -85,6 +85,7 @@ func NewTestApp(cfg TestAppConfig) *App {
 		recentNamespaces:    make([]string, 0),
 		maxRecentNamespaces: 9,
 		showAIPanel:         false, // Disabled for simpler testing
+		aiPanelWidth:        defaultAIPanelWidth,
 		selectedRows:        make(map[int]bool),
 		sortColumn:          -1,
 		sortAscending:       true,
@@ -478,6 +479,7 @@ func CreateMinimalTestApp() *App {
 		namespaces:          []string{"", "default", "kube-system"},
 		recentNamespaces:    make([]string, 0),
 		maxRecentNamespaces: 9,
+		aiPanelWidth:        defaultAIPanelWidth,
 		selectedRows:        make(map[int]bool),
 		sortColumn:          -1,
 		sortAscending:       true,

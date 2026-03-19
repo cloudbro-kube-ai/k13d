@@ -69,7 +69,7 @@ tar xzf k13d_*.tar.gz && chmod +x k13d
 ./k13d
 ```
 
-Opens a full-featured terminal dashboard. Use `j/k` to navigate, `Tab` to open the AI panel, `:` for commands.
+Opens a full-featured terminal dashboard. Use `j/k` to navigate, `Ctrl+E` to toggle the AI panel, `Alt+H/L` to resize it, and `:` for commands.
 
 #### Web UI mode — browser dashboard (local / desktop)
 

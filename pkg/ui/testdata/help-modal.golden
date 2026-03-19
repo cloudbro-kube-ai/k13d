@@ -1,13 +1,14 @@
  k║  Ctrl+E   Toggle AI panel     Shift+O  Settings/LLM Config              ║
-Of║  q/Ctrl+C Quit application                                              ║
- ⎈║                                                                         ║
- N║NAVIGATION                                                               ║
-  ║  j/Down   Down                k/Up     Up                               ║
-┌─║  g        Top                 G        Bottom                           ║──┐
-│N║  Ctrl+F   Page down           Ctrl+B   Page up                          ║  │
+Of║  Alt+H/L Resize AI panel     Alt+0    Reset AI width                    ║
+ ⎈║  q/Ctrl+C Quit application                                              ║
+ N║                                                                         ║
+  ║NAVIGATION                                                               ║
+┌─║  j/Down   Down                k/Up     Up                               ║──┐
+│N║  g        Top                 G        Bottom                           ║  │
+│d║  Ctrl+F   Page down           Ctrl+B   Page up                          ║  │
 │d║  Ctrl+D   Half page down      Ctrl+U   Half page up                     ║  │
 │d║                                                                         ║  │
-│d║RESOURCE ACTIONS                                                         ║  │
+│ ║RESOURCE ACTIONS                                                         ║  │
 │ ║  d        Describe            y        YAML view                        ║  │
 │ ║  e        Edit ($EDITOR)      Ctrl+D   Delete                           ║  │
 │ ║  r        Refresh             c        Switch context                   ║  │
@@ -19,7 +20,6 @@ Of║  q/Ctrl+C Quit application                                              �
 │ ║  Shift+C  Sort by RESTARTS    Shift+D  Sort by READY                    ║  │
 │ ║  :sort    Sort column picker  (toggle direction by sorting same column  ║  │
 │ ║twice)                                                                   ║  │
-│ ║                                                                         ║  │
-└─║NAMESPACE SHORTCUTS (k9s style)                                          ║──┘
-  ║  0 All namespaces      n   Cycle through namespaces                     ║
- :║  u Use namespace (on namespace view)                                    ║
+└─║                                                                         ║──┘
+  ║NAMESPACE SHORTCUTS (k9s style)                                          ║
+ :║  0 All namespaces      n   Cycle through namespaces                     ║

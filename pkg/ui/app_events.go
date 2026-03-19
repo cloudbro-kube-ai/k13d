@@ -11,6 +11,10 @@ import (
 // setupKeybindings configures keyboard shortcuts (k9s compatible)
 func (a *App) setupKeybindings() {
 	a.table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if a.handleAIPanelResizeKey(event) {
+			return nil
+		}
+
 		switch event.Key() {
 		case tcell.KeyRune:
 			switch event.Rune() {
@@ -210,6 +214,10 @@ func (a *App) setupKeybindings() {
 	})
 
 	a.aiPanel.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if a.handleAIPanelResizeKey(event) {
+			return nil
+		}
+
 		switch event.Key() {
 		case tcell.KeyTab:
 			a.SetFocus(a.aiInput)
@@ -346,6 +354,10 @@ func (a *App) setupAutocomplete() {
 
 	// Handle special keys
 	a.cmdInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if a.handleAIPanelResizeKey(event) {
+			return nil
+		}
+
 		text := a.cmdInput.GetText()
 
 		switch event.Key() {
@@ -588,6 +600,42 @@ func (a *App) getCompletions(input string) []string {
 	return matches
 }
 
+func (a *App) handleAIPanelResizeKey(event *tcell.EventKey) bool {
+	if event == nil || event.Modifiers()&tcell.ModAlt == 0 {
+		return false
+	}
+
+	a.mx.RLock()
+	showAI := a.showAIPanel
+	a.mx.RUnlock()
+	if !showAI {
+		return false
+	}
+
+	switch event.Key() {
+	case tcell.KeyLeft:
+		a.adjustAIPanelWidth(-aiPanelResizeStep)
+		return true
+	case tcell.KeyRight:
+		a.adjustAIPanelWidth(aiPanelResizeStep)
+		return true
+	case tcell.KeyRune:
+		switch event.Rune() {
+		case 'h', 'H':
+			a.adjustAIPanelWidth(-aiPanelResizeStep)
+			return true
+		case 'l', 'L':
+			a.adjustAIPanelWidth(aiPanelResizeStep)
+			return true
+		case '0':
+			a.resetAIPanelWidth()
+			return true
+		}
+	}
+
+	return false
+}
+
 // setupAIInput configures the AI input field
 func (a *App) setupAIInput() {
 	a.aiInput.SetDoneFunc(func(key tcell.Key) {
@@ -607,6 +655,10 @@ func (a *App) setupAIInput() {
 	})
 
 	a.aiInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if a.handleAIPanelResizeKey(event) {
+			return nil
+		}
+
 		switch event.Key() {
 		case tcell.KeyUp:
 			a.aiInput.SetText(a.recallAIInputHistory(-1))
