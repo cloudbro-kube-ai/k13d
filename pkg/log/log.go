@@ -6,9 +6,22 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-var logger *log.Logger
+type Level int
+
+const (
+	LevelDebug Level = iota
+	LevelInfo
+	LevelWarn
+	LevelError
+)
+
+var (
+	logger       *log.Logger
+	currentLevel Level = LevelInfo // Default level
+)
 
 func Init(appName string) error {
 	configDir, err := os.UserConfigDir()
@@ -39,26 +52,42 @@ func Init(appName string) error {
 	return nil
 }
 
+// SetLevel sets the current logging level from a string (debug, info, warn, error)
+func SetLevel(levelStr string) {
+	switch strings.ToLower(levelStr) {
+	case "debug":
+		currentLevel = LevelDebug
+	case "info":
+		currentLevel = LevelInfo
+	case "warn", "warning":
+		currentLevel = LevelWarn
+	case "error":
+		currentLevel = LevelError
+	default:
+		currentLevel = LevelInfo
+	}
+}
+
 func Infof(format string, v ...any) {
-	if logger != nil {
+	if logger != nil && currentLevel <= LevelInfo {
 		_ = logger.Output(2, fmt.Sprintf("[INFO] "+format, v...))
 	}
 }
 
 func Errorf(format string, v ...any) {
-	if logger != nil {
+	if logger != nil && currentLevel <= LevelError {
 		_ = logger.Output(2, fmt.Sprintf("[ERROR] "+format, v...))
 	}
 }
 
 func Debugf(format string, v ...any) {
-	if logger != nil {
+	if logger != nil && currentLevel <= LevelDebug {
 		_ = logger.Output(2, fmt.Sprintf("[DEBUG] "+format, v...))
 	}
 }
 
 func Warnf(format string, v ...any) {
-	if logger != nil {
+	if logger != nil && currentLevel <= LevelWarn {
 		_ = logger.Output(2, fmt.Sprintf("[WARN] "+format, v...))
 	}
 }

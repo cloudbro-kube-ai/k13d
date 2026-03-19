@@ -1308,7 +1308,7 @@ async function loadAdminUsers() {
                                 <span style="background:var(--bg-tertiary);padding:2px 8px;border-radius:4px;font-size:10px;">${u.source || 'local'}</span>
                             </div>
                             <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
-                                ${u.email ? escapeHtml(u.email) + ' · ' : ''}Last login: ${u.last_login ? new Date(u.last_login).toLocaleString() : 'Never'}
+                                ${u.email ? escapeHtml(u.email) + ' · ' : ''}Last login: ${u.last_login ? formatDateTime(u.last_login) : 'Never'}
                             </div>
                         </div>
                         <div style="display:flex;gap:8px;">
@@ -1772,7 +1772,7 @@ async function loadVersionInfo() {
                 // Format the date nicely
                 const date = new Date(data.build_time);
                 if (!isNaN(date.getTime())) {
-                    buildTimeEl.textContent = date.toLocaleString();
+                    buildTimeEl.textContent = formatDateTime(date);
                 } else {
                     buildTimeEl.textContent = data.build_time;
                 }
