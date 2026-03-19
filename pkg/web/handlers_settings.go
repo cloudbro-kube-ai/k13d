@@ -121,9 +121,16 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		if newSettings.LogLevel != nil {
 			s.cfg.LogLevel = *newSettings.LogLevel
+			log.SetLevel(s.cfg.LogLevel)
 		}
 		if newSettings.Timezone != nil && *newSettings.Timezone != "" {
 			s.cfg.Timezone = *newSettings.Timezone
+			if s.cfg.Timezone != "auto" {
+				loc, err := time.LoadLocation(s.cfg.Timezone)
+				if err == nil {
+					time.Local = loc
+				}
+			}
 		}
 		s.aiMu.Unlock()
 

@@ -848,7 +848,7 @@ async function generateReport(format) {
             const report = await resp.json();
 
             statusEl.innerHTML = `<div style="color: var(--accent-green);">
-                        ✓ Report generated successfully at ${new Date(report.generated_at).toLocaleString()}
+                        ✓ Report generated successfully at ${formatDateTime(report.generated_at)}
                     </div>`;
 
             // Calculate total potential savings

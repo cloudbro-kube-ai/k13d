@@ -1213,7 +1213,7 @@ async function manualRefresh() {
 function updateLastRefreshTime() {
     const el = document.getElementById('last-refresh-time');
     if (el) {
-        el.textContent = new Date().toLocaleTimeString();
+        el.textContent = formatTimeShort(new Date());
     }
 }
 
@@ -4796,7 +4796,7 @@ function toggleDebugMode() {
 function addDebugLog(type, title, content) {
     if (!debugMode) return;
 
-    const timestamp = new Date().toLocaleTimeString();
+    const timestamp = formatTimeShort(new Date());
     debugLogs.push({ type, title, content, timestamp });
 
     const container = document.getElementById('debug-content');
@@ -5962,7 +5962,7 @@ async function loadLLMUsageStats() {
         if (data.hourly && data.hourly.length > 0) {
             llmUsageHistory.timestamps = data.hourly.map(h => {
                 const d = new Date(h.hour);
-                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return formatTimeShort(d);
             });
             llmUsageHistory.requests = data.hourly.map(h => h.requests || 0);
             llmUsageHistory.tokens = data.hourly.map(h => h.total_tokens || 0);
@@ -6740,7 +6740,7 @@ async function loadHelmData() {
                                     <td><span class="helm-status ${(r.status || '').toLowerCase()}">${escapeHtml(r.status || '-')}</span></td>
                                     <td style="font-family:monospace;">${escapeHtml(r.chart || '-')}</td>
                                     <td>${escapeHtml(r.appVersion || '-')}</td>
-                                    <td style="color:var(--text-secondary);">${r.updated ? new Date(r.updated).toLocaleString() : '-'}</td>
+                                    <td style="color:var(--text-secondary);">${r.updated ? formatDateTime(r.updated) : '-'}</td>
                                     <td class="helm-actions">
                                         <button onclick="showHelmReleaseDetail('${escapeHtml(r.name)}','${escapeHtml(r.namespace || '')}')">Details</button>
                                         <button onclick="helmRollback('${escapeHtml(r.name)}','${escapeHtml(r.namespace || '')}')">Rollback</button>
@@ -6793,7 +6793,7 @@ async function showHelmReleaseDetail(name, namespace) {
                                             <td><span class="helm-status ${(h.status || '').toLowerCase()}">${escapeHtml(h.status || '')}</span></td>
                                             <td style="font-family:monospace;">${escapeHtml(h.chart || '-')}</td>
                                             <td>${escapeHtml(h.description || '-')}</td>
-                                            <td style="color:var(--text-secondary);">${h.updated ? new Date(h.updated).toLocaleString() : '-'}</td>
+                                            <td style="color:var(--text-secondary);">${h.updated ? formatDateTime(h.updated) : '-'}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -7394,7 +7394,7 @@ async function loadNotificationHistory() {
             return;
         }
         body.innerHTML = items.map(h => {
-            const time = h.timestamp ? new Date(h.timestamp).toLocaleString() : '';
+            const time = h.timestamp ? formatDateTime(h.timestamp) : '';
             const icon = h.success ? '<span style="color:var(--accent-green);">&#10003;</span>' : '<span style="color:var(--accent-red);">&#10007;</span>';
             return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-color);font-size:12px;">
                         ${icon}

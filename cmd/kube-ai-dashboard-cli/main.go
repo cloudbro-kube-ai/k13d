@@ -13,6 +13,8 @@ import (
 	"runtime/debug"
 	"strconv"
 	"syscall"
+	"time"
+	_ "time/tzdata"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/db"
@@ -133,6 +135,20 @@ func main() {
 	if err != nil {
 		log.Errorf("Failed to load config: %v", err)
 		cfg = config.NewDefaultConfig()
+	}
+
+	// Apply log level from config
+	log.SetLevel(cfg.LogLevel)
+
+	// Apply timezone from config
+	if cfg.Timezone != "" && cfg.Timezone != "auto" {
+		loc, err := time.LoadLocation(cfg.Timezone)
+		if err != nil {
+			log.Errorf("Failed to load timezone %s: %v", cfg.Timezone, err)
+		} else {
+			time.Local = loc
+			log.Infof("Timezone set to %s", cfg.Timezone)
+		}
 	}
 
 	// Override storage settings from CLI flags
