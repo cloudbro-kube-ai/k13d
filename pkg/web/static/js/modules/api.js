@@ -3,7 +3,11 @@
  */
 
 async function fetchWithAuth(url, options = {}) {
-    const headers = { ...options.headers };
+    const {
+        silentErrors = false,
+        ...requestOptions
+    } = options;
+    const headers = { ...requestOptions.headers };
 
     // Attach auth token if available (reads global `authToken` from app.js)
     if (window.authToken && window.authToken !== 'anonymous') {
@@ -11,7 +15,7 @@ async function fetchWithAuth(url, options = {}) {
     }
 
     try {
-        const response = await fetch(url, { ...options, headers });
+        const response = await fetch(url, { ...requestOptions, headers });
 
         // Handle common API HTTP errors globally
         if (!response.ok) {
@@ -25,7 +29,9 @@ async function fetchWithAuth(url, options = {}) {
                 }
             } else if (response.status === 403) {
                 console.warn('[API] Forbidden access to:', url);
-                showErrorToast(`Forbidden: You don't have permission to access this resource.`);
+                if (!silentErrors) {
+                    showErrorToast(`Forbidden: You don't have permission to access this resource.`);
+                }
             } else if (response.status >= 500) {
                 console.error('[API] Server error on:', url, response.status);
             }
@@ -34,7 +40,9 @@ async function fetchWithAuth(url, options = {}) {
         return response;
     } catch (e) {
         console.error('[API] Fetch exception:', e);
-        showErrorToast(`Network Error: ${e.message}`);
+        if (!silentErrors) {
+            showErrorToast(`Network Error: ${e.message}`);
+        }
         throw e;
     }
 }

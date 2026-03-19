@@ -35,6 +35,9 @@ let llmConnected = false; // LLM connection status
 let currentSessionId = sessionStorage.getItem('k13d_session_id') || ''; // AI conversation session ID
 let appTimezone = localStorage.getItem('k13d_timezone') || 'auto'; // Timezone setting
 let aiAbortController = null; // To cancel AI generation
+let currentClusterContext = localStorage.getItem('k13d_current_context') || 'default';
+let activeDashboardLoadId = 0;
+let dataFreshnessResetTimer = null;
 
 // Timezone formatting helpers
 function getTimezoneOptions() {
@@ -68,6 +71,22 @@ let currentEventSource = null;
 
 // Reasoning effort setting (for Solar Pro2)
 let reasoningEffort = localStorage.getItem('k13d_reasoning_effort') || 'minimal'; // default minimal
+const resourceCachePolicy = Object.freeze({
+    ttlMs: 15 * 1000,
+    maxStaleMs: 3 * 60 * 1000,
+    persist: 'session',
+});
+const namespacesCachePolicy = Object.freeze({
+    ttlMs: 60 * 1000,
+    maxStaleMs: 10 * 60 * 1000,
+    persist: 'session',
+});
+const overviewCachePolicy = Object.freeze({
+    ttlMs: 20 * 1000,
+    maxStaleMs: 2 * 60 * 1000,
+    persist: 'session',
+});
+const backgroundRefreshConcurrency = 4;
 
 // Table headers for all resource types
 const tableHeaders = {
@@ -646,8 +665,8 @@ function showApp() {
             console.error('Failed to initialize workspace features:', e);
         });
     }
-    loadNamespaces();
     loadClusterContexts();
+    loadNamespaces();
     switchResource('pods');
     initMobileNavSections();
     setupResizeHandle();
@@ -758,18 +777,153 @@ async function logout() {
     location.reload();
 }
 
-async function loadNamespaces() {
+function setCurrentClusterContext(name) {
+    currentClusterContext = name || 'default';
+    localStorage.setItem('k13d_current_context', currentClusterContext);
+}
+
+function getCacheScope() {
+    return currentClusterContext || document.getElementById('cluster-name')?.textContent?.trim() || 'default';
+}
+
+function buildScopedCacheKey(section, key) {
+    return `ctx:${getCacheScope()}:${section}:${key}`;
+}
+
+function isDashboardLoadActive(loadId) {
+    return loadId === activeDashboardLoadId;
+}
+
+function formatCacheAge(ageMs) {
+    if (!Number.isFinite(ageMs) || ageMs < 1000) return 'just now';
+    if (ageMs < 60 * 1000) return `${Math.max(1, Math.round(ageMs / 1000))}s`;
+    if (ageMs < 60 * 60 * 1000) return `${Math.round(ageMs / (60 * 1000))}m`;
+    return `${Math.round(ageMs / (60 * 60 * 1000))}h`;
+}
+
+function clearDataFreshnessState() {
+    const indicator = document.getElementById('data-freshness-indicator');
+    if (!indicator) return;
+    if (dataFreshnessResetTimer) {
+        clearTimeout(dataFreshnessResetTimer);
+        dataFreshnessResetTimer = null;
+    }
+    indicator.hidden = true;
+    indicator.textContent = '';
+    indicator.className = 'data-freshness-indicator';
+}
+
+function setDataFreshnessState(state, label, autoHideMs = 0) {
+    const indicator = document.getElementById('data-freshness-indicator');
+    if (!indicator) return;
+
+    if (dataFreshnessResetTimer) {
+        clearTimeout(dataFreshnessResetTimer);
+        dataFreshnessResetTimer = null;
+    }
+
+    if (!state || !label) {
+        clearDataFreshnessState();
+        return;
+    }
+
+    indicator.hidden = false;
+    indicator.textContent = label;
+    indicator.className = `data-freshness-indicator ${state}`;
+
+    if (autoHideMs > 0) {
+        dataFreshnessResetTimer = setTimeout(() => {
+            clearDataFreshnessState();
+        }, autoHideMs);
+    }
+}
+
+function buildResourceRequest(resource) {
+    const isClusterScoped = clusterScopedResources.includes(resource);
+    const namespace = isClusterScoped ? '' : currentNamespace;
+    return {
+        url: namespace ? `/api/k8s/${resource}?namespace=${namespace}` : `/api/k8s/${resource}`,
+        cacheKey: buildScopedCacheKey('resource', `${resource}:${isClusterScoped ? 'cluster' : (namespace || 'all')}`),
+    };
+}
+
+function renderTableLoadingState(resource) {
+    renderTableHeaders(resource);
+    const columns = tableHeaders[resource] || ['NAME'];
+    const body = document.getElementById('table-body');
+    if (!body) return;
+
+    body.innerHTML = `<tr>
+            <td colspan="${columns.length}" style="text-align:center;padding:36px;color:var(--text-secondary);">
+                <div class="loading-dots" style="justify-content:center;margin-bottom:10px;">
+                    <span></span><span></span><span></span>
+                </div>
+                Loading ${escapeHtml(resource)}...
+            </td>
+        </tr>`;
+    updatePaginationUI(0, 0);
+}
+
+async function runWithConcurrency(items, limit, worker) {
+    let nextIndex = 0;
+    const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+        while (nextIndex < items.length) {
+            const item = items[nextIndex++];
+            await worker(item);
+        }
+    });
+
+    await Promise.allSettled(runners);
+}
+
+function renderNamespaceOptions(items) {
+    const select = document.getElementById('namespace-select');
+    if (!select) return;
+
+    const selectedNamespace = currentNamespace || select.value || '';
+    let selectionExists = selectedNamespace === '';
+
+    select.innerHTML = '<option value="">All Namespaces</option>';
+    (items || []).forEach((ns) => {
+        const option = document.createElement('option');
+        option.value = ns.name;
+        option.textContent = ns.name;
+        if (ns.name === selectedNamespace) {
+            selectionExists = true;
+        }
+        select.appendChild(option);
+    });
+
+    if (selectionExists) {
+        select.value = selectedNamespace;
+    } else {
+        currentNamespace = '';
+        select.value = '';
+    }
+}
+
+async function loadNamespaces(options = {}) {
+    const cacheKey = buildScopedCacheKey('namespaces', 'all');
+    const policy = {
+        ...namespacesCachePolicy,
+        cacheKey,
+        forceNetwork: !!options.forceNetwork,
+    };
+
+    const preview = K13D.SWR?.peekJSON(cacheKey, policy);
+    if (preview?.data?.items) {
+        renderNamespaceOptions(preview.data.items);
+    }
+
     try {
-        const resp = await fetchWithAuth('/api/k8s/namespaces');
-        const data = await resp.json();
-        const select = document.getElementById('namespace-select');
-        select.innerHTML = '<option value="">All Namespaces</option>';
-        if (data.items) {
-            data.items.forEach(ns => {
-                const option = document.createElement('option');
-                option.value = ns.name;
-                option.textContent = ns.name;
-                select.appendChild(option);
+        const result = await K13D.SWR.fetchJSON('/api/k8s/namespaces', {}, policy);
+        renderNamespaceOptions(result.data?.items || []);
+
+        if (result.revalidatePromise) {
+            result.revalidatePromise.then((revalidated) => {
+                renderNamespaceOptions(revalidated.data?.items || []);
+            }).catch((e) => {
+                console.error('Failed to refresh namespaces:', e);
             });
         }
     } catch (e) {
@@ -777,44 +931,128 @@ async function loadNamespaces() {
     }
 }
 
-async function loadData() {
-    for (const resource of allResources) {
-        try {
-            const isClusterScoped = clusterScopedResources.includes(resource);
-            const ns = isClusterScoped ? '' : currentNamespace;
-            const url = ns ? `/api/k8s/${resource}?namespace=${ns}` : `/api/k8s/${resource}`;
-            const resp = await fetchWithAuth(url);
-
-            if (!resp.ok) {
-                console.error(`API error for ${resource}: ${resp.status}`);
-                clearResourceData(resource);
-                continue;
-            }
-
-            const data = await resp.json();
-
-            // Check for API error in response
-            if (data.error) {
-                console.error(`API returned error for ${resource}:`, data.error);
-                clearResourceData(resource);
-                continue;
-            }
-
-            const countEl = document.getElementById(`${resource}-count`);
-            if (countEl) {
-                countEl.textContent = data.items ? data.items.length : 0;
-            }
-            if (resource === currentResource) {
-                renderTable(resource, data.items || []);
-            }
-        } catch (e) {
-            console.error(`Failed to load ${resource}:`, e);
-            clearResourceData(resource);
-        }
+function applyResourcePayload(resource, data, meta, loadId) {
+    if (!isDashboardLoadActive(loadId)) {
+        return;
     }
 
-    // Also load CRDs
-    loadCRDs();
+    if (!data || data.error) {
+        console.error(`API returned error for ${resource}:`, data?.error);
+        clearResourceData(resource);
+        if (resource === currentResource) {
+            setDataFreshnessState('offline', meta.cached ? 'Offline cache' : 'Failed to refresh', 4500);
+        }
+        return;
+    }
+
+    const countEl = document.getElementById(`${resource}-count`);
+    if (countEl) {
+        countEl.textContent = data.items ? data.items.length : 0;
+    }
+
+    if (resource !== currentResource) {
+        return;
+    }
+
+    renderTable(resource, data.items || []);
+
+    if (meta.error && meta.cached) {
+        setDataFreshnessState('offline', 'Offline cache', 5000);
+        return;
+    }
+
+    if (meta.cached && meta.revalidating) {
+        const ageText = meta.ageMs ? formatCacheAge(meta.ageMs) : 'just now';
+        setDataFreshnessState('refreshing', `Cached ${ageText} ago · refreshing`);
+        return;
+    }
+
+    if (meta.cached && meta.stale) {
+        const ageText = meta.ageMs ? formatCacheAge(meta.ageMs) : 'just now';
+        setDataFreshnessState('cached', `Cached ${ageText} ago`);
+        return;
+    }
+
+    if (!meta.cached) {
+        setDataFreshnessState('live', 'Live', 2200);
+        updateLastRefreshTime();
+        return;
+    }
+
+    clearDataFreshnessState();
+}
+
+async function loadResourceSnapshot(resource, loadId, options = {}) {
+    const request = buildResourceRequest(resource);
+    const renderTarget = resource === currentResource;
+    const policy = {
+        ...resourceCachePolicy,
+        cacheKey: request.cacheKey,
+        forceNetwork: !!options.forceNetwork,
+    };
+
+    const preview = K13D.SWR?.peekJSON(request.cacheKey, policy);
+    if (renderTarget && !preview) {
+        renderTableLoadingState(resource);
+        setDataFreshnessState('refreshing', 'Loading live...');
+    }
+
+    try {
+        const result = await K13D.SWR.fetchJSON(request.url, {}, policy);
+        applyResourcePayload(resource, result.data, {
+            cached: !!result.cached,
+            stale: !!result.stale,
+            ageMs: result.ageMs,
+            error: result.error,
+            revalidating: !!result.revalidatePromise,
+        }, loadId);
+
+        if (result.revalidatePromise) {
+            result.revalidatePromise.then((revalidated) => {
+                applyResourcePayload(resource, revalidated.data, {
+                    cached: !!revalidated.cached,
+                    stale: !!revalidated.stale,
+                    ageMs: revalidated.ageMs,
+                    error: revalidated.error,
+                    revalidating: false,
+                }, loadId);
+            }).catch((e) => {
+                console.error(`Failed to refresh ${resource}:`, e);
+                if (renderTarget && isDashboardLoadActive(loadId) && preview) {
+                    setDataFreshnessState('offline', 'Offline cache', 5000);
+                }
+            });
+        }
+    } catch (e) {
+        if (!isDashboardLoadActive(loadId)) {
+            return;
+        }
+        console.error(`Failed to load ${resource}:`, e);
+        clearResourceData(resource);
+        if (renderTarget) {
+            setDataFreshnessState('offline', 'Failed to refresh', 4500);
+        }
+    }
+}
+
+async function loadData(options = {}) {
+    const loadId = ++activeDashboardLoadId;
+    const prioritizedResource = allResources.includes(currentResource) ? currentResource : null;
+    const remainingResources = prioritizedResource
+        ? allResources.filter((resource) => resource !== prioritizedResource)
+        : [...allResources];
+
+    if (prioritizedResource) {
+        await loadResourceSnapshot(prioritizedResource, loadId, options);
+    } else {
+        clearDataFreshnessState();
+    }
+
+    void runWithConcurrency(remainingResources, backgroundRefreshConcurrency, (resource) =>
+        loadResourceSnapshot(resource, loadId, options)
+    );
+
+    void loadCRDs(options);
 }
 
 function clearResourceData(resource) {
@@ -826,20 +1064,20 @@ function clearResourceData(resource) {
 }
 
 // Load Custom Resource Definitions
-async function loadCRDs() {
-    try {
-        const resp = await fetchWithAuth('/api/crd/');
-        if (!resp.ok) {
-            const errData = await resp.json().catch(() => ({}));
-            throw new Error(errData.message || errData.error || `HTTP Error ${resp.status}`);
-        }
-        const data = await resp.json();
+async function loadCRDs(options = {}) {
+    const cacheKey = buildScopedCacheKey('crds', 'all');
+    const policy = {
+        ...namespacesCachePolicy,
+        cacheKey,
+        forceNetwork: !!options.forceNetwork,
+    };
 
-        // Check for server error response
+    const renderCRDNavigation = (data) => {
+        if (!data) return;
+
         if (data.error) {
             console.error('CRD API error:', data.error);
             document.getElementById('crd-count').textContent = '-';
-            // Show user-friendly message for common permission error
             const errorMsg = data.error.includes('forbidden') || data.error.includes('Forbidden')
                 ? 'No permission'
                 : 'Error loading';
@@ -851,7 +1089,6 @@ async function loadCRDs() {
             loadedCRDs = data.items;
             document.getElementById('crd-count').textContent = data.items.length;
 
-            // Group CRDs by group for better organization
             const grouped = {};
             data.items.forEach(crd => {
                 const group = crd.group || 'core';
@@ -859,7 +1096,6 @@ async function loadCRDs() {
                 grouped[group].push(crd);
             });
 
-            // Render CRD nav items (limited to first 10 for performance)
             const container = document.getElementById('crd-nav-items');
             if (!container) return;
             const sortedGroups = Object.keys(grouped).sort();
@@ -868,7 +1104,7 @@ async function loadCRDs() {
 
             for (const group of sortedGroups) {
                 for (const crd of grouped[group]) {
-                    if (count >= 15) break; // Limit to 15 items
+                    if (count >= 15) break;
                     const shortGroup = group.split('.')[0] || 'core';
                     html += `<div class="nav-item" data-crd="${crd.name}" onclick="switchToCRD('${crd.name}')" title="${crd.name}">
                                 <span style="font-size: 11px;">${crd.kind}</span>
@@ -889,6 +1125,24 @@ async function loadCRDs() {
         } else {
             document.getElementById('crd-count').textContent = '0';
             document.getElementById('crd-nav-items').innerHTML = '<div style="font-size: 11px; color: var(--text-secondary); padding: 4px 8px;">No CRDs found</div>';
+        }
+    };
+
+    const preview = K13D.SWR?.peekJSON(cacheKey, policy);
+    if (preview?.data) {
+        renderCRDNavigation(preview.data);
+    }
+
+    try {
+        const result = await K13D.SWR.fetchJSON('/api/crd/', {}, policy);
+        renderCRDNavigation(result.data);
+
+        if (result.revalidatePromise) {
+            result.revalidatePromise.then((revalidated) => {
+                renderCRDNavigation(revalidated.data);
+            }).catch((e) => {
+                console.error('Failed to refresh CRDs:', e);
+            });
         }
     } catch (e) {
         console.error('Failed to load CRDs:', e);
@@ -1137,8 +1391,7 @@ function onNamespaceChange() {
 }
 
 function refreshData() {
-    loadData();
-    updateLastRefreshTime();
+    void manualRefresh();
 }
 
 // Auto-refresh functions
@@ -1148,8 +1401,7 @@ function startAutoRefresh() {
     }
     if (autoRefreshEnabled && autoRefreshInterval > 0) {
         autoRefreshTimer = setInterval(() => {
-            loadData();
-            updateLastRefreshTime();
+            loadData({ forceNetwork: true });
         }, autoRefreshInterval * 1000);
         updateAutoRefreshUI();
     }
@@ -1201,8 +1453,8 @@ async function manualRefresh() {
         btn.classList.add('spinning');
     }
     try {
-        await loadData();
-        updateLastRefreshTime();
+        await loadData({ forceNetwork: true });
+        await loadNamespaces({ forceNetwork: true });
     } finally {
         if (btn) {
             setTimeout(() => btn.classList.remove('spinning'), 500);
@@ -1312,12 +1564,8 @@ function renderTable(resource, items) {
     
     // Apply initial filtering and sorting, then render body via renderCurrentPage
     applyFilterAndSort();
-    
-    // Add summary count
-    const summaryEl = document.getElementById('resource-summary');
-    if (summaryEl) {
-        summaryEl.innerHTML = `<span class="summary-item"><span class="summary-count">${allItems.length}</span> ${resource}</span>`;
-    }
+
+    updateResourceSummary(resource, allItems);
 }
 
 
@@ -6299,18 +6547,20 @@ function loadOverviewData() {
 }
 
 async function loadClusterOverview() {
-    try {
-        const resp = await fetchWithAuth('/api/overview');
-        if (!resp.ok) return;
-        const data = await resp.json();
+    const cacheKey = buildScopedCacheKey('overview', currentNamespace || 'all');
+    const policy = {
+        ...overviewCachePolicy,
+        cacheKey,
+    };
 
-        // Update context badge
+    const renderOverview = (data) => {
+        if (!data) return;
+
         const ctxEl = document.getElementById('overview-context');
         if (ctxEl && data.context) {
             ctxEl.textContent = data.context;
         }
 
-        // Update cards
         const nodesEl = document.getElementById('ov-nodes-ready');
         if (nodesEl) nodesEl.textContent = `${data.nodes?.ready || 0}/${data.nodes?.total || 0}`;
 
@@ -6322,20 +6572,40 @@ async function loadClusterOverview() {
 
         const nsEl = document.getElementById('ov-namespaces');
         if (nsEl) nsEl.textContent = `${data.namespaces || 0}`;
+    };
+
+    const preview = K13D.SWR?.peekJSON(cacheKey, policy);
+    if (preview?.data) {
+        renderOverview(preview.data);
+    }
+
+    try {
+        const result = await K13D.SWR.fetchJSON('/api/overview', {}, policy);
+        renderOverview(result.data);
+        if (result.revalidatePromise) {
+            result.revalidatePromise.then((revalidated) => {
+                renderOverview(revalidated.data);
+            }).catch((e) => {
+                console.error('Failed to refresh cluster overview:', e);
+            });
+        }
     } catch (e) {
         console.error('Failed to load cluster overview:', e);
     }
 }
 
 async function loadRecentEvents() {
-    try {
-        const resp = await fetchWithAuth('/api/k8s/events?namespace=');
-        if (!resp.ok) return;
-        const data = await resp.json();
+    const cacheKey = buildScopedCacheKey('overview-events', currentNamespace || 'all');
+    const policy = {
+        ...resourceCachePolicy,
+        cacheKey,
+    };
+
+    const renderEvents = (data) => {
         const eventsEl = document.getElementById('overview-events');
         if (!eventsEl) return;
 
-        const events = (data.items || []).slice(0, 10);
+        const events = (data?.items || []).slice(0, 10);
         if (events.length === 0) {
             eventsEl.innerHTML = '<p class="text-muted">No recent events</p>';
             return;
@@ -6351,6 +6621,23 @@ async function loadRecentEvents() {
                         <span class="event-time">${evt.lastSeen || evt.age || ''}</span>
                     </div>`;
         }).join('');
+    };
+
+    const preview = K13D.SWR?.peekJSON(cacheKey, policy);
+    if (preview?.data) {
+        renderEvents(preview.data);
+    }
+
+    try {
+        const result = await K13D.SWR.fetchJSON('/api/k8s/events?namespace=', {}, policy);
+        renderEvents(result.data);
+        if (result.revalidatePromise) {
+            result.revalidatePromise.then((revalidated) => {
+                renderEvents(revalidated.data);
+            }).catch((e) => {
+                console.error('Failed to refresh recent events:', e);
+            });
+        }
     } catch (e) {
         console.error('Failed to load recent events:', e);
     }
@@ -6864,13 +7151,23 @@ async function helmUninstall(name, namespace) {
 // Multi-Cluster Context Switcher
 // ============================
 async function loadClusterContexts() {
-    try {
-        const resp = await fetchWithAuth('/api/contexts');
-        const data = await resp.json();
+    const cacheKey = buildScopedCacheKey('contexts', 'all');
+    const policy = {
+        ...namespacesCachePolicy,
+        cacheKey,
+    };
+
+    const renderContexts = (data) => {
         const list = document.getElementById('cluster-dropdown-list');
         const nameEl = document.getElementById('cluster-name');
-        if (!list) return;
-        if (data.currentContext) nameEl.textContent = data.currentContext;
+        if (!list || !data) return;
+
+        const previousContext = currentClusterContext;
+        if (data.currentContext) {
+            nameEl.textContent = data.currentContext;
+            setCurrentClusterContext(data.currentContext);
+        }
+
         list.innerHTML = (data.contexts || []).map((ctx, i) => `
                     <div class="cluster-dropdown-item ${ctx.name === data.currentContext ? 'active' : ''}" data-ctx-index="${i}">
                         <span class="ctx-icon"></span>
@@ -6881,7 +7178,7 @@ async function loadClusterContexts() {
                         ${ctx.name === data.currentContext ? '<span style="color:var(--accent-green);">●</span>' : ''}
                     </div>
                 `).join('');
-        // Use event delegation instead of inline onclick to prevent XSS
+
         list.querySelectorAll('[data-ctx-index]').forEach(el => {
             el.addEventListener('click', () => {
                 const idx = parseInt(el.dataset.ctxIndex, 10);
@@ -6889,6 +7186,34 @@ async function loadClusterContexts() {
                 if (ctxName) switchClusterContext(ctxName);
             });
         });
+
+        if (
+            previousContext &&
+            data.currentContext &&
+            previousContext !== data.currentContext &&
+            document.getElementById('app')?.classList.contains('active') &&
+            allResources.includes(currentResource)
+        ) {
+            loadNamespaces({ forceNetwork: true });
+            loadData({ forceNetwork: true });
+        }
+    };
+
+    const preview = K13D.SWR?.peekJSON(cacheKey, policy);
+    if (preview?.data) {
+        renderContexts(preview.data);
+    }
+
+    try {
+        const result = await K13D.SWR.fetchJSON('/api/contexts', {}, policy);
+        renderContexts(result.data);
+        if (result.revalidatePromise) {
+            result.revalidatePromise.then((revalidated) => {
+                renderContexts(revalidated.data);
+            }).catch((e) => {
+                console.warn('Failed to refresh contexts:', e);
+            });
+        }
     } catch (e) { console.warn('Failed to load contexts:', e); }
 }
 
@@ -6910,6 +7235,7 @@ async function switchClusterContext(name) {
             throw new Error(errText || `HTTP ${resp.status}`);
         }
         const result = await resp.json();
+        setCurrentClusterContext(name);
         document.getElementById('cluster-name').textContent = name;
         document.getElementById('cluster-dropdown').classList.remove('active');
         // Clear all existing resource data immediately
@@ -6926,10 +7252,10 @@ async function switchClusterContext(name) {
         // Reload namespaces (different cluster = different namespaces)
         currentNamespace = '';
         document.getElementById('namespace-select').value = '';
-        await loadNamespaces();
+        await loadNamespaces({ forceNetwork: true });
         syncCustomViewNamespaces();
         // Reload all data for new cluster
-        loadData();
+        loadData({ forceNetwork: true });
     } catch (e) { alert('Failed to switch context: ' + e.message); }
 }
 

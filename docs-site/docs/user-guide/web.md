@@ -7,7 +7,7 @@ The Web Dashboard provides a modern browser-based interface for Kubernetes manag
 The Web UI offers:
 
 - **Modern Interface**: Responsive design with dark/light themes
-- **Real-time Updates**: Live resource status updates
+- **Real-time Updates**: Stale-first dashboard refresh with background revalidation
 - **AI Assistant**: Integrated chat interface
 - **Multi-cluster**: Switch between contexts
 - **Reports**: Generate cluster analysis reports
@@ -74,6 +74,7 @@ Open your browser to: `http://localhost:8080`
 - **Search** bar for filtering
 - **Namespace** dropdown for switching
 - **Refresh** button for manual refresh
+- **Freshness badge** when cached data is shown first and live data is still revalidating
 
 ## Resource Actions
 
@@ -141,7 +142,13 @@ Toggle theme in Settings or click the theme icon in the header.
 
 ### Real-time Updates
 
-Resources update automatically. Configure refresh interval:
+Resources update automatically. The dashboard now follows a stale-while-revalidate pattern:
+
+- recent data is reused immediately when you switch resources or reload the page
+- live data is fetched in the background and the table updates in place
+- the header shows a freshness badge when cached data is being refreshed
+
+Configure refresh interval:
 
 Settings → General → Refresh Interval
 
@@ -314,9 +321,10 @@ curl -X POST http://localhost:8080/api/chat/agentic \
 The Web UI is responsive and works on mobile devices:
 
 - Touch-friendly navigation
-- Swipe gestures
-- Collapsible panels
-- Optimized for smaller screens
+- Collapsible sidebar and AI panel
+- Condensed panel header and filter bar on narrow screens
+- Horizontal table scrolling with sticky pagination for resource-heavy views
+- Optimized for smaller screens without dropping core dashboard actions
 
 ## Security
 
@@ -350,6 +358,7 @@ For production, use a reverse proxy (nginx, traefik) with TLS.
 
 ### Slow Performance
 
+- k13d now shows recent cached resource data first and refreshes in the background, so the first paint should feel faster after the initial load
 - Reduce refresh interval
 - Limit namespace scope
 - Use filters to reduce data

@@ -78,6 +78,8 @@ Opens a full-featured terminal dashboard. Use `j/k` to navigate, `Ctrl+E` to tog
 # Open http://localhost:8080 — Username: admin / Password: printed in terminal
 ```
 
+The Web UI is responsive on smaller screens and now renders Kubernetes lists with a stale-first dashboard flow, so recently viewed data appears immediately while fresh data is revalidated in the background.
+
 **`--auth-mode local`** uses simple username/password authentication stored in memory — ideal for local development and desktop use. No Kubernetes tokens or external auth providers required. Just start and log in.
 
 > If `--admin-user` and `--admin-password` are not specified, the username defaults to `admin` and a **secure random password is generated** and printed to the terminal on startup. You can also set credentials via environment variables: `K13D_USERNAME` and `K13D_PASSWORD`.
