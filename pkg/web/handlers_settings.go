@@ -182,7 +182,6 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 				"endpoint":        m.Endpoint,
 				"description":     m.Description,
 				"has_api_key":     m.APIKey != "",
-				"api_key":         m.APIKey,
 				"is_active":       m.Name == s.cfg.ActiveModel,
 				"skip_tls_verify": m.SkipTLSVerify,
 			}
