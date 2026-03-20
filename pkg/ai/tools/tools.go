@@ -97,18 +97,23 @@ func (r *Registry) registerDefaultTools() {
 	// Kubectl tool - primary tool for Kubernetes operations
 	r.Register(&Tool{
 		Name:        "kubectl",
-		Description: "Execute kubectl commands to manage Kubernetes resources. Use this for all Kubernetes operations like get, describe, create, apply, delete, scale, logs, exec, etc.",
+		Description: "Executes a kubectl command against the user's Kubernetes cluster. Use this tool only when you need to query or modify the state of the user's Kubernetes cluster.\n\nIMPORTANT: Interactive commands are not supported in this environment. This includes:\n- kubectl exec with -it or -ti flags (use non-interactive exec instead)\n- kubectl edit (use kubectl get -o yaml, kubectl patch, or kubectl apply instead)\n- kubectl port-forward (use alternative methods like NodePort or LoadBalancer)\n- kubectl attach (prefer logs or a targeted non-interactive exec command instead)\n\nFor interactive operations, please use these non-interactive alternatives:\n- Instead of 'kubectl edit', use 'kubectl get -o yaml' to view, 'kubectl patch' for targeted changes, or 'kubectl apply' to apply full changes\n- Instead of 'kubectl exec -it', use 'kubectl exec' with a specific command\n- Instead of 'kubectl port-forward', use service types like NodePort or LoadBalancer",
 		Type:        ToolTypeKubectl,
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"command": map[string]interface{}{
 					"type":        "string",
-					"description": "The kubectl command to execute (without 'kubectl' prefix). Examples: 'get pods -n default', 'describe deployment nginx', 'logs pod/nginx -f'",
+					"description": "The complete kubectl command to execute. Prefer to use heredoc syntax for multi-line commands. Please include the kubectl prefix as well.\n\nIMPORTANT: Do not use interactive commands. Instead:\n- Use 'kubectl get -o yaml', 'kubectl patch', or 'kubectl apply' instead of 'kubectl edit'\n- Use 'kubectl exec' with specific commands instead of 'kubectl exec -it'\n- Use service types like NodePort or LoadBalancer instead of 'kubectl port-forward'\n\nExamples:\nuser: what pods are running in the cluster?\nassistant: kubectl get pods\n\nuser: what is the status of the pod my-pod?\nassistant: kubectl get pod my-pod -o jsonpath='{.status.phase}'\n\nuser: I need to edit the pod configuration\nassistant: # Option 1: Using patch for targeted changes\nkubectl patch pod my-pod --patch '{\"spec\":{\"containers\":[{\"name\":\"main\",\"image\":\"new-image\"}]}}'\n\n# Option 2: Using get and apply for full changes\nkubectl get pod my-pod -o yaml > pod.yaml\n# Edit pod.yaml locally\nkubectl apply -f pod.yaml\n\nuser: I need to execute a command in the pod\nassistant: kubectl exec my-pod -- /bin/sh -c \"your command here\"",
 				},
 				"namespace": map[string]interface{}{
 					"type":        "string",
 					"description": "Optional namespace override. If not specified, uses the namespace from the command or current context.",
+				},
+				"modifies_resource": map[string]interface{}{
+					"type":        "string",
+					"description": "Whether the command modifies a Kubernetes resource. Allowed values: yes, no, unknown.",
+					"enum":        []string{"yes", "no", "unknown"},
 				},
 			},
 			"required": []string{"command"},
@@ -118,18 +123,23 @@ func (r *Registry) registerDefaultTools() {
 	// Bash tool - for general shell commands
 	r.Register(&Tool{
 		Name:        "bash",
-		Description: "Execute bash shell commands as a last resort. Use only for non-kubectl host operations such as file inspection, curl, jq, or local diagnostics. Do not use bash for Kubernetes operations when the kubectl tool can do the job.",
+		Description: "Executes a bash command. Use this tool only when you need to execute a shell command and the dedicated kubectl tool or another explicitly available tool cannot do the job.",
 		Type:        ToolTypeBash,
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"command": map[string]interface{}{
 					"type":        "string",
-					"description": "The bash command to execute",
+					"description": "The bash command to execute. Do not use bash for kubectl or helm operations that belong in the kubectl tool.",
 				},
 				"timeout": map[string]interface{}{
 					"type":        "integer",
 					"description": "Timeout in seconds (default: 30)",
+				},
+				"modifies_resource": map[string]interface{}{
+					"type":        "string",
+					"description": "Whether the command modifies a Kubernetes resource. Allowed values: yes, no, unknown.",
+					"enum":        []string{"yes", "no", "unknown"},
 				},
 			},
 			"required": []string{"command"},
@@ -342,6 +352,10 @@ func (e *Executor) executeKubectl(ctx context.Context, argsJSON string) (string,
 		return "", fmt.Errorf("invalid kubectl arguments: %w", err)
 	}
 
+	if err := ValidateKubectlToolCommand(args.Command); err != nil {
+		return "", err
+	}
+
 	// Parse the command into individual arguments
 	cmdStr := args.Command
 	// Strip "kubectl" prefix if present
@@ -376,6 +390,10 @@ func (e *Executor) executeBash(ctx context.Context, argsJSON string) (string, er
 	var args BashArgs
 	if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
 		return "", fmt.Errorf("invalid bash arguments: %w", err)
+	}
+
+	if err := ValidateBashToolCommand(args.Command); err != nil {
+		return "", err
 	}
 
 	timeout := e.timeout
@@ -482,4 +500,43 @@ func ParseToolCalls(data []byte) ([]ToolCall, error) {
 	}
 
 	return calls, nil
+}
+
+// ValidateKubectlToolCommand rejects kubectl operations that require an interactive terminal.
+func ValidateKubectlToolCommand(command string) error {
+	normalized := strings.TrimSpace(command)
+	if normalized == "" {
+		return fmt.Errorf("kubectl command is required")
+	}
+	if !strings.HasPrefix(normalized, "kubectl ") {
+		normalized = "kubectl " + normalized
+	}
+
+	switch {
+	case strings.Contains(normalized, "kubectl edit "):
+		return fmt.Errorf("interactive kubectl edit cannot be approved in unattended agent mode; use kubectl get -o yaml, kubectl patch, or kubectl apply instead")
+	case strings.Contains(normalized, "kubectl port-forward "):
+		return fmt.Errorf("kubectl port-forward cannot be approved in unattended agent mode; use a Service or ingress-based alternative instead")
+	case strings.Contains(normalized, "kubectl attach "):
+		return fmt.Errorf("kubectl attach cannot be approved in unattended agent mode; use logs or a targeted non-interactive exec command instead")
+	case strings.Contains(normalized, " exec -it "), strings.Contains(normalized, " exec -ti "):
+		return fmt.Errorf("interactive kubectl exec cannot be approved in unattended agent mode; run a non-interactive kubectl exec command instead")
+	default:
+		return nil
+	}
+}
+
+// ValidateBashToolCommand rejects bash invocations that should be handled through the kubectl tool.
+func ValidateBashToolCommand(command string) error {
+	normalized := strings.TrimSpace(command)
+	if normalized == "" {
+		return fmt.Errorf("bash command is required")
+	}
+
+	lowered := strings.ToLower(normalized)
+	if strings.Contains(lowered, "kubectl ") || strings.Contains(lowered, "helm ") {
+		return fmt.Errorf("bash-wrapped Kubernetes or Helm operations cannot be approved; use the dedicated kubectl tool instead")
+	}
+
+	return nil
 }

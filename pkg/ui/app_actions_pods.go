@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -20,6 +23,177 @@ type portForwardInfo struct {
 	Name       string
 	LocalPort  string
 	RemotePort string
+}
+
+type podContainerEntry struct {
+	Name  string
+	Image string
+	Role  string
+	State string
+}
+
+func containerStateSummary(status corev1.ContainerStatus) string {
+	switch {
+	case status.State.Running != nil:
+		return "Running"
+	case status.State.Waiting != nil && status.State.Waiting.Reason != "":
+		return status.State.Waiting.Reason
+	case status.State.Waiting != nil:
+		return "Waiting"
+	case status.State.Terminated != nil && status.State.Terminated.Reason != "":
+		return status.State.Terminated.Reason
+	case status.State.Terminated != nil:
+		return "Terminated"
+	case status.Ready:
+		return "Ready"
+	default:
+		return "Unknown"
+	}
+}
+
+func (a *App) listPodContainers(ctx context.Context, namespace, name string) ([]podContainerEntry, error) {
+	pod, err := a.k8s.Clientset.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	initStates := make(map[string]corev1.ContainerStatus, len(pod.Status.InitContainerStatuses))
+	for _, status := range pod.Status.InitContainerStatuses {
+		initStates[status.Name] = status
+	}
+	appStates := make(map[string]corev1.ContainerStatus, len(pod.Status.ContainerStatuses))
+	for _, status := range pod.Status.ContainerStatuses {
+		appStates[status.Name] = status
+	}
+	ephemeralStates := make(map[string]corev1.ContainerStatus, len(pod.Status.EphemeralContainerStatuses))
+	for _, status := range pod.Status.EphemeralContainerStatuses {
+		ephemeralStates[status.Name] = status
+	}
+
+	entries := make([]podContainerEntry, 0, len(pod.Spec.InitContainers)+len(pod.Spec.Containers)+len(pod.Spec.EphemeralContainers))
+	for _, container := range pod.Spec.InitContainers {
+		entries = append(entries, podContainerEntry{
+			Name:  container.Name,
+			Image: container.Image,
+			Role:  "init",
+			State: containerStateSummary(initStates[container.Name]),
+		})
+	}
+	for _, container := range pod.Spec.Containers {
+		entries = append(entries, podContainerEntry{
+			Name:  container.Name,
+			Image: container.Image,
+			Role:  "container",
+			State: containerStateSummary(appStates[container.Name]),
+		})
+	}
+	for _, container := range pod.Spec.EphemeralContainers {
+		entries = append(entries, podContainerEntry{
+			Name:  container.Name,
+			Image: container.Image,
+			Role:  "ephemeral",
+			State: containerStateSummary(ephemeralStates[container.Name]),
+		})
+	}
+
+	return entries, nil
+}
+
+func (a *App) showPodContainers() {
+	a.mx.RLock()
+	resource := a.currentResource
+	a.mx.RUnlock()
+
+	if resource != "pods" && resource != "po" {
+		return
+	}
+
+	row, _ := a.table.GetSelection()
+	if row <= 0 {
+		return
+	}
+
+	ns := a.getTableCellText(row, 0)
+	name := a.getTableCellText(row, 1)
+
+	run := func() {
+		ctx, cancel := context.WithTimeout(a.getAppContext(), 5*time.Second)
+		defer cancel()
+
+		entries, err := a.listPodContainers(ctx, ns, name)
+		a.QueueUpdateDraw(func() {
+			if err != nil {
+				a.flashMsg(fmt.Sprintf("Failed to list containers: %v", err), true)
+				return
+			}
+			if len(entries) == 0 {
+				a.flashMsg(fmt.Sprintf("No containers found for %s/%s", ns, name), true)
+				return
+			}
+
+			list := tview.NewList()
+			list.ShowSecondaryText(true)
+			list.SetBorder(true).
+				SetTitle(fmt.Sprintf(" Containers: %s/%s [gray](l logs, p previous, Esc close)[white] ", ns, name))
+
+			for _, entry := range entries {
+				containerName := entry.Name
+				list.AddItem(
+					fmt.Sprintf("%s  [%s]", containerName, entry.Role),
+					fmt.Sprintf("State: %s  Image: %s", entry.State, entry.Image),
+					0,
+					nil,
+				)
+			}
+
+			list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+				switch event.Key() {
+				case tcell.KeyEsc:
+					a.closeModal("pod-containers")
+					a.SetFocus(a.table)
+					return nil
+				}
+
+				switch event.Rune() {
+				case 'q':
+					a.closeModal("pod-containers")
+					a.SetFocus(a.table)
+					return nil
+				case 'l':
+					index := list.GetCurrentItem()
+					if index >= 0 && index < len(entries) {
+						a.closeModal("pod-containers")
+						a.SetFocus(a.table)
+						a.showLogsForContainer(ns, name, entries[index].Name, false)
+						return nil
+					}
+				case 'p':
+					index := list.GetCurrentItem()
+					if index >= 0 && index < len(entries) {
+						a.closeModal("pod-containers")
+						a.SetFocus(a.table)
+						a.showLogsForContainer(ns, name, entries[index].Name, true)
+						return nil
+					}
+				}
+				return event
+			})
+
+			height := len(entries)*2 + 4
+			if height > 20 {
+				height = 20
+			}
+			a.showModal("pod-containers", centered(list, 72, height), true)
+			a.SetFocus(list)
+		})
+	}
+
+	if atomic.LoadInt32(&a.running) == 0 {
+		run()
+		return
+	}
+
+	a.safeGo("showPodContainers", run)
 }
 
 // showLogs shows logs for selected pod with Vim-style navigation
@@ -40,9 +214,21 @@ func (a *App) showLogs() {
 	ns := a.getTableCellText(row, 0)
 	name := a.getTableCellText(row, 1)
 
+	a.showLogsForContainer(ns, name, "", false)
+}
+
+func (a *App) showLogsForContainer(ns, name, container string, previous bool) {
+	title := fmt.Sprintf(" Logs: %s/%s", ns, name)
+	if container != "" {
+		title = fmt.Sprintf("%s [%s]", title, container)
+	}
+	if previous {
+		title = strings.Replace(title, " Logs: ", " Previous Logs: ", 1)
+	}
+
 	// Use VimViewer for Vim-style navigation and search
 	logView := NewVimViewer(a, "logs",
-		fmt.Sprintf(" Logs: %s/%s [gray](Esc:close /search s:autoscroll w:wrap m:mark)[white] ", ns, name))
+		fmt.Sprintf("%s [gray](Esc:close /search s:autoscroll w:wrap m:mark)[white] ", title))
 	logView.isLogView = true
 	logView.autoScroll = true
 	logView.textWrap = true
@@ -53,12 +239,23 @@ func (a *App) showLogs() {
 	a.showModal("logs", logView, true)
 	a.SetFocus(logView)
 
-	// Fetch logs
-	a.safeGo("showLogs-fetch", func() {
+	fetchName := "showLogs-fetch"
+	if previous {
+		fetchName = "showPreviousLogs-fetch"
+	}
+	a.safeGo(fetchName, func() {
 		ctx, cancel := context.WithTimeout(a.getAppContext(), 30*time.Second)
 		defer cancel()
 
-		logs, err := a.k8s.GetPodLogs(ctx, ns, name, "", 100)
+		var (
+			logs string
+			err  error
+		)
+		if previous {
+			logs, err = a.k8s.GetPodLogsPrevious(ctx, ns, name, container, 100)
+		} else {
+			logs, err = a.k8s.GetPodLogs(ctx, ns, name, container, 100)
+		}
 		a.QueueUpdateDraw(func() {
 			if err != nil {
 				logView.SetContent(fmt.Sprintf("[red]Error: %v", err))
@@ -90,37 +287,7 @@ func (a *App) showLogsPrevious() {
 
 	ns := a.getTableCellText(row, 0)
 	name := a.getTableCellText(row, 1)
-
-	// Use VimViewer for Vim-style navigation and search
-	logView := NewVimViewer(a, "logs",
-		fmt.Sprintf(" Previous Logs: %s/%s [gray](Esc:close /search s:autoscroll w:wrap m:mark)[white] ", ns, name))
-	logView.isLogView = true
-	logView.autoScroll = true
-	logView.textWrap = true
-
-	logView.SetContent("[yellow]Loading...[white]")
-	logView.updateTitle()
-
-	a.showModal("logs", logView, true)
-	a.SetFocus(logView)
-
-	// Fetch previous logs
-	a.safeGo("showLogsPrevious-fetch", func() {
-		ctx, cancel := context.WithTimeout(a.getAppContext(), 30*time.Second)
-		defer cancel()
-
-		logs, err := a.k8s.GetPodLogsPrevious(ctx, ns, name, "", 100)
-		a.QueueUpdateDraw(func() {
-			if err != nil {
-				logView.SetContent(fmt.Sprintf("[red]Error: %v", err))
-			} else if logs == "" {
-				logView.SetContent("[gray]No previous logs available")
-			} else {
-				logView.SetContent(logs)
-				logView.ScrollToEnd()
-			}
-		})
-	})
+	a.showLogsForContainer(ns, name, "", true)
 }
 
 // execShell opens an interactive shell in the selected pod

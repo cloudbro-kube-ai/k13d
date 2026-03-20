@@ -24,7 +24,7 @@ This guide explains how MCP works in k13d and how to extend AI capabilities with
 
 ## What is MCP?
 
-**Model Context Protocol (MCP)** is an open protocol developed by Anthropic that standardizes how AI models interact with external tools and data sources. k13d implements MCP to extend its AI capabilities beyond the built-in kubectl and bash tools.
+**Model Context Protocol (MCP)** is an open protocol developed by Anthropic that standardizes how AI models interact with external tools and data sources. k13d implements MCP to extend its AI capabilities beyond its kubectl-first built-in toolset.
 
 ### Key Benefits
 
@@ -54,11 +54,8 @@ k13d supports **both** MCP Server and MCP Client modes:
 │  │                     │          │                     │           │
 │  │ Exposes tools:      │          │ Connects to:        │           │
 │  │ - kubectl           │          │ - thinking server   │           │
-│  │ - kubectl_get       │          │ - kubernetes server │           │
-│  │ - kubectl_describe  │          │ - custom servers    │           │
-│  │ - kubectl_logs      │          │                     │           │
-│  │ - kubectl_apply     │          │                     │           │
-│  │ - bash              │          │                     │           │
+│  │ - bash              │          │ - kubernetes server │           │
+│  │                     │          │ - custom servers    │           │
 │  └──────────┬──────────┘          └──────────┬──────────┘           │
 │             │                                │                       │
 └─────────────┼────────────────────────────────┼───────────────────────┘
@@ -121,11 +118,7 @@ Add to Cursor MCP settings:
 
 | Tool | Description |
 |------|-------------|
-| `kubectl` | Execute any kubectl command |
-| `kubectl_get` | Get Kubernetes resources with filtering |
-| `kubectl_describe` | Describe a resource in detail |
-| `kubectl_logs` | Get pod logs |
-| `kubectl_apply` | Apply YAML manifests |
+| `kubectl` | Execute the kubectl-ai-style generic kubectl tool contract |
 | `bash` | Execute shell commands |
 
 ### Example: Using k13d from Claude Desktop
@@ -134,11 +127,11 @@ Once configured, you can ask Claude:
 
 > "Get all pods in the kube-system namespace"
 
-Claude will use k13d's `kubectl_get` tool:
+Claude will use k13d's `kubectl` tool:
 
 ```
-Using tool: kubectl_get
-Arguments: {"resource": "pods", "namespace": "kube-system"}
+Using tool: kubectl
+Arguments: {"command": "kubectl get pods -n kube-system", "modifies_resource": "no"}
 
 Result:
 NAME                                     READY   STATUS    RESTARTS   AGE
@@ -168,6 +161,13 @@ k13d can also act as an **MCP Client** to connect to external MCP servers for ad
 3. **Discovers Tools**: Calls `tools/list` to learn what tools each server provides
 4. **Invokes Tools**: When AI decides to use a tool, k13d calls `tools/call` on the appropriate server
 5. **Returns Results**: Tool results are passed back to the AI for reasoning
+
+Discovered MCP tools are not exposed to the k13d AI Assistant unless you opt in:
+
+```yaml
+llm:
+  enable_mcp_tools: true
+```
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
@@ -913,6 +913,7 @@ type Report struct {
 - **Read-only** commands (get, describe, logs) require approval by default and can be auto-approved only if you enable that policy
 - **Write** commands (apply, create, patch) require confirmation
 - **Dangerous** commands (delete, drain) show extra warnings
+- **Unsupported interactive** commands such as `kubectl edit`, `kubectl port-forward`, and `kubectl exec -it` are blocked instead of routed through approval
 
 ---
 

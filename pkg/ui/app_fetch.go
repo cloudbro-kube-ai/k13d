@@ -186,37 +186,24 @@ func (a *App) fetchServices(ctx context.Context, ns string) ([]string, [][]strin
 }
 
 func (a *App) fetchNodes(ctx context.Context) ([]string, [][]string, error) {
-	headers := []string{"NAME", "STATUS", "ROLES", "VERSION", "AGE"}
+	headers := []string{"NAME", "STATUS", "ROLE", "CPU", "MEM", "GPU", "AGE"}
 	nodes, err := a.k8s.ListNodes(ctx)
 	if err != nil {
 		return headers, nil, err
 	}
 
+	usage := loadNodeUsageSnapshots(ctx, a.k8s, nodes)
 	var rows [][]string
 	for _, n := range nodes {
-		status := "NotReady"
-		for _, c := range n.Status.Conditions {
-			if c.Type == corev1.NodeReady && c.Status == corev1.ConditionTrue {
-				status = "Ready"
-			}
-		}
-
-		roles := []string{}
-		for label := range n.Labels {
-			if strings.HasPrefix(label, "node-role.kubernetes.io/") {
-				role := strings.TrimPrefix(label, "node-role.kubernetes.io/")
-				roles = append(roles, role)
-			}
-		}
-		if len(roles) == 0 {
-			roles = []string{"<none>"}
-		}
+		snapshot := usage[n.Name]
 
 		rows = append(rows, []string{
 			n.Name,
-			status,
-			strings.Join(roles, ","),
-			n.Status.NodeInfo.KubeletVersion,
+			nodeStatusSummary(n),
+			nodeRoleSummary(n),
+			formatNodeCPUUsage(snapshot),
+			formatNodeMemoryUsage(snapshot),
+			formatNodeGPUUsage(snapshot),
 			formatAge(n.CreationTimestamp.Time),
 		})
 	}

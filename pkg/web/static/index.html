@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>k13d - kube-ai-dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
+    <link rel="shortcut icon" href="assets/logo.svg" />
     <!-- All assets vendored locally for air-gapped environments -->
     <!-- xterm.js for terminal -->
     <link rel="stylesheet" href="vendor/xterm.css" />
@@ -133,7 +135,7 @@
     <div class="app-container" id="app">
         <!-- Top Bar -->
         <div class="top-bar" role="banner">
-            <div style="display: flex; align-items: center;">
+            <div class="top-bar-brand" style="display: flex; align-items: center;">
                 <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Toggle Sidebar (B)"
                     aria-label="Toggle navigation" aria-expanded="false">
                     <span class="hamburger-line"></span>
@@ -418,8 +420,11 @@
                 <!-- Main Panel -->
                 <div class="main-panel" id="main-panel" role="main">
                     <div class="panel-header">
-                        <h2 class="panel-title" id="panel-title">Pods</h2>
-                        <span class="resource-summary" id="resource-summary"></span>
+                        <div class="panel-header-copy">
+                            <h2 class="panel-title" id="panel-title">Pods</h2>
+                            <span class="resource-summary" id="resource-summary"></span>
+                            <span class="data-freshness-indicator" id="data-freshness-indicator" hidden></span>
+                        </div>
                         <div class="panel-actions">
                             <select class="namespace-select" id="namespace-select" onchange="onNamespaceChange()">
                                 <option value="">All Namespaces</option>
@@ -439,7 +444,7 @@
                         </button>
                         <div id="filter-chips"></div>
                         <div class="active-filters" id="active-column-filters"></div>
-                        <span style="font-size: 11px; color: var(--text-secondary); margin-left: auto;">/ filter |
+                        <span class="filter-shortcut-hint" style="font-size: 11px; color: var(--text-secondary); margin-left: auto;">/ filter |
                             Ctrl+F columns</span>
                     </div>
                     <div class="table-container">

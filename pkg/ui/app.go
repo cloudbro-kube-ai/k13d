@@ -102,21 +102,22 @@ type App struct {
 	aiClient *ai.Client
 
 	// UI components
-	pages       *tview.Pages
-	header      *tview.TextView
-	briefing    *BriefingPanel // Natural language cluster briefing
-	table       *tview.Table
-	contentFlex *tview.Flex
-	statusBar   *tview.TextView
-	flash       *tview.TextView
-	cmdInput    *tview.InputField
-	cmdHint     *tview.TextView // Autocomplete hint (dimmed)
-	cmdDropdown *tview.List     // Autocomplete dropdown
-	aiPanel     *tview.TextView
-	aiContainer *tview.Flex
-	aiMetaBar   *tview.TextView
-	aiStatusBar *tview.TextView
-	aiInput     *tview.InputField // AI question input
+	pages        *tview.Pages
+	header       *tview.TextView
+	briefing     *BriefingPanel // Natural language cluster briefing
+	table        *tview.Table
+	contentFlex  *tview.Flex
+	statusBar    *tview.TextView
+	flash        *tview.TextView
+	cmdInput     *tview.InputField
+	cmdHint      *tview.TextView // Autocomplete hint (dimmed)
+	cmdDropdown  *tview.List     // Autocomplete dropdown
+	aiPanel      *tview.TextView
+	aiContainer  *tview.Flex
+	aiMetaBar    *tview.TextView
+	aiStatusBar  *tview.TextView
+	aiInputFrame *tview.Flex
+	aiInput      *tview.InputField // AI question input
 
 	// State (protected by mutex)
 	mx                  sync.RWMutex
@@ -179,6 +180,7 @@ type App struct {
 	pendingDecisions    []PendingDecision
 	pendingToolApproval chan bool
 	aiConversationTurns int
+	attachedAIContext   aiAttachedSelection
 	toolApprovalFocus   tview.Primitive
 	currentToolCallInfo struct {
 		Name    string

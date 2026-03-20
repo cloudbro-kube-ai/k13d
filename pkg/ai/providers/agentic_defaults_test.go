@@ -48,11 +48,14 @@ func TestBuildToolUseShimSystemPromptUsesSortedToolInventory(t *testing.T) {
 	}
 
 	prompt := buildToolUseShimSystemPrompt(tools, 6)
-	if !strings.Contains(prompt, "budget of at most 6 tool-use rounds") {
-		t.Fatalf("prompt should include configured tool budget, got %q", prompt)
+	if !strings.Contains(prompt, "You are `k13d`") {
+		t.Fatalf("prompt should identify the assistant, got %q", prompt)
 	}
-	if !strings.Contains(prompt, "Use only exact tool names from this list: alpha_tool, zeta_tool.") {
+	if !strings.Contains(prompt, `Tool name (alpha_tool, zeta_tool)`) {
 		t.Fatalf("prompt should list sorted tool names, got %q", prompt)
+	}
+	if !strings.Contains(prompt, "Reflect on 5-7 different ways to solve the given query or task.") {
+		t.Fatalf("prompt should carry kubectl-ai reasoning guidance, got %q", prompt)
 	}
 
 	alphaIdx := strings.Index(prompt, `"name": "alpha_tool"`)

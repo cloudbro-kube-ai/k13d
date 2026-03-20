@@ -177,6 +177,8 @@ llm:
   model: solar-pro2         # Model name
   endpoint: ""              # Custom endpoint (optional)
   api_key: ""               # API key
+  enable_bash_tool: false   # Opt-in: expose bash to agentic AI
+  enable_mcp_tools: false   # Opt-in: expose discovered MCP tools to agentic AI
 
 # Language & UX
 language: en                # en, ko, zh, ja
@@ -218,6 +220,24 @@ k13d --web --auth-mode token
 `--auth-mode local` shows the username/password login form only. The Kubernetes token input is shown when you use `--auth-mode token`.
 
 By default, k13d shows `Decision Required` even for read-only AI tool actions such as `kubectl get pods`. Turn on `authorization.tool_approval.auto_approve_read_only` only if you intentionally want to skip those approval prompts.
+
+Agentic AI tool exposure is kubectl-first by default and follows the kubectl-ai prompt/tool contract for the `kubectl` tool. `bash` and external MCP tools are intentionally opt-in in k13d:
+
+```yaml
+llm:
+  enable_bash_tool: false
+  enable_mcp_tools: false
+```
+
+`Required Decision` versus hard block is split like this:
+
+- Read-only kubectl: allowed, but prompts by default unless `auto_approve_read_only: true`
+- Write kubectl: allowed, and prompts by default unless `require_approval_for_write: false`
+- Dangerous kubectl: prompts by default, or blocks completely if `block_dangerous: true`
+- Unknown commands: allowed or prompted based on `require_approval_for_unknown`
+- Interactive `kubectl edit`, `kubectl port-forward`, `kubectl attach`, `kubectl exec -it`: always blocked, not approvable
+- Bash-wrapped Kubernetes or Helm commands: always blocked, not approvable
+- `blocked_patterns`: always blocked, not approvable
 
 `--auth-mode ldap` and `--auth-mode oidc` select those auth paths, but the stock binary does not yet expose every provider-specific LDAP/OIDC field as dedicated CLI flags. The Web UI settings page currently shows runtime auth status and does not persist provider configuration into `config.yaml`.
 

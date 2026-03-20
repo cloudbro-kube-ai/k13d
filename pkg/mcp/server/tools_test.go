@@ -7,14 +7,9 @@ import (
 func TestDefaultTools(t *testing.T) {
 	tools := DefaultTools()
 
-	// Should have 6 default tools
 	expectedTools := []string{
 		"kubectl",
 		"bash",
-		"kubectl_get",
-		"kubectl_describe",
-		"kubectl_logs",
-		"kubectl_apply",
 	}
 
 	if len(tools) != len(expectedTools) {
@@ -62,6 +57,9 @@ func TestKubectlTool(t *testing.T) {
 	if _, ok := props["command"]; !ok {
 		t.Error("command property not found in InputSchema")
 	}
+	if _, ok := props["modifies_resource"]; !ok {
+		t.Error("modifies_resource property not found in InputSchema")
+	}
 
 	// Check required field
 	required, ok := tool.InputSchema["required"].([]string)
@@ -85,8 +83,8 @@ func TestBashTool(t *testing.T) {
 	if _, ok := props["command"]; !ok {
 		t.Error("command property not found")
 	}
-	if _, ok := props["timeout"]; !ok {
-		t.Error("timeout property not found")
+	if _, ok := props["modifies_resource"]; !ok {
+		t.Error("modifies_resource property not found")
 	}
 }
 

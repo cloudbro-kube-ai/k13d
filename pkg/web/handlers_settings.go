@@ -642,14 +642,15 @@ func (s *Server) handleMCPTools(w http.ResponseWriter, r *http.Request) {
 	// Also include built-in tools
 	var builtinTools []map[string]interface{}
 	if s.aiClient != nil {
-		for _, t := range s.aiClient.GetToolRegistry().List() {
-			if t.Type != "mcp" {
-				builtinTools = append(builtinTools, map[string]interface{}{
-					"name":        t.Name,
-					"description": t.Description,
-					"type":        string(t.Type),
-				})
+		for _, t := range s.aiClient.VisibleTools() {
+			if t == nil || t.Type == "mcp" {
+				continue
 			}
+			builtinTools = append(builtinTools, map[string]interface{}{
+				"name":        t.Name,
+				"description": t.Description,
+				"type":        string(t.Type),
+			})
 		}
 	}
 

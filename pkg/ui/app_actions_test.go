@@ -149,6 +149,7 @@ func TestBuildToolApprovalInfoTextReflectsPolicy(t *testing.T) {
 		"Write approval required",
 		"Dangerous commands blocked",
 		"90s",
+		"Hard blocks",
 	} {
 		if !strings.Contains(got, want) {
 			t.Fatalf("expected tool approval summary to include %q, got %q", want, got)
@@ -200,6 +201,21 @@ func TestEvaluateAIToolDecision_BashKubectlIsBlocked(t *testing.T) {
 		t.Fatal("expected bash-wrapped kubectl command to be blocked")
 	}
 	if !strings.Contains(decision.BlockReason, "kubectl tool") {
+		t.Fatalf("unexpected block reason: %q", decision.BlockReason)
+	}
+}
+
+func TestEvaluateAIToolDecision_InteractiveKubectlIsHardBlocked(t *testing.T) {
+	app := CreateMinimalTestApp()
+
+	decision := app.evaluateAIToolDecision("kubectl", "kubectl exec -it pod/api -- sh")
+	if decision.Allowed {
+		t.Fatal("expected interactive kubectl command to be blocked")
+	}
+	if decision.RequiresApproval {
+		t.Fatal("expected interactive kubectl command to be blocked without approval path")
+	}
+	if !strings.Contains(decision.BlockReason, "cannot be approved") {
 		t.Fatalf("unexpected block reason: %q", decision.BlockReason)
 	}
 }

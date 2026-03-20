@@ -123,22 +123,26 @@ User Command
 │ Safety Analyzer │
 └────────┬────────┘
          │
-         ├── ReadOnly? ──► Auto-approve (configurable)
+         ├── ReadOnly? ──► Decision Required by default
+         │                (auto-approve configurable)
          │
          ├── Write? ──► Require approval
          │
-         └── Dangerous? ──► Warning + Require approval
-                            (delete ns, rm -rf, etc.)
+         ├── Dangerous? ──► Warning + Require approval
+         │                  (delete ns, rm -rf, etc.)
+         │
+         └── Unsupported interactive / blocked pattern?
+                          ──► Hard block (not approvable)
 ```
 
 ### Command Classification
 
 | Type | Examples | Approval |
 |------|----------|----------|
-| **Read-only** | get, describe, logs | Auto-approve |
+| **Read-only** | get, describe, logs | Decision Required by default, auto-approve optional |
 | **Write** | apply, create, patch | Requires approval |
-| **Dangerous** | delete, drain, taint | Warning + approval |
-| **Interactive** | exec, attach, edit | Requires approval |
+| **Dangerous** | delete, drain, taint | Warning + approval, or full block if configured |
+| **Hard-blocked** | `kubectl edit`, `kubectl port-forward`, `kubectl exec -it`, blocked regex matches | Blocked immediately |
 
 ## Data Storage
 

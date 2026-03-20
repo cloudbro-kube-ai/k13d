@@ -15,6 +15,7 @@ func TestBuildAIPromptIncludesDetailedSelectionContext(t *testing.T) {
 	prompt := buildAIPrompt("Why is this pod failing?", aiPromptContext{
 		Resource:          "pods",
 		Namespace:         "default",
+		SelectedResource:  "pods",
 		SelectedName:      "api-7d9d8",
 		SelectedNamespace: "default",
 		SelectedSummary:   "NAME=api-7d9d8 | STATUS=CrashLoopBackOff | RESTARTS=5",
@@ -135,8 +136,8 @@ func TestShowAIContextPreviewUsesSelectedRow(t *testing.T) {
 	})
 
 	app.refresh()
-	ctx := app.getAIPromptContext()
-	if ctx.SelectedName == "" {
+	candidate := app.currentAISelectionCandidate()
+	if candidate.IsZero() {
 		t.Fatal("expected refresh to select a table row for AI context")
 	}
 
@@ -147,11 +148,56 @@ func TestShowAIContextPreviewUsesSelectedRow(t *testing.T) {
 		"Context Preview",
 		"View: pods",
 		"Namespace: default",
-		"Selected: " + ctx.SelectedName,
+		"Selected row available: pods default/" + candidate.Name,
+		"not attached yet",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("context preview missing %q\n%s", want, text)
 		}
+	}
+}
+
+func TestToggleSelectedAIContextAttachesSelectionAndHighlightsRow(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+
+	app.refresh()
+	candidate := app.currentAISelectionCandidate()
+	if candidate.IsZero() {
+		t.Fatal("expected a selected row to be available for AI attachment")
+	}
+
+	app.toggleSelectedAIContext()
+
+	attached := app.getAttachedAIContext()
+	if !attached.Matches(candidate) {
+		t.Fatalf("expected AI attachment to match current row, got %+v", attached)
+	}
+
+	ctx := app.getAIPromptContext()
+	if ctx.SelectedResource != candidate.Resource || ctx.SelectedName != candidate.Name {
+		t.Fatalf("expected prompt context to use attached row, got %+v", ctx)
+	}
+
+	meta := app.aiMetaBar.GetText(false)
+	if !strings.Contains(meta, "(attached)") || !strings.Contains(meta, candidate.Name) {
+		t.Fatalf("expected AI meta bar to show attached context, got %q", meta)
+	}
+
+	cell := app.table.GetCell(1, 0)
+	if cell == nil {
+		t.Fatal("expected first data row cell to exist")
+	}
+	_, background, _ := cell.Style.Decompose()
+	if background == tcell.ColorDefault {
+		t.Fatalf("expected attached row to use subtle highlight, got default background")
+	}
+
+	app.toggleSelectedAIContext()
+	if attached := app.getAttachedAIContext(); !attached.IsZero() {
+		t.Fatalf("expected AI attachment to clear on second toggle, got %+v", attached)
 	}
 }
 
@@ -303,6 +349,48 @@ func TestAdjustAIPanelWidthPreservesAIPanelFocus(t *testing.T) {
 
 	if got := app.GetFocus(); got != app.aiPanel {
 		t.Fatalf("expected AI panel focus to be preserved while resizing, got %T", got)
+	}
+}
+
+func TestAIInputFrameProvidesPromptBoundary(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+
+	if app.aiInputFrame == nil {
+		t.Fatal("expected AI input frame to be initialized")
+	}
+	if title := app.aiInputFrame.GetTitle(); title != " Prompt " {
+		t.Fatalf("expected AI input frame title %q, got %q", " Prompt ", title)
+	}
+	if got := app.aiInputFrame.GetItemCount(); got != 1 {
+		t.Fatalf("expected AI input frame to wrap one input item, got %d", got)
+	}
+}
+
+func TestAIFocusHelpersUpdateStatusHints(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+	app.showAIPanel = true
+	app.rebuildContentLayout(true)
+
+	app.focusAITranscript()
+	if got := app.GetFocus(); got != app.aiPanel {
+		t.Fatalf("expected transcript focus, got %T", got)
+	}
+	if status := app.aiStatusBar.GetText(false); !strings.Contains(status, "History") || !strings.Contains(status, "Tab prompt") {
+		t.Fatalf("expected transcript status hint, got %q", status)
+	}
+
+	app.focusAIInput()
+	if got := app.GetFocus(); got != app.aiInput {
+		t.Fatalf("expected input focus, got %T", got)
+	}
+	if status := app.aiStatusBar.GetText(false); !strings.Contains(status, "Enter send") || !strings.Contains(status, "Shift+Tab history") {
+		t.Fatalf("expected input status hint, got %q", status)
 	}
 }
 

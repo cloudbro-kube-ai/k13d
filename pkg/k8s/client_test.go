@@ -399,6 +399,24 @@ func podWithResources(name, ns, nodeName string, cpuMillis int64, memMB int64) *
 	}
 }
 
+func podWithResourcesAndGPU(name, ns, nodeName string, cpuMillis int64, memMB int64, gpuRequest int64, gpuLimit int64) *corev1.Pod {
+	pod := podWithResources(name, ns, nodeName, cpuMillis, memMB)
+	container := &pod.Spec.Containers[0]
+	if container.Resources.Requests == nil {
+		container.Resources.Requests = corev1.ResourceList{}
+	}
+	if container.Resources.Limits == nil {
+		container.Resources.Limits = corev1.ResourceList{}
+	}
+	if gpuRequest > 0 {
+		container.Resources.Requests[corev1.ResourceName("nvidia.com/gpu")] = *resource.NewQuantity(gpuRequest, resource.DecimalSI)
+	}
+	if gpuLimit > 0 {
+		container.Resources.Limits[corev1.ResourceName("nvidia.com/gpu")] = *resource.NewQuantity(gpuLimit, resource.DecimalSI)
+	}
+	return pod
+}
+
 func TestGetPodMetricsFromRequests(t *testing.T) {
 	objects := []runtime.Object{
 		podWithResources("pod-1", "default", "node-1", 250, 128),
@@ -551,6 +569,41 @@ func TestGetNodeMetricsFromPodRequests_Empty(t *testing.T) {
 	}
 	if len(res) != 0 {
 		t.Errorf("Expected empty map, got %d entries", len(res))
+	}
+}
+
+func TestGetNodeResourceRequests_AggregatesGPU(t *testing.T) {
+	objects := []runtime.Object{
+		podWithResourcesAndGPU("trainer-a", "default", "node-gpu", 800, 2048, 1, 0),
+		podWithResourcesAndGPU("trainer-b", "default", "node-gpu", 1200, 1024, 0, 1),
+		podWithResources("api", "default", "node-cpu", 300, 256),
+	}
+	client := &Client{Clientset: fake.NewClientset(objects...)} //nolint:staticcheck
+	ctx := context.Background()
+
+	res, err := client.GetNodeResourceRequests(ctx)
+	if err != nil {
+		t.Fatalf("GetNodeResourceRequests failed: %v", err)
+	}
+
+	if len(res) != 2 {
+		t.Fatalf("Expected 2 nodes, got %d", len(res))
+	}
+
+	gpuNode := res["node-gpu"]
+	if gpuNode.CPUMilli != 2000 {
+		t.Errorf("node-gpu CPU = %d, want 2000", gpuNode.CPUMilli)
+	}
+	if gpuNode.MemoryMB != 3072 {
+		t.Errorf("node-gpu memory = %d, want 3072", gpuNode.MemoryMB)
+	}
+	if gpuNode.GPU != 2 {
+		t.Errorf("node-gpu GPU = %d, want 2", gpuNode.GPU)
+	}
+
+	cpuNode := res["node-cpu"]
+	if cpuNode.GPU != 0 {
+		t.Errorf("node-cpu GPU = %d, want 0", cpuNode.GPU)
 	}
 }
 

@@ -67,6 +67,12 @@ func TestNewDefaultConfig(t *testing.T) {
 	if cfg.LLM.MaxBackoff != 10.0 {
 		t.Errorf("LLM.MaxBackoff = %f, want 10.0", cfg.LLM.MaxBackoff)
 	}
+	if cfg.LLM.EnableBashTool {
+		t.Error("LLM.EnableBashTool should be false by default")
+	}
+	if cfg.LLM.EnableMCPTools {
+		t.Error("LLM.EnableMCPTools should be false by default")
+	}
 
 	// Check Models (1 Solar + 2 OpenAI + 2 Ollama local models)
 	if len(cfg.Models) != 5 {

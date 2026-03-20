@@ -1,6 +1,9 @@
 package tools
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestRegistryListReturnsSortedTools(t *testing.T) {
 	registry := NewRegistry()
@@ -32,6 +35,38 @@ func TestRegistryGetMCPToolsReturnsSortedTools(t *testing.T) {
 	for i, tool := range got {
 		if tool.Name != want[i] {
 			t.Fatalf("GetMCPTools()[%d] = %q, want %q", i, tool.Name, want[i])
+		}
+	}
+}
+
+func TestValidateKubectlToolCommandBlocksUnsupportedInteractiveCommands(t *testing.T) {
+	tests := []string{
+		"kubectl edit deployment api",
+		"kubectl port-forward pod/api 8080:80",
+		"kubectl attach pod/api",
+		"kubectl exec -it pod/api -- sh",
+	}
+
+	for _, command := range tests {
+		if err := ValidateKubectlToolCommand(command); err == nil {
+			t.Fatalf("ValidateKubectlToolCommand(%q) expected error", command)
+		} else if !strings.Contains(err.Error(), "cannot be approved") {
+			t.Fatalf("ValidateKubectlToolCommand(%q) error = %q, want cannot be approved guidance", command, err.Error())
+		}
+	}
+}
+
+func TestValidateBashToolCommandBlocksKubernetesBypass(t *testing.T) {
+	tests := []string{
+		"kubectl get pods -A",
+		"helm list -A",
+	}
+
+	for _, command := range tests {
+		if err := ValidateBashToolCommand(command); err == nil {
+			t.Fatalf("ValidateBashToolCommand(%q) expected error", command)
+		} else if !strings.Contains(err.Error(), "cannot be approved") {
+			t.Fatalf("ValidateBashToolCommand(%q) error = %q, want cannot be approved guidance", command, err.Error())
 		}
 	}
 }
