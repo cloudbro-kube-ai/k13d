@@ -224,7 +224,7 @@ type ModelProfile struct {
 	Provider        string `yaml:"provider" json:"provider"`           // Provider type
 	Model           string `yaml:"model" json:"model"`                 // Model identifier
 	Endpoint        string `yaml:"endpoint" json:"endpoint,omitempty"` // Custom endpoint
-	APIKey          string `yaml:"api_key" json:"api_key,omitempty"`                   // API key (exposed for model profile management)
+	APIKey          string `yaml:"api_key" json:"api_key,omitempty"`   // API key (exposed for model profile management)
 	Region          string `yaml:"region" json:"region,omitempty"`     // For AWS Bedrock
 	AzureDeployment string `yaml:"azure_deployment" json:"azure_deployment,omitempty"`
 	SkipTLSVerify   bool   `yaml:"skip_tls_verify" json:"skip_tls_verify,omitempty"` // For self-signed certs

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"testing"
+
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 )
 
 func TestModelProfilesCRUD(t *testing.T) {
@@ -200,7 +202,7 @@ func TestMaskAPIKey(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := maskAPIKey(test.input)
+		result := config.MaskAPIKey(test.input)
 		if result != test.expected {
 			t.Errorf("hashAPIKey(%q) = %q, expected %q", test.input, result, test.expected)
 		}
