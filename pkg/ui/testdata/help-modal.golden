@@ -2,12 +2,17 @@
 Of║  Alt+H/L Resize AI panel     Alt+0    Reset AI width                    ║
  ⎈║  q/Ctrl+C Quit application                                              ║
  N║                                                                         ║
-  ║NAVIGATION                                                               ║
-┌─║  j/Down   Down                k/Up     Up                               ║──┐
-│N║  g        Top                 G        Bottom                           ║  │
-│d║  Ctrl+F   Page down           Ctrl+B   Page up                          ║  │
-│d║  Ctrl+D   Half page down      Ctrl+U   Half page up                     ║  │
+  ║AI ASSISTANT                                                             ║
+┌─║  Enter    Send prompt         Up/Down  Prompt history                   ║──┐
+│N║  j/k      Scroll transcript   PgUp/PgDn Page transcript                 ║  │
+│d║  g/G      Transcript top/btm  Tab      Return to prompt                 ║  │
 │d║                                                                         ║  │
+│d║NAVIGATION                                                               ║  │
+│ ║  j/Down   Down                k/Up     Up                               ║  │
+│ ║  g        Top                 G        Bottom                           ║  │
+│ ║  Ctrl+F   Page down           Ctrl+B   Page up                          ║  │
+│ ║  Ctrl+D   Half page down      Ctrl+U   Half page up                     ║  │
+│ ║                                                                         ║  │
 │ ║RESOURCE ACTIONS                                                         ║  │
 │ ║  d        Describe            y        YAML view                        ║  │
 │ ║  e        Edit ($EDITOR)      Ctrl+D   Delete                           ║  │
@@ -15,11 +20,6 @@ Of║  Alt+H/L Resize AI panel     Alt+0    Reset AI width                    �
 │ ║  n        Cycle namespace     Space    Multi-select                     ║  │
 │ ║                                                                         ║  │
 │ ║SORTING                                                                  ║  │
-│ ║  Shift+N  Sort by NAME        Shift+A  Sort by AGE                      ║  │
-│ ║  Shift+T  Sort by STATUS      Shift+P  Sort by NAMESPACE                ║  │
-│ ║  Shift+C  Sort by RESTARTS    Shift+D  Sort by READY                    ║  │
-│ ║  :sort    Sort column picker  (toggle direction by sorting same column  ║  │
-│ ║twice)                                                                   ║  │
-└─║                                                                         ║──┘
-  ║NAMESPACE SHORTCUTS (k9s style)                                          ║
- :║  0 All namespaces      n   Cycle through namespaces                     ║
+└─║  Shift+N  Sort by NAME        Shift+A  Sort by AGE                      ║──┘
+  ║  Shift+T  Sort by STATUS      Shift+P  Sort by NAMESPACE                ║
+ :║  Shift+C  Sort by RESTARTS    Shift+D  Sort by READY                    ║

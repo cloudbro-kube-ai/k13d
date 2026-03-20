@@ -50,7 +50,8 @@ k13d -A
 |-----|--------|
 | ++j++ / ++arrow-down++ | Move down |
 | ++k++ / ++arrow-up++ | Move up |
-| ++tab++ | Switch focus between panels |
+| ++tab++ | Move focus to the AI prompt |
+| ++shift+tab++ | Move focus to AI chat history |
 | ++esc++ | Close modal / Return to main view |
 | ++ctrl+e++ | Toggle AI panel |
 | ++q++ | Quit (with confirmation) |
@@ -70,9 +71,9 @@ k13d -A
 
 | Key | Action |
 |-----|--------|
-| ++tab++ | Cycle focus between panels |
-| ++arrow-left++ / ++arrow-right++ | Switch panels |
-| ++1++ - ++9++ | Quick switch to specific panel |
+| ++tab++ | Move between the table and AI prompt |
+| ++shift+tab++ | Jump into AI chat history |
+| ++esc++ | Return focus to the resource table |
 
 ### AI Panel Width
 
@@ -200,15 +201,26 @@ aliases:
 ### Using the AI Panel
 
 1. Press ++tab++ to focus on the AI panel
-2. Type your question
+2. Type your question in the boxed prompt area
 3. Press ++enter++ to send
-4. View the response in the output area
+4. Press ++shift+tab++ to move into transcript history
+5. Use ++j++ / ++k++ or ++pgup++ / ++pgdn++ to browse older replies
+6. Press ++tab++ to return to the prompt
+
+The prompt area is boxed separately from the transcript so it is easier to see whether you are typing a new message or browsing previous output.
 
 You can keep the table readable while chatting by resizing the right-side AI panel with ++alt+h++, ++alt+l++, and ++alt+0++.
 
+Agentic AI is kubectl-first by default. `bash` and MCP tools are opt-in through `config.yaml`, and unsupported interactive kubectl flows such as `kubectl edit`, `kubectl port-forward`, and `kubectl exec -it` are blocked instead of shown as approvable actions.
+
 ### Chat History
 
-Previous Q&A sessions are preserved within each TUI session. Scroll up to review past conversations, separated by visual dividers.
+Previous Q&A sessions are preserved within each TUI session. Press ++shift+tab++ to focus the transcript, then use:
+
+- ++j++ / ++k++ or ++arrow-up++ / ++arrow-down++ to move line by line
+- ++pgup++ / ++pgdn++ to move by a page
+- ++g++ / ++shift+g++ to jump to the top or bottom
+- ++tab++ to return to the prompt
 
 ### Model Switching
 

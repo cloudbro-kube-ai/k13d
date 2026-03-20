@@ -306,6 +306,48 @@ func TestAdjustAIPanelWidthPreservesAIPanelFocus(t *testing.T) {
 	}
 }
 
+func TestAIInputFrameProvidesPromptBoundary(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+
+	if app.aiInputFrame == nil {
+		t.Fatal("expected AI input frame to be initialized")
+	}
+	if title := app.aiInputFrame.GetTitle(); title != " Prompt " {
+		t.Fatalf("expected AI input frame title %q, got %q", " Prompt ", title)
+	}
+	if got := app.aiInputFrame.GetItemCount(); got != 1 {
+		t.Fatalf("expected AI input frame to wrap one input item, got %d", got)
+	}
+}
+
+func TestAIFocusHelpersUpdateStatusHints(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+	app.showAIPanel = true
+	app.rebuildContentLayout(true)
+
+	app.focusAITranscript()
+	if got := app.GetFocus(); got != app.aiPanel {
+		t.Fatalf("expected transcript focus, got %T", got)
+	}
+	if status := app.aiStatusBar.GetText(false); !strings.Contains(status, "History") || !strings.Contains(status, "Tab prompt") {
+		t.Fatalf("expected transcript status hint, got %q", status)
+	}
+
+	app.focusAIInput()
+	if got := app.GetFocus(); got != app.aiInput {
+		t.Fatalf("expected input focus, got %T", got)
+	}
+	if status := app.aiStatusBar.GetText(false); !strings.Contains(status, "Enter send") || !strings.Contains(status, "Shift+Tab history") {
+		t.Fatalf("expected input status hint, got %q", status)
+	}
+}
+
 func TestTUIAIPanelToggleAndHelpCommand(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping TUI AI interaction test in short mode")

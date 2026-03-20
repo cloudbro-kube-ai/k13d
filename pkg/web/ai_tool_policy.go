@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
+	aitools "github.com/cloudbro-kube-ai/k13d/pkg/ai/tools"
 )
 
 const bashKubernetesBypassReason = "Use the dedicated kubectl tool instead of bash for Kubernetes operations"
@@ -48,6 +49,25 @@ func (s *Server) evaluateAIToolDecision(role, toolName, command string) *safety.
 
 	decision := s.getToolApprovalDecision(normalizedCommand)
 	decision.Category = classifyCategoryForTool(toolName, normalizedCommand, decision.Category)
+
+	switch toolName {
+	case "kubectl":
+		if err := aitools.ValidateKubectlToolCommand(normalizedCommand); err != nil {
+			decision.Allowed = false
+			decision.RequiresApproval = false
+			decision.BlockReason = err.Error()
+			decision.Warnings = appendIfMissing(decision.Warnings, "This kubectl command requires an interactive terminal or unsupported workflow.")
+			return decision
+		}
+	case "bash":
+		if err := aitools.ValidateBashToolCommand(normalizedCommand); err != nil {
+			decision.Allowed = false
+			decision.RequiresApproval = false
+			decision.BlockReason = err.Error()
+			decision.Warnings = appendIfMissing(decision.Warnings, "This request should not be executed through bash.")
+			return decision
+		}
+	}
 
 	if toolName == "bash" {
 		decision.RequiresApproval = true

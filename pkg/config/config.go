@@ -213,6 +213,8 @@ type LLMConfig struct {
 	Temperature     float64 `yaml:"temperature" json:"temperature"`           // LLM temperature (0.0-2.0)
 	MaxTokens       int     `yaml:"max_tokens" json:"max_tokens"`             // Max output tokens
 	MaxIterations   int     `yaml:"max_iterations" json:"max_iterations"`     // Agent loop max iterations (1-30)
+	EnableBashTool  bool    `yaml:"enable_bash_tool" json:"enable_bash_tool"` // Expose bash tool to agentic AI (default: false)
+	EnableMCPTools  bool    `yaml:"enable_mcp_tools" json:"enable_mcp_tools"` // Expose configured MCP tools to agentic AI (default: false)
 	// Discovery indicates this config is used for model discovery (ListModels).
 	// It is not persisted to disk or exposed via JSON APIs.
 	Discovery bool `yaml:"-" json:"-"`
@@ -326,15 +328,17 @@ func DefaultSessionsPath() string {
 func NewDefaultConfig() *Config {
 	return &Config{
 		LLM: LLMConfig{
-			Provider:      "upstage",
-			Model:         DefaultSolarModel,
-			Endpoint:      DefaultSolarEndpoint,
-			RetryEnabled:  true,
-			MaxRetries:    5,
-			MaxBackoff:    10.0,
-			Temperature:   0.7,
-			MaxTokens:     4096,
-			MaxIterations: 10,
+			Provider:       "upstage",
+			Model:          DefaultSolarModel,
+			Endpoint:       DefaultSolarEndpoint,
+			RetryEnabled:   true,
+			MaxRetries:     5,
+			MaxBackoff:     10.0,
+			Temperature:    0.7,
+			MaxTokens:      4096,
+			MaxIterations:  10,
+			EnableBashTool: false,
+			EnableMCPTools: false,
 		},
 		Storage: StorageConfig{
 			DBType:                "sqlite",

@@ -11,8 +11,8 @@ The AI assistant provides:
 
 - **Natural Language Commands**: Ask questions in plain English
 - **Context-Aware Analysis**: AI has access to YAML, events, and logs
-- **Tool Integration**: Executes kubectl, bash, and MCP tools
-- **Safety Checks**: Dangerous commands require approval
+- **Tool Integration**: Uses a kubectl-first toolset, with bash and MCP tools as opt-in extensions
+- **Safety Checks**: Required Decision for allowed changes, hard blocks for unsupported interactive commands
 - **Beginner Mode**: Simple explanations for complex resources
 
 ## How It Works
@@ -61,11 +61,11 @@ When you select a resource and ask the AI to analyze it:
 
 ### Built-in Tools
 
-| Tool | Description | Examples |
-|------|-------------|----------|
-| `kubectl` | Execute kubectl commands | `kubectl get pods`, `kubectl describe` |
-| `bash` | Run shell commands | `date`, `grep`, file operations |
-| `MCP` | External tool integration | GitHub, databases, custom tools |
+| Tool | Default | Description | Examples |
+|------|---------|-------------|----------|
+| `kubectl` | On | Execute kubectl commands | `kubectl get pods`, `kubectl describe` |
+| `bash` | Off | Run shell commands as a last resort | `date`, `grep`, file operations |
+| `MCP` | Off | External tool integration from configured MCP servers | GitHub, databases, custom tools |
 
 ### Safety Features
 
@@ -73,9 +73,10 @@ Commands are classified by risk level:
 
 | Level | Action | Examples |
 |-------|--------|----------|
-| **Read-only** | Auto-approved | `kubectl get`, `describe` |
-| **Write** | Requires approval | `kubectl apply`, `create` |
-| **Dangerous** | Warning + approval | `kubectl delete`, `drain` |
+| **Read-only** | Allowed, but `Decision Required` by default | `kubectl get`, `describe` |
+| **Write** | Requires approval by default | `kubectl apply`, `create`, `scale` |
+| **Dangerous** | Warning + approval, or full block if configured | `kubectl delete`, `drain` |
+| **Hard-blocked** | Not approvable | `kubectl edit`, `kubectl port-forward`, `kubectl exec -it`, bash-wrapped `kubectl` |
 
 ## Usage
 
@@ -148,6 +149,8 @@ llm:
   provider: openai
   model: gpt-4
   api_key: ${OPENAI_API_KEY}
+  enable_bash_tool: false
+  enable_mcp_tools: false
 
 # Or use Ollama for local LLM
 llm:
@@ -169,7 +172,8 @@ beginner_mode: true
 1. **Be Specific**: "Check nginx pod logs for errors" is better than "check pods"
 2. **Provide Context**: Include namespace and resource names
 3. **Review Approvals**: Always review tool commands before approving
-4. **Use Beginner Mode**: Enable for learning or simpler explanations
+4. **Expect kubectl-first behavior**: Turn on bash or MCP only when you truly need them
+5. **Use Beginner Mode**: Enable for learning or simpler explanations
 
 ## Next Steps
 

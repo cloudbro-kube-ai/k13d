@@ -10,9 +10,23 @@ import (
 
 // setupKeybindings configures keyboard shortcuts (k9s compatible)
 func (a *App) setupKeybindings() {
+	isShiftTab := func(event *tcell.EventKey) bool {
+		if event == nil {
+			return false
+		}
+		return event.Key() == tcell.KeyBacktab || (event.Key() == tcell.KeyTab && event.Modifiers()&tcell.ModShift != 0)
+	}
+
 	a.table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if a.handleAIPanelResizeKey(event) {
 			return nil
+		}
+		if isShiftTab(event) {
+			if a.showAIPanel {
+				a.focusAITranscript()
+				return nil
+			}
+			return event
 		}
 
 		switch event.Key() {
@@ -161,7 +175,7 @@ func (a *App) setupKeybindings() {
 			}
 		case tcell.KeyTab:
 			if a.showAIPanel {
-				a.SetFocus(a.aiInput)
+				a.focusAIInput()
 			}
 			return nil
 		case tcell.KeyEnter:
@@ -217,10 +231,14 @@ func (a *App) setupKeybindings() {
 		if a.handleAIPanelResizeKey(event) {
 			return nil
 		}
+		if isShiftTab(event) {
+			a.SetFocus(a.table)
+			return nil
+		}
 
 		switch event.Key() {
 		case tcell.KeyTab:
-			a.SetFocus(a.aiInput)
+			a.focusAIInput()
 			return nil
 		case tcell.KeyUp:
 			row, col := a.aiPanel.GetScrollOffset()
@@ -656,6 +674,10 @@ func (a *App) setupAIInput() {
 
 	a.aiInput.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if a.handleAIPanelResizeKey(event) {
+			return nil
+		}
+		if event.Key() == tcell.KeyBacktab || (event.Key() == tcell.KeyTab && event.Modifiers()&tcell.ModShift != 0) {
+			a.focusAITranscript()
 			return nil
 		}
 

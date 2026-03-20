@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
@@ -34,6 +35,7 @@ func setupSettingsTestServer(t *testing.T) *Server {
 			Provider:        "openai",
 			Model:           "gpt-4",
 			Endpoint:        "https://api.openai.com/v1",
+			APIKey:          "sk-test-key-123",
 			ReasoningEffort: "medium",
 		},
 		Models: []config.ModelProfile{
@@ -90,8 +92,14 @@ func setupSettingsTestServer(t *testing.T) *Server {
 		Clientset: fakeClientset,
 	}
 
+	aiClient, err := ai.NewClient(&cfg.LLM)
+	if err != nil {
+		t.Fatalf("ai.NewClient() error = %v", err)
+	}
+
 	return &Server{
 		cfg:              cfg,
+		aiClient:         aiClient,
 		k8sClient:        k8sClient,
 		mcpClient:        mcp.NewClient(),
 		authManager:      authManager,
@@ -817,6 +825,20 @@ func TestMCPTools_GET(t *testing.T) {
 
 	if _, ok := resp["mcp_tools"]; !ok {
 		t.Error("Response missing 'mcp_tools' key")
+	}
+	builtinTools, ok := resp["builtin_tools"].([]interface{})
+	if !ok {
+		t.Fatal("Response missing 'builtin_tools' list")
+	}
+	if len(builtinTools) != 1 {
+		t.Fatalf("len(builtin_tools) = %d, want 1 visible kubectl tool", len(builtinTools))
+	}
+	firstTool, ok := builtinTools[0].(map[string]interface{})
+	if !ok {
+		t.Fatal("builtin_tools[0] should be an object")
+	}
+	if firstTool["name"] != "kubectl" {
+		t.Fatalf("builtin_tools[0].name = %v, want kubectl", firstTool["name"])
 	}
 }
 

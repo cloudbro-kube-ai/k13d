@@ -67,6 +67,7 @@ func (a *App) setupUI() {
 		SetDynamicColors(true).
 		SetWrap(false)
 	a.aiStatusBar.SetBackgroundColor(tcell.ColorDefault)
+	a.aiStatusBar.SetTextAlign(tview.AlignCenter)
 
 	// AI Input field with better styling
 	a.aiInput = tview.NewInputField().
@@ -77,6 +78,13 @@ func (a *App) setupUI() {
 	a.aiInput.SetPlaceholderStyle(tcell.StyleDefault.Foreground(tcell.ColorDarkGray))
 	a.aiInput.SetLabelColor(aiBorder)
 	a.setupAIInput()
+
+	a.aiInputFrame = tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(a.aiInput, 1, 0, true)
+	a.aiInputFrame.SetBorder(true).
+		SetTitle(" Prompt ").
+		SetBorderColor(aiBorder).
+		SetTitleColor(aiBorder)
 
 	// Flash message area (k9s pattern)
 	a.flash = tview.NewTextView().
@@ -126,7 +134,7 @@ func (a *App) setupUI() {
 		AddItem(a.aiMetaBar, 2, 0, false).
 		AddItem(a.aiPanel, 0, 1, false).
 		AddItem(a.aiStatusBar, 1, 0, false).
-		AddItem(a.aiInput, 1, 0, true)
+		AddItem(a.aiInputFrame, 3, 0, true)
 	a.aiContainer.SetBorder(true).
 		SetTitle(" 🤖 AI Assistant ").
 		SetBorderColor(aiBorder).
@@ -491,7 +499,7 @@ func (a *App) currentAIPanelWidth() int {
 
 func (a *App) isAIFocused(primitive tview.Primitive) bool {
 	switch primitive {
-	case a.aiInput, a.aiPanel, a.aiContainer, a.aiMetaBar, a.aiStatusBar:
+	case a.aiInput, a.aiInputFrame, a.aiPanel, a.aiContainer, a.aiMetaBar, a.aiStatusBar:
 		return true
 	default:
 		return false
@@ -544,7 +552,7 @@ func (a *App) rebuildContentLayout(focusAI bool) {
 		a.contentFlex.AddItem(a.aiContainer, a.currentAIPanelWidth(), 0, focusAI)
 	}
 	if focusAI && a.showAIPanel {
-		a.SetFocus(a.aiInput)
+		a.focusAIInput()
 	} else {
 		a.SetFocus(a.table)
 	}

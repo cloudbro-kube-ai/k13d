@@ -1,6 +1,6 @@
 # Tool Calling
 
-k13d uses AI tool calling to execute kubectl commands, limited bash commands, and MCP tools based on natural language requests.
+k13d uses AI tool calling to execute kubectl commands and, when explicitly enabled, limited bash commands and MCP tools based on natural language requests. The agentic `kubectl` prompt and command contract are aligned with [kubectl-ai](https://github.com/GoogleCloudPlatform/kubectl-ai).
 
 Important: the connected model itself must support **tools/function calling**. This is especially important for **Ollama**. Some Ollama models can connect and produce text, but k13d's AI Assistant will not work correctly unless the selected model explicitly supports tools.
 
@@ -35,7 +35,11 @@ Result: "Scaled deployment nginx to 5 replicas"
 
 ## Available Tools
 
+By default, k13d exposes only the `kubectl` tool to agentic AI. This keeps the default behavior kubectl-first and avoids giving the model every possible tool by default.
+
 ### kubectl
+
+Default: enabled
 
 Execute any kubectl command:
 
@@ -55,7 +59,15 @@ Examples:
 - `kubectl logs pod-name`
 - `kubectl apply -f manifest.yaml`
 
+Hard-blocked, not approvable:
+- `kubectl edit`
+- `kubectl port-forward`
+- `kubectl attach`
+- `kubectl exec -it` / `kubectl exec -ti`
+
 ### bash
+
+Default: disabled, opt-in via `llm.enable_bash_tool: true`
 
 Execute shell commands only as a last resort:
 
@@ -74,9 +86,11 @@ Examples:
 - `grep pattern file`
 - `jq '.items[]' data.json`
 
-Avoid using `bash` for Kubernetes operations. If the task can be expressed with `kubectl`, k13d prefers the dedicated `kubectl` tool and will block bash-wrapped `kubectl` or `helm` commands.
+Avoid using `bash` for Kubernetes operations. If the task can be expressed with `kubectl`, k13d prefers the dedicated `kubectl` tool and will block bash-wrapped `kubectl` or `helm` commands. Even when enabled, bash always requires approval in k13d.
 
 ### MCP Tools
+
+Default: disabled, opt-in via `llm.enable_mcp_tools: true`
 
 Dynamic tools from MCP servers:
 
@@ -174,12 +188,13 @@ I see api-def456 is in CrashLoopBackOff. Let me check the logs...
 
 ### Command Classification
 
-| Type | Examples | Approval |
-|------|----------|----------|
-| **Read** | get, describe, logs | Auto-approve |
-| **Write** | apply, create, patch | Requires approval |
-| **Dangerous** | delete, drain | Warning + approval |
-| **Interactive** | exec, attach | Requires approval |
+| Type | Examples | Default behavior |
+|------|----------|------------------|
+| **Read-only** | get, describe, logs | Allowed, but `Decision Required` by default |
+| **Write** | apply, create, patch, scale | Allowed, `Decision Required` by default |
+| **Dangerous** | delete, drain | `Decision Required`, or fully blocked if `block_dangerous: true` |
+| **Unknown** | custom shell commands | Controlled by `require_approval_for_unknown` |
+| **Hard-blocked** | `kubectl edit`, `kubectl port-forward`, `kubectl exec -it`, bash-wrapped `kubectl`/`helm`, regex matches | Blocked immediately, not approvable |
 
 ### AST Parsing
 
@@ -232,6 +247,13 @@ authorization:
 
     # Approval timeout in seconds
     approval_timeout_seconds: 60
+
+llm:
+  # Optional: expose bash to the agent
+  enable_bash_tool: false
+
+  # Optional: expose discovered MCP tools to the agent
+  enable_mcp_tools: false
 ```
 
 ### Custom Tool Definitions

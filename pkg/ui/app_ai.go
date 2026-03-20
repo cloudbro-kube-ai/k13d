@@ -74,8 +74,52 @@ func summarizeAIToolResult(result string) string {
 	return trimAIBlock(result, 420)
 }
 
-func defaultAIStatusText() string {
-	return "[gray]Ready[-] Enter send | Esc close | Up/Down history | Alt+H/L resize | /help"
+func defaultAIInputStatusText() string {
+	return "[gray]Ready[-] Enter send | Shift+Tab history | Esc close | Up/Down history | Alt+H/L resize | /help"
+}
+
+func defaultAITranscriptStatusText() string {
+	return "[gray]History[-] j/k or PgUp/PgDn scroll | g/G top/bottom | Tab prompt | Esc close"
+}
+
+func isAIReadyStatusText(text string) bool {
+	return strings.Contains(text, "Enter send") ||
+		strings.Contains(text, "Shift+Tab history") ||
+		strings.Contains(text, "j/k or PgUp/PgDn scroll") ||
+		strings.Contains(text, "Tab prompt")
+}
+
+func (a *App) readyAIStatusText() string {
+	if a != nil && a.GetFocus() == a.aiPanel {
+		return defaultAITranscriptStatusText()
+	}
+	return defaultAIInputStatusText()
+}
+
+func (a *App) updateAIReadyStatusIfIdle() {
+	if a.aiStatusBar == nil {
+		return
+	}
+	current := strings.TrimSpace(a.aiStatusBar.GetText(false))
+	if current == "" || isAIReadyStatusText(current) {
+		a.setAIStatus(a.readyAIStatusText())
+	}
+}
+
+func (a *App) focusAIInput() {
+	if a.aiInput == nil {
+		return
+	}
+	a.SetFocus(a.aiInput)
+	a.updateAIReadyStatusIfIdle()
+}
+
+func (a *App) focusAITranscript() {
+	if a.aiPanel == nil {
+		return
+	}
+	a.SetFocus(a.aiPanel)
+	a.updateAIReadyStatusIfIdle()
 }
 
 func (a *App) resetAIConversation() {
@@ -93,9 +137,10 @@ func (a *App) resetAIConversation() {
 			"  [#9ece6a]-[-] Why is this workload failing?\n"+
 			"  [#9ece6a]-[-] Explain this resource\n"+
 			"  [#9ece6a]-[-] Show me the rollout risk\n\n"+
-			"[#565f89]Commands:[-] /context  /clear  /help\n")
+			"[#565f89]Commands:[-] /context  /clear  /help\n"+
+			"[#565f89]Keys:[-] Shift+Tab history  Tab prompt  j/k or PgUp/PgDn scroll\n")
 	a.aiPanel.ScrollTo(0, 0)
-	a.setAIStatus(defaultAIStatusText())
+	a.setAIStatus(a.readyAIStatusText())
 }
 
 func (a *App) setAIStatus(text string) {
@@ -231,7 +276,7 @@ func (a *App) applyAIChrome() {
 	)
 	a.aiMetaBar.SetText(meta)
 	if strings.TrimSpace(a.aiStatusBar.GetText(false)) == "" {
-		a.setAIStatus(defaultAIStatusText())
+		a.setAIStatus(a.readyAIStatusText())
 	}
 }
 
@@ -390,7 +435,7 @@ func (a *App) showAIContextPreview() {
 
 	a.QueueUpdateDraw(func() {
 		a.appendAISystemSection("Context Preview", body)
-		a.setAIStatus(defaultAIStatusText())
+		a.setAIStatus(a.readyAIStatusText())
 		a.applyAIChrome()
 	})
 }
@@ -409,8 +454,8 @@ func (a *App) handleAICommand(input string) bool {
 		})
 	case "help":
 		a.QueueUpdateDraw(func() {
-			a.appendAISystemSection("AI Help", "Commands:\n/context  show the resource context that will be attached\n/clear    reset the current transcript\n/new      start a fresh conversation\n/help     show this help\n\nTips:\n- Select a row before asking for richer YAML/events/log context\n- Up/Down recall previous prompts\n- Ctrl+E toggles the AI panel\n- Alt+H / Alt+L resize the AI panel\n- Alt+0 resets the AI panel width")
-			a.setAIStatus(defaultAIStatusText())
+			a.appendAISystemSection("AI Help", "Commands:\n/context  show the resource context that will be attached\n/clear    reset the current transcript\n/new      start a fresh conversation\n/help     show this help\n\nTips:\n- Select a row before asking for richer YAML/events/log context\n- Up/Down recall previous prompts\n- Shift+Tab focuses transcript history\n- Tab returns to the prompt from transcript history\n- j/k or PgUp/PgDn scroll the transcript\n- g / G jump to the top or bottom of the transcript\n- Ctrl+E toggles the AI panel\n- Alt+H / Alt+L resize the AI panel\n- Alt+0 resets the AI panel width")
+			a.setAIStatus(a.readyAIStatusText())
 			a.applyAIChrome()
 		})
 	case "context":
@@ -418,7 +463,7 @@ func (a *App) handleAICommand(input string) bool {
 	default:
 		a.QueueUpdateDraw(func() {
 			a.appendAISystemSection("Unknown Command", input)
-			a.setAIStatus(defaultAIStatusText())
+			a.setAIStatus(a.readyAIStatusText())
 		})
 	}
 	return true
@@ -443,7 +488,7 @@ func (a *App) askAI(question string) {
 		a.QueueUpdateDraw(func() {
 			a.startAITurn(question, promptCtx, "chat")
 			a.appendAISystemSection("AI Unavailable", "Configure an LLM in ~/.config/k13d/config.yaml or open Settings (Shift+O) to connect a provider.")
-			a.setAIStatus(defaultAIStatusText())
+			a.setAIStatus(a.readyAIStatusText())
 			a.applyAIChrome()
 		})
 		return
@@ -609,7 +654,7 @@ func (a *App) askAI(question string) {
 			a.appendAIMarkup("\n[red::b]Error[-::-]\n")
 			a.appendAIEscaped(err.Error())
 			a.appendAIMarkup("\n")
-			a.setAIStatus(defaultAIStatusText())
+			a.setAIStatus(a.readyAIStatusText())
 		})
 		return
 	}
@@ -619,7 +664,7 @@ func (a *App) askAI(question string) {
 		if finalResponse != "" && !strings.HasSuffix(finalResponse, "\n") {
 			a.appendAIMarkup("\n")
 		}
-		a.setAIStatus(defaultAIStatusText())
+		a.setAIStatus(a.readyAIStatusText())
 		a.applyAIChrome()
 	})
 
@@ -746,7 +791,7 @@ func (a *App) executeDecision(idx int) {
 		a.appendAIMarkup("\n")
 		a.appendAIEscaped(result)
 		a.appendAIMarkup("\n")
-		a.setAIStatus(defaultAIStatusText())
+		a.setAIStatus(a.readyAIStatusText())
 	})
 
 	// Refresh if it was a modifying command
@@ -822,7 +867,7 @@ func (a *App) doExecuteAll() {
 
 	a.QueueUpdateDraw(func() {
 		a.appendAIMarkup(results.String())
-		a.setAIStatus(defaultAIStatusText())
+		a.setAIStatus(a.readyAIStatusText())
 	})
 
 	a.flashMsg(fmt.Sprintf("Executed %d commands", len(decisions)), false)

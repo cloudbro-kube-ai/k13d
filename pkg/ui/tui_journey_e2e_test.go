@@ -104,6 +104,56 @@ func TestTUIJourney_OperatorWorkflow(t *testing.T) {
 		ExpectNoFreeze()
 }
 
+func TestTUIJourney_AITranscriptFocusAndPromptReturn(t *testing.T) {
+	ctx := NewTUITestContext(t)
+	defer ctx.Cleanup()
+
+	focusTUITable(t, ctx)
+
+	ctx.Press(tcell.KeyCtrlE).Wait(100 * time.Millisecond)
+	ctx.app.mx.RLock()
+	showingAI := ctx.app.showAIPanel
+	ctx.app.mx.RUnlock()
+	if !showingAI {
+		t.Fatal("expected Ctrl+E to open the AI panel")
+	}
+
+	ctx.ShiftTab().
+		Wait(100 * time.Millisecond).
+		ExpectFocus(func(primitive tview.Primitive) bool {
+			return primitive == ctx.app.aiPanel
+		})
+
+	status := ctx.textViewText(ctx.app.aiStatusBar)
+	if !strings.Contains(status, "History") || !strings.Contains(status, "Tab prompt") {
+		t.Fatalf("expected transcript focus status, got %q", status)
+	}
+
+	ctx.Tab().
+		Wait(100 * time.Millisecond).
+		ExpectFocus(func(primitive tview.Primitive) bool {
+			return primitive == ctx.app.aiInput
+		})
+
+	status = ctx.textViewText(ctx.app.aiStatusBar)
+	if !strings.Contains(status, "Enter send") || !strings.Contains(status, "Shift+Tab history") {
+		t.Fatalf("expected prompt focus status, got %q", status)
+	}
+
+	frameTitle := ""
+	itemCount := 0
+	done := make(chan struct{})
+	ctx.app.QueueUpdate(func() {
+		frameTitle = ctx.app.aiInputFrame.GetTitle()
+		itemCount = ctx.app.aiInputFrame.GetItemCount()
+		close(done)
+	})
+	<-done
+	if frameTitle != " Prompt " || itemCount != 1 {
+		t.Fatalf("expected prompt frame boundary, title=%q items=%d", frameTitle, itemCount)
+	}
+}
+
 func TestTUIJourney_CommandHistoryNamespaceHintAndSelection(t *testing.T) {
 	ctx := NewTUITestContext(t)
 	defer ctx.Cleanup()

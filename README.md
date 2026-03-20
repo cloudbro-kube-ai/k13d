@@ -170,6 +170,7 @@ For configuration details, model profiles, storage paths, and example `config.ya
 
 - **Dashboard** — Pods, Deployments, Services, all resources with real-time status
 - **AI Assistant** — Ask questions, AI executes kubectl with explicit approval by default
+  The default agentic toolset is kubectl-first. `bash` and MCP tools are opt-in, and unsupported interactive kubectl flows are hard-blocked instead of sent to approval.
 - **Topology** — Graph & tree visualization of resource relationships
 - **Reports** — Cluster health, security audit, FinOps cost analysis
 - **Metrics** — Historical CPU/Memory/Pods/Nodes charts (SQLite-backed, 7-day retention)
@@ -252,9 +253,19 @@ The AI assistant can:
 - Execute kubectl commands with your approval
 - Keep read-only `kubectl get` style actions behind `Decision Required` unless you explicitly enable auto-approve
 - Prefer `kubectl` over `bash`; shell access is treated as a last resort
+- Expose `bash` and MCP tools only when you explicitly enable them in `config.yaml`
+- Hard-block unsupported interactive flows such as `kubectl edit`, `kubectl port-forward`, and `kubectl exec -it`
 - Scale deployments, restart rollouts
 - Analyze YAML, events, and logs in context
 - Use MCP tools for extended capabilities
+
+If you use `config.yaml`, the safest default is:
+
+```yaml
+llm:
+  enable_bash_tool: false
+  enable_mcp_tools: false
+```
 
 ---
 

@@ -274,10 +274,15 @@ func (a *App) showHelp() {
 [cyan::b]GENERAL[white::-]
   [yellow]:[white]        Command mode        [yellow]?[white]        Help
   [yellow]/[white]        Filter mode         [yellow]Esc[white]      Back/Clear/Cancel
-  [yellow]Tab[white]      AI Panel focus      [yellow]Enter[white]    Select/Drill-down
+  [yellow]Tab[white]      AI prompt focus     [yellow]Shift+Tab[white] AI history focus
   [yellow]Ctrl+E[white]   Toggle AI panel     [yellow]Shift+O[white]  Settings/LLM Config
   [yellow]Alt+H/L[white] Resize AI panel     [yellow]Alt+0[white]    Reset AI width
   [yellow]q/Ctrl+C[white] Quit application
+
+[cyan::b]AI ASSISTANT[white::-]
+  [yellow]Enter[white]    Send prompt         [yellow]Up/Down[white]  Prompt history
+  [yellow]j/k[white]      Scroll transcript   [yellow]PgUp/PgDn[white] Page transcript
+  [yellow]g/G[white]      Transcript top/btm  [yellow]Tab[white]      Return to prompt
 
 [cyan::b]NAVIGATION[white::-]
   [yellow]j/Down[white]   Down                [yellow]k/Up[white]     Up

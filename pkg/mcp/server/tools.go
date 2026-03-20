@@ -14,10 +14,6 @@ func DefaultTools() []*Tool {
 	return []*Tool{
 		KubectlTool(),
 		BashTool(),
-		KubectlGetTool(),
-		KubectlDescribeTool(),
-		KubectlLogsTool(),
-		KubectlApplyTool(),
 	}
 }
 
@@ -25,17 +21,18 @@ func DefaultTools() []*Tool {
 func KubectlTool() *Tool {
 	return &Tool{
 		Name:        "kubectl",
-		Description: "Execute any kubectl command to manage Kubernetes resources. Use this for get, describe, create, apply, delete, scale, logs, exec, and other Kubernetes operations.",
+		Description: "Executes a kubectl command against the user's Kubernetes cluster. Use this tool only when you need to query or modify the state of the user's Kubernetes cluster.\n\nIMPORTANT: Interactive commands are not supported in this environment. This includes kubectl exec with -it or -ti flags, kubectl edit, kubectl port-forward, and kubectl attach.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"command": map[string]interface{}{
 					"type":        "string",
-					"description": "The kubectl command to execute (without 'kubectl' prefix). Examples: 'get pods -n default', 'describe deployment nginx', 'logs pod/nginx'",
+					"description": "The complete kubectl command to execute. Please include the kubectl prefix as well and avoid interactive commands.",
 				},
-				"namespace": map[string]interface{}{
+				"modifies_resource": map[string]interface{}{
 					"type":        "string",
-					"description": "Optional namespace. If not specified, uses the namespace from the command or current context.",
+					"description": "Whether the command modifies a Kubernetes resource. Allowed values: yes, no, unknown.",
+					"enum":        []string{"yes", "no", "unknown"},
 				},
 			},
 			"required": []string{"command"},
@@ -173,17 +170,18 @@ func KubectlApplyTool() *Tool {
 func BashTool() *Tool {
 	return &Tool{
 		Name:        "bash",
-		Description: "Execute bash shell commands. Use for non-kubectl operations like file operations, curl, jq, helm, etc. Be cautious with destructive commands.",
+		Description: "Executes a bash command. Use this tool only when you need to execute a shell command.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"command": map[string]interface{}{
 					"type":        "string",
-					"description": "The bash command to execute",
+					"description": "The bash command to execute.",
 				},
-				"timeout": map[string]interface{}{
-					"type":        "integer",
-					"description": "Timeout in seconds (default: 30, max: 300)",
+				"modifies_resource": map[string]interface{}{
+					"type":        "string",
+					"description": "Whether the command modifies a Kubernetes resource. Allowed values: yes, no, unknown.",
+					"enum":        []string{"yes", "no", "unknown"},
 				},
 			},
 			"required": []string{"command"},

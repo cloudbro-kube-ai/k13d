@@ -134,6 +134,8 @@ When AI needs to execute a command:
 
 By default, this modal appears for both read-only and write AI tool actions. You only skip it for read-only commands if you explicitly enable auto-approve in Settings.
 
+Some requests never reach approval. k13d blocks unsupported interactive kubectl flows such as `kubectl edit`, `kubectl port-forward`, `kubectl attach`, `kubectl exec -it`, plus bash-wrapped `kubectl` or `helm` commands.
+
 ## Features
 
 ### Dark/Light Theme
@@ -175,6 +177,14 @@ Settings → AI → LLM Configuration
 | **API Key** | Provider API key |
 
 The Web UI saves active LLM settings back to `config.yaml` immediately and can also manage named profiles through **Add Model Profile**, **Use**, and **Delete**.
+
+For agentic AI, k13d is kubectl-first by default. `bash` and external MCP tools are opt-in via `config.yaml`:
+
+```yaml
+llm:
+  enable_bash_tool: false
+  enable_mcp_tools: false
+```
 
 For the full storage model, including how `llm`, `models[]`, and `active_model` change, see [Model Settings & Storage](../ai-llm/model-settings-storage.md).
 
