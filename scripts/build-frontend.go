@@ -43,6 +43,7 @@ var jsFiles = []string{
 	"js/modules/i18n.js",
 	"js/modules/VirtualScroller.js",
 	"js/modules/api.js",
+	"js/modules/swr.js",
 	"js/app.js",
 	"js/features/settings.js",
 	"js/features/insights.js",

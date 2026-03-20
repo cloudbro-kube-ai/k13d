@@ -41,6 +41,7 @@ func buildToolApprovalInfoText(policy config.ToolApprovalPolicy) string {
  Dangerous commands blocked: %s
  Unknown approval required: %s
  Approval timeout: [yellow]%ds[white]
+ Hard blocks: [red]interactive kubectl, bash-wrapped kubectl/helm, blocked patterns[white]
 `,
 		map[bool]string{true: "[green]On[white]", false: "[red]Off[white]"}[policy.AutoApproveReadOnly],
 		map[bool]string{true: "[green]On[white]", false: "[red]Off[white]"}[policy.RequireApprovalForWrite],

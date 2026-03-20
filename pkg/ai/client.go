@@ -244,7 +244,8 @@ func (c *Client) AskWithToolsAndExecution(ctx context.Context, prompt string, ca
 
 	// Convert tool registry to OpenAI format
 	toolDefs := make([]providers.ToolDefinition, 0)
-	for _, tool := range c.toolRegistry.List() {
+	visibleTools := c.visibleTools()
+	for _, tool := range visibleTools {
 		toolDefs = append(toolDefs, providers.ToolDefinition{
 			Type: "function",
 			Function: providers.FunctionDef{
@@ -254,8 +255,6 @@ func (c *Client) AskWithToolsAndExecution(ctx context.Context, prompt string, ca
 			},
 		})
 	}
-
-	prompt = buildAgenticPrompt(prompt, c.toolRegistry, c.cfg.MaxIterations)
 
 	// Tool callback that requests approval before execution
 	toolCallback := func(call providers.ToolCall) providers.ToolResult {
@@ -280,6 +279,14 @@ func (c *Client) AskWithToolsAndExecution(ctx context.Context, prompt string, ca
 					Content:    "Tool execution cancelled by user",
 					IsError:    true,
 				}
+			}
+		}
+
+		if !c.isToolExposed(call.Function.Name) {
+			return providers.ToolResult{
+				ToolCallID: call.ID,
+				Content:    fmt.Sprintf("Tool %q is not exposed in this k13d session. Use the visible kubectl-first tool set instead.", call.Function.Name),
+				IsError:    true,
 			}
 		}
 
@@ -311,6 +318,41 @@ func (c *Client) AskWithToolsAndExecution(ctx context.Context, prompt string, ca
 	return toolProvider.AskWithTools(ctx, prompt, toolDefs, callback, toolCallback)
 }
 
+func (c *Client) visibleTools() []*tools.Tool {
+	if c == nil || c.toolRegistry == nil {
+		return nil
+	}
+
+	allTools := c.toolRegistry.List()
+	visible := make([]*tools.Tool, 0, len(allTools))
+	for _, tool := range allTools {
+		if tool == nil {
+			continue
+		}
+		switch tool.Type {
+		case tools.ToolTypeBash:
+			if c.cfg != nil && !c.cfg.EnableBashTool {
+				continue
+			}
+		case tools.ToolTypeMCP:
+			if c.cfg != nil && !c.cfg.EnableMCPTools {
+				continue
+			}
+		}
+		visible = append(visible, tool)
+	}
+	return visible
+}
+
+func (c *Client) isToolExposed(toolName string) bool {
+	for _, tool := range c.visibleTools() {
+		if tool.Name == toolName {
+			return true
+		}
+	}
+	return false
+}
+
 // getToolMetadata returns lightweight metadata about a tool from the registry for callbacks.
 // It is best-effort and falls back to empty strings if the tool is unknown.
 func (c *Client) getToolMetadata(toolName string) (toolType string, toolServerName string) {
@@ -336,4 +378,9 @@ func (c *Client) SupportsTools() bool {
 // GetToolRegistry returns the tool registry for external configuration
 func (c *Client) GetToolRegistry() *tools.Registry {
 	return c.toolRegistry
+}
+
+// VisibleTools returns the tools currently exposed to agentic AI for this client.
+func (c *Client) VisibleTools() []*tools.Tool {
+	return c.visibleTools()
 }

@@ -98,3 +98,24 @@ func TestEvaluateAIToolDecision_BashAlwaysRequiresApproval(t *testing.T) {
 		t.Fatalf("decision.Category = %q, want bash", decision.Category)
 	}
 }
+
+func TestEvaluateAIToolDecision_KubectlInteractiveCommandIsHardBlocked(t *testing.T) {
+	s := &Server{
+		cfg: &config.Config{
+			Authorization: config.AuthorizationConfig{
+				ToolApproval: config.DefaultToolApprovalPolicy(),
+			},
+		},
+	}
+
+	decision := s.evaluateAIToolDecision("admin", "kubectl", "exec -it pod/api -- sh")
+	if decision.Allowed {
+		t.Fatal("expected interactive kubectl command to be blocked")
+	}
+	if decision.RequiresApproval {
+		t.Fatal("expected interactive kubectl command to be blocked without approval path")
+	}
+	if !strings.Contains(decision.BlockReason, "cannot be approved") {
+		t.Fatalf("unexpected block reason: %q", decision.BlockReason)
+	}
+}

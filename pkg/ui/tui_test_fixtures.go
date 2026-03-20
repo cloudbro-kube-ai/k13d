@@ -142,8 +142,18 @@ func CreateFakeClientset() *fake.Clientset {
 				Labels:    map[string]string{"app": "nginx"},
 			},
 			Spec: corev1.PodSpec{
+				NodeName: "node-1",
 				Containers: []corev1.Container{
-					{Name: "nginx", Image: "nginx:1.21"},
+					{
+						Name:  "nginx",
+						Image: "nginx:1.21",
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("750m"),
+								corev1.ResourceMemory: resource.MustParse("1536Mi"),
+							},
+						},
+					},
 				},
 			},
 			Status: corev1.PodStatus{
@@ -160,8 +170,19 @@ func CreateFakeClientset() *fake.Clientset {
 				Labels:    map[string]string{"app": "redis"},
 			},
 			Spec: corev1.PodSpec{
+				NodeName: "node-2",
 				Containers: []corev1.Container{
-					{Name: "redis", Image: "redis:7"},
+					{
+						Name:  "redis",
+						Image: "redis:7",
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:                    resource.MustParse("1500m"),
+								corev1.ResourceMemory:                 resource.MustParse("4096Mi"),
+								corev1.ResourceName("nvidia.com/gpu"): resource.MustParse("1"),
+							},
+						},
+					},
 				},
 			},
 			Status: corev1.PodStatus{
@@ -178,8 +199,18 @@ func CreateFakeClientset() *fake.Clientset {
 				Labels:    map[string]string{"k8s-app": "kube-dns"},
 			},
 			Spec: corev1.PodSpec{
+				NodeName: "node-1",
 				Containers: []corev1.Container{
-					{Name: "coredns", Image: "coredns/coredns:1.9"},
+					{
+						Name:  "coredns",
+						Image: "coredns/coredns:1.9",
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("250m"),
+								corev1.ResourceMemory: resource.MustParse("256Mi"),
+							},
+						},
+					},
 				},
 			},
 			Status: corev1.PodStatus{Phase: corev1.PodRunning},
@@ -189,6 +220,11 @@ func CreateFakeClientset() *fake.Clientset {
 				Name:      "failing-pod",
 				Namespace: "default",
 				Labels:    map[string]string{"app": "broken"},
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{Name: "app", Image: "broken:latest"},
+				},
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodFailed,
@@ -200,10 +236,16 @@ func CreateFakeClientset() *fake.Clientset {
 
 		// Nodes
 		&corev1.Node{
-			ObjectMeta: metav1.ObjectMeta{Name: "node-1"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "node-1",
+				Labels: map[string]string{"node-role.kubernetes.io/control-plane": ""},
+			},
 			Status: corev1.NodeStatus{
 				Conditions: []corev1.NodeCondition{
 					{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+				},
+				NodeInfo: corev1.NodeSystemInfo{
+					KubeletVersion: "v1.32.1",
 				},
 				Allocatable: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("4"),
@@ -212,14 +254,21 @@ func CreateFakeClientset() *fake.Clientset {
 			},
 		},
 		&corev1.Node{
-			ObjectMeta: metav1.ObjectMeta{Name: "node-2"},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:   "node-2",
+				Labels: map[string]string{"node-role.kubernetes.io/worker": ""},
+			},
 			Status: corev1.NodeStatus{
 				Conditions: []corev1.NodeCondition{
 					{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
 				},
+				NodeInfo: corev1.NodeSystemInfo{
+					KubeletVersion: "v1.32.1",
+				},
 				Allocatable: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("8"),
-					corev1.ResourceMemory: resource.MustParse("16Gi"),
+					corev1.ResourceCPU:                    resource.MustParse("8"),
+					corev1.ResourceMemory:                 resource.MustParse("16Gi"),
+					corev1.ResourceName("nvidia.com/gpu"): resource.MustParse("2"),
 				},
 			},
 		},

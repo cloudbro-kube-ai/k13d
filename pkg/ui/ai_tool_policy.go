@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
+	aitools "github.com/cloudbro-kube-ai/k13d/pkg/ai/tools"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 )
 
@@ -67,6 +68,25 @@ func (a *App) currentToolApprovalPolicy() config.ToolApprovalPolicy {
 func (a *App) evaluateAIToolDecision(toolName, command string) *safety.Decision {
 	normalizedCommand := normalizeAIToolCommand(toolName, command)
 	decision := safety.NewPolicyEnforcer(a.currentToolApprovalPolicy()).Evaluate(normalizedCommand)
+
+	switch toolName {
+	case "kubectl":
+		if err := aitools.ValidateKubectlToolCommand(normalizedCommand); err != nil {
+			decision.Allowed = false
+			decision.RequiresApproval = false
+			decision.BlockReason = err.Error()
+			decision.Warnings = appendWarningIfMissing(decision.Warnings, "This kubectl command requires an interactive terminal or unsupported workflow.")
+			return decision
+		}
+	case "bash":
+		if err := aitools.ValidateBashToolCommand(normalizedCommand); err != nil {
+			decision.Allowed = false
+			decision.RequiresApproval = false
+			decision.BlockReason = err.Error()
+			decision.Warnings = appendWarningIfMissing(decision.Warnings, "This request should not be executed through bash.")
+			return decision
+		}
+	}
 
 	if toolName == "bash" {
 		decision.RequiresApproval = true

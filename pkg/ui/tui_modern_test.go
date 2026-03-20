@@ -161,6 +161,11 @@ func (ctx *TUITestContext) Tab() *TUITestContext {
 	return ctx.Press(tcell.KeyTab)
 }
 
+// ShiftTab sends Shift+Tab.
+func (ctx *TUITestContext) ShiftTab() *TUITestContext {
+	return ctx.Press(tcell.KeyBacktab)
+}
+
 // Wait waits for a duration.
 func (ctx *TUITestContext) Wait(d time.Duration) *TUITestContext {
 	time.Sleep(d)
