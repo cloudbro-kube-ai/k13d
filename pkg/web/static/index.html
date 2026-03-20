@@ -784,7 +784,8 @@
                             title="Chat History">📋</button>
                         <span>AI Assistant</span>
                         <span class="ai-status-dot" id="ai-status-dot" title="Checking connection...">●</span>
-                        <span class="ai-badge" id="ai-model-badge">Loading...</span>
+                        <span class="ai-badge" id="ai-model-badge" style="cursor:pointer;" onclick="openAIModelSettings()" title="Click to change model settings">Loading...</span>
+                        <!-- <span style="cursor:pointer;opacity:0.6;font-size:12px;" onclick="openAIModelSettings()" title="AI Model Settings">⚙️</span> -->
                         <button class="debug-toggle" id="debug-toggle" onclick="toggleDebugMode()"
                             style="margin-left: auto;" title="Toggle Debug Mode">🐛 Debug</button>
                     </div>
@@ -1078,7 +1079,7 @@
 
                     <div id="add-model-form" class="settings-section"
                         style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
-                        <h4>Add New Model Profile</h4>
+                        <h4 id="add-model-header">Add New Model Profile</h4>
                         <div class="form-group">
                             <label>Profile Name</label>
                             <input type="text" id="new-model-name" placeholder="e.g., gpt-4-turbo">
@@ -1122,7 +1123,7 @@
                             </label>
                         </div>
                         <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button class="btn btn-primary" onclick="addModelProfile()">Add Profile</button>
+                            <button id="add-model-btn" class="btn btn-primary" onclick="addModelProfile()">Add Profile</button>
                             <button class="btn btn-secondary" onclick="hideAddModelForm()">Cancel</button>
                         </div>
                     </div>
@@ -1389,7 +1390,7 @@
 
                     <div id="add-mcp-form" class="settings-section"
                         style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
-                        <h4>Add MCP Server</h4>
+                        <h4 id="add-mcp-form-header">Add MCP Server</h4>
                         <div class="form-group">
                             <label>Server Name</label>
                             <input type="text" id="new-mcp-name" placeholder="e.g., kubernetes-mcp">
@@ -1413,36 +1414,11 @@
                             <input type="checkbox" id="new-mcp-enabled" checked>
                         </div>
                         <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button class="btn btn-primary" onclick="addMCPServer()">Add Server</button>
+                            <button id="add-mcp-form-btn" class="btn btn-primary" onclick="addMCPServer()">Add Server</button>
                             <button class="btn btn-secondary" onclick="hideAddMCPForm()">Cancel</button>
                         </div>
                     </div>
 
-                    <div id="edit-mcp-form" class="settings-section"
-                        style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
-                        <h4>Edit MCP Server</h4>
-                        <input type="hidden" id="edit-mcp-old-name">
-                        <div class="form-group">
-                            <label>Server Name</label>
-                            <input type="text" id="edit-mcp-name" placeholder="e.g., kubernetes-mcp">
-                        </div>
-                        <div class="form-group">
-                            <label>Command</label>
-                            <input type="text" id="edit-mcp-command" placeholder="e.g., npx, docker">
-                        </div>
-                        <div class="form-group">
-                            <label>Arguments (comma-separated)</label>
-                            <input type="text" id="edit-mcp-args" placeholder="e.g., -y, @anthropic/mcp-server">
-                        </div>
-                        <div class="form-group">
-                            <label>Description (optional)</label>
-                            <input type="text" id="edit-mcp-description" placeholder="Kubernetes management tools">
-                        </div>
-                        <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button class="btn btn-primary" onclick="updateMCPServer()">Update Server</button>
-                            <button class="btn btn-secondary" onclick="hideEditMCPForm()">Cancel</button>
-                        </div>
-                    </div>
 
                     <div class="settings-section" style="margin-top:16px;">
                         <h4>Available Tools</h4>
