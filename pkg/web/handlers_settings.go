@@ -91,6 +91,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 				"model":            s.cfg.LLM.Model,
 				"endpoint":         s.cfg.LLM.Endpoint,
 				"reasoning_effort": s.cfg.LLM.ReasoningEffort,
+				"api_key":          s.cfg.LLM.APIKey,
 			},
 		})
 
@@ -181,6 +182,7 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 				"endpoint":        m.Endpoint,
 				"description":     m.Description,
 				"has_api_key":     m.APIKey != "",
+				"api_key":         m.APIKey,
 				"is_active":       m.Name == s.cfg.ActiveModel,
 				"skip_tls_verify": m.SkipTLSVerify,
 			}

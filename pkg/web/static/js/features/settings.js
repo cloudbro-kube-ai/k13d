@@ -14,6 +14,14 @@ function closeSettings() {
     document.getElementById('settings-modal').classList.remove('active');
 }
 
+// Settings Navigation
+function openAIModelSettings() {
+    // Settings is a modal in this app
+    showSettings();
+    // Switch to AI tab
+    switchSettingsTab('ai');
+}
+
 function switchSettingsTab(tab) {
     document.querySelectorAll('.tabs .tab').forEach((t, i) => {
         const isActive = t.textContent.toLowerCase().includes(tab);
@@ -598,19 +606,23 @@ async function fetchAvailableModels() {
 }
 
 // Model Management Functions
+let profilesCache = [];
+let editingModelName = null;
+
 async function loadModelProfiles() {
     try {
         const resp = await fetchWithAuth('/api/models');
         const data = await resp.json();
         const container = document.getElementById('models-list');
+        profilesCache = data.models || [];
 
-        if (!data.models || data.models.length === 0) {
+        if (profilesCache.length === 0) {
             container.innerHTML = '<p style="color:var(--text-secondary);">No model profiles configured.</p>';
             return;
         }
 
-        container.innerHTML = data.models.map(m => `
-                    <div class="settings-row" style="background:var(--bg-primary);padding:12px;border-radius:8px;margin-bottom:8px;">
+        container.innerHTML = profilesCache.map(m => `
+                    <div class="settings-row" style="background:var(--bg-primary);padding:12px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
                         <div style="flex:1;">
                             <div style="font-weight:bold;display:flex;align-items:center;gap:8px;">
                                 ${escapeHtml(m.name)}
@@ -622,9 +634,14 @@ async function loadModelProfiles() {
                             </div>
                             ${m.warning ? `<div style="margin-top:8px;font-size:12px;color:var(--accent-yellow);line-height:1.5;">${escapeHtml(m.warning)}</div>` : ''}
                         </div>
-                        <div style="display:flex;gap:8px;">
-                            ${!m.is_active ? `<button class="btn btn-secondary" onclick="switchModel('${escapeHtml(m.name)}')" style="padding:4px 12px;font-size:12px;">Use</button>` : ''}
-                            <button class="btn btn-secondary" onclick="deleteModel('${escapeHtml(m.name)}')" style="padding:4px 12px;font-size:12px;color:var(--accent-red);">Delete</button>
+                        <div style="display:flex;gap:4px;align-items:center;">
+                            ${!m.is_active ? `<button class="btn btn-secondary" onclick="switchModel(event, '${escapeHtml(m.name)}')" style="padding:4px 12px;font-size:12px;margin-right:4px;">Use</button>` : ''}
+                            <button class="btn btn-icon" onclick="editModelProfile('${escapeHtml(m.name)}')" title="Edit Profile" style="padding:6px;background:none;border:none;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                            </button>
+                            <button class="btn btn-icon" onclick="deleteModel('${escapeHtml(m.name)}')" title="Delete Profile" style="padding:6px;background:none;border:none;color:var(--accent-red);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                            </button>
                         </div>
                     </div>
                 `).join('');
@@ -633,7 +650,12 @@ async function loadModelProfiles() {
     }
 }
 
-async function switchModel(name) {
+async function switchModel(event, name) {
+    const btn = event.currentTarget || event.target;
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Switching...';
+
     try {
         const resp = await fetchWithAuth('/api/models/active', {
             method: 'PUT',
@@ -643,18 +665,31 @@ async function switchModel(name) {
         if (!resp.ok) {
             const errData = await resp.json().catch(() => ({}));
             showToast(errData.error || 'Failed to switch model', 'error');
+            btn.disabled = false;
+            btn.textContent = originalText;
             return;
         }
         const data = await resp.json().catch(() => ({}));
-        // Reload both profile list AND LLM form fields to stay in sync
-        loadModelProfiles();
-        loadSettings();
+        
+        // Reload settings and model profiles synchronously before showing success
+        await Promise.all([
+            loadModelProfiles(),
+            loadSettings()
+        ]);
+        
+        // AI status/badge update is already inside loadSettings(), but double-calling for robustness
+        if (typeof updateAIStatus === 'function') {
+            await updateAIStatus();
+        }
+
         showToast('Switched to model: ' + name, 'success');
         if (data.warning) {
             showToast(data.warning, 'warning');
         }
     } catch (e) {
         showToast('Failed to switch model: ' + e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = originalText;
     }
 }
 
@@ -679,9 +714,54 @@ async function deleteModel(name) {
 }
 
 function showAddModelForm() {
+    editingModelName = null;
+    const header = document.getElementById('add-model-header');
+    const btn = document.getElementById('add-model-btn');
+    if (header) header.textContent = 'Add New Model Profile';
+    if (btn) btn.textContent = 'Add Profile';
+
     syncNewModelProviderOptions();
-    prefillNewModelFormFromCurrentLLM();
+
+    // Clear form before showing
+    document.getElementById('new-model-name').value = '';
+    document.getElementById('new-model-name').readOnly = false;
+    document.getElementById('new-model-provider').value = 'upstage'; // Default value
+    document.getElementById('new-model-model').value = '';
+    document.getElementById('new-model-endpoint').value = '';
+    document.getElementById('new-model-apikey').value = '';
+    document.getElementById('new-model-description').value = '';
+    document.getElementById('new-model-skip-tls').checked = false;
+
     document.getElementById('add-model-form').style.display = 'block';
+    updateNewModelToolSupportWarning();
+}
+
+function editModelProfile(name) {
+    const profile = profilesCache.find(p => p.name === name);
+    if (!profile) return;
+
+    editingModelName = name;
+    
+    // UI Updates
+    const header = document.getElementById('add-model-header');
+    const btn = document.getElementById('add-model-btn');
+    if (header) header.textContent = 'Edit Model Profile';
+    if (btn) btn.textContent = 'Update Profile';
+
+    syncNewModelProviderOptions();
+
+    // Fill form
+    document.getElementById('new-model-name').value = profile.name;
+    document.getElementById('new-model-name').readOnly = false; // Allow rename, we handle it in addModelProfile
+    document.getElementById('new-model-provider').value = profile.provider;
+    document.getElementById('new-model-model').value = profile.model;
+    document.getElementById('new-model-endpoint').value = profile.endpoint || '';
+    document.getElementById('new-model-apikey').value = profile.api_key || '';
+    document.getElementById('new-model-description').value = profile.description || '';
+    document.getElementById('new-model-skip-tls').checked = !!profile.skip_tls_verify;
+
+    document.getElementById('add-model-form').style.display = 'block';
+    document.getElementById('add-model-form').scrollIntoView({ behavior: 'smooth' });
     updateNewModelToolSupportWarning();
 }
 
@@ -705,29 +785,6 @@ function syncNewModelProviderOptions() {
     newProviderSelect.innerHTML = currentProviderSelect.innerHTML;
 }
 
-function prefillNewModelFormFromCurrentLLM() {
-    const currentProvider = document.getElementById('setting-llm-provider');
-    const currentModel = document.getElementById('setting-llm-model');
-    const currentEndpoint = document.getElementById('setting-llm-endpoint');
-    const currentAPIKey = document.getElementById('setting-llm-apikey');
-    const newProvider = document.getElementById('new-model-provider');
-    const newModel = document.getElementById('new-model-model');
-    const newEndpoint = document.getElementById('new-model-endpoint');
-    const newAPIKey = document.getElementById('new-model-apikey');
-
-    if (currentProvider && newProvider) {
-        newProvider.value = currentProvider.value;
-    }
-    if (currentModel && newModel) {
-        newModel.value = currentModel.value || '';
-    }
-    if (currentEndpoint && newEndpoint) {
-        newEndpoint.value = currentEndpoint.value || '';
-    }
-    if (currentAPIKey && newAPIKey) {
-        newAPIKey.value = currentAPIKey.value || '';
-    }
-}
 
 async function addModelProfile() {
     const profile = {
@@ -743,6 +800,21 @@ async function addModelProfile() {
     if (!profile.name || !profile.model) {
         showToast('Name and Model are required', 'error');
         return;
+    }
+
+    // If we're editing and the name changed, we need to delete the old profile first
+    if (editingModelName && editingModelName !== profile.name) {
+        try {
+            const delResp = await fetchWithAuth(`/api/models?name=${encodeURIComponent(editingModelName)}`, {
+                method: 'DELETE'
+            });
+            if (!delResp.ok) {
+                showToast('Failed to update: old profile could not be renamed', 'error');
+                return;
+            }
+        } catch (e) {
+            console.error('Failed to delete old profile during rename:', e);
+        }
     }
 
     try {
@@ -769,34 +841,42 @@ async function addModelProfile() {
 }
 
 // MCP Management Functions
+// MCP Management Functions
+let mcpCache = [];
+let editingMCPServerName = null;
+
 async function loadMCPServers() {
     try {
         const resp = await fetchWithAuth('/api/mcp/servers');
         const data = await resp.json();
         const container = document.getElementById('mcp-servers-list');
+        mcpCache = data.servers || [];
 
-        if (!data.servers || data.servers.length === 0) {
+        if (mcpCache.length === 0) {
             container.innerHTML = '<p style="color:var(--text-secondary);">No MCP servers configured.</p>';
             return;
         }
 
-        container.innerHTML = data.servers.map(s => {
+        container.innerHTML = mcpCache.map(s => {
             const argsStr = s.args ? s.args.join(', ') : '';
             return `
-                    <div class="settings-row" style="background:var(--bg-primary);padding:12px;border-radius:8px;margin-bottom:8px;">
+                    <div class="settings-row" style="background:var(--bg-primary);padding:12px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
                         <div style="flex:1;">
                             <div style="font-weight:bold;display:flex;align-items:center;gap:8px;">
-                                <span onclick="showEditMCPForm('${s.name.replace(/'/g, "\\'")}', '${s.command.replace(/'/g, "\\'")}', '${argsStr.replace(/'/g, "\\'")}', '${(s.description || '').replace(/'/g, "\\'")}')" 
-                                      style="cursor:pointer;color:var(--accent-blue);text-decoration:underline;" title="Click to edit">
-                                    ${escapeHtml(s.name)}
-                                </span>
+                                <span>${escapeHtml(s.name)}</span>
                                 ${s.connected ? '<span style="background:var(--accent-green);color:var(--bg-primary);padding:2px 8px;border-radius:4px;font-size:10px;">CONNECTED</span>' : s.enabled ? '<span style="background:var(--accent-yellow);color:var(--bg-primary);padding:2px 8px;border-radius:4px;font-size:10px;">DISCONNECTED</span>' : '<span style="background:var(--bg-tertiary);padding:2px 8px;border-radius:4px;font-size:10px;">DISABLED</span>'}
                             </div>
+                            ${s.description ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">${escapeHtml(s.description)}</div>` : ''}
                         </div>
-                        <div style="display:flex;gap:8px;">
-                            ${s.enabled ? `<button class="btn btn-secondary" onclick="toggleMCPServer('${s.name}', 'disable')" style="padding:4px 12px;font-size:12px;">Disable</button>` : `<button class="btn btn-secondary" onclick="toggleMCPServer('${s.name}', 'enable')" style="padding:4px 12px;font-size:12px;">Enable</button>`}
-                            ${s.enabled ? `<button class="btn btn-secondary" onclick="toggleMCPServer('${s.name}', 'reconnect')" style="padding:4px 12px;font-size:12px;">Reconnect</button>` : ''}
-                            <button class="btn btn-secondary" onclick="deleteMCPServer('${s.name}')" style="padding:4px 12px;font-size:12px;color:var(--accent-red);">Delete</button>
+                        <div style="display:flex;gap:4px;align-items:center;">
+                            ${s.enabled ? `<button class="btn btn-secondary" onclick="toggleMCPServer('${escapeHtml(s.name)}', 'disable')" style="padding:4px 12px;font-size:12px;">Disable</button>` : `<button class="btn btn-secondary" onclick="toggleMCPServer('${escapeHtml(s.name)}', 'enable')" style="padding:4px 12px;font-size:12px;">Enable</button>`}
+                            ${s.enabled ? `<button class="btn btn-secondary" onclick="toggleMCPServer('${escapeHtml(s.name)}', 'reconnect')" style="padding:4px 12px;font-size:12px;">Reconnect</button>` : ''}
+                            <button class="btn btn-icon" onclick="editMCPServer('${escapeHtml(s.name)}')" title="Edit MCP Server" style="color:var(--text-secondary);cursor:pointer;margin-left:4px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                            </button>
+                            <button class="btn btn-icon" onclick="deleteMCPServer('${escapeHtml(s.name)}')" title="Delete MCP Server" style="color:var(--accent-red);cursor:pointer;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                            </button>
                         </div>
                     </div>
                 `;
@@ -806,63 +886,61 @@ async function loadMCPServers() {
     }
 }
 
-function showEditMCPForm(name, command, args, description) {
-    document.getElementById('edit-mcp-old-name').value = name;
-    document.getElementById('edit-mcp-name').value = name;
-    document.getElementById('edit-mcp-command').value = command;
-    document.getElementById('edit-mcp-args').value = args;
-    document.getElementById('edit-mcp-description').value = description;
+function showAddMCPForm() {
+    editingMCPServerName = null;
+    document.getElementById('add-mcp-form-header').textContent = 'Add MCP Server';
+    document.getElementById('add-mcp-form-btn').textContent = 'Add Server';
 
-    document.getElementById('edit-mcp-form').style.display = 'block';
-    document.getElementById('add-mcp-form').style.display = 'none';
-    document.getElementById('edit-mcp-form').scrollIntoView({ behavior: 'smooth' });
+    // Clear form
+    document.getElementById('new-mcp-name').value = '';
+    document.getElementById('new-mcp-command').value = '';
+    document.getElementById('new-mcp-args').value = '';
+    document.getElementById('new-mcp-description').value = '';
+    document.getElementById('new-mcp-enabled').checked = true;
+
+    document.getElementById('add-mcp-form').style.display = 'block';
+    
+    // Hide edit form if shown (though we're moving to single form)
+    const editForm = document.getElementById('edit-mcp-form');
+    if (editForm) editForm.style.display = 'none';
+}
+
+function editMCPServer(name) {
+    const server = mcpCache.find(s => s.name === name);
+    if (!server) return;
+
+    editingMCPServerName = name;
+    
+    const header = document.getElementById('add-mcp-form-header');
+    const btn = document.getElementById('add-mcp-form-btn');
+    if (header) header.textContent = 'Edit MCP Server';
+    if (btn) btn.textContent = 'Update Server';
+
+    // Populate the add-mcp-form (reusing it)
+    document.getElementById('new-mcp-name').value = server.name;
+    document.getElementById('new-mcp-command').value = server.command;
+    document.getElementById('new-mcp-args').value = server.args ? server.args.join(', ') : '';
+    document.getElementById('new-mcp-description').value = server.description || '';
+    document.getElementById('new-mcp-enabled').checked = server.enabled !== false;
+
+    document.getElementById('add-mcp-form').style.display = 'block';
+    document.getElementById('add-mcp-form').scrollIntoView({ behavior: 'smooth' });
+}
+
+function showEditMCPForm(name, command, args, description) {
+    // Legacy support for any direct calls, just route to editMCPServer
+    editMCPServer(name);
 }
 
 function hideEditMCPForm() {
-    document.getElementById('edit-mcp-form').style.display = 'none';
+    // This function is now deprecated as add/edit are consolidated
+    // but keeping it to avoid breaking external calls if any.
+    // The add-mcp-form is hidden by hideAddMCPForm.
 }
 
 async function updateMCPServer() {
-    const oldName = document.getElementById('edit-mcp-old-name').value;
-    const name = document.getElementById('edit-mcp-name').value;
-    const command = document.getElementById('edit-mcp-command').value;
-    const argsInput = document.getElementById('edit-mcp-args').value;
-    const description = document.getElementById('edit-mcp-description').value;
-
-    if (!name || !command) {
-        showToast('Name and command are required', 'error');
-        return;
-    }
-
-    const args = argsInput ? argsInput.split(',').map(a => a.trim()).filter(a => a) : [];
-
-    try {
-        const resp = await fetchWithAuth('/api/mcp/servers', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'update',
-                name: oldName,
-                new_name: name,
-                command: command,
-                args: args,
-                description: description
-            })
-        });
-
-        if (!resp.ok) {
-            const err = await resp.json();
-            showToast(err.error || 'Failed to update MCP server', 'error');
-            return;
-        }
-
-        hideEditMCPForm();
-        loadMCPServers();
-        loadMCPTools();
-        showToast('MCP server updated', 'success');
-    } catch (e) {
-        showToast('Failed to update MCP server: ' + e.message, 'error');
-    }
+    // This function is now deprecated as add/edit are consolidated into addMCPServer
+    // The logic has been moved to addMCPServer.
 }
 
 async function loadMCPTools() {
@@ -931,10 +1009,8 @@ async function deleteMCPServer(name) {
     }
 }
 
-function showAddMCPForm() {
-    document.getElementById('add-mcp-form').style.display = 'block';
-    document.getElementById('edit-mcp-form').style.display = 'none';
-}
+// showAddMCPForm is now the unified form for add/edit
+// function showAddMCPForm() { ... } (defined above)
 
 function hideAddMCPForm() {
     document.getElementById('add-mcp-form').style.display = 'none';
@@ -944,23 +1020,53 @@ function hideAddMCPForm() {
     document.getElementById('new-mcp-args').value = '';
     document.getElementById('new-mcp-description').value = '';
     document.getElementById('new-mcp-enabled').checked = true;
+    editingMCPServerName = null; // Reset editing state
 }
 
 async function addMCPServer() {
-    const argsStr = document.getElementById('new-mcp-args').value.trim();
-    const args = argsStr ? argsStr.split(',').map(a => a.trim()).filter(a => a) : [];
-
     const server = {
         name: document.getElementById('new-mcp-name').value.trim(),
         command: document.getElementById('new-mcp-command').value.trim(),
-        args: args,
+        args: document.getElementById('new-mcp-args').value.split(',').map(a => a.trim()).filter(a => a),
         description: document.getElementById('new-mcp-description').value.trim(),
         enabled: document.getElementById('new-mcp-enabled').checked
     };
 
     if (!server.name || !server.command) {
-        alert('Name and Command are required');
+        showToast('Name and command are required', 'error');
         return;
+    }
+
+    // If editing, use the update (PUT) endpoint
+    if (editingMCPServerName) {
+        try {
+            const resp = await fetchWithAuth('/api/mcp/servers', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: editingMCPServerName,
+                    action: 'update',
+                    new_name: server.name,
+                    command: server.command,
+                    args: server.args,
+                    description: server.description
+                })
+            });
+
+            if (!resp.ok) {
+                const data = await resp.json().catch(() => ({}));
+                showToast(data.error || 'Failed to update MCP server', 'error');
+                return;
+            }
+
+            hideAddMCPForm();
+            loadMCPServers();
+            showToast('Updated MCP server: ' + server.name, 'success');
+            return;
+        } catch (e) {
+            showToast('Failed to update MCP server: ' + e.message, 'error');
+            return;
+        }
     }
 
     try {
@@ -1552,6 +1658,7 @@ async function loadSettings() {
 
             document.getElementById('setting-llm-model').value = data.llm.model || providerDefaults.model;
             document.getElementById('setting-llm-endpoint').value = data.llm.endpoint || providerDefaults.endpoint;
+            document.getElementById('setting-llm-apikey').value = data.llm.api_key || '';
             currentLLMModel = data.llm.model || providerDefaults.model;
 
             // Load reasoning effort setting

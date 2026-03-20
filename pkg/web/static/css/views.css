@@ -5671,3 +5671,37 @@ html[data-theme="light"] .auth-mode-indicator.local-mode {
         border-color: rgba(122, 162, 247, 0.2);
     }
 }
+/* Model Profile Management Icon Buttons */
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-icon:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    transform: scale(1.1);
+}
+
+.btn-icon svg {
+    display: block;
+    stroke-width: 2.5px;
+}
+
+.btn-icon[onclick*="deleteModel"]:hover {
+    color: var(--accent-red);
+    background: rgba(247, 118, 142, 0.1);
+}
+
+.btn-icon[onclick*="editModelProfile"]:hover {
+    color: var(--accent-blue);
+    background: rgba(122, 162, 247, 0.1);
+}

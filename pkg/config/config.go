@@ -201,7 +201,7 @@ type LLMConfig struct {
 	Provider        string  `yaml:"provider" json:"provider"`
 	Model           string  `yaml:"model" json:"model"`
 	Endpoint        string  `yaml:"endpoint" json:"endpoint"`
-	APIKey          string  `yaml:"api_key" json:"-"`
+	APIKey          string  `yaml:"api_key" json:"api_key,omitempty"`
 	Region          string  `yaml:"region" json:"region"`                     // For AWS Bedrock
 	AzureDeployment string  `yaml:"azure_deployment" json:"azure_deployment"` // For Azure OpenAI
 	SkipTLSVerify   bool    `yaml:"skip_tls_verify" json:"skip_tls_verify"`
@@ -224,7 +224,7 @@ type ModelProfile struct {
 	Provider        string `yaml:"provider" json:"provider"`           // Provider type
 	Model           string `yaml:"model" json:"model"`                 // Model identifier
 	Endpoint        string `yaml:"endpoint" json:"endpoint,omitempty"` // Custom endpoint
-	APIKey          string `yaml:"api_key" json:"-"`                   // API key (never exposed in JSON)
+	APIKey          string `yaml:"api_key" json:"api_key,omitempty"`                   // API key (exposed for model profile management)
 	Region          string `yaml:"region" json:"region,omitempty"`     // For AWS Bedrock
 	AzureDeployment string `yaml:"azure_deployment" json:"azure_deployment,omitempty"`
 	SkipTLSVerify   bool   `yaml:"skip_tls_verify" json:"skip_tls_verify,omitempty"` // For self-signed certs
@@ -298,6 +298,27 @@ func GetConfigDir() (string, error) {
 
 // DefaultOllamaEndpoint is the default Ollama server endpoint
 const DefaultOllamaEndpoint = "http://localhost:11434"
+
+// MaskAPIKey creates a masked version of the API key for display/comparison.
+func MaskAPIKey(apiKey string) string {
+	if apiKey == "" {
+		return ""
+	}
+	// Show first 4 chars + ellipsis + last 4 chars
+	if len(apiKey) <= 8 {
+		return "***"
+	}
+	return apiKey[:4] + "..." + apiKey[len(apiKey)-4:]
+}
+
+// IsMaskedAPIKey returns true if the provided key matches the masked version of the current key.
+// This is used to avoid overwriting real keys with their masked versions during updates.
+func IsMaskedAPIKey(apiKey, currentKey string) bool {
+	if apiKey == "" {
+		return false
+	}
+	return apiKey == MaskAPIKey(currentKey)
+}
 
 // DefaultOllamaModel is the recommended Ollama model for local AI workflows.
 const DefaultOllamaModel = "gpt-oss:20b"
