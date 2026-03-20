@@ -4708,7 +4708,7 @@ async function switchDetailTab(tab) {
                                         <th>RESTARTS</th>
                                         <th>NODE</th>
                                         <th>AGE</th>
-                                        <th>ACTIONS</th>
+                                        <th>LOGS</th>
                                     </tr>
                                 </thead>
                                 <tbody>
