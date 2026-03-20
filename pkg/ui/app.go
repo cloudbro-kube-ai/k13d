@@ -180,6 +180,7 @@ type App struct {
 	pendingDecisions    []PendingDecision
 	pendingToolApproval chan bool
 	aiConversationTurns int
+	attachedAIContext   aiAttachedSelection
 	toolApprovalFocus   tview.Primitive
 	currentToolCallInfo struct {
 		Name    string

@@ -62,6 +62,8 @@ k13d -A
 |-----|--------|
 | ++colon++ | Command mode (e.g., `:pods`, `:svc`) |
 | ++slash++ | Filter current table |
+| ++enter++ / ++arrow-right++ | Open related resource |
+| ++arrow-left++ / ++esc++ | Go back |
 | ++g++ | Go to first item |
 | ++shift+g++ | Go to last item |
 | ++ctrl+f++ | Page down |
@@ -175,18 +177,21 @@ aliases:
 | Key | Action | Description |
 |-----|--------|-------------|
 | ++l++ | Logs | Stream pod logs |
-| ++shift+l++ | Previous Logs | View previous container logs |
-| ++x++ | Exec | Open shell in container |
-| ++p++ | Port Forward | Start port forwarding |
+| ++p++ | Previous Logs | View previous container logs |
+| ++s++ | Shell | Open a shell inside the selected pod |
+| ++a++ | Attach | Attach to the selected pod |
+| ++enter++ | Containers | Show the pod's container list |
+| ++shift+f++ | Port Forward | Start a new port forward |
+| ++f++ | Active Port Forwards | Show running port forwards |
 
 ### Deployment Actions
 
 | Key | Action | Description |
 |-----|--------|-------------|
-| ++s++ | Scale | Scale replicas |
-| ++r++ | Restart | Rollout restart |
-| ++h++ | History | View rollout history |
-| ++u++ | Undo | Rollback to previous version |
+| ++shift+s++ | Scale | Scale replicas |
+| ++shift+r++ | Restart | Rollout restart |
+| ++z++ | ReplicaSets | Jump to related ReplicaSets |
+| ++enter++ / ++arrow-right++ | Related Pods | Drill down into related resources |
 
 ### Node Actions
 
@@ -204,12 +209,15 @@ aliases:
 2. Type your question in the boxed prompt area
 3. Press ++enter++ to send
 4. Press ++shift+tab++ to move into transcript history
-5. Use ++j++ / ++k++ or ++pgup++ / ++pgdn++ to browse older replies
-6. Press ++tab++ to return to the prompt
+5. With the AI panel open, return focus to the table and press ++enter++ on a row to attach or detach that resource as AI context
+6. Use ++j++ / ++k++ or ++pgup++ / ++pgdn++ to browse older replies
+7. Press ++tab++ to return to the prompt
 
 The prompt area is boxed separately from the transcript so it is easier to see whether you are typing a new message or browsing previous output.
 
 You can keep the table readable while chatting by resizing the right-side AI panel with ++alt+h++, ++alt+l++, and ++alt+0++.
+
+When a row is attached to AI, it keeps a subtle highlight in the table and stays available to the assistant even if you navigate to another resource view.
 
 Agentic AI is kubectl-first by default. `bash` and MCP tools are opt-in through `config.yaml`, and unsupported interactive kubectl flows such as `kubectl edit`, `kubectl port-forward`, and `kubectl exec -it` are blocked instead of shown as approvable actions.
 
@@ -477,10 +485,10 @@ ui:
 | ++y++ | YAML |
 | ++d++ | Describe |
 | ++l++ | Logs |
-| ++x++ | Exec |
+| ++s++ | Shell |
 | ++e++ | Edit |
-| ++s++ | Scale |
-| ++r++ | Restart |
+| ++shift+s++ | Scale |
+| ++shift+r++ | Restart |
 | ++ctrl+d++ | Delete |
 
 ### AI

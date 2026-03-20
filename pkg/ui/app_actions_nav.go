@@ -289,6 +289,7 @@ func (a *App) showHelp() {
   [yellow]g[white]        Top                 [yellow]G[white]        Bottom
   [yellow]Ctrl+F[white]   Page down           [yellow]Ctrl+B[white]   Page up
   [yellow]Ctrl+D[white]   Half page down      [yellow]Ctrl+U[white]   Half page up
+  [yellow]Right[white]    Open / drill down   [yellow]Left/Esc[white] Back
 
 [cyan::b]RESOURCE ACTIONS[white::-]
   [yellow]d[white]        Describe            [yellow]y[white]        YAML view
@@ -310,12 +311,13 @@ func (a *App) showHelp() {
 [cyan::b]POD ACTIONS[white::-]
   [yellow]l[white]        Logs                [yellow]p[white]        Previous logs
   [yellow]s[white]        Shell               [yellow]a[white]        Attach
-  [yellow]o[white]        Show node           [yellow]k/Ctrl+K[white] Kill (force delete)
+  [yellow]Enter[white]    Show containers     [yellow]o[white]        Show node
+  [yellow]k/Ctrl+K[white] Kill (force delete) [yellow]Right[white]    Open containers
   [yellow]Shift+F[white]  Port forward        [yellow]f[white]        Show port-forward
 
 [cyan::b]WORKLOAD ACTIONS[white::-] (Deploy/StatefulSet/DaemonSet/ReplicaSet)
   [yellow]S[white]        Scale               [yellow]R[white]        Restart/Rollout
-  [yellow]z[white]        Show ReplicaSets    [yellow]Enter[white]    Show Pods
+  [yellow]z[white]        Show ReplicaSets    [yellow]Enter/Right[white] Open related
 
 [cyan::b]VIEWER (Logs/Describe/YAML)[white::-] - Vim-style navigation
   [yellow]j/k[white]      Scroll down/up      [yellow]g/G[white]      Top/Bottom
@@ -339,6 +341,7 @@ func (a *App) showHelp() {
   - "Why is my pod crashing?"
   - "Scale deployment nginx to 3 replicas"
   - "Show recent events for this deployment"
+  - Press Enter on a selected table row while the AI panel is open to attach or detach that row as AI context
 
   [gray]Tool approvals open in a centered modal. Press Y/Enter to approve, N/Esc to cancel.[white]
 
@@ -395,25 +398,99 @@ func (a *App) toggleSelection() {
 	}
 }
 
-// updateRowSelection updates visual styling for a row based on selection state
+func (a *App) defaultTableCellColor(row, col int) tcell.Color {
+	if col == 2 {
+		return a.statusColor(a.getTableCellText(row, col))
+	}
+	return tcell.ColorWhite
+}
+
+func (a *App) rowMatchesAttachedAIContext(row int) bool {
+	attached := a.getAttachedAIContext()
+	if attached.IsZero() {
+		return false
+	}
+	candidate := a.aiSelectionCandidateForRow(row)
+	if candidate.IsZero() {
+		return false
+	}
+	return attached.Matches(candidate)
+}
+
+func (a *App) aiSelectionCandidateForRow(row int) aiAttachedSelection {
+	if row <= 0 || a.table == nil {
+		return aiAttachedSelection{}
+	}
+
+	a.mx.RLock()
+	resource := a.currentResource
+	ns := a.currentNamespace
+	headers := append([]string(nil), a.tableHeaders...)
+	a.mx.RUnlock()
+
+	nameIdx := nameColumnIndex(resource)
+	name := strings.TrimSpace(a.getTableCellText(row, nameIdx))
+	if name == "" {
+		return aiAttachedSelection{}
+	}
+
+	selectedNS := ns
+	if nameIdx != 0 {
+		if candidateNS := strings.TrimSpace(a.getTableCellText(row, 0)); candidateNS != "" {
+			selectedNS = candidateNS
+		}
+	}
+
+	var parts []string
+	for i, header := range headers {
+		value := strings.TrimSpace(a.getTableCellText(row, i))
+		if value == "" {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s=%s", header, value))
+	}
+
+	return aiAttachedSelection{
+		Resource:  resource,
+		Namespace: selectedNS,
+		Name:      name,
+		Summary:   strings.Join(parts, " | "),
+	}
+}
+
+func (a *App) refreshTableDecorations() {
+	if a.table == nil {
+		return
+	}
+	for row := 1; row < a.table.GetRowCount(); row++ {
+		a.updateRowSelection(row)
+	}
+}
+
+// updateRowSelection updates visual styling for a row based on selection and AI context state.
 func (a *App) updateRowSelection(row int) {
 	a.mx.RLock()
 	isSelected := a.selectedRows[row]
 	a.mx.RUnlock()
+	isAIContext := a.rowMatchesAttachedAIContext(row)
 
 	colCount := a.table.GetColumnCount()
 	for col := 0; col < colCount; col++ {
 		cell := a.table.GetCell(row, col)
 		if cell != nil {
+			background := tcell.ColorDefault
+			textColor := a.defaultTableCellColor(row, col)
 			if isSelected {
-				// Highlight selected rows with cyan background
-				cell.SetBackgroundColor(tcell.ColorDarkCyan)
-				cell.SetTextColor(tcell.ColorWhite)
-			} else {
-				// Reset to default
-				cell.SetBackgroundColor(tcell.ColorDefault)
-				cell.SetTextColor(tcell.ColorWhite)
+				background = tcell.ColorDarkCyan
+				textColor = tcell.ColorWhite
+			} else if isAIContext {
+				background = tcell.NewRGBColor(41, 46, 66)
+				if textColor == tcell.ColorWhite {
+					textColor = tcell.NewRGBColor(198, 208, 245)
+				}
 			}
+			cell.SetBackgroundColor(background)
+			cell.SetTextColor(textColor)
 		}
 	}
 }
@@ -426,11 +503,7 @@ func (a *App) clearSelections() {
 	}
 	a.mx.Unlock()
 
-	// Reset all row visuals
-	rowCount := a.table.GetRowCount()
-	for row := 1; row < rowCount; row++ {
-		a.updateRowSelection(row)
-	}
+	a.refreshTableDecorations()
 }
 
 // toggleBriefing toggles the briefing panel visibility (Shift+B)

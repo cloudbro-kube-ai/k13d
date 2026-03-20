@@ -323,13 +323,16 @@ func (a *App) updateStatusBar() {
 	// Add resource-specific shortcuts
 	switch resource {
 	case "pods", "po":
-		shortcuts = "[black]l[-][#1a1b26]Logs[-] [black]s[-][#1a1b26]Shell[-] [black]d[-][#1a1b26]Describe[-] " + shortcuts
+		shortcuts = "[black]Enter[-][#1a1b26]Containers[-] [black]l[-][#1a1b26]Logs[-] [black]s[-][#1a1b26]Shell[-] [black]d[-][#1a1b26]Describe[-] " + shortcuts
 	case "deployments", "deploy", "statefulsets", "sts", "daemonsets", "ds":
-		shortcuts = "[black]S[-][#1a1b26]Scale[-] [black]R[-][#1a1b26]Restart[-] [black]d[-][#1a1b26]Describe[-] " + shortcuts
+		shortcuts = "[black]Enter[-][#1a1b26]Drill[-] [black]S[-][#1a1b26]Scale[-] [black]R[-][#1a1b26]Restart[-] [black]d[-][#1a1b26]Describe[-] " + shortcuts
 	case "namespaces", "ns":
-		shortcuts = "[black]u[-][#1a1b26]Use[-] " + shortcuts
+		shortcuts = "[black]Enter[-][#1a1b26]Drill[-] [black]u[-][#1a1b26]Use[-] " + shortcuts
 	default:
-		shortcuts = "[black]d[-][#1a1b26]Describe[-] [black]y[-][#1a1b26]YAML[-] " + shortcuts
+		shortcuts = "[black]Enter[-][#1a1b26]Drill[-] [black]d[-][#1a1b26]Describe[-] [black]y[-][#1a1b26]YAML[-] " + shortcuts
+	}
+	if showAI {
+		shortcuts = "[black]Enter[-][#1a1b26]AI ctx[-] [black]→[-][#1a1b26]Open[-] [black]←[-][#1a1b26]Back[-] " + shortcuts
 	}
 
 	// Append sort/filter status indicators

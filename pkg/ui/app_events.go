@@ -178,8 +178,21 @@ func (a *App) setupKeybindings() {
 				a.focusAIInput()
 			}
 			return nil
+		case tcell.KeyRight:
+			a.drillDown()
+			return nil
+		case tcell.KeyLeft:
+			a.goBack()
+			return nil
 		case tcell.KeyEnter:
-			a.drillDown() // k9s: Enter = drill down to related resource
+			a.mx.RLock()
+			showAI := a.showAIPanel
+			a.mx.RUnlock()
+			if showAI {
+				a.toggleSelectedAIContext()
+				return nil
+			}
+			a.drillDown() // Enter drills down when the AI panel is closed.
 			return nil
 		case tcell.KeyEsc:
 			a.goBack() // k9s: Esc = go back

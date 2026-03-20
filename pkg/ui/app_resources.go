@@ -122,6 +122,7 @@ func (a *App) refresh() {
 			if count > 0 {
 				a.table.Select(1, 0)
 			}
+			a.refreshTableDecorations()
 			a.applyAIChrome()
 		})
 	}
@@ -347,6 +348,7 @@ func (a *App) applyFilterText(filter string) {
 		if rowIdx > 1 {
 			a.table.Select(1, 0)
 		}
+		a.refreshTableDecorations()
 	})
 	a.updateStatusBar()
 }

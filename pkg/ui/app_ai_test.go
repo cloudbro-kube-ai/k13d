@@ -15,6 +15,7 @@ func TestBuildAIPromptIncludesDetailedSelectionContext(t *testing.T) {
 	prompt := buildAIPrompt("Why is this pod failing?", aiPromptContext{
 		Resource:          "pods",
 		Namespace:         "default",
+		SelectedResource:  "pods",
 		SelectedName:      "api-7d9d8",
 		SelectedNamespace: "default",
 		SelectedSummary:   "NAME=api-7d9d8 | STATUS=CrashLoopBackOff | RESTARTS=5",
@@ -135,8 +136,8 @@ func TestShowAIContextPreviewUsesSelectedRow(t *testing.T) {
 	})
 
 	app.refresh()
-	ctx := app.getAIPromptContext()
-	if ctx.SelectedName == "" {
+	candidate := app.currentAISelectionCandidate()
+	if candidate.IsZero() {
 		t.Fatal("expected refresh to select a table row for AI context")
 	}
 
@@ -147,11 +148,56 @@ func TestShowAIContextPreviewUsesSelectedRow(t *testing.T) {
 		"Context Preview",
 		"View: pods",
 		"Namespace: default",
-		"Selected: " + ctx.SelectedName,
+		"Selected row available: pods default/" + candidate.Name,
+		"not attached yet",
 	} {
 		if !strings.Contains(text, want) {
 			t.Fatalf("context preview missing %q\n%s", want, text)
 		}
+	}
+}
+
+func TestToggleSelectedAIContextAttachesSelectionAndHighlightsRow(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+
+	app.refresh()
+	candidate := app.currentAISelectionCandidate()
+	if candidate.IsZero() {
+		t.Fatal("expected a selected row to be available for AI attachment")
+	}
+
+	app.toggleSelectedAIContext()
+
+	attached := app.getAttachedAIContext()
+	if !attached.Matches(candidate) {
+		t.Fatalf("expected AI attachment to match current row, got %+v", attached)
+	}
+
+	ctx := app.getAIPromptContext()
+	if ctx.SelectedResource != candidate.Resource || ctx.SelectedName != candidate.Name {
+		t.Fatalf("expected prompt context to use attached row, got %+v", ctx)
+	}
+
+	meta := app.aiMetaBar.GetText(false)
+	if !strings.Contains(meta, "(attached)") || !strings.Contains(meta, candidate.Name) {
+		t.Fatalf("expected AI meta bar to show attached context, got %q", meta)
+	}
+
+	cell := app.table.GetCell(1, 0)
+	if cell == nil {
+		t.Fatal("expected first data row cell to exist")
+	}
+	_, background, _ := cell.Style.Decompose()
+	if background == tcell.ColorDefault {
+		t.Fatalf("expected attached row to use subtle highlight, got default background")
+	}
+
+	app.toggleSelectedAIContext()
+	if attached := app.getAttachedAIContext(); !attached.IsZero() {
+		t.Fatalf("expected AI attachment to clear on second toggle, got %+v", attached)
 	}
 }
 

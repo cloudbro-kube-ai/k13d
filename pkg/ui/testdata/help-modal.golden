@@ -12,6 +12,7 @@ Of║  Alt+H/L Resize AI panel     Alt+0    Reset AI width                    �
 │ ║  g        Top                 G        Bottom                           ║  │
 │ ║  Ctrl+F   Page down           Ctrl+B   Page up                          ║  │
 │ ║  Ctrl+D   Half page down      Ctrl+U   Half page up                     ║  │
+│ ║  Right    Open / drill down   Left/Esc Back                             ║  │
 │ ║                                                                         ║  │
 │ ║RESOURCE ACTIONS                                                         ║  │
 │ ║  d        Describe            y        YAML view                        ║  │
@@ -19,7 +20,6 @@ Of║  Alt+H/L Resize AI panel     Alt+0    Reset AI width                    �
 │ ║  r        Refresh             c        Switch context                   ║  │
 │ ║  n        Cycle namespace     Space    Multi-select                     ║  │
 │ ║                                                                         ║  │
-│ ║SORTING                                                                  ║  │
-└─║  Shift+N  Sort by NAME        Shift+A  Sort by AGE                      ║──┘
-  ║  Shift+T  Sort by STATUS      Shift+P  Sort by NAMESPACE                ║
- :║  Shift+C  Sort by RESTARTS    Shift+D  Sort by READY                    ║
+└─║SORTING                                                                  ║──┘
+  ║  Shift+N  Sort by NAME        Shift+A  Sort by AGE                      ║
+ :║  Shift+T  Sort by STATUS      Shift+P  Sort by NAMESPACE                ║

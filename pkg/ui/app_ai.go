@@ -18,10 +18,36 @@ import (
 type aiPromptContext struct {
 	Resource          string
 	Namespace         string
+	SelectedResource  string
 	SelectedName      string
 	SelectedNamespace string
 	SelectedSummary   string
 	DetailedContext   string
+}
+
+type aiAttachedSelection struct {
+	Resource  string
+	Namespace string
+	Name      string
+	Summary   string
+}
+
+func (s aiAttachedSelection) IsZero() bool {
+	return strings.TrimSpace(s.Resource) == "" || strings.TrimSpace(s.Name) == ""
+}
+
+func (s aiAttachedSelection) Matches(other aiAttachedSelection) bool {
+	return strings.EqualFold(strings.TrimSpace(s.Resource), strings.TrimSpace(other.Resource)) &&
+		strings.TrimSpace(s.Namespace) == strings.TrimSpace(other.Namespace) &&
+		strings.TrimSpace(s.Name) == strings.TrimSpace(other.Name)
+}
+
+func (s aiAttachedSelection) TargetLabel() string {
+	target := strings.TrimSpace(s.Name)
+	if ns := strings.TrimSpace(s.Namespace); ns != "" {
+		target = ns + "/" + target
+	}
+	return target
 }
 
 func buildAIPrompt(question string, ctx aiPromptContext) string {
@@ -38,8 +64,8 @@ func buildAIPrompt(question string, ctx aiPromptContext) string {
 	if ctx.SelectedSummary != "" {
 		prompt.WriteString(fmt.Sprintf("Selected row: %s.\n", ctx.SelectedSummary))
 	}
-	if ctx.SelectedName != "" {
-		prompt.WriteString(fmt.Sprintf("Selected object: %s/%s.\n", ctx.Resource, ctx.SelectedName))
+	if ctx.SelectedName != "" && ctx.SelectedResource != "" {
+		prompt.WriteString(fmt.Sprintf("Selected object: %s/%s.\n", ctx.SelectedResource, ctx.SelectedName))
 		if ctx.SelectedNamespace != "" {
 			prompt.WriteString(fmt.Sprintf("Selected object namespace: %s.\n", ctx.SelectedNamespace))
 		}
@@ -132,13 +158,13 @@ func (a *App) resetAIConversation() {
 	a.aiPanel.Clear()
 	fmt.Fprint(a.aiPanel,
 		"[#7aa2f7::b]AI Assistant[-::-]\n"+
-			"[gray]Ask about the current resource, or attach deeper cluster context automatically from the selected row.[-]\n\n"+
+			"[gray]Ask about the current resource, or press Enter on a selected row to attach deeper Kubernetes context for AI.[-]\n\n"+
 			"[#565f89]Try:[-]\n"+
 			"  [#9ece6a]-[-] Why is this workload failing?\n"+
 			"  [#9ece6a]-[-] Explain this resource\n"+
 			"  [#9ece6a]-[-] Show me the rollout risk\n\n"+
 			"[#565f89]Commands:[-] /context  /clear  /help\n"+
-			"[#565f89]Keys:[-] Shift+Tab history  Tab prompt  j/k or PgUp/PgDn scroll\n")
+			"[#565f89]Keys:[-] Enter attach row  Shift+Tab history  Tab prompt  j/k or PgUp/PgDn scroll\n")
 	a.aiPanel.ScrollTo(0, 0)
 	a.setAIStatus(a.readyAIStatusText())
 }
@@ -150,11 +176,60 @@ func (a *App) setAIStatus(text string) {
 	a.aiStatusBar.SetText(text)
 }
 
+func (a *App) currentAISelectionCandidate() aiAttachedSelection {
+	if a.table == nil {
+		return aiAttachedSelection{}
+	}
+
+	row, _ := a.table.GetSelection()
+	return a.aiSelectionCandidateForRow(row)
+}
+
+func (a *App) getAttachedAIContext() aiAttachedSelection {
+	a.aiMx.RLock()
+	defer a.aiMx.RUnlock()
+	return a.attachedAIContext
+}
+
+func (a *App) toggleSelectedAIContext() {
+	candidate := a.currentAISelectionCandidate()
+	if candidate.IsZero() {
+		a.flashMsg("Select a row first to attach AI context", true)
+		return
+	}
+
+	attachedLabel := candidate.TargetLabel()
+	if attachedLabel == "" {
+		attachedLabel = candidate.Name
+	}
+
+	attached := true
+	a.aiMx.Lock()
+	if a.attachedAIContext.Matches(candidate) {
+		a.attachedAIContext = aiAttachedSelection{}
+		attached = false
+	} else {
+		a.attachedAIContext = candidate
+	}
+	a.aiMx.Unlock()
+
+	a.QueueUpdateDraw(func() {
+		a.refreshTableDecorations()
+		a.applyAIChrome()
+		a.updateAIReadyStatusIfIdle()
+	})
+
+	if attached {
+		a.flashMsg(fmt.Sprintf("AI context attached: %s %s", candidate.Resource, attachedLabel), false)
+		return
+	}
+	a.flashMsg("AI context detached", false)
+}
+
 func (a *App) getAIPromptContext() aiPromptContext {
 	a.mx.RLock()
 	resource := a.currentResource
 	ns := a.currentNamespace
-	headers := append([]string(nil), a.tableHeaders...)
 	a.mx.RUnlock()
 
 	snapshot := aiPromptContext{
@@ -162,51 +237,28 @@ func (a *App) getAIPromptContext() aiPromptContext {
 		Namespace: ns,
 	}
 
-	if a.table == nil {
+	attached := a.getAttachedAIContext()
+	if attached.IsZero() {
 		return snapshot
 	}
 
-	row, _ := a.table.GetSelection()
-	if row <= 0 {
-		return snapshot
-	}
-
-	nameIdx := nameColumnIndex(resource)
-	snapshot.SelectedName = strings.TrimSpace(a.getTableCellText(row, nameIdx))
-	if snapshot.SelectedName == "" {
-		return snapshot
-	}
-	if nameIdx != 0 {
-		if selectedNS := strings.TrimSpace(a.getTableCellText(row, 0)); selectedNS != "" {
-			snapshot.SelectedNamespace = selectedNS
-		}
-	}
-	if snapshot.SelectedNamespace == "" {
-		snapshot.SelectedNamespace = ns
-	}
-
-	var parts []string
-	for i, header := range headers {
-		value := strings.TrimSpace(a.getTableCellText(row, i))
-		if value == "" {
-			continue
-		}
-		parts = append(parts, fmt.Sprintf("%s=%s", header, value))
-	}
-	snapshot.SelectedSummary = strings.Join(parts, " | ")
+	snapshot.SelectedResource = attached.Resource
+	snapshot.SelectedName = attached.Name
+	snapshot.SelectedNamespace = attached.Namespace
+	snapshot.SelectedSummary = attached.Summary
 
 	return snapshot
 }
 
 func (a *App) loadDetailedAIContext(base aiPromptContext) aiPromptContext {
-	if a.k8s == nil || base.SelectedName == "" || base.Resource == "" {
+	if a.k8s == nil || base.SelectedName == "" || base.SelectedResource == "" {
 		return base
 	}
 
 	ctx, cancel := context.WithTimeout(a.getAppContext(), 4*time.Second)
 	defer cancel()
 
-	resourceContext, err := a.k8s.GetResourceContext(ctx, base.SelectedNamespace, base.SelectedName, base.Resource)
+	resourceContext, err := a.k8s.GetResourceContext(ctx, base.SelectedNamespace, base.SelectedName, base.SelectedResource)
 	if err != nil {
 		return base
 	}
@@ -216,6 +268,13 @@ func (a *App) loadDetailedAIContext(base aiPromptContext) aiPromptContext {
 
 func (a *App) formatAIContextLabel(ctx aiPromptContext) string {
 	if ctx.SelectedName == "" {
+		if candidate := a.currentAISelectionCandidate(); !candidate.IsZero() {
+			return fmt.Sprintf(
+				"[#7dcfff]%s %s[-] [gray](selected, Enter attach)[-]",
+				tview.Escape(candidate.Resource),
+				tview.Escape(candidate.TargetLabel()),
+			)
+		}
 		scope := "all namespaces"
 		if ctx.Namespace != "" {
 			scope = ctx.Namespace
@@ -227,11 +286,15 @@ func (a *App) formatAIContextLabel(ctx aiPromptContext) string {
 	if ctx.SelectedNamespace != "" {
 		target = ctx.SelectedNamespace + "/" + target
 	}
-	detail := "row summary"
-	if ctx.DetailedContext != "" {
-		detail = "YAML/events/logs attached"
+	resource := ctx.SelectedResource
+	if resource == "" {
+		resource = ctx.Resource
 	}
-	return fmt.Sprintf("[#7dcfff]%s %s[-] [gray](%s)[-]", tview.Escape(ctx.Resource), tview.Escape(target), detail)
+	detail := "attached"
+	if ctx.DetailedContext != "" {
+		detail = "attached: YAML/events/logs"
+	}
+	return fmt.Sprintf("[#9ece6a]%s %s[-] [gray](%s)[-]", tview.Escape(resource), tview.Escape(target), detail)
 }
 
 func (a *App) applyAIChrome() {
@@ -328,7 +391,7 @@ func (a *App) startAITurn(question string, ctx aiPromptContext, mode string) {
 	a.appendAIMarkup(fmt.Sprintf("[gray]Context:[-] %s\n", a.formatAIContextLabel(ctx)))
 	a.appendAIMarkup(fmt.Sprintf("\n[#9ece6a::b]Assistant[-::-] %s\n", modeLabel))
 	if ctx.DetailedContext != "" {
-		a.appendAIMarkup("[gray]Attached selected resource context (YAML, events, recent logs).[-]\n")
+		a.appendAIMarkup("[gray]Attached resource context (YAML, events, recent logs).[-]\n")
 	}
 }
 
@@ -414,11 +477,13 @@ func (a *App) showAIContextPreview() {
 	})
 
 	ctx := a.loadDetailedAIContext(a.getAIPromptContext())
+	candidate := a.currentAISelectionCandidate()
 	body := fmt.Sprintf("View: %s\nNamespace: %s\n", ctx.Resource, ctx.Namespace)
 	if ctx.Namespace == "" {
 		body = fmt.Sprintf("View: %s\nNamespace: all namespaces\n", ctx.Resource)
 	}
 	if ctx.SelectedName != "" {
+		body += fmt.Sprintf("Attached resource: %s\n", ctx.SelectedResource)
 		body += fmt.Sprintf("Selected: %s\n", ctx.SelectedName)
 		if ctx.SelectedNamespace != "" {
 			body += fmt.Sprintf("Selected namespace: %s\n", ctx.SelectedNamespace)
@@ -429,6 +494,12 @@ func (a *App) showAIContextPreview() {
 		if ctx.DetailedContext != "" {
 			body += "\nAttached preview:\n" + trimAIBlock(ctx.DetailedContext, 1400)
 		}
+	} else if !candidate.IsZero() {
+		body += fmt.Sprintf("\nSelected row available: %s %s\n", candidate.Resource, candidate.TargetLabel())
+		if candidate.Summary != "" {
+			body += "\nRow summary:\n" + candidate.Summary + "\n"
+		}
+		body += "\nThis row is not attached yet. Press Enter in the table while the AI panel is open to attach it."
 	} else {
 		body += "\nNo row selected. The AI will answer using the current resource view only."
 	}
@@ -454,7 +525,7 @@ func (a *App) handleAICommand(input string) bool {
 		})
 	case "help":
 		a.QueueUpdateDraw(func() {
-			a.appendAISystemSection("AI Help", "Commands:\n/context  show the resource context that will be attached\n/clear    reset the current transcript\n/new      start a fresh conversation\n/help     show this help\n\nTips:\n- Select a row before asking for richer YAML/events/log context\n- Up/Down recall previous prompts\n- Shift+Tab focuses transcript history\n- Tab returns to the prompt from transcript history\n- j/k or PgUp/PgDn scroll the transcript\n- g / G jump to the top or bottom of the transcript\n- Ctrl+E toggles the AI panel\n- Alt+H / Alt+L resize the AI panel\n- Alt+0 resets the AI panel width")
+			a.appendAISystemSection("AI Help", "Commands:\n/context  show the resource context that is currently attached\n/clear    reset the current transcript\n/new      start a fresh conversation\n/help     show this help\n\nTips:\n- Open the AI panel and press Enter on a table row to attach or detach it\n- Attached rows stay available to AI even if you move to another view\n- Up/Down recall previous prompts\n- Shift+Tab focuses transcript history\n- Tab returns to the prompt from transcript history\n- j/k or PgUp/PgDn scroll the transcript\n- g / G jump to the top or bottom of the transcript\n- Ctrl+E toggles the AI panel\n- Alt+H / Alt+L resize the AI panel\n- Alt+0 resets the AI panel width")
 			a.setAIStatus(a.readyAIStatusText())
 			a.applyAIChrome()
 		})

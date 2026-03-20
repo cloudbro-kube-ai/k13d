@@ -190,6 +190,11 @@ func CreateFakeClientset() *fake.Clientset {
 				Namespace: "default",
 				Labels:    map[string]string{"app": "broken"},
 			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{Name: "app", Image: "broken:latest"},
+				},
+			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodFailed,
 				ContainerStatuses: []corev1.ContainerStatus{

@@ -23,7 +23,11 @@ type navHistory struct {
 func (a *App) drillDown() {
 	row, _ := a.table.GetSelection()
 	if row <= 0 {
-		return
+		if a.table.GetRowCount() <= 1 {
+			return
+		}
+		row = 1
+		a.table.Select(row, 0)
 	}
 
 	a.mx.RLock()
@@ -55,8 +59,8 @@ func (a *App) drillDown() {
 	// Use navigateTo() for deadlock-safe state transitions
 	switch resource {
 	case "pods", "po":
-		// Pod -> Show logs (container view)
-		a.showLogs()
+		// Pod -> Show containers (k9s-style drill down)
+		a.showPodContainers()
 		return
 
 	case "deployments", "deploy":

@@ -154,6 +154,59 @@ func TestTUIJourney_AITranscriptFocusAndPromptReturn(t *testing.T) {
 	}
 }
 
+func TestTUIJourney_PodEnterShowsContainersAndLogsStayOnL(t *testing.T) {
+	ctx := NewTUITestContext(t)
+	defer ctx.Cleanup()
+
+	ctx.Command("pods").Wait(150 * time.Millisecond).ExpectResource("pods")
+	focusTUITable(t, ctx)
+
+	ctx.Press(tcell.KeyEnter).
+		Wait(250 * time.Millisecond).
+		ExpectPage("pod-containers").
+		ExpectNoFreeze()
+
+	ctx.PressRune('l').
+		Wait(250 * time.Millisecond).
+		ExpectPage("logs").
+		ExpectNoFreeze()
+}
+
+func TestTUIJourney_AIContextToggleOnEnterWhenPanelOpen(t *testing.T) {
+	ctx := NewTUITestContext(t)
+	defer ctx.Cleanup()
+
+	ctx.Command("pods").Wait(150 * time.Millisecond).ExpectResource("pods")
+	focusTUITable(t, ctx)
+	candidate := ctx.app.currentAISelectionCandidate()
+	if candidate.IsZero() {
+		t.Fatal("expected a selectable row for AI context")
+	}
+
+	ctx.Press(tcell.KeyCtrlE).Wait(100 * time.Millisecond).ExpectNoFreeze()
+	focusTUITable(t, ctx)
+
+	ctx.Press(tcell.KeyEnter).Wait(150 * time.Millisecond).ExpectNoFreeze()
+
+	attached := ctx.app.getAttachedAIContext()
+	if !attached.Matches(candidate) {
+		t.Fatalf("expected Enter to attach current row when AI panel is open, got %+v", attached)
+	}
+	if safeHasPage(ctx.app, "pod-containers") {
+		t.Fatal("expected Enter to toggle AI context instead of opening pod containers while AI panel is open")
+	}
+
+	meta := ctx.textViewText(ctx.app.aiMetaBar)
+	if !strings.Contains(meta, "(attached)") || !strings.Contains(meta, candidate.Name) {
+		t.Fatalf("expected AI meta bar to show attached context, got %q", meta)
+	}
+
+	ctx.Press(tcell.KeyEnter).Wait(150 * time.Millisecond).ExpectNoFreeze()
+	if attached := ctx.app.getAttachedAIContext(); !attached.IsZero() {
+		t.Fatalf("expected second Enter to detach AI context, got %+v", attached)
+	}
+}
+
 func TestTUIJourney_CommandHistoryNamespaceHintAndSelection(t *testing.T) {
 	ctx := NewTUITestContext(t)
 	defer ctx.Cleanup()
