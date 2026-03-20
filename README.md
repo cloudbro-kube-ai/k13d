@@ -191,6 +191,7 @@ For configuration details, model profiles, storage paths, and example `config.ya
 
 - **Vim navigation** — `j/k`, `g/G`, `/` filter, `:` commands
 - **AI panel** — `Tab` to chat, AI executes commands for you
+- **Node insights** — `:nodes` shows control-plane/worker role plus CPU, memory, and GPU usage bars
 - **Sort** — `Shift+N` name, `Shift+A` age, `Shift+T` status, `:sort` picker
 - **Autocomplete** — Dropdown suggestions as you type
 - **Aliases** — Custom shortcuts (`pp` -> `pods`) via `aliases.yaml`

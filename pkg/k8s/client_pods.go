@@ -244,33 +244,78 @@ func (c *Client) GetNodeMetrics(ctx context.Context) (map[string][]int64, error)
 	return res, nil
 }
 
-// GetNodeMetricsFromPodRequests estimates node resource usage by summing
-// resource requests of all running pods scheduled on each node.
-// Used as a fallback when metrics-server is unavailable.
-func (c *Client) GetNodeMetricsFromPodRequests(ctx context.Context) (map[string][]int64, error) {
+// NodeResourceRequests summarizes requested resources for pods scheduled to a node.
+type NodeResourceRequests struct {
+	CPUMilli int64
+	MemoryMB int64
+	GPU      int64
+}
+
+func isGPUResource(name corev1.ResourceName) bool {
+	return strings.Contains(strings.ToLower(string(name)), "gpu")
+}
+
+func gpuRequestForContainer(container corev1.Container) int64 {
+	for name, qty := range container.Resources.Requests {
+		if isGPUResource(name) {
+			return qty.Value()
+		}
+	}
+	for name, qty := range container.Resources.Limits {
+		if isGPUResource(name) {
+			return qty.Value()
+		}
+	}
+	return 0
+}
+
+func (c *Client) getNodeResourceRequests(ctx context.Context) (map[string]NodeResourceRequests, error) {
 	pods, err := c.clientset().CoreV1().Pods("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	res := make(map[string][]int64)
+
+	res := make(map[string]NodeResourceRequests)
 	for _, pod := range pods.Items {
 		if pod.Status.Phase != corev1.PodRunning || pod.Spec.NodeName == "" {
 			continue
 		}
-		var cpu, mem int64
+
+		nodeReq := res[pod.Spec.NodeName]
 		for _, container := range pod.Spec.Containers {
 			if req, ok := container.Resources.Requests[corev1.ResourceCPU]; ok {
-				cpu += req.MilliValue()
+				nodeReq.CPUMilli += req.MilliValue()
 			}
 			if req, ok := container.Resources.Requests[corev1.ResourceMemory]; ok {
-				mem += req.Value() / 1024 / 1024
+				nodeReq.MemoryMB += req.Value() / 1024 / 1024
 			}
+			nodeReq.GPU += gpuRequestForContainer(container)
 		}
-		if existing, ok := res[pod.Spec.NodeName]; ok {
-			res[pod.Spec.NodeName] = []int64{existing[0] + cpu, existing[1] + mem}
-		} else {
-			res[pod.Spec.NodeName] = []int64{cpu, mem}
-		}
+		res[pod.Spec.NodeName] = nodeReq
+	}
+
+	return res, nil
+}
+
+// GetNodeResourceRequests estimates per-node scheduled resource requests by
+// summing running pods assigned to each node. CPU and memory come from pod
+// requests; GPU uses requests and falls back to limits when needed.
+func (c *Client) GetNodeResourceRequests(ctx context.Context) (map[string]NodeResourceRequests, error) {
+	return c.getNodeResourceRequests(ctx)
+}
+
+// GetNodeMetricsFromPodRequests estimates node resource usage by summing
+// resource requests of all running pods scheduled on each node.
+// Used as a fallback when metrics-server is unavailable.
+func (c *Client) GetNodeMetricsFromPodRequests(ctx context.Context) (map[string][]int64, error) {
+	requests, err := c.getNodeResourceRequests(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make(map[string][]int64)
+	for nodeName, req := range requests {
+		res[nodeName] = []int64{req.CPUMilli, req.MemoryMB}
 	}
 	return res, nil
 }

@@ -108,7 +108,7 @@ func (a *App) refresh() {
 			for r, row := range rows {
 				for c, text := range row {
 					color := tcell.ColorWhite
-					if c == 2 {
+					if a.isStatusColumn(c) {
 						color = a.statusColor(text)
 					}
 					cell := tview.NewTableCell(text).
@@ -302,7 +302,7 @@ func (a *App) applyFilterText(filter string) {
 			nameCol := nameColumnIndex(resource)
 			for c, text := range row {
 				color := tcell.ColorWhite
-				if c == 2 {
+				if a.isStatusColumn(c) {
 					color = a.statusColor(text)
 				}
 				displayText := text

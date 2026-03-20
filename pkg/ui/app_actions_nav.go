@@ -399,10 +399,19 @@ func (a *App) toggleSelection() {
 }
 
 func (a *App) defaultTableCellColor(row, col int) tcell.Color {
-	if col == 2 {
+	if a.isStatusColumn(col) {
 		return a.statusColor(a.getTableCellText(row, col))
 	}
 	return tcell.ColorWhite
+}
+
+func (a *App) isStatusColumn(col int) bool {
+	a.mx.RLock()
+	defer a.mx.RUnlock()
+	if col < 0 || col >= len(a.tableHeaders) {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(a.tableHeaders[col]), "STATUS")
 }
 
 func (a *App) rowMatchesAttachedAIContext(row int) bool {

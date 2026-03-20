@@ -32,11 +32,30 @@ func TestShowPodContainersOpensModal(t *testing.T) {
 
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
-		if app.pages.HasPage("pod-containers") {
+		if hasTestPage(app, "pod-containers") {
 			return
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
 
-	t.Fatalf("expected pod container modal to open; flash=%q", app.flash.GetText(false))
+	flashText := ""
+	done := make(chan struct{})
+	app.QueueUpdateDraw(func() {
+		flashText = app.flash.GetText(false)
+		close(done)
+	})
+	<-done
+
+	t.Fatalf("expected pod container modal to open; flash=%q", flashText)
+}
+
+func hasTestPage(app *App, name string) bool {
+	var has bool
+	done := make(chan struct{})
+	app.QueueUpdateDraw(func() {
+		has = app.pages.HasPage(name)
+		close(done)
+	})
+	<-done
+	return has
 }

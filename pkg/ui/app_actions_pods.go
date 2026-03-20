@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -115,7 +116,7 @@ func (a *App) showPodContainers() {
 	ns := a.getTableCellText(row, 0)
 	name := a.getTableCellText(row, 1)
 
-	a.safeGo("showPodContainers", func() {
+	run := func() {
 		ctx, cancel := context.WithTimeout(a.getAppContext(), 5*time.Second)
 		defer cancel()
 
@@ -185,7 +186,14 @@ func (a *App) showPodContainers() {
 			a.showModal("pod-containers", centered(list, 72, height), true)
 			a.SetFocus(list)
 		})
-	})
+	}
+
+	if atomic.LoadInt32(&a.running) == 0 {
+		run()
+		return
+	}
+
+	a.safeGo("showPodContainers", run)
 }
 
 // showLogs shows logs for selected pod with Vim-style navigation

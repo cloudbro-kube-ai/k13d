@@ -201,6 +201,12 @@ aliases:
 | ++shift+c++ | Uncordon | Mark node schedulable |
 | ++shift+d++ | Drain | Drain node |
 
+### Node View
+
+- `:nodes` shows whether a node is acting as `control-plane` or `worker` in the `ROLE` column.
+- `CPU` and `MEM` prefer live node metrics. When metrics-server is unavailable, k13d falls back to scheduled pod requests and prefixes the cell with `~`.
+- `GPU` shows scheduled GPU requests versus allocatable GPU capacity. Kubernetes metrics-server does not provide live GPU utilization, so this column is request-based by design.
+
 ## AI Assistant
 
 ### Using the AI Panel
