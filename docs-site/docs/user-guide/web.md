@@ -76,6 +76,18 @@ Open your browser to: `http://localhost:8080`
 - **Refresh** button for manual refresh
 - **Freshness badge** when cached data is shown first and live data is still revalidating
 
+### Jobs and CronJobs
+
+The Web UI now shows Job and CronJob timing in more operational detail:
+
+- **Jobs** show status, start time, duration, source CronJob/manual trigger, and completion progress
+- **CronJobs** show schedule, active/suspended state, next run, last run, and recent execution history
+- **Detail modal** shows timestamps in your configured local/browser timezone
+- **Runs tab** on CronJobs shows recent Jobs with started/finished time, duration, and pod outcome counts
+- **Security section** on pod-backed workloads shows seccomp profile, `runAsNonRoot`, token mount, host namespace usage, and container privilege settings
+
+When a CronJob does not set `.spec.timeZone`, k13d still estimates the next run, but it labels that estimate clearly because Kubernetes ultimately follows the controller-manager timezone.
+
 ## Resource Actions
 
 ### Right-Click Menu
@@ -220,15 +232,19 @@ Settings → Admin → Users
 Generate comprehensive cluster reports with selectable sections:
 
 1. Navigate to Reports section
-2. Select report type:
-   - **Cluster Overview** - General health
-   - **Security Audit** - Security findings
-   - **Cost Analysis** - Resource costs
-3. Choose which sections to include (Nodes, Namespaces, Workloads, Events, Security, FinOps, Metrics)
-4. Configure options:
-   - Namespace filter
-   - Output format
-5. Click "Generate"
+2. Choose which sections to include:
+   - **Nodes** - node readiness, cordon state, pressure warnings, taints, capacity and allocatable values
+   - **Namespaces** - namespace inventory and workload counts
+   - **Workloads** - pods, deployments, services, and images
+   - **Events** - recent warning events
+   - **Security** - built-in security summary
+   - **Security Full** - extended scanner output when available
+   - **FinOps** - heuristic compute-cost analysis and rightsizing guidance
+   - **Metrics** - historical metrics when collection is enabled
+3. Optionally include AI analysis
+4. Preview inline or download as **HTML**, **CSV**, or **JSON**
+
+The exported report now respects the section selection you make in the modal. FinOps output is request-based and prefers live pod metrics when available, and the node section includes operational checks such as pressure conditions and cordon status.
 
 ## Custom Resource Detail
 

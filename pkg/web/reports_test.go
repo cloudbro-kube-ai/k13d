@@ -1,7 +1,17 @@
 package web
 
 import (
+	"context"
+	"strings"
 	"testing"
+
+	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestCalculateHealthScore(t *testing.T) {
@@ -356,4 +366,230 @@ func TestNamespaceCost_CostPercentage(t *testing.T) {
 	if totalPercentage != 100.0 {
 		t.Errorf("expected total percentage 100.0, got %f", totalPercentage)
 	}
+}
+
+func TestGenerateReport_AddsNodeWarningsAndFinOpsMetadata(t *testing.T) {
+	fakeClientset := fake.NewClientset( //nolint:staticcheck
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+		&corev1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "node-a",
+				Labels: map[string]string{
+					"node-role.kubernetes.io/worker": "",
+				},
+			},
+			Spec: corev1.NodeSpec{
+				Unschedulable: true,
+				Taints: []corev1.Taint{
+					{Key: "dedicated", Value: "gpu", Effect: corev1.TaintEffectNoSchedule},
+				},
+			},
+			Status: corev1.NodeStatus{
+				Capacity: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("4"),
+					corev1.ResourceMemory: resource.MustParse("8Gi"),
+					corev1.ResourcePods:   resource.MustParse("110"),
+				},
+				Allocatable: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("3500m"),
+					corev1.ResourceMemory: resource.MustParse("7Gi"),
+				},
+				NodeInfo: corev1.NodeSystemInfo{
+					KubeletVersion:          "v1.31.0",
+					OSImage:                 "Ubuntu",
+					Architecture:            "amd64",
+					ContainerRuntimeVersion: "containerd://1.7.0",
+				},
+				Addresses: []corev1.NodeAddress{
+					{Type: corev1.NodeInternalIP, Address: "10.0.0.10"},
+				},
+				Conditions: []corev1.NodeCondition{
+					{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+					{Type: corev1.NodeDiskPressure, Status: corev1.ConditionTrue},
+				},
+			},
+		},
+		&corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "api-0", Namespace: "default"},
+			Spec: corev1.PodSpec{
+				NodeName: "node-a",
+				Containers: []corev1.Container{
+					{
+						Name:  "api",
+						Image: "ghcr.io/example/api:1.0.0",
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("500m"),
+								corev1.ResourceMemory: resource.MustParse("1Gi"),
+							},
+							Limits: corev1.ResourceList{
+								corev1.ResourceCPU:    resource.MustParse("1"),
+								corev1.ResourceMemory: resource.MustParse("2Gi"),
+							},
+						},
+					},
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{Name: "api", Ready: true},
+				},
+			},
+		},
+		&corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "worker-0", Namespace: "default"},
+			Spec: corev1.PodSpec{
+				NodeName: "node-a",
+				Containers: []corev1.Container{
+					{
+						Name:  "worker",
+						Image: "ghcr.io/example/worker:1.0.0",
+					},
+				},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodRunning,
+				ContainerStatuses: []corev1.ContainerStatus{
+					{Name: "worker", Ready: true},
+				},
+			},
+		},
+		&appsv1.Deployment{
+			ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: "default"},
+			Spec:       appsv1.DeploymentSpec{Replicas: int32Ptr(1)},
+			Status: appsv1.DeploymentStatus{
+				ReadyReplicas:     1,
+				UpdatedReplicas:   1,
+				AvailableReplicas: 1,
+			},
+		},
+		&corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: "default"},
+			Spec: corev1.ServiceSpec{
+				Type:      corev1.ServiceTypeClusterIP,
+				ClusterIP: "10.96.0.1",
+				Ports: []corev1.ServicePort{
+					{Port: 80, Protocol: corev1.ProtocolTCP},
+				},
+			},
+		},
+	)
+
+	server := &Server{
+		k8sClient: &k8s.Client{Clientset: fakeClientset},
+	}
+	rg := NewReportGenerator(server)
+
+	report, err := rg.GenerateReport(context.Background(), "tester", &ReportSections{Nodes: true, FinOps: true})
+	if err != nil {
+		t.Fatalf("GenerateReport() error = %v", err)
+	}
+
+	if !report.IncludedSections.Nodes || !report.IncludedSections.FinOps {
+		t.Fatalf("included sections = %+v, want nodes and finops enabled", report.IncludedSections)
+	}
+	if report.NodeSummary.Unschedulable != 1 {
+		t.Fatalf("NodeSummary.Unschedulable = %d, want 1", report.NodeSummary.Unschedulable)
+	}
+	if report.NodeSummary.Pressure != 1 {
+		t.Fatalf("NodeSummary.Pressure = %d, want 1", report.NodeSummary.Pressure)
+	}
+	if report.NodeSummary.WarningNodes != 1 {
+		t.Fatalf("NodeSummary.WarningNodes = %d, want 1", report.NodeSummary.WarningNodes)
+	}
+	if len(report.Nodes) != 1 {
+		t.Fatalf("len(report.Nodes) = %d, want 1", len(report.Nodes))
+	}
+	if !containsReportString(report.Nodes[0].Warnings, "Cordoned") || !containsReportString(report.Nodes[0].Warnings, "DiskPressure") {
+		t.Fatalf("node warnings = %v, want Cordoned and DiskPressure", report.Nodes[0].Warnings)
+	}
+	if !containsReportString(report.Nodes[0].Taints, "dedicated=gpu:NoSchedule") {
+		t.Fatalf("node taints = %v, want dedicated=gpu:NoSchedule", report.Nodes[0].Taints)
+	}
+	if report.FinOpsAnalysis.ResourceEfficiency.MetricsSource != "request_fallback" {
+		t.Fatalf("metrics source = %q, want request_fallback", report.FinOpsAnalysis.ResourceEfficiency.MetricsSource)
+	}
+	if report.FinOpsAnalysis.EstimationModel == "" {
+		t.Fatal("expected estimation model to be populated")
+	}
+	if report.FinOpsAnalysis.TotalEstimatedMonthlyCost <= 0 {
+		t.Fatalf("total estimated cost = %.2f, want > 0", report.FinOpsAnalysis.TotalEstimatedMonthlyCost)
+	}
+	if len(report.FinOpsAnalysis.CostByNamespace) != 1 {
+		t.Fatalf("cost by namespace len = %d, want 1", len(report.FinOpsAnalysis.CostByNamespace))
+	}
+	if report.FinOpsAnalysis.CostByNamespace[0].RunningPodCount != 2 {
+		t.Fatalf("running pod count = %d, want 2", report.FinOpsAnalysis.CostByNamespace[0].RunningPodCount)
+	}
+	if report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutRequests != 1 {
+		t.Fatalf("pods without requests = %d, want 1", report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutRequests)
+	}
+}
+
+func TestReportExportsRespectIncludedSections(t *testing.T) {
+	rg := NewReportGenerator(nil)
+	report := &ComprehensiveReport{
+		IncludedSections: ReportSections{FinOps: true},
+		GeneratedBy:      "tester",
+		FinOpsAnalysis: FinOpsAnalysis{
+			TotalEstimatedMonthlyCost: 42.0,
+			EstimationModel:           "heuristic",
+			ResourceEfficiency: ResourceEfficiencyInfo{
+				MetricsSource:            "request_fallback",
+				TotalCPURequests:         "1.00 cores",
+				TotalCPUUsage:            "1.00 cores",
+				TotalCPULimits:           "2.00 cores",
+				TotalMemoryRequests:      "2.00 GB",
+				TotalMemoryUsage:         "2.00 GB",
+				TotalMemoryLimits:        "4.00 GB",
+				CPURequestsVsCapacity:    25,
+				MemoryRequestsVsCapacity: 30,
+			},
+		},
+		Nodes:     []NodeInfo{{Name: "node-a", Warnings: []string{"Cordoned"}}},
+		Workloads: WorkloadSummary{TotalPods: 2},
+	}
+
+	html := rg.ExportToHTML(report)
+	if !strings.Contains(html, "FinOps Cost Analysis") {
+		t.Fatal("expected FinOps section in HTML export")
+	}
+	if strings.Contains(html, "Cluster Infrastructure") {
+		t.Fatal("did not expect Cluster Infrastructure section when nodes section is disabled")
+	}
+	if strings.Contains(html, "Workloads</a>") {
+		t.Fatal("did not expect Workloads section when workloads section is disabled")
+	}
+	if strings.Contains(html, "Security Summary") {
+		t.Fatal("did not expect Security Summary when security section is disabled")
+	}
+
+	csvBytes, err := rg.ExportToCSV(report)
+	if err != nil {
+		t.Fatalf("ExportToCSV() error = %v", err)
+	}
+	csvText := string(csvBytes)
+	if !strings.Contains(csvText, "=== FINOPS COST ANALYSIS ===") {
+		t.Fatal("expected FinOps section in CSV export")
+	}
+	if strings.Contains(csvText, "=== NODES ===") {
+		t.Fatal("did not expect node section in CSV export when nodes section is disabled")
+	}
+	if strings.Contains(csvText, "=== PODS ===") {
+		t.Fatal("did not expect pod section in CSV export when workloads section is disabled")
+	}
+}
+
+func int32Ptr(v int32) *int32 {
+	return &v
+}
+
+func containsReportString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }

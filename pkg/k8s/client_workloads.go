@@ -228,13 +228,29 @@ func (c *Client) TriggerCronJob(ctx context.Context, namespace, name string) (*b
 	}
 
 	// Create a Job from the CronJob spec
+	labels := map[string]string{}
+	for k, v := range cronJob.Spec.JobTemplate.Labels {
+		labels[k] = v
+	}
+	labels["job-name"] = fmt.Sprintf("%s-manual-%d", name, time.Now().Unix())
+	labels["cronjob.kubernetes.io/manual-trigger"] = "true"
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-manual-%d", name, time.Now().Unix()),
+			Name:      labels["job-name"],
 			Namespace: namespace,
-			Labels:    cronJob.Spec.JobTemplate.Labels,
+			Labels:    labels,
 			Annotations: map[string]string{
 				"cronjob.kubernetes.io/instantiate": "manual",
+				"k13d.io/source-cronjob":            cronJob.Name,
+			},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "batch/v1",
+					Kind:       "CronJob",
+					Name:       cronJob.Name,
+					UID:        cronJob.UID,
+				},
 			},
 		},
 		Spec: cronJob.Spec.JobTemplate.Spec,
