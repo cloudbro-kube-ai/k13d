@@ -2,6 +2,8 @@ package ui
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 	"github.com/rivo/tview"
@@ -95,11 +97,29 @@ func (a *App) recordTUIAudit(action, resource, details string, success bool, err
 // SimulationScreen does not support Suspend (calling Fini on it panics with
 // "close of closed channel"), so in test mode we just run fn directly.
 func (a *App) safeSuspend(fn func()) {
+	interrupts := make(chan os.Signal, 4)
+	signal.Notify(interrupts, os.Interrupt)
+	defer func() {
+		signal.Stop(interrupts)
+		drainSignalChannel(interrupts)
+		a.requestSync()
+	}()
+
 	if a.useSimScreen {
 		fn()
 		return
 	}
 	a.Application.Suspend(fn)
+}
+
+func drainSignalChannel(ch chan os.Signal) {
+	for {
+		select {
+		case <-ch:
+		default:
+			return
+		}
+	}
 }
 
 // showModal adds a modal page with a full terminal sync to prevent ghosting

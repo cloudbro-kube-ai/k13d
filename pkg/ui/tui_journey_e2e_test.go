@@ -24,6 +24,20 @@ func aiPanelWidthForTest(t *testing.T, app *App) int {
 	return width
 }
 
+func contentWidthForTest(t *testing.T, app *App) int {
+	t.Helper()
+
+	done := make(chan struct{})
+	width := 0
+	app.QueueUpdate(func() {
+		_, _, width, _ = app.contentFlex.GetRect()
+		close(done)
+	})
+	<-done
+
+	return width
+}
+
 func focusTUITable(t *testing.T, ctx *TUITestContext) {
 	t.Helper()
 
@@ -363,5 +377,36 @@ func TestTUIJourney_AIPanelResize(t *testing.T) {
 	}
 	if resetRectWidth != initialRectWidth {
 		t.Fatalf("expected AI panel rect width to reset to %d, got %d", initialRectWidth, resetRectWidth)
+	}
+
+	ctx.PressAlt('f').Wait(100 * time.Millisecond).ExpectNoFreeze()
+
+	ctx.app.mx.RLock()
+	fullscreen := ctx.app.aiPanelFullscreen
+	restoreWidth := ctx.app.aiPanelRestoreWidth
+	ctx.app.mx.RUnlock()
+	fullscreenRectWidth := aiPanelWidthForTest(t, ctx.app)
+	contentRectWidth := contentWidthForTest(t, ctx.app)
+	if !fullscreen {
+		t.Fatal("expected Alt+F to enter AI fullscreen mode")
+	}
+	if restoreWidth != defaultAIPanelWidth {
+		t.Fatalf("expected fullscreen to remember restore width %d, got %d", defaultAIPanelWidth, restoreWidth)
+	}
+	if fullscreenRectWidth != contentRectWidth {
+		t.Fatalf("expected fullscreen AI width %d to match content width %d", fullscreenRectWidth, contentRectWidth)
+	}
+
+	ctx.PressAlt('f').Wait(100 * time.Millisecond).ExpectNoFreeze()
+
+	ctx.app.mx.RLock()
+	fullscreen = ctx.app.aiPanelFullscreen
+	ctx.app.mx.RUnlock()
+	restoredRectWidth := aiPanelWidthForTest(t, ctx.app)
+	if fullscreen {
+		t.Fatal("expected second Alt+F to restore split layout")
+	}
+	if restoredRectWidth != resetRectWidth {
+		t.Fatalf("expected AI panel width to restore to %d, got %d", resetRectWidth, restoredRectWidth)
 	}
 }

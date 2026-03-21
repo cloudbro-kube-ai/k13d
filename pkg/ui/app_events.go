@@ -652,6 +652,9 @@ func (a *App) handleAIPanelResizeKey(event *tcell.EventKey) bool {
 		return true
 	case tcell.KeyRune:
 		switch event.Rune() {
+		case 'f', 'F':
+			a.toggleAIPanelFullscreen()
+			return true
 		case 'h', 'H':
 			a.adjustAIPanelWidth(-aiPanelResizeStep)
 			return true

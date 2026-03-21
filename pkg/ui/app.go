@@ -127,7 +127,9 @@ type App struct {
 	recentNamespaces    []string // Recently used namespaces (most recent first)
 	maxRecentNamespaces int      // Max number of recent namespaces to track
 	showAIPanel         bool
-	aiPanelWidth        int               // Width of the right-side AI panel in columns
+	aiPanelWidth        int  // Width of the right-side AI panel in columns
+	aiPanelRestoreWidth int  // Split width to restore after leaving full-size mode
+	aiPanelFullscreen   bool // True when the AI panel temporarily owns the content area
 	filterText          string            // Current filter text
 	filterRegex         bool              // True if filter is regex (e.g., /pattern/)
 	tableHeaders        []string          // Original headers

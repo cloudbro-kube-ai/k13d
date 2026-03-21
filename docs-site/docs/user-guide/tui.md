@@ -69,6 +69,8 @@ k13d -A
 | ++ctrl+f++ | Page down |
 | ++ctrl+b++ | Page up |
 
+Namespace quick-select keeps ++0++ pinned to `all namespaces` and reorders ++1-9++ so your most recently used namespaces move to the front, similar to k9s.
+
 ### Panel Focus
 
 | Key | Action |
@@ -83,6 +85,7 @@ k13d -A
 |-----|--------|
 | ++alt+h++ | Make the AI panel narrower |
 | ++alt+l++ | Make the AI panel wider |
+| ++alt+f++ | Expand the AI panel to full size, then restore the split layout |
 | ++alt+0++ | Reset the AI panel to its default width |
 
 ## Resource Commands
@@ -221,7 +224,7 @@ aliases:
 
 The prompt area is boxed separately from the transcript so it is easier to see whether you are typing a new message or browsing previous output.
 
-You can keep the table readable while chatting by resizing the right-side AI panel with ++alt+h++, ++alt+l++, and ++alt+0++.
+You can keep the table readable while chatting by resizing the right-side AI panel with ++alt+h++, ++alt+l++, and ++alt+0++, or temporarily expand it with ++alt+f++ and restore the split layout with the same shortcut.
 
 When a row is attached to AI, it keeps a subtle highlight in the table and stays available to the assistant even if you navigate to another resource view.
 

@@ -352,6 +352,55 @@ func TestAdjustAIPanelWidthPreservesAIPanelFocus(t *testing.T) {
 	}
 }
 
+func TestToggleAIPanelFullscreenRestoresWidthAndFocus(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+	app.showAIPanel = true
+	app.aiPanelWidth = 64
+	app.rebuildContentLayout(true)
+	app.SetFocus(app.aiPanel)
+
+	app.toggleAIPanelFullscreen()
+
+	app.mx.RLock()
+	fullscreen := app.aiPanelFullscreen
+	restoreWidth := app.aiPanelRestoreWidth
+	app.mx.RUnlock()
+	if !fullscreen {
+		t.Fatal("expected AI panel to enter fullscreen mode")
+	}
+	if restoreWidth != 64 {
+		t.Fatalf("expected restore width 64, got %d", restoreWidth)
+	}
+	if got := app.contentFlex.GetItemCount(); got != 1 {
+		t.Fatalf("expected fullscreen layout to show only the AI panel, got %d items", got)
+	}
+	if got := app.GetFocus(); got != app.aiPanel {
+		t.Fatalf("expected AI focus to remain on transcript, got %T", got)
+	}
+
+	app.toggleAIPanelFullscreen()
+
+	app.mx.RLock()
+	fullscreen = app.aiPanelFullscreen
+	width := app.aiPanelWidth
+	app.mx.RUnlock()
+	if fullscreen {
+		t.Fatal("expected AI panel to exit fullscreen mode")
+	}
+	if width != 64 {
+		t.Fatalf("expected AI panel width to restore to 64, got %d", width)
+	}
+	if got := app.contentFlex.GetItemCount(); got != 2 {
+		t.Fatalf("expected split layout to restore table and AI panel, got %d items", got)
+	}
+	if got := app.GetFocus(); got != app.aiPanel {
+		t.Fatalf("expected AI focus to remain on transcript after restore, got %T", got)
+	}
+}
+
 func TestAIInputFrameProvidesPromptBoundary(t *testing.T) {
 	app := NewTestApp(TestAppConfig{
 		SkipBackgroundLoading: true,
