@@ -53,36 +53,36 @@
             <!-- Token Login Form (for token mode) -->
             <div id="token-login-form" class="login-form">
                 <div class="token-hint" id="token-hint">
-                    <div style="margin-bottom: 12px;">🔐 Kubernetes ServiceAccount 토큰으로 로그인하세요</div>
+                    <div style="margin-bottom: 12px;">🔐 <span data-i18n="login_token_hint">Sign in with your Kubernetes ServiceAccount token</span></div>
                     <div class="token-help-box" id="token-help-box">
                         <div class="token-help-toggle" onclick="toggleTokenHelp()" role="button" tabindex="0">
-                            <span class="token-help-toggle-text">📋 토큰 생성 방법 보기</span>
+                            <span class="token-help-toggle-text">📋 <span data-i18n="login_token_help_toggle">How to create a token</span></span>
                             <span class="token-help-toggle-icon">▼</span>
                         </div>
                         <div class="token-help-content">
                             <div class="token-help-step">
                                 <span class="step-num">1</span>
                                 <div>
-                                    <div>ServiceAccount 생성 (선택사항):</div>
+                                    <div data-i18n="login_token_step1">Create ServiceAccount (optional):</div>
                                     <code>kubectl create sa my-user -n default</code>
                                 </div>
                             </div>
                             <div class="token-help-step">
                                 <span class="step-num">2</span>
                                 <div>
-                                    <div>권한 부여:</div>
+                                    <div data-i18n="login_token_step2">Grant permissions:</div>
                                     <code>kubectl create clusterrolebinding my-user-binding \<br/>  --clusterrole=cluster-admin \<br/>  --serviceaccount=default:my-user</code>
                                 </div>
                             </div>
                             <div class="token-help-step">
                                 <span class="step-num">3</span>
                                 <div>
-                                    <div>토큰 생성:</div>
+                                    <div data-i18n="login_token_step3">Create token:</div>
                                     <code>kubectl create token my-user -n default --duration=8760h</code>
                                 </div>
                             </div>
                             <div class="token-help-note">
-                                💡 <strong>Tip:</strong> 위 토큰을 아래에 붙여넣고 Enter를 누르세요!
+                                💡 <strong>Tip:</strong> <span data-i18n="login_token_tip">Paste the token below and press Enter!</span>
                             </div>
                         </div>
                     </div>
@@ -96,8 +96,8 @@
             <!-- Password Login Form (for local mode) -->
             <div id="password-login-form" class="login-form">
                 <div class="local-login-hint">
-                    <div style="margin-bottom: 8px;">👤 로컬 계정으로 로그인하세요</div>
-                    <div style="font-size: 11px; color: var(--text-muted);">관리자에게 계정 정보를 문의하세요</div>
+                    <div style="margin-bottom: 8px;">👤 <span data-i18n="login_local_hint">Sign in with your local account</span></div>
+                    <div style="font-size: 11px; color: var(--text-muted);"><span data-i18n="login_local_sub_hint">Ask your administrator for credentials</span></div>
                 </div>
                 <label for="login-username" class="sr-only">Username</label>
                 <input type="text" id="login-username" placeholder="Username" aria-label="Username"

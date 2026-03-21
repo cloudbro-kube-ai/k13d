@@ -132,7 +132,17 @@ const translations = {
         th_ip: 'IP',
         th_type: 'TYPE',
         th_ports: 'PORTS',
-        th_actions: 'ACTIONS'
+        th_actions: 'ACTIONS',
+
+        // Login Page
+        login_token_hint: 'Sign in with your Kubernetes ServiceAccount token',
+        login_token_help_toggle: 'How to create a token',
+        login_token_step1: 'Create ServiceAccount (optional):',
+        login_token_step2: 'Grant permissions:',
+        login_token_step3: 'Create token:',
+        login_token_tip: 'Paste the token below and press Enter!',
+        login_local_hint: 'Sign in with your local account',
+        login_local_sub_hint: 'Ask your administrator for credentials'
     },
     ko: {
         // Navigation
@@ -266,7 +276,17 @@ const translations = {
         th_ip: 'IP',
         th_type: '유형',
         th_ports: '포트',
-        th_actions: '작업'
+        th_actions: '작업',
+
+        // Login Page
+        login_token_hint: 'Kubernetes ServiceAccount 토큰으로 로그인하세요',
+        login_token_help_toggle: '토큰 생성 방법 보기',
+        login_token_step1: 'ServiceAccount 생성 (선택사항):',
+        login_token_step2: '권한 부여:',
+        login_token_step3: '토큰 생성:',
+        login_token_tip: '위 토큰을 아래에 붙여넣고 Enter를 누르세요!',
+        login_local_hint: '로컬 계정으로 로그인하세요',
+        login_local_sub_hint: '관리자에게 계정 정보를 문의하세요'
     },
     zh: {
         // Navigation
@@ -396,7 +416,17 @@ const translations = {
         th_ip: 'IP',
         th_type: '类型',
         th_ports: '端口',
-        th_actions: '操作'
+        th_actions: '操作',
+
+        // Login Page
+        login_token_hint: '使用 Kubernetes ServiceAccount 令牌登录',
+        login_token_help_toggle: '如何创建令牌',
+        login_token_step1: '创建 ServiceAccount（可选）：',
+        login_token_step2: '授予权限：',
+        login_token_step3: '创建令牌：',
+        login_token_tip: '将令牌粘贴到下方，然后按 Enter！',
+        login_local_hint: '使用本地账户登录',
+        login_local_sub_hint: '请联系管理员获取凭据'
     },
     ja: {
         // Navigation
@@ -526,7 +556,17 @@ const translations = {
         th_ip: 'IP',
         th_type: 'タイプ',
         th_ports: 'ポート',
-        th_actions: 'アクション'
+        th_actions: 'アクション',
+
+        // Login Page
+        login_token_hint: 'Kubernetes ServiceAccountトークンでサインイン',
+        login_token_help_toggle: 'トークンの作成方法',
+        login_token_step1: 'ServiceAccount 作成（任意）：',
+        login_token_step2: '権限を付与：',
+        login_token_step3: 'トークンを作成：',
+        login_token_tip: '上のトークンを下に貼り付けて Enter を押してください！',
+        login_local_hint: 'ローカルアカウントでサインイン',
+        login_local_sub_hint: '管理者に資格情報をお問い合わせください'
     }
 };
 

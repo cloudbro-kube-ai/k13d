@@ -462,37 +462,10 @@ func recoveryMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// withRecovery wraps a HandlerFunc with panic recovery
+// withRecovery wraps a HandlerFunc with panic recovery.
+// Delegates to recoveryMiddleware to avoid duplicating recovery logic.
 func withRecovery(handler http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				// Log the panic with stack trace
-				fmt.Printf("PANIC in HTTP handler: %v\nPath: %s %s\n", err, r.Method, r.URL.Path)
-
-				// Audit the panic event
-				if db.DB != nil {
-					username := r.Header.Get("X-Username")
-					if username == "" {
-						username = "anonymous"
-					}
-					_ = db.RecordAudit(db.AuditEntry{
-						User:       username,
-						Action:     "http_panic",
-						Resource:   r.URL.Path,
-						Details:    fmt.Sprintf("Panic recovered: %v", err),
-						ActionType: db.ActionTypeMutation,
-						Source:     "web",
-						Success:    false,
-					})
-				}
-
-				// Return 500 error to client
-				WriteError(w, NewAPIError(ErrCodeInternalError, "An unexpected error occurred"))
-			}
-		}()
-		handler(w, r)
-	}
+	return recoveryMiddleware(handler).ServeHTTP
 }
 
 // requestLoggingMiddleware logs all HTTP requests
