@@ -33,6 +33,7 @@ const (
 	ErrCodeDatabaseError    = "DATABASE_ERROR"
 	ErrCodeTimeout          = "TIMEOUT"
 	ErrCodeRateLimited      = "RATE_LIMITED"
+	ErrCodeMethodNotAllowed = "METHOD_NOT_ALLOWED"
 )
 
 // Common error messages with user-friendly suggestions
@@ -84,6 +85,10 @@ var errorMessages = map[string]struct {
 		Message:    "Rate limit exceeded",
 		Suggestion: "You've made too many requests. Please wait a moment before trying again.",
 	},
+	ErrCodeMethodNotAllowed: {
+		Message:    "Method not allowed",
+		Suggestion: "This endpoint does not support the HTTP method used. Check the API documentation.",
+	},
 }
 
 // NewAPIError creates a new API error with a user-friendly message
@@ -129,6 +134,8 @@ func getStatusCodeForError(code string) int {
 		return http.StatusGatewayTimeout
 	case ErrCodeRateLimited:
 		return http.StatusTooManyRequests
+	case ErrCodeMethodNotAllowed:
+		return http.StatusMethodNotAllowed
 	case ErrCodeLLMNotConfigured, ErrCodeLLMNoToolCalling:
 		return http.StatusServiceUnavailable
 	case ErrCodeK8sError, ErrCodeHelmError, ErrCodeDatabaseError, ErrCodeLLMError:
@@ -192,6 +199,16 @@ func ParseK8sError(err error) *APIError {
 	default:
 		return NewAPIError(ErrCodeK8sError, errStr)
 	}
+}
+
+// writeMethodNotAllowed is a convenience helper for handlers that only accept specific methods.
+func writeMethodNotAllowed(w http.ResponseWriter) {
+	WriteError(w, NewAPIError(ErrCodeMethodNotAllowed, "Use POST for this endpoint"))
+}
+
+// writeK8sError writes a Kubernetes error using ParseK8sError for consistent formatting.
+func writeK8sError(w http.ResponseWriter, err error) {
+	WriteError(w, ParseK8sError(err))
 }
 
 // ParseLLMError converts LLM errors to user-friendly messages

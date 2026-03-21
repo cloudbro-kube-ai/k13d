@@ -38,18 +38,18 @@ type DeploymentRollbackRequest struct {
 // handleDeploymentScale handles POST /api/deployment/scale
 func (s *Server) handleDeploymentScale(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
 	var req DeploymentScaleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Namespace == "" || req.Name == "" {
-		http.Error(w, "namespace and name are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "namespace and name are required"))
 		return
 	}
 
@@ -64,7 +64,7 @@ func (s *Server) handleDeploymentScale(w http.ResponseWriter, r *http.Request) {
 	// Get current deployment
 	deployment, err := clientset.AppsV1().Deployments(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get deployment: %v", err), http.StatusNotFound)
+		writeK8sError(w, fmt.Errorf("failed to get deployment: %w", err))
 		return
 	}
 
@@ -77,7 +77,7 @@ func (s *Server) handleDeploymentScale(w http.ResponseWriter, r *http.Request) {
 	deployment.Spec.Replicas = &req.Replicas
 	_, err = clientset.AppsV1().Deployments(req.Namespace).Update(ctx, deployment, metav1.UpdateOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to scale deployment: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to scale deployment: %w", err))
 		return
 	}
 
@@ -101,7 +101,7 @@ func (s *Server) handleDeploymentScale(w http.ResponseWriter, r *http.Request) {
 // handleDeploymentRestart handles POST /api/deployment/restart
 func (s *Server) handleDeploymentRestart(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -110,12 +110,12 @@ func (s *Server) handleDeploymentRestart(w http.ResponseWriter, r *http.Request)
 		Name      string `json:"name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Namespace == "" || req.Name == "" {
-		http.Error(w, "namespace and name are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "namespace and name are required"))
 		return
 	}
 
@@ -131,7 +131,7 @@ func (s *Server) handleDeploymentRestart(w http.ResponseWriter, r *http.Request)
 	patch := fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, time.Now().Format(time.RFC3339))
 	_, err := clientset.AppsV1().Deployments(req.Namespace).Patch(ctx, req.Name, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to restart deployment: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to restart deployment: %w", err))
 		return
 	}
 
@@ -153,7 +153,7 @@ func (s *Server) handleDeploymentRestart(w http.ResponseWriter, r *http.Request)
 // handleDeploymentPause handles POST /api/deployment/pause
 func (s *Server) handleDeploymentPause(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -162,12 +162,12 @@ func (s *Server) handleDeploymentPause(w http.ResponseWriter, r *http.Request) {
 		Name      string `json:"name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Namespace == "" || req.Name == "" {
-		http.Error(w, "namespace and name are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "namespace and name are required"))
 		return
 	}
 
@@ -183,7 +183,7 @@ func (s *Server) handleDeploymentPause(w http.ResponseWriter, r *http.Request) {
 	patch := `{"spec":{"paused":true}}`
 	_, err := clientset.AppsV1().Deployments(req.Namespace).Patch(ctx, req.Name, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to pause deployment: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to pause deployment: %w", err))
 		return
 	}
 
@@ -205,7 +205,7 @@ func (s *Server) handleDeploymentPause(w http.ResponseWriter, r *http.Request) {
 // handleDeploymentResume handles POST /api/deployment/resume
 func (s *Server) handleDeploymentResume(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -214,12 +214,12 @@ func (s *Server) handleDeploymentResume(w http.ResponseWriter, r *http.Request) 
 		Name      string `json:"name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Namespace == "" || req.Name == "" {
-		http.Error(w, "namespace and name are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "namespace and name are required"))
 		return
 	}
 
@@ -235,7 +235,7 @@ func (s *Server) handleDeploymentResume(w http.ResponseWriter, r *http.Request) 
 	patch := `{"spec":{"paused":false}}`
 	_, err := clientset.AppsV1().Deployments(req.Namespace).Patch(ctx, req.Name, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to resume deployment: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to resume deployment: %w", err))
 		return
 	}
 
@@ -257,18 +257,18 @@ func (s *Server) handleDeploymentResume(w http.ResponseWriter, r *http.Request) 
 // handleDeploymentRollback handles POST /api/deployment/rollback
 func (s *Server) handleDeploymentRollback(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
 	var req DeploymentRollbackRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Namespace == "" || req.Name == "" {
-		http.Error(w, "namespace and name are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "namespace and name are required"))
 		return
 	}
 
@@ -283,7 +283,7 @@ func (s *Server) handleDeploymentRollback(w http.ResponseWriter, r *http.Request
 	// Get deployment
 	deployment, err := clientset.AppsV1().Deployments(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get deployment: %v", err), http.StatusNotFound)
+		writeK8sError(w, fmt.Errorf("failed to get deployment: %w", err))
 		return
 	}
 
@@ -292,7 +292,7 @@ func (s *Server) handleDeploymentRollback(w http.ResponseWriter, r *http.Request
 		LabelSelector: metav1.FormatLabelSelector(deployment.Spec.Selector),
 	})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to list ReplicaSets: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to list ReplicaSets: %w", err))
 		return
 	}
 
@@ -318,7 +318,7 @@ func (s *Server) handleDeploymentRollback(w http.ResponseWriter, r *http.Request
 		}
 
 		if previousRS == nil {
-			http.Error(w, "No previous revision found", http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeNotFound, "No previous revision found"))
 			return
 		}
 		targetRS = previousRS
@@ -332,7 +332,7 @@ func (s *Server) handleDeploymentRollback(w http.ResponseWriter, r *http.Request
 			}
 		}
 		if targetRS == nil {
-			http.Error(w, fmt.Sprintf("Revision %d not found", req.Revision), http.StatusNotFound)
+			WriteError(w, NewAPIError(ErrCodeNotFound, fmt.Sprintf("Revision %d not found", req.Revision)))
 			return
 		}
 	}
@@ -344,13 +344,13 @@ func (s *Server) handleDeploymentRollback(w http.ResponseWriter, r *http.Request
 		},
 	})
 	if err != nil {
-		http.Error(w, "Failed to create patch", http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to create rollback patch"))
 		return
 	}
 
 	_, err = clientset.AppsV1().Deployments(req.Namespace).Patch(ctx, req.Name, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to rollback deployment: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to rollback deployment: %w", err))
 		return
 	}
 
@@ -389,7 +389,7 @@ func getRevision(rs *appsv1.ReplicaSet) int64 {
 // handleDeploymentHistory handles GET /api/deployment/history
 func (s *Server) handleDeploymentHistory(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -397,7 +397,7 @@ func (s *Server) handleDeploymentHistory(w http.ResponseWriter, r *http.Request)
 	name := r.URL.Query().Get("name")
 
 	if namespace == "" || name == "" {
-		http.Error(w, "namespace and name are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "namespace and name are required"))
 		return
 	}
 
@@ -407,7 +407,7 @@ func (s *Server) handleDeploymentHistory(w http.ResponseWriter, r *http.Request)
 	// Get deployment
 	deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get deployment: %v", err), http.StatusNotFound)
+		writeK8sError(w, fmt.Errorf("failed to get deployment: %w", err))
 		return
 	}
 
@@ -416,7 +416,7 @@ func (s *Server) handleDeploymentHistory(w http.ResponseWriter, r *http.Request)
 		LabelSelector: metav1.FormatLabelSelector(deployment.Spec.Selector),
 	})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to list ReplicaSets: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to list ReplicaSets: %w", err))
 		return
 	}
 
@@ -466,7 +466,7 @@ func (s *Server) handleDeploymentHistory(w http.ResponseWriter, r *http.Request)
 // handleCronJobTrigger handles POST /api/cronjob/trigger
 func (s *Server) handleCronJobTrigger(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -475,12 +475,12 @@ func (s *Server) handleCronJobTrigger(w http.ResponseWriter, r *http.Request) {
 		Name      string `json:"name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Namespace == "" || req.Name == "" {
-		http.Error(w, "namespace and name are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "namespace and name are required"))
 		return
 	}
 
@@ -495,7 +495,7 @@ func (s *Server) handleCronJobTrigger(w http.ResponseWriter, r *http.Request) {
 	// Get the CronJob
 	cronJob, err := clientset.BatchV1().CronJobs(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get CronJob: %v", err), http.StatusNotFound)
+		writeK8sError(w, fmt.Errorf("failed to get CronJob: %w", err))
 		return
 	}
 
@@ -527,7 +527,7 @@ func (s *Server) handleCronJobTrigger(w http.ResponseWriter, r *http.Request) {
 
 	createdJob, err := clientset.BatchV1().Jobs(req.Namespace).Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to create Job: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to create Job: %w", err))
 		return
 	}
 
@@ -550,7 +550,7 @@ func (s *Server) handleCronJobTrigger(w http.ResponseWriter, r *http.Request) {
 // handleCronJobSuspend handles POST /api/cronjob/suspend
 func (s *Server) handleCronJobSuspend(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -560,12 +560,12 @@ func (s *Server) handleCronJobSuspend(w http.ResponseWriter, r *http.Request) {
 		Suspend   bool   `json:"suspend"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Namespace == "" || req.Name == "" {
-		http.Error(w, "namespace and name are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "namespace and name are required"))
 		return
 	}
 
@@ -581,7 +581,7 @@ func (s *Server) handleCronJobSuspend(w http.ResponseWriter, r *http.Request) {
 	patch := fmt.Sprintf(`{"spec":{"suspend":%t}}`, req.Suspend)
 	_, err := clientset.BatchV1().CronJobs(req.Namespace).Patch(ctx, req.Name, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to update CronJob: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to update CronJob: %w", err))
 		return
 	}
 
@@ -612,7 +612,7 @@ func (s *Server) handleCronJobSuspend(w http.ResponseWriter, r *http.Request) {
 // handleNodeCordon handles POST /api/node/cordon
 func (s *Server) handleNodeCordon(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -621,12 +621,12 @@ func (s *Server) handleNodeCordon(w http.ResponseWriter, r *http.Request) {
 		Uncordon bool   `json:"uncordon"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Name == "" {
-		http.Error(w, "node name is required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "node name is required"))
 		return
 	}
 
@@ -641,7 +641,7 @@ func (s *Server) handleNodeCordon(w http.ResponseWriter, r *http.Request) {
 	// Get node
 	node, err := clientset.CoreV1().Nodes().Get(ctx, req.Name, metav1.GetOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get node: %v", err), http.StatusNotFound)
+		writeK8sError(w, fmt.Errorf("failed to get node: %w", err))
 		return
 	}
 
@@ -649,7 +649,7 @@ func (s *Server) handleNodeCordon(w http.ResponseWriter, r *http.Request) {
 	node.Spec.Unschedulable = !req.Uncordon
 	_, err = clientset.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to update node: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to update node: %w", err))
 		return
 	}
 
@@ -676,7 +676,7 @@ func (s *Server) handleNodeCordon(w http.ResponseWriter, r *http.Request) {
 // handleNodeDrain handles POST /api/node/drain
 func (s *Server) handleNodeDrain(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -689,12 +689,12 @@ func (s *Server) handleNodeDrain(w http.ResponseWriter, r *http.Request) {
 		Timeout            int    `json:"timeout"`     // seconds
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Name == "" {
-		http.Error(w, "node name is required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "node name is required"))
 		return
 	}
 
@@ -709,7 +709,7 @@ func (s *Server) handleNodeDrain(w http.ResponseWriter, r *http.Request) {
 	// First cordon the node
 	node, err := clientset.CoreV1().Nodes().Get(ctx, req.Name, metav1.GetOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get node: %v", err), http.StatusNotFound)
+		writeK8sError(w, fmt.Errorf("failed to get node: %w", err))
 		return
 	}
 
@@ -717,7 +717,7 @@ func (s *Server) handleNodeDrain(w http.ResponseWriter, r *http.Request) {
 		node.Spec.Unschedulable = true
 		_, err = clientset.CoreV1().Nodes().Update(ctx, node, metav1.UpdateOptions{})
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to cordon node: %v", err), http.StatusInternalServerError)
+			writeK8sError(w, fmt.Errorf("failed to cordon node: %w", err))
 			return
 		}
 	}
@@ -779,13 +779,13 @@ func (s *Server) handleNodeDrain(w http.ResponseWriter, r *http.Request) {
 // handleNodePods handles GET /api/node/pods
 func (s *Server) handleNodePods(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
 	nodeName := r.URL.Query().Get("name")
 	if nodeName == "" {
-		http.Error(w, "node name is required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "node name is required"))
 		return
 	}
 
@@ -797,7 +797,7 @@ func (s *Server) handleNodePods(w http.ResponseWriter, r *http.Request) {
 		FieldSelector: fmt.Sprintf("spec.nodeName=%s", nodeName),
 	})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to list pods: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to list pods: %w", err))
 		return
 	}
 
@@ -837,7 +837,7 @@ func (s *Server) handleNodePods(w http.ResponseWriter, r *http.Request) {
 // handleStatefulSetScale handles POST /api/statefulset/scale
 func (s *Server) handleStatefulSetScale(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -847,12 +847,12 @@ func (s *Server) handleStatefulSetScale(w http.ResponseWriter, r *http.Request) 
 		Replicas  int32  `json:"replicas"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Namespace == "" || req.Name == "" {
-		http.Error(w, "namespace and name are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "namespace and name are required"))
 		return
 	}
 
@@ -867,7 +867,7 @@ func (s *Server) handleStatefulSetScale(w http.ResponseWriter, r *http.Request) 
 	// Get current StatefulSet
 	sts, err := clientset.AppsV1().StatefulSets(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get StatefulSet: %v", err), http.StatusNotFound)
+		writeK8sError(w, fmt.Errorf("failed to get StatefulSet: %w", err))
 		return
 	}
 
@@ -880,7 +880,7 @@ func (s *Server) handleStatefulSetScale(w http.ResponseWriter, r *http.Request) 
 	sts.Spec.Replicas = &req.Replicas
 	_, err = clientset.AppsV1().StatefulSets(req.Namespace).Update(ctx, sts, metav1.UpdateOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to scale StatefulSet: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to scale StatefulSet: %w", err))
 		return
 	}
 
@@ -904,7 +904,7 @@ func (s *Server) handleStatefulSetScale(w http.ResponseWriter, r *http.Request) 
 // handleStatefulSetRestart handles POST /api/statefulset/restart
 func (s *Server) handleStatefulSetRestart(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -913,12 +913,12 @@ func (s *Server) handleStatefulSetRestart(w http.ResponseWriter, r *http.Request
 		Name      string `json:"name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Namespace == "" || req.Name == "" {
-		http.Error(w, "namespace and name are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "namespace and name are required"))
 		return
 	}
 
@@ -934,7 +934,7 @@ func (s *Server) handleStatefulSetRestart(w http.ResponseWriter, r *http.Request
 	patch := fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, time.Now().Format(time.RFC3339))
 	_, err := clientset.AppsV1().StatefulSets(req.Namespace).Patch(ctx, req.Name, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to restart StatefulSet: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to restart StatefulSet: %w", err))
 		return
 	}
 
@@ -960,7 +960,7 @@ func (s *Server) handleStatefulSetRestart(w http.ResponseWriter, r *http.Request
 // handleDaemonSetRestart handles POST /api/daemonset/restart
 func (s *Server) handleDaemonSetRestart(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -969,12 +969,12 @@ func (s *Server) handleDaemonSetRestart(w http.ResponseWriter, r *http.Request) 
 		Name      string `json:"name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Namespace == "" || req.Name == "" {
-		http.Error(w, "namespace and name are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "namespace and name are required"))
 		return
 	}
 
@@ -990,7 +990,7 @@ func (s *Server) handleDaemonSetRestart(w http.ResponseWriter, r *http.Request) 
 	patch := fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, time.Now().Format(time.RFC3339))
 	_, err := clientset.AppsV1().DaemonSets(req.Namespace).Patch(ctx, req.Name, types.StrategicMergePatchType, []byte(patch), metav1.PatchOptions{})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to restart DaemonSet: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to restart DaemonSet: %w", err))
 		return
 	}
 

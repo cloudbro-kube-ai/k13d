@@ -367,7 +367,7 @@ func TestE2E_DeploymentRestart(t *testing.T) {
 				"namespace": "default",
 				"name":      "non-existent",
 			},
-			expectedStatus: http.StatusInternalServerError, // Server returns 500 for not found in restart
+			expectedStatus: http.StatusNotFound, // ParseK8sError correctly maps "not found" to 404
 		},
 		{
 			name: "missing fields",
@@ -528,7 +528,7 @@ func TestE2E_DaemonSetRestart(t *testing.T) {
 				"namespace": "default",
 				"name":      "non-existent",
 			},
-			expectedStatus: http.StatusInternalServerError, // Server returns 500 for not found
+			expectedStatus: http.StatusNotFound, // ParseK8sError correctly maps "not found" to 404
 		},
 	}
 
@@ -588,7 +588,7 @@ func TestE2E_CronJobSuspend(t *testing.T) {
 				"name":      "non-existent",
 				"suspend":   true,
 			},
-			expectedStatus: http.StatusInternalServerError, // Server returns 500 for not found
+			expectedStatus: http.StatusNotFound, // ParseK8sError correctly maps "not found" to 404
 		},
 	}
 
