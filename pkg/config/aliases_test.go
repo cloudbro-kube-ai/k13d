@@ -21,8 +21,8 @@ func TestDefaultAliases(t *testing.T) {
 func TestAliasResolve(t *testing.T) {
 	a := &AliasConfig{
 		Aliases: map[string]string{
-			"pp": "pods",
-			"dp": "deployments",
+			"pp":  "pods",
+			"dp":  "deployments",
 			"svc": "services",
 		},
 	}
@@ -34,8 +34,8 @@ func TestAliasResolve(t *testing.T) {
 		{"pp", "pods"},
 		{"dp", "deployments"},
 		{"svc", "services"},
-		{"pods", "pods"},        // not an alias, returns as-is
-		{"unknown", "unknown"},  // not an alias, returns as-is
+		{"pods", "pods"},       // not an alias, returns as-is
+		{"unknown", "unknown"}, // not an alias, returns as-is
 	}
 
 	for _, tt := range tests {

@@ -88,10 +88,10 @@ func TestWarnf(t *testing.T) {
 
 func TestLevelFiltering(t *testing.T) {
 	tests := []struct {
-		name     string
-		level    Level
-		logFunc  func()
-		wantLog  bool
+		name    string
+		level   Level
+		logFunc func()
+		wantLog bool
 	}{
 		{"info suppresses debug", LevelInfo, func() { Debugf("debug msg") }, false},
 		{"info allows info", LevelInfo, func() { Infof("info msg") }, true},
