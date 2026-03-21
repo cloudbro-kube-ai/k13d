@@ -1,404 +1,67 @@
 # Reports
 
-k13d can generate comprehensive cluster analysis reports in multiple formats.
+k13d currently generates cluster reports from the **Web UI**.
 
-## Overview
+## What Reports Include
 
-Reports provide:
+Reports can include these sections:
 
-- **Cluster Health** - Overall cluster status
-- **Resource Analysis** - Detailed resource information
-- **AI Insights** - AI-powered recommendations
-- **Cost Analysis** - Resource cost estimates
-- **Security Audit** - Security findings
+- **Nodes**: node readiness, cordon state, pressure warnings, taints, capacity and allocatable values
+- **Namespaces**: namespace activity and workload counts
+- **Workloads**: pods, deployments, services, and top container images
+- **Events**: recent warning events
+- **Security**: built-in pod / RBAC / network / privilege signals
+- **Security Full**: extended scan when the security scanner is available
+- **FinOps**: heuristic compute-cost analysis and rightsizing guidance
+- **Metrics**: historical cluster metrics when the collector is enabled
+- **AI Analysis**: optional narrative summary from the configured LLM
 
-## Report Types
+## Generate A Report
 
-### Cluster Overview Report
+1. Open **Reports** in the Web UI.
+2. Select the sections you want.
+3. Optionally enable **AI Analysis**.
+4. Preview in-browser or download the report.
 
-General cluster health and status:
-
-- Node status and capacity
-- Workload summary
-- Resource utilization
-- Recent events
-- Health indicators
-
-### Security Audit Report
-
-Security analysis:
-
-- RBAC configuration
-- Network policies
-- Pod security standards
-- Secret management
-- CVE scanning results
-
-### Resource Optimization Report
-
-Cost and efficiency analysis:
-
-- Over-provisioned resources
-- Unused resources
-- Right-sizing recommendations
-- Cost estimates
-
-### AI Analysis Report
-
-AI-powered insights:
-
-- Anomaly detection
-- Performance recommendations
-- Best practice violations
-- Predicted issues
-
-## Generating Reports
-
-### TUI Mode
-
-```bash
-# Open reports menu
-:reports
-
-# Generate specific report
-:report cluster-overview
-:report security-audit
-:report optimization
-```
-
-### Web Mode
-
-1. Navigate to **Reports** section
-2. Select report type
-3. **Choose sections** to include in the report:
-   - **Nodes** - Node health, capacity, and conditions
-   - **Namespaces** - Namespace resource usage summary
-   - **Workloads** - Deployments, StatefulSets, DaemonSets status
-   - **Events** - Recent cluster events and warnings
-   - **Security** - Basic security audit (RBAC, pod security)
-   - **Security Full** - Extended Trivy vulnerability scan (slower)
-   - **FinOps** - Cost analysis and optimization suggestions
-   - **Metrics** - CPU/Memory utilization metrics
-4. Configure additional options:
-   - Namespace filter
-   - Output format
-5. Click **Generate**
-
-!!! tip
-    All standard sections are enabled by default except **Security Full**, which requires Trivy and can take longer to complete.
-
-### CLI Mode
-
-```bash
-# Generate cluster overview
-k13d report --type cluster-overview
-
-# Generate security audit
-k13d report --type security-audit --namespace production
-
-# Generate with AI analysis
-k13d report --type optimization --ai-analysis
-
-# Specify output format and location
-k13d report --type cluster-overview \
-            --format pdf \
-            --output ~/reports/cluster-$(date +%Y%m%d).pdf
-```
+The selected sections now control the exported HTML/CSV output as well. If you do not select a section, it is omitted from the generated report.
 
 ## Output Formats
 
-### Markdown
+k13d currently supports:
 
-```bash
-k13d report --format markdown
-```
+- **HTML**: best for human-readable reports and browser preview
+- **CSV**: tabular export for spreadsheets and follow-up analysis
+- **JSON**: raw structured data
 
-Output:
-```markdown
-# Cluster Overview Report
+There is no standalone `k13d report` CLI command and no built-in PDF or Markdown export in the current binary. For PDF, download **HTML** and use your browser's Print → Save as PDF flow.
 
-## Executive Summary
-- **Cluster**: production-cluster
-- **Nodes**: 5 (5 Ready)
-- **Pods**: 127 Running, 3 Pending
+## FinOps Notes
 
-## Node Status
-| Name | Status | CPU | Memory |
-|------|--------|-----|--------|
-| node-1 | Ready | 45% | 62% |
-...
-```
+The FinOps section is intentionally a **heuristic estimate**, not a cloud invoice.
 
-### HTML
+- It focuses on **compute-style cost signals** from running pod requests.
+- If live pod metrics are available, k13d uses them to improve usage and efficiency fields.
+- If metrics-server is unavailable, k13d falls back to request-derived estimates and labels the result accordingly.
+- Direct provider charges such as control-plane fees, storage classes, egress, committed-use discounts, and reserved capacity are not modeled precisely.
 
-```bash
-k13d report --format html
-```
+Use the FinOps section as a prioritization tool:
 
-Generates a styled HTML page with interactive elements.
+- find namespaces driving the largest share of estimated spend
+- identify pods missing requests/limits
+- spot underutilized workloads when live metrics exist
+- review LoadBalancer sprawl for direct savings opportunities
 
-### PDF
+## Node Health Checks
 
-```bash
-k13d report --format pdf
-```
+The node section is meant to be operationally useful, not just inventory.
 
-Generates a professional PDF document.
+Each node report includes:
 
-### JSON
+- Ready / NotReady state
+- Cordoned (`Unschedulable`) state
+- pressure conditions such as `MemoryPressure`, `DiskPressure`, and `PIDPressure`
+- network availability warnings
+- taints
+- capacity and allocatable CPU / memory values
 
-```bash
-k13d report --format json
-```
-
-Structured data for programmatic processing.
-
-## Report Configuration
-
-### Default Settings
-
-```yaml
-# ~/.config/k13d/config.yaml
-
-reports:
-  default_format: markdown
-  output_path: ~/k13d-reports
-  include_ai_analysis: true
-  ai_model: gpt-4
-
-  # Default options for each report type
-  cluster_overview:
-    include_events: true
-    event_limit: 100
-
-  security_audit:
-    check_rbac: true
-    check_network_policies: true
-    check_pod_security: true
-
-  optimization:
-    include_cost_analysis: true
-    cost_model: aws  # aws, gcp, azure, custom
-```
-
-### Cost Models
-
-Configure cost estimation:
-
-```yaml
-reports:
-  optimization:
-    cost_model: custom
-    custom_costs:
-      cpu_per_core_hour: 0.05
-      memory_per_gb_hour: 0.01
-      storage_per_gb_month: 0.10
-```
-
-## Report Sections
-
-### Cluster Overview
-
-```
-┌─────────────────────────────────────────┐
-│           Cluster Overview               │
-├─────────────────────────────────────────┤
-│ 1. Executive Summary                     │
-│ 2. Node Status                          │
-│ 3. Workload Summary                     │
-│ 4. Resource Utilization                 │
-│ 5. Recent Events                        │
-│ 6. Health Indicators                    │
-│ 7. Recommendations (AI)                 │
-└─────────────────────────────────────────┘
-```
-
-### Security Audit
-
-```
-┌─────────────────────────────────────────┐
-│           Security Audit                 │
-├─────────────────────────────────────────┤
-│ 1. Executive Summary                     │
-│ 2. RBAC Analysis                        │
-│    - Overly permissive roles            │
-│    - Unused roles                       │
-│ 3. Network Policy Coverage              │
-│ 4. Pod Security Analysis                │
-│    - Privileged containers              │
-│    - Host network usage                 │
-│ 5. Secret Management                    │
-│ 6. Image Security                       │
-│ 7. Compliance Status                    │
-│ 8. Recommendations                      │
-└─────────────────────────────────────────┘
-```
-
-### Optimization
-
-```
-┌─────────────────────────────────────────┐
-│        Resource Optimization             │
-├─────────────────────────────────────────┤
-│ 1. Cost Summary                         │
-│ 2. Over-provisioned Resources           │
-│    - CPU: 15 pods using < 10%           │
-│    - Memory: 8 pods using < 20%         │
-│ 3. Unused Resources                     │
-│    - 3 ConfigMaps not referenced        │
-│    - 2 Secrets not in use               │
-│ 4. Right-sizing Recommendations         │
-│ 5. Estimated Savings                    │
-│ 6. Action Items                         │
-└─────────────────────────────────────────┘
-```
-
-## Scheduled Reports
-
-### Cron-based Scheduling
-
-```bash
-# Add to crontab
-0 8 * * 1 k13d report --type cluster-overview --format pdf --output ~/reports/weekly-$(date +\%Y\%m\%d).pdf
-```
-
-### Kubernetes CronJob
-
-!!! warning "Beta / reference only"
-    In-cluster and containerized deployment is still **Beta / in preparation**. Treat the following CronJob as a conceptual example only, and replace the image with your own internal build if you experiment with it.
-
-```yaml
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: k13d-weekly-report
-spec:
-  schedule: "0 8 * * 1"
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          containers:
-          - name: k13d
-            image: <your-registry>/k13d:<tag>
-            command:
-              - k13d
-              - report
-              - --type=cluster-overview
-              - --format=pdf
-            volumeMounts:
-              - name: reports
-                mountPath: /reports
-          restartPolicy: OnFailure
-          volumes:
-            - name: reports
-              persistentVolumeClaim:
-                claimName: k13d-reports
-```
-
-## Email Reports
-
-### Configuration
-
-```yaml
-reports:
-  email:
-    enabled: true
-    smtp_host: smtp.example.com
-    smtp_port: 587
-    username: reports@example.com
-    password: ${SMTP_PASSWORD}
-    from: "k13d Reports <reports@example.com>"
-    to:
-      - team@example.com
-      - alerts@example.com
-```
-
-### Usage
-
-```bash
-k13d report --type cluster-overview --email
-```
-
-## Report API
-
-### REST API
-
-```bash
-# Generate report via API
-curl -X POST http://localhost:8080/api/reports \
-     -H "Content-Type: application/json" \
-     -d '{
-       "type": "cluster-overview",
-       "format": "json",
-       "namespace": "production"
-     }'
-
-# Get report status
-curl http://localhost:8080/api/reports/{report-id}
-
-# Download report
-curl http://localhost:8080/api/reports/{report-id}/download
-```
-
-### Response
-
-```json
-{
-  "id": "report-123",
-  "type": "cluster-overview",
-  "status": "completed",
-  "created_at": "2024-01-15T10:30:00Z",
-  "download_url": "/api/reports/report-123/download"
-}
-```
-
-## Best Practices
-
-### 1. Regular Reporting
-
-Schedule weekly cluster overview and monthly security audits.
-
-### 2. Archive Reports
-
-Keep historical reports for trend analysis:
-
-```yaml
-reports:
-  retention_days: 90
-  archive_path: ~/k13d-archive
-```
-
-### 3. Share with Stakeholders
-
-Use PDF format for non-technical stakeholders.
-
-### 4. Act on Recommendations
-
-Review AI recommendations and create action items.
-
-## Troubleshooting
-
-### Report Generation Fails
-
-- Check disk space for output
-- Verify namespace access
-- Check AI provider connection
-
-### Missing Data
-
-- Verify metrics-server is running
-- Check RBAC permissions
-- Ensure resources exist
-
-### Slow Generation
-
-- Reduce event limit
-- Filter to specific namespaces
-- Disable AI analysis for quick reports
-
-## Next Steps
-
-- [Configuration](../getting-started/configuration.md) - Report settings
-- [AI Assistant](../concepts/ai-assistant.md) - AI analysis
-- [Security](../concepts/security.md) - Security features
+This makes the report usable as both a lightweight cluster assessment and a handoff artifact when a node issue is suspected.

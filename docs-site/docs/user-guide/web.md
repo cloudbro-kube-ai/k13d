@@ -220,15 +220,19 @@ Settings → Admin → Users
 Generate comprehensive cluster reports with selectable sections:
 
 1. Navigate to Reports section
-2. Select report type:
-   - **Cluster Overview** - General health
-   - **Security Audit** - Security findings
-   - **Cost Analysis** - Resource costs
-3. Choose which sections to include (Nodes, Namespaces, Workloads, Events, Security, FinOps, Metrics)
-4. Configure options:
-   - Namespace filter
-   - Output format
-5. Click "Generate"
+2. Choose which sections to include:
+   - **Nodes** - node readiness, cordon state, pressure warnings, taints, capacity and allocatable values
+   - **Namespaces** - namespace inventory and workload counts
+   - **Workloads** - pods, deployments, services, and images
+   - **Events** - recent warning events
+   - **Security** - built-in security summary
+   - **Security Full** - extended scanner output when available
+   - **FinOps** - heuristic compute-cost analysis and rightsizing guidance
+   - **Metrics** - historical metrics when collection is enabled
+3. Optionally include AI analysis
+4. Preview inline or download as **HTML**, **CSV**, or **JSON**
+
+The exported report now respects the section selection you make in the modal. FinOps output is request-based and prefers live pod metrics when available, and the node section includes operational checks such as pressure conditions and cordon status.
 
 ## Custom Resource Detail
 
