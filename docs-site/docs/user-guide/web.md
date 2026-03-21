@@ -84,6 +84,7 @@ The Web UI now shows Job and CronJob timing in more operational detail:
 - **CronJobs** show schedule, active/suspended state, next run, last run, and recent execution history
 - **Detail modal** shows timestamps in your configured local/browser timezone
 - **Runs tab** on CronJobs shows recent Jobs with started/finished time, duration, and pod outcome counts
+- **Security section** on pod-backed workloads shows seccomp profile, `runAsNonRoot`, token mount, host namespace usage, and container privilege settings
 
 When a CronJob does not set `.spec.timeZone`, k13d still estimates the next run, but it labels that estimate clearly because Kubernetes ultimately follows the controller-manager timezone.
 

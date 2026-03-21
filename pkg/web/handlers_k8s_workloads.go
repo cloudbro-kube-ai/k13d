@@ -74,6 +74,7 @@ func buildJobItem(job batchv1.Job) map[string]interface{} {
 		"manualTrigger":     isManualJob(job),
 		"image":             firstContainerImage(job.Spec.Template.Spec.Containers),
 		"conditions":        summarizeJobConditions(job.Status.Conditions),
+		"security":          buildPodSecurityDetails(job.Spec.Template.Spec),
 	}
 }
 
@@ -153,6 +154,7 @@ func buildCronJobItem(cj batchv1.CronJob, jobs []batchv1.Job) map[string]interfa
 		"jobTemplateCompletions":   derefInt32(cj.Spec.JobTemplate.Spec.Completions),
 		"jobTemplateBackoffLimit":  derefInt32(cj.Spec.JobTemplate.Spec.BackoffLimit),
 		"historyRunsObservedCount": len(relatedJobs),
+		"security":                 buildPodSecurityDetails(cj.Spec.JobTemplate.Spec.Template.Spec),
 	}
 }
 

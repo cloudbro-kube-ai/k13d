@@ -94,6 +94,7 @@ func (s *Server) handleK8sResource(w http.ResponseWriter, r *http.Request) {
 					"node":       pod.Spec.NodeName,
 					"ip":         pod.Status.PodIP,
 					"containers": containers,
+					"security":   buildPodSecurityDetails(pod.Spec),
 				}
 			}
 		}
@@ -116,6 +117,7 @@ func (s *Server) handleK8sResource(w http.ResponseWriter, r *http.Request) {
 					"available": dep.Status.AvailableReplicas,
 					"age":       formatAge(dep.CreationTimestamp.Time),
 					"selector":  formatLabelSelector(dep.Spec.Selector),
+					"security":  buildPodSecurityDetails(dep.Spec.Template.Spec),
 				}
 			}
 		}
@@ -216,6 +218,7 @@ func (s *Server) handleK8sResource(w http.ResponseWriter, r *http.Request) {
 					"ready":     fmt.Sprintf("%d/%d", st.Status.ReadyReplicas, replicas),
 					"age":       formatAge(st.CreationTimestamp.Time),
 					"selector":  formatLabelSelector(st.Spec.Selector),
+					"security":  buildPodSecurityDetails(st.Spec.Template.Spec),
 				}
 			}
 		}
@@ -237,6 +240,7 @@ func (s *Server) handleK8sResource(w http.ResponseWriter, r *http.Request) {
 					"nodeSelector": formatNodeSelector(d.Spec.Template.Spec.NodeSelector),
 					"age":          formatAge(d.CreationTimestamp.Time),
 					"selector":     formatLabelSelector(d.Spec.Selector),
+					"security":     buildPodSecurityDetails(d.Spec.Template.Spec),
 				}
 			}
 		}

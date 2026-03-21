@@ -152,6 +152,117 @@ function renderWorkloadStatusBadge(status) {
     return `<span class="${statusClass}">${escapeHtml(status || 'Unknown')}</span>`;
 }
 
+function formatSecurityValue(value, fallback = '-') {
+    if (value === undefined || value === null || value === '') {
+        return fallback;
+    }
+    return String(value);
+}
+
+function securityPostureClass(posture) {
+    switch ((posture || '').toLowerCase()) {
+        case 'hardened':
+            return 'status-running';
+        case 'needs review':
+            return 'status-pending';
+        case 'elevated':
+            return 'status-failed';
+        default:
+            return '';
+    }
+}
+
+function renderSecurityOverviewSection(security) {
+    if (!security) return '';
+
+    const warnings = Array.isArray(security.warnings) ? security.warnings : [];
+    const containers = Array.isArray(security.containers) ? security.containers : [];
+    const hostAccess = [];
+    if (security.hostNetwork) hostAccess.push('network');
+    if (security.hostPID) hostAccess.push('pid');
+    if (security.hostIPC) hostAccess.push('ipc');
+
+    const warningHtml = warnings.length > 0
+        ? `<div class="security-warning-list">${warnings.map(w => `<span class="security-warning-chip">${escapeHtml(w)}</span>`).join('')}</div>`
+        : `<div class="detail-helper-subtext">No obvious elevated settings detected from the pod spec.</div>`;
+
+    const containerRows = containers.length > 0
+        ? `
+            <table class="data-table detail-history-table security-container-table">
+                <thead>
+                    <tr>
+                        <th>CONTAINER</th>
+                        <th>SECCOMP</th>
+                        <th>NON-ROOT</th>
+                        <th>PRIV</th>
+                        <th>ESCALATE</th>
+                        <th>RO ROOTFS</th>
+                        <th>CAPS ADD</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${containers.map(container => `
+                        <tr>
+                            <td>
+                                <div class="table-cell-primary">${escapeHtml(container.name || '-')}</div>
+                                <div class="table-cell-secondary">${escapeHtml(container.image || '-')}</div>
+                            </td>
+                            <td>${escapeHtml(formatSecurityValue(container.seccompProfile, 'Unset'))}</td>
+                            <td>${escapeHtml(formatSecurityValue(container.runAsNonRoot, 'inherit'))}</td>
+                            <td>${escapeHtml(container.privileged ? 'true' : 'false')}</td>
+                            <td>${escapeHtml(formatSecurityValue(container.allowPrivilegeEscalation, 'inherit'))}</td>
+                            <td>${escapeHtml(formatSecurityValue(container.readOnlyRootFilesystem, 'inherit'))}</td>
+                            <td>${escapeHtml(Array.isArray(container.capabilitiesAdd) && container.capabilitiesAdd.length > 0 ? container.capabilitiesAdd.join(', ') : '-')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `
+        : '';
+
+    return `
+        <div class="overview-card security-overview-card" style="grid-column: span 3;">
+            <div class="overview-card-title">🛡️ Security Context</div>
+            <div class="overview-card-content">
+                <div class="overview-stat">
+                    <span class="stat-label">Posture</span>
+                    <span class="stat-value ${securityPostureClass(security.posture)}">${escapeHtml(formatSecurityValue(security.posture, 'Unknown'))}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">Pod Seccomp</span>
+                    <span class="stat-value">${escapeHtml(formatSecurityValue(security.podSeccompProfile, 'Unset'))}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">runAsNonRoot</span>
+                    <span class="stat-value">${escapeHtml(formatSecurityValue(security.podRunAsNonRoot, 'inherit'))}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">runAsUser / fsGroup</span>
+                    <span class="stat-value">${escapeHtml(`${formatSecurityValue(security.podRunAsUser, 'inherit')} / ${formatSecurityValue(security.podFSGroup, 'inherit')}`)}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">Service Account</span>
+                    <span class="stat-value">${escapeHtml(formatSecurityValue(security.serviceAccount, 'default'))}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">Token Mount</span>
+                    <span class="stat-value">${escapeHtml(formatSecurityValue(security.automountServiceAccount, 'default'))}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">Host Access</span>
+                    <span class="stat-value">${escapeHtml(hostAccess.length > 0 ? hostAccess.join(', ') : 'none')}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">Container Findings</span>
+                    <span class="stat-value">${escapeHtml(`${formatSecurityValue(security.privilegedContainers, 0)} privileged · ${formatSecurityValue(security.containersAllowPrivilegeEscalation, 0)} escalate · ${formatSecurityValue(security.containersWithAddedCaps, 0)} added caps`)}</span>
+                </div>
+            </div>
+            ${warningHtml}
+            ${containerRows}
+        </div>
+    `;
+}
+
 // Auto-refresh settings (default to enabled with 30s interval)
 let autoRefreshEnabled = localStorage.getItem('k13d_auto_refresh') !== 'false'; // default true
 let autoRefreshInterval = parseInt(localStorage.getItem('k13d_refresh_interval')) || 30; // seconds
@@ -3503,6 +3614,7 @@ function generatePodOverview(item) {
                             </div>
                         </div>
                     </div>
+                    ${renderSecurityOverviewSection(item.security)}
                 </div>
                 <div class="overview-actions">
                     <button class="btn btn-secondary" onclick="openLogViewerDirect('${escapeHtml(item.name)}', '${escapeHtml(item.namespace || '')}')">📋 View Logs</button>
@@ -3564,6 +3676,7 @@ function generateDeploymentOverview(item) {
                             </div>
                         </div>
                     </div>
+                    ${renderSecurityOverviewSection(item.security)}
                 </div>
             `;
 }
@@ -3667,6 +3780,7 @@ function generateStatefulSetOverview(item) {
                             </div>
                         </div>
                     </div>
+                    ${renderSecurityOverviewSection(item.security)}
                 </div>
             `;
 }
@@ -3729,6 +3843,7 @@ function generateDaemonSetOverview(item) {
                             </div>
                         </div>
                     </div>
+                    ${renderSecurityOverviewSection(item.security)}
                 </div>
             `;
 }
@@ -4004,6 +4119,7 @@ function generateJobOverview(item) {
                             ${conditions}
                         </div>
                     </div>
+                    ${renderSecurityOverviewSection(item.security)}
                 </div>
             `;
 }
@@ -4100,6 +4216,7 @@ function generateCronJobOverview(item) {
                             ${upcomingRuns}
                         </div>
                     </div>
+                    ${renderSecurityOverviewSection(item.security)}
                 </div>
             `;
 }

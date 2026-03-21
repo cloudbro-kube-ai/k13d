@@ -178,6 +178,7 @@ For configuration details, model profiles, storage paths, and example `config.ya
 - **Terminal** — Full xterm.js shell into any pod
 - **Logs** — Real-time streaming with ANSI colors, search, download
 - **Jobs & CronJobs** — Local-time next run, last run, and recent execution history
+- **Workload Security Context** — Seccomp, non-root, token mount, host access, and privileged container checks
 - **RBAC Viewer** — Subject-to-role relationship map with permission details
 - **Network Policy Map** — Ingress/egress rule visualization
 - **Event Timeline** — Cluster events grouped by time windows
