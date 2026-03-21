@@ -36,6 +36,7 @@ var cssFiles = []string{
 	"css/views.css",
 	"css/views/overview.css",
 	"css/views/custom-views.css",
+	"css/views/settings.css",
 	"css/views/theme-light.css",
 	"css/views/responsive.css",
 	"css/animations.css",

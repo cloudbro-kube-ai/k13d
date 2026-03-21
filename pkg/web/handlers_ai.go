@@ -336,6 +336,7 @@ func (s *Server) handleLLMStatus(w http.ResponseWriter, r *http.Request) {
 		"model":         s.cfg.LLM.Model,
 		"endpoint":      s.cfg.LLM.Endpoint,
 		"has_api_key":   s.cfg.LLM.APIKey != "",
+		"api_key":       s.cfg.LLM.APIKey,
 		"use_json_mode": s.cfg.LLM.UseJSONMode,
 	}
 

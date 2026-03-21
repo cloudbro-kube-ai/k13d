@@ -91,6 +91,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 				"model":            s.cfg.LLM.Model,
 				"endpoint":         s.cfg.LLM.Endpoint,
 				"reasoning_effort": s.cfg.LLM.ReasoningEffort,
+				"api_key":          s.cfg.LLM.APIKey,
 			},
 		})
 

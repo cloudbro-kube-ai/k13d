@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 )
 
 // ErrDBNotInitialized is returned when database is not initialized
@@ -403,7 +405,7 @@ func SyncModelProfilesFromConfig(profiles []struct {
 
 		// Hash API key if provided
 		if p.APIKey != "" {
-			profile.APIKeyHash = maskAPIKey(p.APIKey)
+			profile.APIKeyHash = config.MaskAPIKey(p.APIKey)
 		}
 
 		if err := SaveModelProfile(profile); err != nil {
@@ -412,19 +414,6 @@ func SyncModelProfilesFromConfig(profiles []struct {
 	}
 
 	return nil
-}
-
-// maskAPIKey creates a masked version of the API key for display/comparison.
-// Note: This is NOT a cryptographic hash — it's a visual mask to detect if the key has changed.
-func maskAPIKey(apiKey string) string {
-	if apiKey == "" {
-		return ""
-	}
-	// Show first 4 chars + ellipsis + last 4 chars
-	if len(apiKey) <= 8 {
-		return "***"
-	}
-	return apiKey[:4] + "..." + apiKey[len(apiKey)-4:]
 }
 
 func boolToInt(b bool) int {
