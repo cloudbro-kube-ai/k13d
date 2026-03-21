@@ -777,9 +777,7 @@ async function downloadReport(format) {
 
     try {
         const url = `/api/reports?format=${format}&ai=${includeAI}&download=true&sections=${encodeURIComponent(sections)}`;
-        const resp = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
+        const resp = await fetchWithAuth(url);
 
         if (!resp.ok) throw new Error('Failed to generate report');
 

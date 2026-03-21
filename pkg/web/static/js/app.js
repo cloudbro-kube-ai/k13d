@@ -2215,9 +2215,7 @@ function navigateToResource(resourceType, name) {
 // Search for resource and navigate (when type is unknown)
 async function searchAndNavigateToResource(name) {
     try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(name)}&namespace=${currentNamespace || ''}`, {
-            headers: { 'Authorization': `Bearer ${authToken}` }
-        });
+        const response = await fetchWithAuth(`/api/search?q=${encodeURIComponent(name)}&namespace=${currentNamespace || ''}`);
         if (response.ok) {
             const data = await response.json();
             if (data.results && data.results.length > 0) {
@@ -2251,12 +2249,9 @@ async function sendMessageAgentic(message) {
     const signal = aiAbortController.signal;
 
     try {
-        const response = await fetch('/api/chat/agentic', {
+        const response = await fetchWithAuth('/api/chat/agentic', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message, language: currentLanguage, session_id: currentSessionId }),
             signal: signal
         });
@@ -2595,12 +2590,9 @@ async function respondToApproval(approved) {
 
     // Send response to server
     try {
-        await fetch('/api/tool/approve', {
+        await fetchWithAuth('/api/tool/approve', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: approvalId, approved })
         });
 
@@ -2993,11 +2985,7 @@ async function performGlobalSearch(query) {
     resultsDiv.style.display = 'block';
 
     try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&namespace=${currentNamespace || ''}`, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
+        const response = await fetchWithAuth(`/api/search?q=${encodeURIComponent(query)}&namespace=${currentNamespace || ''}`);
 
         if (!response.ok) throw new Error('Search failed');
 
