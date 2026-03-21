@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/safety"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -104,8 +105,7 @@ func (a *App) executeDecision(idx int) {
 
 	a.flashMsg(fmt.Sprintf("Executing: %s", decision.Command), false)
 
-	cmd := exec.Command("bash", "-c", decision.Command)
-	output, err := cmd.CombinedOutput()
+	output, err := a.runApprovedKubectlCommand(decision.Command)
 
 	a.QueueUpdateDraw(func() {
 		var result string
@@ -180,8 +180,7 @@ func (a *App) doExecuteAll() {
 
 		a.flashMsg(fmt.Sprintf("Executing: %s", decision.Command), false)
 
-		cmd := exec.Command("bash", "-c", decision.Command)
-		output, err := cmd.CombinedOutput()
+		output, err := a.runApprovedKubectlCommand(decision.Command)
 
 		results.WriteString(fmt.Sprintf("\n[cyan]%s[white]\n", decision.Command))
 		if err != nil {
@@ -198,6 +197,36 @@ func (a *App) doExecuteAll() {
 
 	a.flashMsg(fmt.Sprintf("Executed %d commands", len(decisions)), false)
 	a.safeGo("refresh-after-batch", a.refresh)
+}
+
+func parseApprovedKubectlCommand(command string) ([]string, error) {
+	parsed := safety.ParseCommand(strings.TrimSpace(command))
+	if parsed == nil {
+		return nil, fmt.Errorf("invalid command")
+	}
+	if parsed.ParseError != nil {
+		return nil, fmt.Errorf("invalid kubectl command: %w", parsed.ParseError)
+	}
+	if parsed.Program != "kubectl" {
+		return nil, fmt.Errorf("only kubectl commands can be executed from AI decisions")
+	}
+	if parsed.IsPiped || parsed.IsChained || parsed.HasRedirect {
+		return nil, fmt.Errorf("shell features are not allowed in AI decision execution")
+	}
+	if len(parsed.Args) == 0 {
+		return nil, fmt.Errorf("kubectl command is missing arguments")
+	}
+	return append([]string(nil), parsed.Args...), nil
+}
+
+func (a *App) runApprovedKubectlCommand(command string) ([]byte, error) {
+	args, err := parseApprovedKubectlCommand(command)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := exec.CommandContext(a.getAppContext(), "kubectl", args...)
+	return cmd.CombinedOutput()
 }
 
 func (a *App) approveToolCall(approved bool) {
