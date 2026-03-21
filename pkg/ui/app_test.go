@@ -492,13 +492,6 @@ func TestGetCompletionsWithNamespaceFlag(t *testing.T) {
 
 // TestNumberKeyNamespaceSwitch tests that number keys switch namespaces
 func TestNumberKeyNamespaceSwitch(t *testing.T) {
-	app := NewTestApp(TestAppConfig{
-		SkipBackgroundLoading: true,
-		SkipBriefing:          true,
-	})
-	app.namespaces = []string{"", "default", "kube-system", "monitoring", "production", "staging"}
-	app.currentResource = "pods"
-
 	tests := []struct {
 		name              string
 		keyNum            int
@@ -516,6 +509,12 @@ func TestNumberKeyNamespaceSwitch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			app := NewTestApp(TestAppConfig{
+				SkipBackgroundLoading: true,
+				SkipBriefing:          true,
+			})
+			app.namespaces = []string{"", "default", "kube-system", "monitoring", "production", "staging"}
+			app.currentResource = "pods"
 			app.currentNamespace = "unchanged"
 			app.selectNamespaceByNumber(tt.keyNum)
 

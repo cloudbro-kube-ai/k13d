@@ -144,9 +144,13 @@ func (a *App) refresh() {
 
 // startFilter activates filter mode
 func (a *App) startFilter() {
+	a.mx.RLock()
+	currentFilter := a.filterText
+	a.mx.RUnlock()
+
 	a.cmdInput.SetLabel(" / ")
 	a.cmdHint.SetText("[gray]Filter: text | /regex/ | -f fuzzy | -l label=value | Esc to clear")
-	a.cmdInput.SetText(a.filterText)
+	a.cmdInput.SetText(currentFilter)
 	a.SetFocus(a.cmdInput)
 
 	var filterTimer *time.Timer
