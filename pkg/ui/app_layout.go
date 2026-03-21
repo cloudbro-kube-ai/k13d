@@ -234,8 +234,8 @@ func (a *App) updateHeader() {
 	a.mx.RLock()
 	ns := a.currentNamespace
 	resource := a.currentResource
-	namespaces := a.namespaces
 	a.mx.RUnlock()
+	namespaces := a.reorderNamespacesByRecent()
 
 	currentNsDisplay := "[#9ece6a]all[-]"
 	if ns != "" {
@@ -315,7 +315,15 @@ func (a *App) updateStatusBar() {
 	filter := a.filterText
 	showAI := a.showAIPanel
 	aiWidth := clampAIPanelWidth(a.aiPanelWidth)
+	aiRestoreWidth := a.aiPanelRestoreWidth
+	aiFullscreen := a.aiPanelFullscreen
 	a.mx.RUnlock()
+	if aiRestoreWidth == 0 {
+		aiRestoreWidth = aiWidth
+	}
+	if aiFullscreen {
+		aiWidth = clampAIPanelWidth(aiRestoreWidth)
+	}
 
 	// Enhanced status bar with Tokyo Night colors (dark text on green background)
 	shortcuts := "[black]n[-][#1a1b26]NS[-] [black]0[-][#1a1b26]All[-] [black]/[-][#1a1b26]Filter[-] [black]:[-][#1a1b26]Cmd[-] [black]Ctrl+E[-][#1a1b26]AI[-] [black]?[-][#1a1b26]Help[-] [black]q[-][#1a1b26]Quit[-]"
@@ -332,7 +340,7 @@ func (a *App) updateStatusBar() {
 		shortcuts = "[black]Enter[-][#1a1b26]Drill[-] [black]d[-][#1a1b26]Describe[-] [black]y[-][#1a1b26]YAML[-] " + shortcuts
 	}
 	if showAI {
-		shortcuts = "[black]Enter[-][#1a1b26]AI ctx[-] [black]→[-][#1a1b26]Open[-] [black]←[-][#1a1b26]Back[-] " + shortcuts
+		shortcuts = "[black]Enter[-][#1a1b26]AI ctx[-] [black]Alt+F[-][#1a1b26]AI full[-] [black]→[-][#1a1b26]Open[-] [black]←[-][#1a1b26]Back[-] " + shortcuts
 	}
 
 	// Append sort/filter status indicators
@@ -356,7 +364,11 @@ func (a *App) updateStatusBar() {
 		}
 	}
 	if showAI {
-		indicators = append(indicators, fmt.Sprintf("[#1a1b26]AI:%dcol[-]", aiWidth))
+		if aiFullscreen {
+			indicators = append(indicators, fmt.Sprintf("[#1a1b26]AI:full(%dcol)[-]", aiWidth))
+		} else {
+			indicators = append(indicators, fmt.Sprintf("[#1a1b26]AI:%dcol[-]", aiWidth))
+		}
 	}
 	if len(indicators) > 0 {
 		shortcuts += " │ " + strings.Join(indicators, " ")
@@ -374,9 +386,7 @@ func (a *App) updateStatusBar() {
 
 // showNamespaceHint shows numbered namespace list in hint
 func (a *App) showNamespaceHint() {
-	a.mx.RLock()
-	namespaces := a.namespaces
-	a.mx.RUnlock()
+	namespaces := a.reorderNamespacesByRecent()
 
 	if len(namespaces) <= 1 {
 		return
@@ -515,9 +525,18 @@ func (a *App) resizeAIPanelTo(width int) {
 
 	a.mx.Lock()
 	currentWidth := clampAIPanelWidth(a.aiPanelWidth)
+	currentRestoreWidth := clampAIPanelWidth(a.aiPanelRestoreWidth)
+	if a.aiPanelRestoreWidth == 0 {
+		currentRestoreWidth = currentWidth
+	}
 	nextWidth := clampAIPanelWidth(width)
 	showAI := a.showAIPanel
-	a.aiPanelWidth = nextWidth
+	fullscreen := a.aiPanelFullscreen
+	if fullscreen {
+		a.aiPanelRestoreWidth = nextWidth
+	} else {
+		a.aiPanelWidth = nextWidth
+	}
 	a.mx.Unlock()
 
 	if showAI {
@@ -529,8 +548,16 @@ func (a *App) resizeAIPanelTo(width int) {
 		})
 	}
 
-	if nextWidth != currentWidth {
-		a.flashMsg(fmt.Sprintf("AI panel width: %d columns", nextWidth), false)
+	previousWidth := currentWidth
+	if fullscreen {
+		previousWidth = currentRestoreWidth
+	}
+	if nextWidth != previousWidth {
+		if fullscreen {
+			a.flashMsg(fmt.Sprintf("AI split width restored to %d columns when leaving full-size", nextWidth), false)
+		} else {
+			a.flashMsg(fmt.Sprintf("AI panel width: %d columns", nextWidth), false)
+		}
 	}
 }
 
@@ -545,16 +572,74 @@ func (a *App) resetAIPanelWidth() {
 	a.resizeAIPanelTo(defaultAIPanelWidth)
 }
 
+func (a *App) toggleAIPanelFullscreen() {
+	currentFocus := a.GetFocus()
+	focusAI := a.isAIFocused(currentFocus)
+
+	a.mx.Lock()
+	showAI := a.showAIPanel
+	if !showAI {
+		a.mx.Unlock()
+		return
+	}
+
+	currentWidth := clampAIPanelWidth(a.aiPanelWidth)
+	if a.aiPanelRestoreWidth == 0 {
+		a.aiPanelRestoreWidth = currentWidth
+	}
+
+	enteringFullscreen := !a.aiPanelFullscreen
+	if enteringFullscreen {
+		a.aiPanelRestoreWidth = currentWidth
+		a.aiPanelFullscreen = true
+	} else {
+		a.aiPanelWidth = clampAIPanelWidth(a.aiPanelRestoreWidth)
+		a.aiPanelFullscreen = false
+	}
+	a.mx.Unlock()
+
+	if enteringFullscreen {
+		focusAI = true
+	}
+
+	a.QueueUpdateDraw(func() {
+		a.rebuildContentLayout(focusAI)
+		if focusAI && currentFocus != nil && a.isAIFocused(currentFocus) {
+			a.SetFocus(currentFocus)
+		}
+	})
+
+	if enteringFullscreen {
+		a.flashMsg("AI panel expanded to full size", false)
+		return
+	}
+	a.flashMsg(fmt.Sprintf("AI panel restored to %d columns", a.currentAIPanelWidth()), false)
+}
+
 func (a *App) rebuildContentLayout(focusAI bool) {
 	if a.contentFlex == nil {
 		return
 	}
-	a.contentFlex.Clear()
-	a.contentFlex.AddItem(a.table, 0, 3, !focusAI)
-	if a.showAIPanel && a.aiContainer != nil {
-		a.contentFlex.AddItem(a.aiContainer, a.currentAIPanelWidth(), 0, focusAI)
+	a.mx.RLock()
+	showAI := a.showAIPanel
+	fullscreen := a.aiPanelFullscreen
+	aiWidth := clampAIPanelWidth(a.aiPanelWidth)
+	a.mx.RUnlock()
+
+	if showAI && fullscreen {
+		focusAI = true
 	}
-	if focusAI && a.showAIPanel {
+
+	a.contentFlex.Clear()
+	if showAI && fullscreen && a.aiContainer != nil {
+		a.contentFlex.AddItem(a.aiContainer, 0, 1, true)
+	} else {
+		a.contentFlex.AddItem(a.table, 0, 3, !focusAI)
+		if showAI && a.aiContainer != nil {
+			a.contentFlex.AddItem(a.aiContainer, aiWidth, 0, focusAI)
+		}
+	}
+	if focusAI && showAI {
 		a.focusAIInput()
 	} else {
 		a.SetFocus(a.table)

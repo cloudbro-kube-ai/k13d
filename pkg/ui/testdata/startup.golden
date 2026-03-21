@@ -1,7 +1,7 @@
  k13d Kubernetes AI Dashboard dev                                        AI ●
 Offline
  ⎈ Context: test-context  Cluster: test-cluster  NS: default  Resource: pods
- Namespaces: 0:all 1:default 2:kube-system 3:kube-public
+ Namespaces: 0:all 1:default 2:kube-public 3:kube-system
 
 ╔══════════════════════════════════ pods (3) ══════════════════════════════════╗
 ║NAMESPACE    │NAME           │STATUS     │READY    │RESTARTS    │AGE          ║

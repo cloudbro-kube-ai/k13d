@@ -45,6 +45,7 @@ func (a *App) refresh() {
 		a.table.Clear()
 		a.table.SetTitle(fmt.Sprintf(" %s - Loading... ", resource))
 		a.table.SetCell(0, 0, tview.NewTableCell("Loading...").SetTextColor(tcell.ColorYellow))
+		a.requestSync()
 	})
 
 	// Fetch with exponential backoff
@@ -82,6 +83,7 @@ func (a *App) refresh() {
 			a.table.Clear()
 			a.table.SetTitle(fmt.Sprintf(" %s - Error ", resource))
 			a.table.SetCell(0, 0, tview.NewTableCell(fmt.Sprintf("Error: %v", err)).SetTextColor(tcell.ColorRed))
+			a.requestSync()
 		})
 		return
 	}
@@ -124,6 +126,7 @@ func (a *App) refresh() {
 			}
 			a.refreshTableDecorations()
 			a.applyAIChrome()
+			a.requestSync()
 		})
 	}
 
@@ -141,9 +144,13 @@ func (a *App) refresh() {
 
 // startFilter activates filter mode
 func (a *App) startFilter() {
+	a.mx.RLock()
+	currentFilter := a.filterText
+	a.mx.RUnlock()
+
 	a.cmdInput.SetLabel(" / ")
 	a.cmdHint.SetText("[gray]Filter: text | /regex/ | -f fuzzy | -l label=value | Esc to clear")
-	a.cmdInput.SetText(a.filterText)
+	a.cmdInput.SetText(currentFilter)
 	a.SetFocus(a.cmdInput)
 
 	var filterTimer *time.Timer
@@ -349,6 +356,7 @@ func (a *App) applyFilterText(filter string) {
 			a.table.Select(1, 0)
 		}
 		a.refreshTableDecorations()
+		a.requestSync()
 	})
 	a.updateStatusBar()
 }
@@ -494,22 +502,11 @@ func (a *App) loadNamespaces() {
 	a.mx.Lock()
 	a.namespaces = namespaceList
 	a.mx.Unlock()
-	reordered := a.reorderNamespacesByRecent()
-	a.mx.Lock()
-	a.namespaces = reordered
-	a.mx.Unlock()
 	a.updateHeader()
 	a.logger.Info("Loaded namespaces", "count", len(nss))
 }
 
-// reorderNamespacesByRecent reorders namespaces list
-func (a *App) reorderNamespacesByRecent() []string {
-	a.mx.RLock()
-	allNamespaces := make([]string, len(a.namespaces))
-	copy(allNamespaces, a.namespaces)
-	recent := make([]string, len(a.recentNamespaces))
-	copy(recent, a.recentNamespaces)
-	a.mx.RUnlock()
+func reorderNamespaceListByRecent(allNamespaces, recent []string) []string {
 	result := make([]string, 0, len(allNamespaces))
 	hasAll := false
 	for _, ns := range allNamespaces {
@@ -544,6 +541,17 @@ func (a *App) reorderNamespacesByRecent() []string {
 	return result
 }
 
+// reorderNamespacesByRecent reorders namespaces list
+func (a *App) reorderNamespacesByRecent() []string {
+	a.mx.RLock()
+	allNamespaces := make([]string, len(a.namespaces))
+	copy(allNamespaces, a.namespaces)
+	recent := make([]string, len(a.recentNamespaces))
+	copy(recent, a.recentNamespaces)
+	a.mx.RUnlock()
+	return reorderNamespaceListByRecent(allNamespaces, recent)
+}
+
 // addRecentNamespace adds a namespace to the recent list
 func (a *App) addRecentNamespace(ns string) {
 	if ns == "" {
@@ -573,22 +581,19 @@ func (a *App) switchToAllNamespaces() {
 
 // selectNamespaceByNumber selects namespace by number
 func (a *App) selectNamespaceByNumber(num int) {
-	a.mx.Lock()
-	if num >= len(a.namespaces) {
-		a.mx.Unlock()
+	namespaces := a.reorderNamespacesByRecent()
+	if num >= len(namespaces) {
 		a.flashMsg(fmt.Sprintf("Namespace #%d not found", num), true)
 		return
 	}
-	selectedNs := a.namespaces[num]
+	selectedNs := namespaces[num]
 	nsName := selectedNs
 	if nsName == "" {
 		nsName = "all"
 	}
-	if selectedNs != "" {
-		a.addRecentNamespace(selectedNs)
-	}
+	a.mx.RLock()
 	resource := a.currentResource
-	a.mx.Unlock()
+	a.mx.RUnlock()
 	a.flashMsg(fmt.Sprintf("Switched to namespace: %s", nsName), false)
 	a.navigateTo(resource, selectedNs, "")
 }

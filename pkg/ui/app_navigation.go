@@ -166,13 +166,6 @@ func (a *App) cycleNamespace() {
 	resource := a.currentResource
 	a.mx.RUnlock()
 
-	// Track recent namespace usage
-	if nextNs != "" {
-		a.mx.Lock()
-		a.addRecentNamespace(nextNs)
-		a.mx.Unlock()
-	}
-
 	// Clear filter when switching namespace to avoid stale highlighting
 	a.navigateTo(resource, nextNs, "")
 }
@@ -191,12 +184,6 @@ func (a *App) handleCommand(cmd string) {
 			newNs := parts[1]
 			if newNs == "all" || newNs == "*" {
 				newNs = ""
-			}
-			// Track recent namespace usage
-			if newNs != "" {
-				a.mx.Lock()
-				a.addRecentNamespace(newNs)
-				a.mx.Unlock()
 			}
 			// Read current state
 			a.mx.RLock()
@@ -366,6 +353,9 @@ func (a *App) navigateTo(resource, namespace, filter string) {
 	a.stopWatch()
 
 	a.mx.Lock()
+	if namespace != "" {
+		a.addRecentNamespace(namespace)
+	}
 	a.currentResource = resource
 	a.currentNamespace = namespace
 	a.filterText = filter

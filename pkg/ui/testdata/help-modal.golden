@@ -1,13 +1,14 @@
  k║  Ctrl+E   Toggle AI panel     Shift+O  Settings/LLM Config              ║
-Of║  Alt+H/L Resize AI panel     Alt+0    Reset AI width                    ║
- ⎈║  q/Ctrl+C Quit application                                              ║
- N║                                                                         ║
-  ║AI ASSISTANT                                                             ║
-┌─║  Enter    Send prompt         Up/Down  Prompt history                   ║──┐
-│N║  j/k      Scroll transcript   PgUp/PgDn Page transcript                 ║  │
+Of║  Alt+H/L Resize AI panel     Alt+F    Full-size AI                      ║
+ ⎈║  Alt+0   Reset AI width                                                 ║
+ N║  q/Ctrl+C Quit application                                              ║
+  ║                                                                         ║
+┌─║AI ASSISTANT                                                             ║──┐
+│N║  Enter    Send prompt         Up/Down  Prompt history                   ║  │
+│d║  j/k      Scroll transcript   PgUp/PgDn Page transcript                 ║  │
 │d║  g/G      Transcript top/btm  Tab      Return to prompt                 ║  │
 │d║                                                                         ║  │
-│d║NAVIGATION                                                               ║  │
+│ ║NAVIGATION                                                               ║  │
 │ ║  j/Down   Down                k/Up     Up                               ║  │
 │ ║  g        Top                 G        Bottom                           ║  │
 │ ║  Ctrl+F   Page down           Ctrl+B   Page up                          ║  │
@@ -19,7 +20,6 @@ Of║  Alt+H/L Resize AI panel     Alt+0    Reset AI width                    �
 │ ║  e        Edit ($EDITOR)      Ctrl+D   Delete                           ║  │
 │ ║  r        Refresh             c        Switch context                   ║  │
 │ ║  n        Cycle namespace     Space    Multi-select                     ║  │
-│ ║                                                                         ║  │
-└─║SORTING                                                                  ║──┘
-  ║  Shift+N  Sort by NAME        Shift+A  Sort by AGE                      ║
- :║  Shift+T  Sort by STATUS      Shift+P  Sort by NAMESPACE                ║
+└─║                                                                         ║──┘
+  ║SORTING                                                                  ║
+ :║  Shift+N  Sort by NAME        Shift+A  Sort by AGE                      ║

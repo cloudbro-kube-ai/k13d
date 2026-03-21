@@ -56,13 +56,11 @@ func (a *App) setupKeybindings() {
 				return nil
 			// k9s style: 0 = all namespaces, 1-9 = select namespace by number
 			case '0':
-				a.safeGo("switchToAllNamespaces", a.switchToAllNamespaces)
+				a.switchToAllNamespaces()
 				return nil
 			case '1', '2', '3', '4', '5', '6', '7', '8', '9':
 				num := int(event.Rune() - '0')
-				a.safeGo("selectNamespaceByNumber", func() {
-					a.selectNamespaceByNumber(num)
-				})
+				a.selectNamespaceByNumber(num)
 				return nil
 			case 'l':
 				a.showLogs()
@@ -652,6 +650,9 @@ func (a *App) handleAIPanelResizeKey(event *tcell.EventKey) bool {
 		return true
 	case tcell.KeyRune:
 		switch event.Rune() {
+		case 'f', 'F':
+			a.toggleAIPanelFullscreen()
+			return true
 		case 'h', 'H':
 			a.adjustAIPanelWidth(-aiPanelResizeStep)
 			return true

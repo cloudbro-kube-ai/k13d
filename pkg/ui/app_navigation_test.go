@@ -173,3 +173,61 @@ func TestNavHistoryPreservesFilter(t *testing.T) {
 		t.Errorf("Expected filter 'nginx' to be preserved, got %q", prev.filter)
 	}
 }
+
+func TestNavigateToTracksRecentNamespace(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+
+	app.navigateTo("pods", "kube-system", "")
+
+	app.mx.RLock()
+	currentNamespace := app.currentNamespace
+	recent := append([]string(nil), app.recentNamespaces...)
+	app.mx.RUnlock()
+
+	if currentNamespace != "kube-system" {
+		t.Fatalf("currentNamespace = %q, want kube-system", currentNamespace)
+	}
+	if len(recent) == 0 || recent[0] != "kube-system" {
+		t.Fatalf("recentNamespaces = %v, want kube-system at front", recent)
+	}
+}
+
+func TestCycleNamespaceUsesStableBaseOrder(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+	app.namespaces = []string{"", "default", "kube-system", "kube-public"}
+	app.currentNamespace = "default"
+	app.currentResource = "pods"
+
+	app.cycleNamespace()
+	if app.currentNamespace != "kube-system" {
+		t.Fatalf("after first cycle currentNamespace = %q, want kube-system", app.currentNamespace)
+	}
+
+	app.cycleNamespace()
+	if app.currentNamespace != "kube-public" {
+		t.Fatalf("after second cycle currentNamespace = %q, want kube-public", app.currentNamespace)
+	}
+}
+
+func TestSelectNamespaceByNumberUsesRecentFirstQuickSelect(t *testing.T) {
+	app := NewTestApp(TestAppConfig{
+		SkipBackgroundLoading: true,
+		SkipBriefing:          true,
+	})
+	app.namespaces = []string{"", "default", "kube-system", "monitoring"}
+	app.recentNamespaces = []string{"monitoring"}
+	app.currentResource = "pods"
+	app.currentNamespace = "default"
+
+	app.selectNamespaceByNumber(1)
+
+	if app.currentNamespace != "monitoring" {
+		t.Fatalf("currentNamespace = %q, want monitoring", app.currentNamespace)
+	}
+}
