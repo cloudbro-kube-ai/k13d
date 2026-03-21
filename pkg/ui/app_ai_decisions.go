@@ -225,6 +225,7 @@ func (a *App) runApprovedKubectlCommand(command string) ([]byte, error) {
 		return nil, err
 	}
 
+	// #nosec G204 -- args are parsed from an already-approved kubectl command and shell features are rejected above.
 	cmd := exec.CommandContext(a.getAppContext(), "kubectl", args...)
 	return cmd.CombinedOutput()
 }
