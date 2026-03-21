@@ -876,6 +876,7 @@ async function generateReport(format) {
                                 </div>
                             </div>
 
+                            ${report.included_sections?.finops ? `
                             <!-- FinOps Section -->
                             <div style="margin-top: 25px; background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 100%); padding: 20px; border-radius: 8px; border: 1px solid #4caf50;">
                                 <h3 style="margin-bottom: 15px; color: #9ece6a;">💰 FinOps Cost Analysis</h3>
@@ -932,7 +933,10 @@ async function generateReport(format) {
                                     `).join('')}
                                 </table>
                             </div>
+                            </div>
+                            ` : ''}
 
+                            ${report.included_sections?.workloads ? `
                             <div style="margin-top: 20px;">
                                 <h4 style="margin-bottom: 10px;">🐳 Top Container Images</h4>
                                 <table style="width: 100%; font-size: 12px;">
@@ -942,6 +946,7 @@ async function generateReport(format) {
                                     `).join('')}
                                 </table>
                             </div>
+                            ` : ''}
                         </div>
                     `;
         }
@@ -959,4 +964,3 @@ async function generateReport(format) {
 let searchTimeout = null;
 let searchSelectedIndex = -1;
 let searchResults = [];
-

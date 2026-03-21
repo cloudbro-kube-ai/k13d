@@ -172,11 +172,13 @@ For configuration details, model profiles, storage paths, and example `config.ya
 - **AI Assistant** — Ask questions, AI executes kubectl with explicit approval by default
   The default agentic toolset is kubectl-first. `bash` and MCP tools are opt-in, and unsupported interactive kubectl flows are hard-blocked instead of sent to approval.
 - **Topology** — Graph & tree visualization of resource relationships
-- **Reports** — Cluster health, security audit, FinOps cost analysis
+- **Reports** — Cluster health, node checks, security audit, heuristic FinOps cost analysis
 - **Metrics** — Historical CPU/Memory/Pods/Nodes charts (SQLite-backed, 7-day retention)
 - **Helm** — Release management, history, rollback
 - **Terminal** — Full xterm.js shell into any pod
 - **Logs** — Real-time streaming with ANSI colors, search, download
+- **Jobs & CronJobs** — Local-time next run, last run, and recent execution history
+- **Workload Security Context** — Seccomp, non-root, token mount, host access, and privileged container checks
 - **RBAC Viewer** — Subject-to-role relationship map with permission details
 - **Network Policy Map** — Ingress/egress rule visualization
 - **Event Timeline** — Cluster events grouped by time windows

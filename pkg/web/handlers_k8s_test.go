@@ -51,8 +51,13 @@ func setupK8sTestServer(t *testing.T) (*Server, http.Handler) {
 	replicas := int32(3)
 	completions := int32(1)
 	suspend := false
+	trueVal := true
+	falseVal := false
+	runAsUser := int64(1000)
+	fsGroup := int64(2000)
 	ingressClassName := "nginx"
 	storageClassName := "standard"
+	localhostProfile := "profiles/default.json"
 	volumeBindingMode := storagev1.VolumeBindingImmediate
 	allowExpand := true
 	reclaimPolicy := corev1.PersistentVolumeReclaimDelete
@@ -76,7 +81,35 @@ func setupK8sTestServer(t *testing.T) (*Server, http.Handler) {
 				Labels:    map[string]string{"app": "test"},
 			},
 			Spec: corev1.PodSpec{
-				NodeName: "node-1",
+				NodeName:                     "node-1",
+				ServiceAccountName:           "test-sa",
+				AutomountServiceAccountToken: &falseVal,
+				SecurityContext: &corev1.PodSecurityContext{
+					RunAsNonRoot: &trueVal,
+					RunAsUser:    &runAsUser,
+					FSGroup:      &fsGroup,
+					SeccompProfile: &corev1.SeccompProfile{
+						Type: corev1.SeccompProfileTypeRuntimeDefault,
+					},
+				},
+				Containers: []corev1.Container{
+					{
+						Name:  "app",
+						Image: "nginx:1.27",
+						SecurityContext: &corev1.SecurityContext{
+							AllowPrivilegeEscalation: &falseVal,
+							ReadOnlyRootFilesystem:   &trueVal,
+							RunAsNonRoot:             &trueVal,
+							SeccompProfile: &corev1.SeccompProfile{
+								Type:             corev1.SeccompProfileTypeLocalhost,
+								LocalhostProfile: &localhostProfile,
+							},
+							Capabilities: &corev1.Capabilities{
+								Drop: []corev1.Capability{"ALL"},
+							},
+						},
+					},
+				},
 			},
 			Status: corev1.PodStatus{
 				Phase: corev1.PodRunning,
@@ -107,6 +140,26 @@ func setupK8sTestServer(t *testing.T) (*Server, http.Handler) {
 				Replicas: &replicas,
 				Selector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{"app": "test"},
+				},
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						SecurityContext: &corev1.PodSecurityContext{
+							RunAsNonRoot: &trueVal,
+							SeccompProfile: &corev1.SeccompProfile{
+								Type: corev1.SeccompProfileTypeRuntimeDefault,
+							},
+						},
+						Containers: []corev1.Container{
+							{
+								Name:  "web",
+								Image: "nginx:1.27",
+								SecurityContext: &corev1.SecurityContext{
+									AllowPrivilegeEscalation: &falseVal,
+									ReadOnlyRootFilesystem:   &trueVal,
+								},
+							},
+						},
+					},
 				},
 			},
 			Status: appsv1.DeploymentStatus{
@@ -212,6 +265,16 @@ func setupK8sTestServer(t *testing.T) (*Server, http.Handler) {
 				Selector: &metav1.LabelSelector{
 					MatchLabels: map[string]string{"app": "statefulset-test"},
 				},
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						SecurityContext: &corev1.PodSecurityContext{
+							RunAsNonRoot: &trueVal,
+						},
+						Containers: []corev1.Container{
+							{Name: "db", Image: "mysql:8.0"},
+						},
+					},
+				},
 			},
 			Status: appsv1.StatefulSetStatus{
 				ReadyReplicas: 2,
@@ -231,6 +294,15 @@ func setupK8sTestServer(t *testing.T) (*Server, http.Handler) {
 				Template: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
 						NodeSelector: map[string]string{"role": "worker"},
+						Containers: []corev1.Container{
+							{
+								Name:  "agent",
+								Image: "busybox:1.36",
+								SecurityContext: &corev1.SecurityContext{
+									Privileged: &trueVal,
+								},
+							},
+						},
 					},
 				},
 			},
@@ -409,9 +481,35 @@ func setupK8sTestServer(t *testing.T) (*Server, http.Handler) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-job",
 				Namespace: "default",
+				Annotations: map[string]string{
+					"k13d.io/source-cronjob": "test-cronjob",
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "batch/v1",
+						Kind:       "CronJob",
+						Name:       "test-cronjob",
+						Controller: boolPtr(true),
+					},
+				},
 			},
 			Spec: batchv1.JobSpec{
 				Completions: &completions,
+				Parallelism: &replicas,
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						SecurityContext: &corev1.PodSecurityContext{
+							RunAsNonRoot: &trueVal,
+							SeccompProfile: &corev1.SeccompProfile{
+								Type: corev1.SeccompProfileTypeRuntimeDefault,
+							},
+						},
+						Containers: []corev1.Container{
+							{Name: "worker", Image: "busybox:1.36"},
+						},
+						RestartPolicy: corev1.RestartPolicyNever,
+					},
+				},
 			},
 			Status: batchv1.JobStatus{
 				Succeeded:      1,
@@ -429,6 +527,26 @@ func setupK8sTestServer(t *testing.T) (*Server, http.Handler) {
 			Spec: batchv1.CronJobSpec{
 				Schedule: "*/5 * * * *",
 				Suspend:  &suspend,
+				TimeZone: strPtr("Asia/Seoul"),
+				JobTemplate: batchv1.JobTemplateSpec{
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								AutomountServiceAccountToken: &falseVal,
+								SecurityContext: &corev1.PodSecurityContext{
+									RunAsNonRoot: &trueVal,
+									SeccompProfile: &corev1.SeccompProfile{
+										Type: corev1.SeccompProfileTypeRuntimeDefault,
+									},
+								},
+								Containers: []corev1.Container{
+									{Name: "cleanup", Image: "busybox:1.36"},
+								},
+								RestartPolicy: corev1.RestartPolicyNever,
+							},
+						},
+					},
+				},
 			},
 			Status: batchv1.CronJobStatus{
 				LastScheduleTime: &metav1.Time{Time: time.Now().Add(-3 * time.Minute)},
@@ -533,6 +651,27 @@ func TestK8sResourceHandlerPods(t *testing.T) {
 				}
 				if body["kind"] != "pods" {
 					t.Errorf("Expected kind 'pods', got %v", body["kind"])
+				}
+				var pod map[string]interface{}
+				for _, raw := range items {
+					candidate := raw.(map[string]interface{})
+					if candidate["name"] == "test-pod-1" {
+						pod = candidate
+						break
+					}
+				}
+				if pod == nil {
+					t.Fatalf("Expected test-pod-1 in response")
+				}
+				security, ok := pod["security"].(map[string]interface{})
+				if !ok {
+					t.Fatalf("Expected pod security object, got %T", pod["security"])
+				}
+				if security["podSeccompProfile"] != "RuntimeDefault" {
+					t.Errorf("Expected pod seccomp RuntimeDefault, got %v", security["podSeccompProfile"])
+				}
+				if security["serviceAccount"] != "test-sa" {
+					t.Errorf("Expected service account test-sa, got %v", security["serviceAccount"])
 				}
 			},
 		},
@@ -1111,6 +1250,25 @@ func TestK8sResourceHandlerJobs(t *testing.T) {
 		if job["completions"] != "1/1" {
 			t.Errorf("Expected completions '1/1', got %v", job["completions"])
 		}
+		if job["status"] != "Complete" {
+			t.Errorf("Expected status 'Complete', got %v", job["status"])
+		}
+		if job["sourceCronJob"] != "test-cronjob" {
+			t.Errorf("Expected sourceCronJob 'test-cronjob', got %v", job["sourceCronJob"])
+		}
+		if job["startTime"] == "" {
+			t.Errorf("Expected startTime to be populated")
+		}
+		if job["image"] != "busybox:1.36" {
+			t.Errorf("Expected image 'busybox:1.36', got %v", job["image"])
+		}
+		security, ok := job["security"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("Expected job security object, got %T", job["security"])
+		}
+		if security["podSeccompProfile"] != "RuntimeDefault" {
+			t.Errorf("Expected job seccomp RuntimeDefault, got %v", security["podSeccompProfile"])
+		}
 	})
 
 	t.Run("CronJobs", func(t *testing.T) {
@@ -1139,6 +1297,27 @@ func TestK8sResourceHandlerJobs(t *testing.T) {
 		}
 		if cj["active"].(float64) != 1 {
 			t.Errorf("Expected 1 active job, got %v", cj["active"])
+		}
+		if cj["timeZone"] != "Asia/Seoul" {
+			t.Errorf("Expected timeZone 'Asia/Seoul', got %v", cj["timeZone"])
+		}
+		if cj["nextRunTime"] == "" {
+			t.Errorf("Expected nextRunTime to be populated")
+		}
+		runs, ok := cj["recentRuns"].([]interface{})
+		if !ok || len(runs) == 0 {
+			t.Fatalf("Expected recentRuns to include at least one job, got %T", cj["recentRuns"])
+		}
+		run := runs[0].(map[string]interface{})
+		if run["name"] != "test-job" {
+			t.Errorf("Expected first recent run to be test-job, got %v", run["name"])
+		}
+		security, ok := cj["security"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("Expected cronjob security object, got %T", cj["security"])
+		}
+		if security["automountServiceAccount"] != "false" {
+			t.Errorf("Expected automountServiceAccount false, got %v", security["automountServiceAccount"])
 		}
 	})
 }
@@ -1662,4 +1841,8 @@ func TestHandleGlobalSearch_MethodNotAllowed(t *testing.T) {
 	if w.Code != http.StatusMethodNotAllowed {
 		t.Errorf("Expected status %d, got %d", http.StatusMethodNotAllowed, w.Code)
 	}
+}
+
+func strPtr(v string) *string {
+	return &v
 }

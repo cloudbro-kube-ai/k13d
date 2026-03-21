@@ -11,6 +11,7 @@ import (
 func (rg *ReportGenerator) ExportToCSV(report *ComprehensiveReport) ([]byte, error) {
 	var buf bytes.Buffer
 	writer := csv.NewWriter(&buf)
+	sections := reportSectionsOrAll(report)
 
 	// Write header section
 	_ = writer.Write([]string{"K13d Cluster Report"})
@@ -33,156 +34,174 @@ func (rg *ReportGenerator) ExportToCSV(report *ComprehensiveReport) ([]byte, err
 	_ = writer.Write([]string{"Total Services", fmt.Sprintf("%d", report.Workloads.TotalServices)})
 	_ = writer.Write([]string{""})
 
-	// Nodes
-	_ = writer.Write([]string{"=== NODES ==="})
-	_ = writer.Write([]string{"Name", "Status", "Roles", "Version", "CPU", "Memory", "IP"})
-	for _, node := range report.Nodes {
-		_ = writer.Write([]string{
-			node.Name,
-			node.Status,
-			strings.Join(node.Roles, ","),
-			node.KubeletVersion,
-			node.CPUCapacity,
-			node.MemoryCapacity,
-			node.InternalIP,
-		})
-	}
-	_ = writer.Write([]string{""})
-
-	// Namespaces
-	_ = writer.Write([]string{"=== NAMESPACES ==="})
-	_ = writer.Write([]string{"Name", "Status", "Pods", "Deployments", "Services"})
-	for _, ns := range report.Namespaces {
-		_ = writer.Write([]string{
-			ns.Name,
-			ns.Status,
-			fmt.Sprintf("%d", ns.PodCount),
-			fmt.Sprintf("%d", ns.DeployCount),
-			fmt.Sprintf("%d", ns.ServiceCount),
-		})
-	}
-	_ = writer.Write([]string{""})
-
-	// Pods
-	_ = writer.Write([]string{"=== PODS ==="})
-	_ = writer.Write([]string{"Name", "Namespace", "Status", "Ready", "Restarts", "Node", "IP", "Age"})
-	for _, pod := range report.Pods {
-		_ = writer.Write([]string{
-			pod.Name,
-			pod.Namespace,
-			pod.Status,
-			pod.Ready,
-			fmt.Sprintf("%d", pod.Restarts),
-			pod.Node,
-			pod.IP,
-			pod.Age,
-		})
-	}
-	_ = writer.Write([]string{""})
-
-	// Deployments
-	_ = writer.Write([]string{"=== DEPLOYMENTS ==="})
-	_ = writer.Write([]string{"Name", "Namespace", "Ready", "Up-to-date", "Available", "Strategy", "Age"})
-	for _, dep := range report.Deployments {
-		_ = writer.Write([]string{
-			dep.Name,
-			dep.Namespace,
-			dep.Ready,
-			fmt.Sprintf("%d", dep.UpToDate),
-			fmt.Sprintf("%d", dep.Available),
-			dep.Strategy,
-			dep.Age,
-		})
-	}
-	_ = writer.Write([]string{""})
-
-	// Services
-	_ = writer.Write([]string{"=== SERVICES ==="})
-	_ = writer.Write([]string{"Name", "Namespace", "Type", "ClusterIP", "ExternalIP", "Ports", "Age"})
-	for _, svc := range report.Services {
-		_ = writer.Write([]string{
-			svc.Name,
-			svc.Namespace,
-			svc.Type,
-			svc.ClusterIP,
-			svc.ExternalIP,
-			svc.Ports,
-			svc.Age,
-		})
-	}
-	_ = writer.Write([]string{""})
-
-	// Images
-	_ = writer.Write([]string{"=== CONTAINER IMAGES ==="})
-	_ = writer.Write([]string{"Image", "Repository", "Tag", "Pod Count"})
-	for _, img := range report.Images {
-		_ = writer.Write([]string{
-			img.Image,
-			img.Repository,
-			img.Tag,
-			fmt.Sprintf("%d", img.PodCount),
-		})
-	}
-	_ = writer.Write([]string{""})
-
-	// Security
-	_ = writer.Write([]string{"=== SECURITY SUMMARY ==="})
-	_ = writer.Write([]string{"Metric", "Value"})
-	_ = writer.Write([]string{"Secrets Count", fmt.Sprintf("%d", report.SecurityInfo.Secrets)})
-	_ = writer.Write([]string{"Privileged Pods", fmt.Sprintf("%d", report.SecurityInfo.PrivilegedPods)})
-	_ = writer.Write([]string{"Host Network Pods", fmt.Sprintf("%d", report.SecurityInfo.HostNetworkPods)})
-	_ = writer.Write([]string{"Root Containers", fmt.Sprintf("%d", report.SecurityInfo.RootContainers)})
-	_ = writer.Write([]string{""})
-
-	// FinOps Analysis
-	_ = writer.Write([]string{"=== FINOPS COST ANALYSIS ==="})
-	_ = writer.Write([]string{"Metric", "Value"})
-	_ = writer.Write([]string{"Estimated Monthly Cost", fmt.Sprintf("$%.2f", report.FinOpsAnalysis.TotalEstimatedMonthlyCost)})
-	_ = writer.Write([]string{"Total CPU Requests", report.FinOpsAnalysis.ResourceEfficiency.TotalCPURequests})
-	_ = writer.Write([]string{"Total CPU Limits", report.FinOpsAnalysis.ResourceEfficiency.TotalCPULimits})
-	_ = writer.Write([]string{"Total Memory Requests", report.FinOpsAnalysis.ResourceEfficiency.TotalMemoryRequests})
-	_ = writer.Write([]string{"Total Memory Limits", report.FinOpsAnalysis.ResourceEfficiency.TotalMemoryLimits})
-	_ = writer.Write([]string{"CPU Utilization vs Capacity", fmt.Sprintf("%.1f%%", report.FinOpsAnalysis.ResourceEfficiency.CPURequestsVsCapacity)})
-	_ = writer.Write([]string{"Memory Utilization vs Capacity", fmt.Sprintf("%.1f%%", report.FinOpsAnalysis.ResourceEfficiency.MemoryRequestsVsCapacity)})
-	_ = writer.Write([]string{"Pods Without Requests", fmt.Sprintf("%d", report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutRequests)})
-	_ = writer.Write([]string{"Pods Without Limits", fmt.Sprintf("%d", report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutLimits)})
-	_ = writer.Write([]string{""})
-
-	// Cost by Namespace
-	if len(report.FinOpsAnalysis.CostByNamespace) > 0 {
-		_ = writer.Write([]string{"=== COST BY NAMESPACE ==="})
-		_ = writer.Write([]string{"Namespace", "Pod Count", "CPU Requests", "Memory Requests", "Est. Cost/Month", "% of Total"})
-		for _, ns := range report.FinOpsAnalysis.CostByNamespace {
+	if sections.Nodes {
+		_ = writer.Write([]string{"=== NODES ==="})
+		_ = writer.Write([]string{"Name", "Status", "Roles", "CPU Capacity", "CPU Allocatable", "Memory Capacity", "Memory Allocatable", "Schedulable", "Warnings", "Taints", "IP"})
+		for _, node := range report.Nodes {
+			schedulable := "yes"
+			if node.Unschedulable {
+				schedulable = "no"
+			}
 			_ = writer.Write([]string{
-				ns.Namespace,
+				node.Name,
+				node.Status,
+				strings.Join(node.Roles, ","),
+				node.CPUCapacity,
+				node.CPUAllocatable,
+				node.MemoryCapacity,
+				node.MemoryAllocatable,
+				schedulable,
+				strings.Join(node.Warnings, ","),
+				strings.Join(node.Taints, ","),
+				node.InternalIP,
+			})
+		}
+		_ = writer.Write([]string{""})
+	}
+
+	if sections.Namespaces {
+		_ = writer.Write([]string{"=== NAMESPACES ==="})
+		_ = writer.Write([]string{"Name", "Status", "Pods", "Deployments", "Services"})
+		for _, ns := range report.Namespaces {
+			_ = writer.Write([]string{
+				ns.Name,
+				ns.Status,
 				fmt.Sprintf("%d", ns.PodCount),
-				ns.CPURequests,
-				ns.MemoryRequests,
-				fmt.Sprintf("$%.2f", ns.EstimatedCost),
-				fmt.Sprintf("%.1f%%", ns.CostPercentage),
+				fmt.Sprintf("%d", ns.DeployCount),
+				fmt.Sprintf("%d", ns.ServiceCount),
 			})
 		}
 		_ = writer.Write([]string{""})
 	}
 
-	// Cost Optimization Recommendations
-	if len(report.FinOpsAnalysis.CostOptimizations) > 0 {
-		_ = writer.Write([]string{"=== COST OPTIMIZATION RECOMMENDATIONS ==="})
-		_ = writer.Write([]string{"Priority", "Category", "Description", "Impact", "Est. Saving/Month"})
-		for _, opt := range report.FinOpsAnalysis.CostOptimizations {
+	if sections.Workloads {
+		_ = writer.Write([]string{"=== PODS ==="})
+		_ = writer.Write([]string{"Name", "Namespace", "Status", "Ready", "Restarts", "Node", "IP", "Age"})
+		for _, pod := range report.Pods {
 			_ = writer.Write([]string{
-				opt.Priority,
-				opt.Category,
-				opt.Description,
-				opt.Impact,
-				fmt.Sprintf("$%.2f", opt.EstimatedSaving),
+				pod.Name,
+				pod.Namespace,
+				pod.Status,
+				pod.Ready,
+				fmt.Sprintf("%d", pod.Restarts),
+				pod.Node,
+				pod.IP,
+				pod.Age,
 			})
 		}
 		_ = writer.Write([]string{""})
+
+		_ = writer.Write([]string{"=== DEPLOYMENTS ==="})
+		_ = writer.Write([]string{"Name", "Namespace", "Ready", "Up-to-date", "Available", "Strategy", "Age"})
+		for _, dep := range report.Deployments {
+			_ = writer.Write([]string{
+				dep.Name,
+				dep.Namespace,
+				dep.Ready,
+				fmt.Sprintf("%d", dep.UpToDate),
+				fmt.Sprintf("%d", dep.Available),
+				dep.Strategy,
+				dep.Age,
+			})
+		}
+		_ = writer.Write([]string{""})
+
+		_ = writer.Write([]string{"=== SERVICES ==="})
+		_ = writer.Write([]string{"Name", "Namespace", "Type", "ClusterIP", "ExternalIP", "Ports", "Age"})
+		for _, svc := range report.Services {
+			_ = writer.Write([]string{
+				svc.Name,
+				svc.Namespace,
+				svc.Type,
+				svc.ClusterIP,
+				svc.ExternalIP,
+				svc.Ports,
+				svc.Age,
+			})
+		}
+		_ = writer.Write([]string{""})
+
+		_ = writer.Write([]string{"=== CONTAINER IMAGES ==="})
+		_ = writer.Write([]string{"Image", "Repository", "Tag", "Pod Count"})
+		for _, img := range report.Images {
+			_ = writer.Write([]string{
+				img.Image,
+				img.Repository,
+				img.Tag,
+				fmt.Sprintf("%d", img.PodCount),
+			})
+		}
+		_ = writer.Write([]string{""})
+	}
+
+	if sections.SecurityBasic {
+		_ = writer.Write([]string{"=== SECURITY SUMMARY ==="})
+		_ = writer.Write([]string{"Metric", "Value"})
+		_ = writer.Write([]string{"Secrets Count", fmt.Sprintf("%d", report.SecurityInfo.Secrets)})
+		_ = writer.Write([]string{"Privileged Pods", fmt.Sprintf("%d", report.SecurityInfo.PrivilegedPods)})
+		_ = writer.Write([]string{"Host Network Pods", fmt.Sprintf("%d", report.SecurityInfo.HostNetworkPods)})
+		_ = writer.Write([]string{"Root Containers", fmt.Sprintf("%d", report.SecurityInfo.RootContainers)})
+		_ = writer.Write([]string{""})
+	}
+
+	if sections.FinOps {
+		_ = writer.Write([]string{"=== FINOPS COST ANALYSIS ==="})
+		_ = writer.Write([]string{"Metric", "Value"})
+		_ = writer.Write([]string{"Estimated Monthly Cost", fmt.Sprintf("$%.2f", report.FinOpsAnalysis.TotalEstimatedMonthlyCost)})
+		_ = writer.Write([]string{"Estimation Model", report.FinOpsAnalysis.EstimationModel})
+		_ = writer.Write([]string{"Metrics Source", report.FinOpsAnalysis.ResourceEfficiency.MetricsSource})
+		_ = writer.Write([]string{"Total CPU Requests", report.FinOpsAnalysis.ResourceEfficiency.TotalCPURequests})
+		_ = writer.Write([]string{"Total CPU Usage", report.FinOpsAnalysis.ResourceEfficiency.TotalCPUUsage})
+		_ = writer.Write([]string{"Total CPU Limits", report.FinOpsAnalysis.ResourceEfficiency.TotalCPULimits})
+		_ = writer.Write([]string{"Total Memory Requests", report.FinOpsAnalysis.ResourceEfficiency.TotalMemoryRequests})
+		_ = writer.Write([]string{"Total Memory Usage", report.FinOpsAnalysis.ResourceEfficiency.TotalMemoryUsage})
+		_ = writer.Write([]string{"Total Memory Limits", report.FinOpsAnalysis.ResourceEfficiency.TotalMemoryLimits})
+		_ = writer.Write([]string{"CPU Requests vs Allocatable", fmt.Sprintf("%.1f%%", report.FinOpsAnalysis.ResourceEfficiency.CPURequestsVsCapacity)})
+		_ = writer.Write([]string{"Memory Requests vs Allocatable", fmt.Sprintf("%.1f%%", report.FinOpsAnalysis.ResourceEfficiency.MemoryRequestsVsCapacity)})
+		_ = writer.Write([]string{"Pods Without Requests", fmt.Sprintf("%d", report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutRequests)})
+		_ = writer.Write([]string{"Pods Without Limits", fmt.Sprintf("%d", report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutLimits)})
+		for _, note := range report.FinOpsAnalysis.EstimationNotes {
+			_ = writer.Write([]string{"Note", note})
+		}
+		_ = writer.Write([]string{""})
+
+		if len(report.FinOpsAnalysis.CostByNamespace) > 0 {
+			_ = writer.Write([]string{"=== COST BY NAMESPACE ==="})
+			_ = writer.Write([]string{"Namespace", "Pods", "Running Pods", "CPU Requests", "CPU Usage", "Memory Requests", "Memory Usage", "Est. Cost/Month", "% of Total"})
+			for _, ns := range report.FinOpsAnalysis.CostByNamespace {
+				_ = writer.Write([]string{
+					ns.Namespace,
+					fmt.Sprintf("%d", ns.PodCount),
+					fmt.Sprintf("%d", ns.RunningPodCount),
+					ns.CPURequests,
+					ns.CPUUsage,
+					ns.MemoryRequests,
+					ns.MemoryUsage,
+					fmt.Sprintf("$%.2f", ns.EstimatedCost),
+					fmt.Sprintf("%.1f%%", ns.CostPercentage),
+				})
+			}
+			_ = writer.Write([]string{""})
+		}
+
+		if len(report.FinOpsAnalysis.CostOptimizations) > 0 {
+			_ = writer.Write([]string{"=== COST OPTIMIZATION RECOMMENDATIONS ==="})
+			_ = writer.Write([]string{"Priority", "Category", "Description", "Impact", "Est. Saving/Month"})
+			for _, opt := range report.FinOpsAnalysis.CostOptimizations {
+				_ = writer.Write([]string{
+					opt.Priority,
+					opt.Category,
+					opt.Description,
+					opt.Impact,
+					fmt.Sprintf("$%.2f", opt.EstimatedSaving),
+				})
+			}
+			_ = writer.Write([]string{""})
+		}
 	}
 
 	// Security Scan Results
-	if report.SecurityScan != nil {
+	if sections.SecurityBasic && report.SecurityScan != nil {
 		_ = writer.Write([]string{"=== SECURITY SCAN RESULTS ==="})
 		_ = writer.Write([]string{"Overall Score", fmt.Sprintf("%.1f", report.SecurityScan.OverallScore)})
 		_ = writer.Write([]string{"Risk Level", report.SecurityScan.RiskLevel})
@@ -246,7 +265,7 @@ func (rg *ReportGenerator) ExportToCSV(report *ComprehensiveReport) ([]byte, err
 	}
 
 	// Warning Events
-	if len(report.Events) > 0 {
+	if sections.Events && len(report.Events) > 0 {
 		_ = writer.Write([]string{"=== WARNING EVENTS ==="})
 		_ = writer.Write([]string{"Type", "Reason", "Object", "Message", "Count", "Last Seen"})
 		for _, event := range report.Events {
@@ -283,6 +302,7 @@ func (rg *ReportGenerator) ExportToCSV(report *ComprehensiveReport) ([]byte, err
 // ExportToHTML generates HTML format for PDF conversion
 func (rg *ReportGenerator) ExportToHTML(report *ComprehensiveReport) string {
 	var sb strings.Builder
+	sections := reportSectionsOrAll(report)
 
 	sb.WriteString(`<!DOCTYPE html>
 <html>
@@ -355,10 +375,10 @@ tr:hover { background: #e9ecef; }
 	sb.WriteString(`<h3>Table of Contents</h3>`)
 	sb.WriteString(`<ul>`)
 	sb.WriteString(`<li><a href="#section-1"><span class="section-number">1.</span> Executive Summary</a></li>`)
-	if report.MetricsHistory != nil && len(report.MetricsHistory.ClusterMetrics) > 0 {
+	if sections.Metrics && report.MetricsHistory != nil && len(report.MetricsHistory.ClusterMetrics) > 0 {
 		sb.WriteString(`<li><a href="#section-2"><span class="section-number">2.</span> Resource Usage History</a></li>`)
 	}
-	if report.SecurityScan != nil {
+	if sections.SecurityBasic && report.SecurityScan != nil {
 		sb.WriteString(`<li><a href="#section-3"><span class="section-number">3.</span> Security Assessment</a>`)
 		sb.WriteString(`<ul class="toc-subsection">`)
 		if report.SecurityScan.ImageVulnSummary != nil {
@@ -381,26 +401,38 @@ tr:hover { background: #e9ecef; }
 	if report.AIAnalysis != "" {
 		sb.WriteString(`<li><a href="#section-4"><span class="section-number">4.</span> AI Analysis</a></li>`)
 	}
-	sb.WriteString(`<li><a href="#section-5"><span class="section-number">5.</span> Cluster Infrastructure</a>`)
-	sb.WriteString(`<ul class="toc-subsection">`)
-	sb.WriteString(`<li><a href="#section-5-1">5.1 Nodes</a></li>`)
-	sb.WriteString(`<li><a href="#section-5-2">5.2 Namespaces</a></li>`)
-	sb.WriteString(`</ul></li>`)
-	sb.WriteString(`<li><a href="#section-6"><span class="section-number">6.</span> Workloads</a>`)
-	sb.WriteString(`<ul class="toc-subsection">`)
-	sb.WriteString(`<li><a href="#section-6-1">6.1 Pods</a></li>`)
-	sb.WriteString(`<li><a href="#section-6-2">6.2 Deployments</a></li>`)
-	sb.WriteString(`<li><a href="#section-6-3">6.3 Services</a></li>`)
-	sb.WriteString(`<li><a href="#section-6-4">6.4 Container Images</a></li>`)
-	sb.WriteString(`</ul></li>`)
-	sb.WriteString(`<li><a href="#section-7"><span class="section-number">7.</span> FinOps Cost Analysis</a>`)
-	sb.WriteString(`<ul class="toc-subsection">`)
-	sb.WriteString(`<li><a href="#section-7-1">7.1 Resource Efficiency</a></li>`)
-	sb.WriteString(`<li><a href="#section-7-2">7.2 Cost by Namespace</a></li>`)
-	sb.WriteString(`<li><a href="#section-7-3">7.3 Optimization Recommendations</a></li>`)
-	sb.WriteString(`</ul></li>`)
-	sb.WriteString(`<li><a href="#section-8"><span class="section-number">8.</span> Security Summary</a></li>`)
-	if len(report.Events) > 0 {
+	if sections.Nodes || sections.Namespaces {
+		sb.WriteString(`<li><a href="#section-5"><span class="section-number">5.</span> Cluster Infrastructure</a>`)
+		sb.WriteString(`<ul class="toc-subsection">`)
+		if sections.Nodes {
+			sb.WriteString(`<li><a href="#section-5-1">5.1 Nodes</a></li>`)
+		}
+		if sections.Namespaces {
+			sb.WriteString(`<li><a href="#section-5-2">5.2 Namespaces</a></li>`)
+		}
+		sb.WriteString(`</ul></li>`)
+	}
+	if sections.Workloads {
+		sb.WriteString(`<li><a href="#section-6"><span class="section-number">6.</span> Workloads</a>`)
+		sb.WriteString(`<ul class="toc-subsection">`)
+		sb.WriteString(`<li><a href="#section-6-1">6.1 Pods</a></li>`)
+		sb.WriteString(`<li><a href="#section-6-2">6.2 Deployments</a></li>`)
+		sb.WriteString(`<li><a href="#section-6-3">6.3 Services</a></li>`)
+		sb.WriteString(`<li><a href="#section-6-4">6.4 Container Images</a></li>`)
+		sb.WriteString(`</ul></li>`)
+	}
+	if sections.FinOps {
+		sb.WriteString(`<li><a href="#section-7"><span class="section-number">7.</span> FinOps Cost Analysis</a>`)
+		sb.WriteString(`<ul class="toc-subsection">`)
+		sb.WriteString(`<li><a href="#section-7-1">7.1 Resource Efficiency</a></li>`)
+		sb.WriteString(`<li><a href="#section-7-2">7.2 Cost by Namespace</a></li>`)
+		sb.WriteString(`<li><a href="#section-7-3">7.3 Optimization Recommendations</a></li>`)
+		sb.WriteString(`</ul></li>`)
+	}
+	if sections.SecurityBasic {
+		sb.WriteString(`<li><a href="#section-8"><span class="section-number">8.</span> Security Summary</a></li>`)
+	}
+	if sections.Events && len(report.Events) > 0 {
 		sb.WriteString(`<li><a href="#section-9"><span class="section-number">9.</span> Warning Events</a></li>`)
 	}
 	sb.WriteString(`</ul>`)
@@ -439,7 +471,7 @@ tr:hover { background: #e9ecef; }
 	sb.WriteString(`</div>`)
 
 	// Section 2: Metrics History (if available)
-	if report.MetricsHistory != nil && len(report.MetricsHistory.ClusterMetrics) > 0 {
+	if sections.Metrics && report.MetricsHistory != nil && len(report.MetricsHistory.ClusterMetrics) > 0 {
 		sb.WriteString(`<h2 id="section-2"><a href="#section-2"><span class="section-number">2.</span> Resource Usage History</a><a href="#top" class="back-to-top">[Back to Top]</a></h2>`)
 		sb.WriteString(`<p>Resource usage trends over the last 24 hours:</p>`)
 		sb.WriteString(`<div style="text-align: center; margin: 20px 0;">`)
@@ -468,7 +500,7 @@ tr:hover { background: #e9ecef; }
 	}
 
 	// Section 3: Security Assessment (if available)
-	if report.SecurityScan != nil {
+	if sections.SecurityBasic && report.SecurityScan != nil {
 		riskClass := "status-pass"
 		switch report.SecurityScan.RiskLevel {
 		case "Critical":
@@ -622,200 +654,232 @@ tr:hover { background: #e9ecef; }
 		sb.WriteString(fmt.Sprintf(`<div class="ai-analysis">%s</div>`, report.AIAnalysis))
 	}
 
-	// Section 5: Cluster Infrastructure
-	sb.WriteString(`<h2 id="section-5"><a href="#section-5"><span class="section-number">5.</span> Cluster Infrastructure</a><a href="#top" class="back-to-top">[Back to Top]</a></h2>`)
+	if sections.Nodes || sections.Namespaces {
+		sb.WriteString(`<h2 id="section-5"><a href="#section-5"><span class="section-number">5.</span> Cluster Infrastructure</a><a href="#top" class="back-to-top">[Back to Top]</a></h2>`)
+	}
 
-	// 5.1 Nodes
-	sb.WriteString(`<h3 id="section-5-1"><span class="section-number">5.1</span> Nodes</h3>`)
-	sb.WriteString(fmt.Sprintf(`<p>Total: <strong>%d</strong> nodes (%d Ready, %d Not Ready)</p>`, report.NodeSummary.Total, report.NodeSummary.Ready, report.NodeSummary.NotReady))
-	sb.WriteString(`<table><tr><th>Name</th><th>Status</th><th>Roles</th><th>Version</th><th>CPU Capacity</th><th>Memory Capacity</th><th>Internal IP</th></tr>`)
-	for _, node := range report.Nodes {
-		statusClass := "status-pass"
-		status := "Ready"
-		if node.Status != "Ready" {
-			statusClass = "status-fail"
-			status = node.Status
+	if sections.Nodes {
+		sb.WriteString(`<h3 id="section-5-1"><span class="section-number">5.1</span> Nodes</h3>`)
+		sb.WriteString(fmt.Sprintf(`<p>Total: <strong>%d</strong> nodes (%d Ready, %d Not Ready, %d Cordoned, %d With Pressure, %d With Warnings)</p>`,
+			report.NodeSummary.Total, report.NodeSummary.Ready, report.NodeSummary.NotReady, report.NodeSummary.Unschedulable, report.NodeSummary.Pressure, report.NodeSummary.WarningNodes))
+		sb.WriteString(`<table><tr><th>Name</th><th>Status</th><th>Roles</th><th>Version</th><th>CPU Cap/Alloc</th><th>Mem Cap/Alloc</th><th>Schedulable</th><th>Warnings</th><th>Taints</th><th>Internal IP</th></tr>`)
+		for _, node := range report.Nodes {
+			statusClass := "status-pass"
+			status := "Ready"
+			if node.Status != "Ready" {
+				statusClass = "status-fail"
+				status = node.Status
+			}
+			schedulable := "Yes"
+			if node.Unschedulable {
+				schedulable = "No"
+			}
+			warnings := "<none>"
+			if len(node.Warnings) > 0 {
+				warnings = strings.Join(node.Warnings, ", ")
+			}
+			taints := "<none>"
+			if len(node.Taints) > 0 {
+				taints = strings.Join(node.Taints, ", ")
+			}
+			sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td class="%s">%s</td><td>%s</td><td>%s</td><td>%s / %s</td><td>%s / %s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>`,
+				node.Name, statusClass, status, strings.Join(node.Roles, ", "), node.KubeletVersion, node.CPUCapacity, node.CPUAllocatable, node.MemoryCapacity, node.MemoryAllocatable, schedulable, warnings, taints, node.InternalIP))
 		}
-		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td class="%s">%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>`,
-			node.Name, statusClass, status, strings.Join(node.Roles, ", "), node.KubeletVersion, node.CPUCapacity, node.MemoryCapacity, node.InternalIP))
+		sb.WriteString(`</table>`)
 	}
-	sb.WriteString(`</table>`)
 
-	// 5.2 Namespaces
-	sb.WriteString(`<h3 id="section-5-2"><span class="section-number">5.2</span> Namespaces</h3>`)
-	sb.WriteString(fmt.Sprintf(`<p>Total: <strong>%d</strong> namespaces (%d Active)</p>`, report.NamespaceSummary.Total, report.NamespaceSummary.Active))
-	sb.WriteString(`<table><tr><th>Name</th><th>Status</th><th>Pods</th><th>Deployments</th><th>Services</th></tr>`)
-	for _, ns := range report.Namespaces {
-		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%d</td><td>%d</td><td>%d</td></tr>`,
-			ns.Name, ns.Status, ns.PodCount, ns.DeployCount, ns.ServiceCount))
-	}
-	sb.WriteString(`</table>`)
-
-	// Section 6: Workloads
-	sb.WriteString(`<h2 id="section-6"><a href="#section-6"><span class="section-number">6.</span> Workloads</a><a href="#top" class="back-to-top">[Back to Top]</a></h2>`)
-
-	// 6.1 Pods (limit to first 50 for readability)
-	sb.WriteString(`<h3 id="section-6-1"><span class="section-number">6.1</span> Pods</h3>`)
-	sb.WriteString(fmt.Sprintf(`<p>Total: <strong>%d</strong> pods (%d Running, %d Pending, %d Failed)</p>`,
-		report.Workloads.TotalPods, report.Workloads.RunningPods, report.Workloads.PendingPods, report.Workloads.FailedPods))
-	if len(report.Pods) > 50 {
-		sb.WriteString(fmt.Sprintf(`<p><em>Showing first 50 of %d pods</em></p>`, len(report.Pods)))
-	}
-	sb.WriteString(`<table><tr><th>Name</th><th>Namespace</th><th>Status</th><th>Ready</th><th>Restarts</th><th>Node</th><th>Age</th></tr>`)
-	for i, pod := range report.Pods {
-		if i >= 50 {
-			break
+	if sections.Namespaces {
+		sb.WriteString(`<h3 id="section-5-2"><span class="section-number">5.2</span> Namespaces</h3>`)
+		sb.WriteString(fmt.Sprintf(`<p>Total: <strong>%d</strong> namespaces (%d Active)</p>`, report.NamespaceSummary.Total, report.NamespaceSummary.Active))
+		sb.WriteString(`<table><tr><th>Name</th><th>Status</th><th>Pods</th><th>Deployments</th><th>Services</th></tr>`)
+		for _, ns := range report.Namespaces {
+			sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%d</td><td>%d</td><td>%d</td></tr>`,
+				ns.Name, ns.Status, ns.PodCount, ns.DeployCount, ns.ServiceCount))
 		}
-		statusClass := "status-pass"
-		switch pod.Status {
-		case "Pending":
-			statusClass = "status-warn"
-		case "Failed", "CrashLoopBackOff", "Error":
-			statusClass = "status-fail"
+		sb.WriteString(`</table>`)
+	}
+
+	if sections.Workloads {
+		sb.WriteString(`<h2 id="section-6"><a href="#section-6"><span class="section-number">6.</span> Workloads</a><a href="#top" class="back-to-top">[Back to Top]</a></h2>`)
+
+		// 6.1 Pods (limit to first 50 for readability)
+		sb.WriteString(`<h3 id="section-6-1"><span class="section-number">6.1</span> Pods</h3>`)
+		sb.WriteString(fmt.Sprintf(`<p>Total: <strong>%d</strong> pods (%d Running, %d Pending, %d Failed)</p>`,
+			report.Workloads.TotalPods, report.Workloads.RunningPods, report.Workloads.PendingPods, report.Workloads.FailedPods))
+		if len(report.Pods) > 50 {
+			sb.WriteString(fmt.Sprintf(`<p><em>Showing first 50 of %d pods</em></p>`, len(report.Pods)))
 		}
-		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td class="%s">%s</td><td>%s</td><td>%d</td><td>%s</td><td>%s</td></tr>`,
-			pod.Name, pod.Namespace, statusClass, pod.Status, pod.Ready, pod.Restarts, pod.Node, pod.Age))
-	}
-	sb.WriteString(`</table>`)
-
-	// 6.2 Deployments
-	sb.WriteString(`<h3 id="section-6-2"><span class="section-number">6.2</span> Deployments</h3>`)
-	sb.WriteString(fmt.Sprintf(`<p>Total: <strong>%d</strong> deployments (%d Healthy)</p>`, report.Workloads.TotalDeployments, report.Workloads.HealthyDeploys))
-	sb.WriteString(`<table><tr><th>Name</th><th>Namespace</th><th>Ready</th><th>Up-to-date</th><th>Available</th><th>Strategy</th><th>Age</th></tr>`)
-	for _, dep := range report.Deployments {
-		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%s</td><td>%d</td><td>%d</td><td>%s</td><td>%s</td></tr>`,
-			dep.Name, dep.Namespace, dep.Ready, dep.UpToDate, dep.Available, dep.Strategy, dep.Age))
-	}
-	sb.WriteString(`</table>`)
-
-	// 6.3 Services
-	sb.WriteString(`<h3 id="section-6-3"><span class="section-number">6.3</span> Services</h3>`)
-	sb.WriteString(fmt.Sprintf(`<p>Total: <strong>%d</strong> services</p>`, report.Workloads.TotalServices))
-	sb.WriteString(`<table><tr><th>Name</th><th>Namespace</th><th>Type</th><th>Cluster IP</th><th>External IP</th><th>Ports</th></tr>`)
-	for _, svc := range report.Services {
-		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>`,
-			svc.Name, svc.Namespace, svc.Type, svc.ClusterIP, svc.ExternalIP, svc.Ports))
-	}
-	sb.WriteString(`</table>`)
-
-	// 6.4 Container Images
-	sb.WriteString(`<h3 id="section-6-4"><span class="section-number">6.4</span> Container Images</h3>`)
-	sb.WriteString(fmt.Sprintf(`<p>Total: <strong>%d</strong> unique images in use</p>`, len(report.Images)))
-	sb.WriteString(`<table><tr><th>Repository</th><th>Tag</th><th>Pod Count</th></tr>`)
-	for i, img := range report.Images {
-		if i >= 25 {
-			sb.WriteString(fmt.Sprintf(`<tr><td colspan="3"><em>... and %d more images</em></td></tr>`, len(report.Images)-25))
-			break
-		}
-		sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%d</td></tr>`,
-			img.Repository, img.Tag, img.PodCount))
-	}
-	sb.WriteString(`</table>`)
-
-	// Section 7: FinOps Cost Analysis
-	sb.WriteString(`<h2 id="section-7"><a href="#section-7"><span class="section-number">7.</span> FinOps Cost Analysis</a><a href="#top" class="back-to-top">[Back to Top]</a></h2>`)
-	sb.WriteString(`<p>Resource cost analysis and optimization opportunities:</p>`)
-	sb.WriteString(`<div style="text-align: center; margin: 20px 0;">`)
-	sb.WriteString(fmt.Sprintf(`<div class="cost-card"><div class="cost-value">$%.2f</div><div class="cost-label">Est. Monthly Cost</div></div>`,
-		report.FinOpsAnalysis.TotalEstimatedMonthlyCost))
-	sb.WriteString(fmt.Sprintf(`<div class="cost-card"><div class="cost-value">%.1f%%</div><div class="cost-label">CPU Utilization</div></div>`,
-		report.FinOpsAnalysis.ResourceEfficiency.CPURequestsVsCapacity))
-	sb.WriteString(fmt.Sprintf(`<div class="cost-card"><div class="cost-value">%.1f%%</div><div class="cost-label">Memory Utilization</div></div>`,
-		report.FinOpsAnalysis.ResourceEfficiency.MemoryRequestsVsCapacity))
-	sb.WriteString(`</div>`)
-
-	// 7.1 Resource Efficiency
-	sb.WriteString(`<h3 id="section-7-1"><span class="section-number">7.1</span> Resource Efficiency</h3>`)
-	sb.WriteString(`<table><tr><th>Metric</th><th>Value</th><th>Status</th></tr>`)
-	sb.WriteString(fmt.Sprintf(`<tr><td>Total CPU Requests</td><td>%s</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.TotalCPURequests))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Total CPU Limits</td><td>%s</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.TotalCPULimits))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Total Memory Requests</td><td>%s</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.TotalMemoryRequests))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Total Memory Limits</td><td>%s</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.TotalMemoryLimits))
-	reqStatus := "PASS"
-	reqClass := "status-pass"
-	if report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutRequests > 0 {
-		reqStatus = "WARN"
-		reqClass = "status-warn"
-	}
-	sb.WriteString(fmt.Sprintf(`<tr><td>Pods Without Requests</td><td>%d</td><td class="%s">%s</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutRequests, reqClass, reqStatus))
-	limStatus := "PASS"
-	limClass := "status-pass"
-	if report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutLimits > 0 {
-		limStatus = "WARN"
-		limClass = "status-warn"
-	}
-	sb.WriteString(fmt.Sprintf(`<tr><td>Pods Without Limits</td><td>%d</td><td class="%s">%s</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutLimits, limClass, limStatus))
-	sb.WriteString(`</table>`)
-
-	// 7.2 Cost by Namespace
-	if len(report.FinOpsAnalysis.CostByNamespace) > 0 {
-		sb.WriteString(`<h3 id="section-7-2"><span class="section-number">7.2</span> Cost by Namespace</h3>`)
-		sb.WriteString(`<table><tr><th>Namespace</th><th>Pods</th><th>CPU Requests</th><th>Memory Requests</th><th>Est. Cost/Month</th><th>% of Total</th></tr>`)
-		for i, ns := range report.FinOpsAnalysis.CostByNamespace {
-			if i >= 15 {
-				sb.WriteString(fmt.Sprintf(`<tr><td colspan="6"><em>... and %d more namespaces</em></td></tr>`, len(report.FinOpsAnalysis.CostByNamespace)-15))
+		sb.WriteString(`<table><tr><th>Name</th><th>Namespace</th><th>Status</th><th>Ready</th><th>Restarts</th><th>Node</th><th>Age</th></tr>`)
+		for i, pod := range report.Pods {
+			if i >= 50 {
 				break
 			}
-			sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%d</td><td>%s</td><td>%s</td><td>$%.2f</td><td>%.1f%%</td></tr>`,
-				ns.Namespace, ns.PodCount, ns.CPURequests, ns.MemoryRequests, ns.EstimatedCost, ns.CostPercentage))
+			statusClass := "status-pass"
+			switch pod.Status {
+			case "Pending":
+				statusClass = "status-warn"
+			case "Failed", "CrashLoopBackOff", "Error":
+				statusClass = "status-fail"
+			}
+			sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td class="%s">%s</td><td>%s</td><td>%d</td><td>%s</td><td>%s</td></tr>`,
+				pod.Name, pod.Namespace, statusClass, pod.Status, pod.Ready, pod.Restarts, pod.Node, pod.Age))
+		}
+		sb.WriteString(`</table>`)
+
+		// 6.2 Deployments
+		sb.WriteString(`<h3 id="section-6-2"><span class="section-number">6.2</span> Deployments</h3>`)
+		sb.WriteString(fmt.Sprintf(`<p>Total: <strong>%d</strong> deployments (%d Healthy)</p>`, report.Workloads.TotalDeployments, report.Workloads.HealthyDeploys))
+		sb.WriteString(`<table><tr><th>Name</th><th>Namespace</th><th>Ready</th><th>Up-to-date</th><th>Available</th><th>Strategy</th><th>Age</th></tr>`)
+		for _, dep := range report.Deployments {
+			sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%s</td><td>%d</td><td>%d</td><td>%s</td><td>%s</td></tr>`,
+				dep.Name, dep.Namespace, dep.Ready, dep.UpToDate, dep.Available, dep.Strategy, dep.Age))
+		}
+		sb.WriteString(`</table>`)
+
+		// 6.3 Services
+		sb.WriteString(`<h3 id="section-6-3"><span class="section-number">6.3</span> Services</h3>`)
+		sb.WriteString(fmt.Sprintf(`<p>Total: <strong>%d</strong> services</p>`, report.Workloads.TotalServices))
+		sb.WriteString(`<table><tr><th>Name</th><th>Namespace</th><th>Type</th><th>Cluster IP</th><th>External IP</th><th>Ports</th></tr>`)
+		for _, svc := range report.Services {
+			sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>`,
+				svc.Name, svc.Namespace, svc.Type, svc.ClusterIP, svc.ExternalIP, svc.Ports))
+		}
+		sb.WriteString(`</table>`)
+
+		// 6.4 Container Images
+		sb.WriteString(`<h3 id="section-6-4"><span class="section-number">6.4</span> Container Images</h3>`)
+		sb.WriteString(fmt.Sprintf(`<p>Total: <strong>%d</strong> unique images in use</p>`, len(report.Images)))
+		sb.WriteString(`<table><tr><th>Repository</th><th>Tag</th><th>Pod Count</th></tr>`)
+		for i, img := range report.Images {
+			if i >= 25 {
+				sb.WriteString(fmt.Sprintf(`<tr><td colspan="3"><em>... and %d more images</em></td></tr>`, len(report.Images)-25))
+				break
+			}
+			sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%s</td><td>%d</td></tr>`,
+				img.Repository, img.Tag, img.PodCount))
 		}
 		sb.WriteString(`</table>`)
 	}
 
-	// 7.3 Cost Optimization Recommendations
-	if len(report.FinOpsAnalysis.CostOptimizations) > 0 {
-		totalSavings := 0.0
-		for _, opt := range report.FinOpsAnalysis.CostOptimizations {
-			totalSavings += opt.EstimatedSaving
+	if sections.FinOps {
+		sb.WriteString(`<h2 id="section-7"><a href="#section-7"><span class="section-number">7.</span> FinOps Cost Analysis</a><a href="#top" class="back-to-top">[Back to Top]</a></h2>`)
+		sb.WriteString(`<p>Heuristic cost analysis and rightsizing opportunities for running workloads.</p>`)
+		sb.WriteString(`<div style="text-align: center; margin: 20px 0;">`)
+		sb.WriteString(fmt.Sprintf(`<div class="cost-card"><div class="cost-value">$%.2f</div><div class="cost-label">Est. Monthly Cost</div></div>`,
+			report.FinOpsAnalysis.TotalEstimatedMonthlyCost))
+		sb.WriteString(fmt.Sprintf(`<div class="cost-card"><div class="cost-value">%.1f%%</div><div class="cost-label">Req CPU vs Allocatable</div></div>`,
+			report.FinOpsAnalysis.ResourceEfficiency.CPURequestsVsCapacity))
+		sb.WriteString(fmt.Sprintf(`<div class="cost-card"><div class="cost-value">%.1f%%</div><div class="cost-label">Req Mem vs Allocatable</div></div>`,
+			report.FinOpsAnalysis.ResourceEfficiency.MemoryRequestsVsCapacity))
+		sb.WriteString(`</div>`)
+		sb.WriteString(fmt.Sprintf(`<div class="info-box"><strong>Methodology:</strong> %s</div>`, report.FinOpsAnalysis.EstimationModel))
+		if len(report.FinOpsAnalysis.EstimationNotes) > 0 {
+			sb.WriteString(`<ul>`)
+			for _, note := range report.FinOpsAnalysis.EstimationNotes {
+				sb.WriteString(fmt.Sprintf(`<li>%s</li>`, note))
+			}
+			sb.WriteString(`</ul>`)
 		}
-		sb.WriteString(`<h3 id="section-7-3"><span class="section-number">7.3</span> Optimization Recommendations</h3>`)
-		sb.WriteString(fmt.Sprintf(`<p><strong>Total Potential Savings:</strong> <span class="savings-badge">$%.2f/month</span></p>`, totalSavings))
-		sb.WriteString(`<table><tr><th>Priority</th><th>Category</th><th>Recommendation</th><th>Impact</th><th>Est. Savings</th></tr>`)
-		for _, opt := range report.FinOpsAnalysis.CostOptimizations {
-			priorityClass := "priority-" + opt.Priority
-			sb.WriteString(fmt.Sprintf(`<tr><td class="%s">%s</td><td>%s</td><td>%s</td><td>%s</td><td>$%.2f</td></tr>`,
-				priorityClass, strings.ToUpper(opt.Priority), opt.Category, opt.Description, opt.Impact, opt.EstimatedSaving))
+
+		sb.WriteString(`<h3 id="section-7-1"><span class="section-number">7.1</span> Resource Efficiency</h3>`)
+		sb.WriteString(`<table><tr><th>Metric</th><th>Value</th><th>Status</th></tr>`)
+		sb.WriteString(fmt.Sprintf(`<tr><td>Metrics Source</td><td>%s</td><td>INFO</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.MetricsSource))
+		sb.WriteString(fmt.Sprintf(`<tr><td>Total CPU Requests</td><td>%s</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.TotalCPURequests))
+		sb.WriteString(fmt.Sprintf(`<tr><td>Total CPU Usage</td><td>%s</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.TotalCPUUsage))
+		sb.WriteString(fmt.Sprintf(`<tr><td>Total CPU Limits</td><td>%s</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.TotalCPULimits))
+		sb.WriteString(fmt.Sprintf(`<tr><td>Total Memory Requests</td><td>%s</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.TotalMemoryRequests))
+		sb.WriteString(fmt.Sprintf(`<tr><td>Total Memory Usage</td><td>%s</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.TotalMemoryUsage))
+		sb.WriteString(fmt.Sprintf(`<tr><td>Total Memory Limits</td><td>%s</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.TotalMemoryLimits))
+		sb.WriteString(fmt.Sprintf(`<tr><td>CPU Requests vs Allocatable</td><td>%.1f%%</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.CPURequestsVsCapacity))
+		sb.WriteString(fmt.Sprintf(`<tr><td>Memory Requests vs Allocatable</td><td>%.1f%%</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.MemoryRequestsVsCapacity))
+		if report.FinOpsAnalysis.ResourceEfficiency.MetricsSource == "live_metrics" {
+			sb.WriteString(fmt.Sprintf(`<tr><td>CPU Usage vs Requests</td><td>%.1f%%</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.CPUUsageVsRequests))
+			sb.WriteString(fmt.Sprintf(`<tr><td>Memory Usage vs Requests</td><td>%.1f%%</td><td>-</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.MemoryUsageVsRequests))
 		}
+		reqStatus := "PASS"
+		reqClass := "status-pass"
+		if report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutRequests > 0 {
+			reqStatus = "WARN"
+			reqClass = "status-warn"
+		}
+		sb.WriteString(fmt.Sprintf(`<tr><td>Pods Without Requests</td><td>%d</td><td class="%s">%s</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutRequests, reqClass, reqStatus))
+		limStatus := "PASS"
+		limClass := "status-pass"
+		if report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutLimits > 0 {
+			limStatus = "WARN"
+			limClass = "status-warn"
+		}
+		sb.WriteString(fmt.Sprintf(`<tr><td>Pods Without Limits</td><td>%d</td><td class="%s">%s</td></tr>`, report.FinOpsAnalysis.ResourceEfficiency.PodsWithoutLimits, limClass, limStatus))
+		sb.WriteString(`</table>`)
+
+		if len(report.FinOpsAnalysis.CostByNamespace) > 0 {
+			sb.WriteString(`<h3 id="section-7-2"><span class="section-number">7.2</span> Cost by Namespace</h3>`)
+			sb.WriteString(`<table><tr><th>Namespace</th><th>Pods</th><th>Running Pods</th><th>CPU Requests</th><th>CPU Usage</th><th>Memory Requests</th><th>Memory Usage</th><th>Est. Cost/Month</th><th>% of Total</th></tr>`)
+			for i, ns := range report.FinOpsAnalysis.CostByNamespace {
+				if i >= 15 {
+					sb.WriteString(fmt.Sprintf(`<tr><td colspan="9"><em>... and %d more namespaces</em></td></tr>`, len(report.FinOpsAnalysis.CostByNamespace)-15))
+					break
+				}
+				sb.WriteString(fmt.Sprintf(`<tr><td>%s</td><td>%d</td><td>%d</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>$%.2f</td><td>%.1f%%</td></tr>`,
+					ns.Namespace, ns.PodCount, ns.RunningPodCount, ns.CPURequests, ns.CPUUsage, ns.MemoryRequests, ns.MemoryUsage, ns.EstimatedCost, ns.CostPercentage))
+			}
+			sb.WriteString(`</table>`)
+		}
+
+		if len(report.FinOpsAnalysis.CostOptimizations) > 0 {
+			totalSavings := 0.0
+			for _, opt := range report.FinOpsAnalysis.CostOptimizations {
+				totalSavings += opt.EstimatedSaving
+			}
+			sb.WriteString(`<h3 id="section-7-3"><span class="section-number">7.3</span> Optimization Recommendations</h3>`)
+			sb.WriteString(fmt.Sprintf(`<p><strong>Total Concrete Savings Identified:</strong> <span class="savings-badge">$%.2f/month</span></p>`, totalSavings))
+			sb.WriteString(`<table><tr><th>Priority</th><th>Category</th><th>Recommendation</th><th>Impact</th><th>Est. Savings</th></tr>`)
+			for _, opt := range report.FinOpsAnalysis.CostOptimizations {
+				priorityClass := "priority-" + opt.Priority
+				sb.WriteString(fmt.Sprintf(`<tr><td class="%s">%s</td><td>%s</td><td>%s</td><td>%s</td><td>$%.2f</td></tr>`,
+					priorityClass, strings.ToUpper(opt.Priority), opt.Category, opt.Description, opt.Impact, opt.EstimatedSaving))
+			}
+			sb.WriteString(`</table>`)
+		}
+	}
+
+	if sections.SecurityBasic {
+		sb.WriteString(`<h2 id="section-8"><a href="#section-8"><span class="section-number">8.</span> Security Summary</a><a href="#top" class="back-to-top">[Back to Top]</a></h2>`)
+		if report.SecurityInfo.PrivilegedPods > 0 || report.SecurityInfo.HostNetworkPods > 0 || report.SecurityInfo.RootContainers > 0 {
+			sb.WriteString(`<div class="warning-box"><strong>Warning:</strong> Security concerns detected - review privileged pods and root containers</div>`)
+		}
+		sb.WriteString(`<table><tr><th>Security Metric</th><th>Count</th><th>Status</th></tr>`)
+		sb.WriteString(fmt.Sprintf(`<tr><td>Total Secrets</td><td>%d</td><td>INFO</td></tr>`, report.SecurityInfo.Secrets))
+		sb.WriteString(fmt.Sprintf(`<tr><td>Service Accounts</td><td>%d</td><td>INFO</td></tr>`, report.SecurityInfo.ServiceAccounts))
+		sb.WriteString(fmt.Sprintf(`<tr><td>Roles</td><td>%d</td><td>INFO</td></tr>`, report.SecurityInfo.Roles))
+		sb.WriteString(fmt.Sprintf(`<tr><td>RoleBindings</td><td>%d</td><td>INFO</td></tr>`, report.SecurityInfo.RoleBindings))
+		sb.WriteString(fmt.Sprintf(`<tr><td>ClusterRoles</td><td>%d</td><td>INFO</td></tr>`, report.SecurityInfo.ClusterRoles))
+		sb.WriteString(fmt.Sprintf(`<tr><td>ClusterRoleBindings</td><td>%d</td><td>INFO</td></tr>`, report.SecurityInfo.ClusterRoleBindings))
+		privStatus := "PASS"
+		privClass := "status-pass"
+		if report.SecurityInfo.PrivilegedPods > 0 {
+			privStatus = "FAIL"
+			privClass = "status-fail"
+		}
+		sb.WriteString(fmt.Sprintf(`<tr><td>Privileged Pods</td><td>%d</td><td class="%s">%s</td></tr>`, report.SecurityInfo.PrivilegedPods, privClass, privStatus))
+		hostStatus := "PASS"
+		hostClass := "status-pass"
+		if report.SecurityInfo.HostNetworkPods > 0 {
+			hostStatus = "WARN"
+			hostClass = "status-warn"
+		}
+		sb.WriteString(fmt.Sprintf(`<tr><td>Host Network Pods</td><td>%d</td><td class="%s">%s</td></tr>`, report.SecurityInfo.HostNetworkPods, hostClass, hostStatus))
+		rootStatus := "PASS"
+		rootClass := "status-pass"
+		if report.SecurityInfo.RootContainers > 0 {
+			rootStatus = "WARN"
+			rootClass = "status-warn"
+		}
+		sb.WriteString(fmt.Sprintf(`<tr><td>Root Containers</td><td>%d</td><td class="%s">%s</td></tr>`, report.SecurityInfo.RootContainers, rootClass, rootStatus))
 		sb.WriteString(`</table>`)
 	}
 
-	// Section 8: Security Summary
-	sb.WriteString(`<h2 id="section-8"><a href="#section-8"><span class="section-number">8.</span> Security Summary</a><a href="#top" class="back-to-top">[Back to Top]</a></h2>`)
-	if report.SecurityInfo.PrivilegedPods > 0 || report.SecurityInfo.HostNetworkPods > 0 || report.SecurityInfo.RootContainers > 0 {
-		sb.WriteString(`<div class="warning-box"><strong>Warning:</strong> Security concerns detected - review privileged pods and root containers</div>`)
-	}
-	sb.WriteString(`<table><tr><th>Security Metric</th><th>Count</th><th>Status</th></tr>`)
-	sb.WriteString(fmt.Sprintf(`<tr><td>Total Secrets</td><td>%d</td><td>INFO</td></tr>`, report.SecurityInfo.Secrets))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Service Accounts</td><td>%d</td><td>INFO</td></tr>`, report.SecurityInfo.ServiceAccounts))
-	sb.WriteString(fmt.Sprintf(`<tr><td>Roles</td><td>%d</td><td>INFO</td></tr>`, report.SecurityInfo.Roles))
-	sb.WriteString(fmt.Sprintf(`<tr><td>RoleBindings</td><td>%d</td><td>INFO</td></tr>`, report.SecurityInfo.RoleBindings))
-	sb.WriteString(fmt.Sprintf(`<tr><td>ClusterRoles</td><td>%d</td><td>INFO</td></tr>`, report.SecurityInfo.ClusterRoles))
-	sb.WriteString(fmt.Sprintf(`<tr><td>ClusterRoleBindings</td><td>%d</td><td>INFO</td></tr>`, report.SecurityInfo.ClusterRoleBindings))
-	privStatus := "PASS"
-	privClass := "status-pass"
-	if report.SecurityInfo.PrivilegedPods > 0 {
-		privStatus = "FAIL"
-		privClass = "status-fail"
-	}
-	sb.WriteString(fmt.Sprintf(`<tr><td>Privileged Pods</td><td>%d</td><td class="%s">%s</td></tr>`, report.SecurityInfo.PrivilegedPods, privClass, privStatus))
-	hostStatus := "PASS"
-	hostClass := "status-pass"
-	if report.SecurityInfo.HostNetworkPods > 0 {
-		hostStatus = "WARN"
-		hostClass = "status-warn"
-	}
-	sb.WriteString(fmt.Sprintf(`<tr><td>Host Network Pods</td><td>%d</td><td class="%s">%s</td></tr>`, report.SecurityInfo.HostNetworkPods, hostClass, hostStatus))
-	rootStatus := "PASS"
-	rootClass := "status-pass"
-	if report.SecurityInfo.RootContainers > 0 {
-		rootStatus = "WARN"
-		rootClass = "status-warn"
-	}
-	sb.WriteString(fmt.Sprintf(`<tr><td>Root Containers</td><td>%d</td><td class="%s">%s</td></tr>`, report.SecurityInfo.RootContainers, rootClass, rootStatus))
-	sb.WriteString(`</table>`)
-
-	// Section 9: Warning Events
-	if len(report.Events) > 0 {
+	if sections.Events && len(report.Events) > 0 {
 		sb.WriteString(`<h2 id="section-9"><a href="#section-9"><span class="section-number">9.</span> Warning Events</a><a href="#top" class="back-to-top">[Back to Top]</a></h2>`)
 		sb.WriteString(fmt.Sprintf(`<p>Recent warning events in the cluster (%d total):</p>`, len(report.Events)))
 		sb.WriteString(`<table><tr><th>Reason</th><th>Object</th><th>Message</th><th>Count</th></tr>`)

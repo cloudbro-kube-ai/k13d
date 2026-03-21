@@ -60,6 +60,209 @@ function formatTimeShort(date) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', ...getTimezoneOptions() });
 }
 
+function getActiveTimezoneLabel() {
+    if (appTimezone && appTimezone !== 'auto') {
+        return appTimezone;
+    }
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local browser time';
+}
+
+function formatRelativeFromNow(isoString) {
+    if (!isoString) return '';
+    const target = new Date(isoString);
+    if (Number.isNaN(target.getTime())) return '';
+
+    const diffMs = target.getTime() - Date.now();
+    const absMs = Math.abs(diffMs);
+    const steps = [
+        { unit: 'day', ms: 24 * 60 * 60 * 1000 },
+        { unit: 'hour', ms: 60 * 60 * 1000 },
+        { unit: 'minute', ms: 60 * 1000 },
+    ];
+    const formatter = new Intl.RelativeTimeFormat([], { numeric: 'auto' });
+
+    for (const step of steps) {
+        if (absMs >= step.ms || step.unit === 'minute') {
+            const value = Math.round(diffMs / step.ms);
+            if (value === 0) return 'now';
+            return formatter.format(value, step.unit);
+        }
+    }
+    return '';
+}
+
+function formatDateTimeWithMeta(isoString, fallback = '-') {
+    if (!isoString) return escapeHtml(fallback);
+    const local = formatDateTime(isoString);
+    const relative = formatRelativeFromNow(isoString);
+    return `
+        <div class="table-cell-primary">${escapeHtml(local)}</div>
+        <div class="table-cell-secondary">${escapeHtml(relative || getActiveTimezoneLabel())}</div>
+    `;
+}
+
+function formatScheduleCell(item) {
+    const schedule = escapeHtml(item.schedule || '-');
+    const timeZone = escapeHtml(item.timeZone || getActiveTimezoneLabel());
+    return `
+        <div class="table-cell-primary" style="font-family: var(--font-mono);">${schedule}</div>
+        <div class="table-cell-secondary">${timeZone}</div>
+    `;
+}
+
+function formatCronNextRunCell(item) {
+    if (item.suspend) {
+        const nextHint = item.nextRunTime ? formatDateTime(item.nextRunTime) : 'resumes on next schedule';
+        return `
+            <div class="table-cell-primary">Paused</div>
+            <div class="table-cell-secondary">${escapeHtml(nextHint)}</div>
+        `;
+    }
+    if (item.nextRunTime) {
+        return formatDateTimeWithMeta(item.nextRunTime, 'Not scheduled');
+    }
+    return `
+        <div class="table-cell-primary">${escapeHtml(item.nextRun || 'Not scheduled')}</div>
+        <div class="table-cell-secondary">${escapeHtml(item.scheduleError || item.scheduleNote || 'No future run found')}</div>
+    `;
+}
+
+function statusClassForWorkloadStatus(status) {
+    switch ((status || '').toLowerCase()) {
+        case 'complete':
+        case 'succeeded':
+            return 'status-succeeded';
+        case 'running':
+        case 'active':
+            return 'status-running';
+        case 'failed':
+        case 'error':
+            return 'status-failed';
+        case 'suspended':
+        case 'starting':
+        case 'pending':
+            return 'status-pending';
+        default:
+            return '';
+    }
+}
+
+function renderWorkloadStatusBadge(status) {
+    const statusClass = statusClassForWorkloadStatus(status);
+    return `<span class="${statusClass}">${escapeHtml(status || 'Unknown')}</span>`;
+}
+
+function formatSecurityValue(value, fallback = '-') {
+    if (value === undefined || value === null || value === '') {
+        return fallback;
+    }
+    return String(value);
+}
+
+function securityPostureClass(posture) {
+    switch ((posture || '').toLowerCase()) {
+        case 'hardened':
+            return 'status-running';
+        case 'needs review':
+            return 'status-pending';
+        case 'elevated':
+            return 'status-failed';
+        default:
+            return '';
+    }
+}
+
+function renderSecurityOverviewSection(security) {
+    if (!security) return '';
+
+    const warnings = Array.isArray(security.warnings) ? security.warnings : [];
+    const containers = Array.isArray(security.containers) ? security.containers : [];
+    const hostAccess = [];
+    if (security.hostNetwork) hostAccess.push('network');
+    if (security.hostPID) hostAccess.push('pid');
+    if (security.hostIPC) hostAccess.push('ipc');
+
+    const warningHtml = warnings.length > 0
+        ? `<div class="security-warning-list">${warnings.map(w => `<span class="security-warning-chip">${escapeHtml(w)}</span>`).join('')}</div>`
+        : `<div class="detail-helper-subtext">No obvious elevated settings detected from the pod spec.</div>`;
+
+    const containerRows = containers.length > 0
+        ? `
+            <table class="data-table detail-history-table security-container-table">
+                <thead>
+                    <tr>
+                        <th>CONTAINER</th>
+                        <th>SECCOMP</th>
+                        <th>NON-ROOT</th>
+                        <th>PRIV</th>
+                        <th>ESCALATE</th>
+                        <th>RO ROOTFS</th>
+                        <th>CAPS ADD</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${containers.map(container => `
+                        <tr>
+                            <td>
+                                <div class="table-cell-primary">${escapeHtml(container.name || '-')}</div>
+                                <div class="table-cell-secondary">${escapeHtml(container.image || '-')}</div>
+                            </td>
+                            <td>${escapeHtml(formatSecurityValue(container.seccompProfile, 'Unset'))}</td>
+                            <td>${escapeHtml(formatSecurityValue(container.runAsNonRoot, 'inherit'))}</td>
+                            <td>${escapeHtml(container.privileged ? 'true' : 'false')}</td>
+                            <td>${escapeHtml(formatSecurityValue(container.allowPrivilegeEscalation, 'inherit'))}</td>
+                            <td>${escapeHtml(formatSecurityValue(container.readOnlyRootFilesystem, 'inherit'))}</td>
+                            <td>${escapeHtml(Array.isArray(container.capabilitiesAdd) && container.capabilitiesAdd.length > 0 ? container.capabilitiesAdd.join(', ') : '-')}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `
+        : '';
+
+    return `
+        <div class="overview-card security-overview-card" style="grid-column: span 3;">
+            <div class="overview-card-title">🛡️ Security Context</div>
+            <div class="overview-card-content">
+                <div class="overview-stat">
+                    <span class="stat-label">Posture</span>
+                    <span class="stat-value ${securityPostureClass(security.posture)}">${escapeHtml(formatSecurityValue(security.posture, 'Unknown'))}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">Pod Seccomp</span>
+                    <span class="stat-value">${escapeHtml(formatSecurityValue(security.podSeccompProfile, 'Unset'))}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">runAsNonRoot</span>
+                    <span class="stat-value">${escapeHtml(formatSecurityValue(security.podRunAsNonRoot, 'inherit'))}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">runAsUser / fsGroup</span>
+                    <span class="stat-value">${escapeHtml(`${formatSecurityValue(security.podRunAsUser, 'inherit')} / ${formatSecurityValue(security.podFSGroup, 'inherit')}`)}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">Service Account</span>
+                    <span class="stat-value">${escapeHtml(formatSecurityValue(security.serviceAccount, 'default'))}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">Token Mount</span>
+                    <span class="stat-value">${escapeHtml(formatSecurityValue(security.automountServiceAccount, 'default'))}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">Host Access</span>
+                    <span class="stat-value">${escapeHtml(hostAccess.length > 0 ? hostAccess.join(', ') : 'none')}</span>
+                </div>
+                <div class="overview-stat">
+                    <span class="stat-label">Container Findings</span>
+                    <span class="stat-value">${escapeHtml(`${formatSecurityValue(security.privilegedContainers, 0)} privileged · ${formatSecurityValue(security.containersAllowPrivilegeEscalation, 0)} escalate · ${formatSecurityValue(security.containersWithAddedCaps, 0)} added caps`)}</span>
+                </div>
+            </div>
+            ${warningHtml}
+            ${containerRows}
+        </div>
+    `;
+}
+
 // Auto-refresh settings (default to enabled with 30s interval)
 let autoRefreshEnabled = localStorage.getItem('k13d_auto_refresh') !== 'false'; // default true
 let autoRefreshInterval = parseInt(localStorage.getItem('k13d_refresh_interval')) || 30; // seconds
@@ -95,8 +298,8 @@ const tableHeaders = {
     daemonsets: ['NAME', 'NAMESPACE', 'DESIRED', 'CURRENT', 'READY', 'AGE'],
     statefulsets: ['NAME', 'NAMESPACE', 'READY', 'AGE'],
     replicasets: ['NAME', 'NAMESPACE', 'DESIRED', 'CURRENT', 'READY', 'AGE'],
-    jobs: ['NAME', 'NAMESPACE', 'COMPLETIONS', 'DURATION', 'AGE'],
-    cronjobs: ['NAME', 'NAMESPACE', 'SCHEDULE', 'SUSPEND', 'ACTIVE', 'LAST SCHEDULE'],
+    jobs: ['NAME', 'NAMESPACE', 'STATUS', 'STARTED', 'COMPLETIONS', 'DURATION', 'SOURCE'],
+    cronjobs: ['NAME', 'NAMESPACE', 'STATUS', 'SCHEDULE', 'NEXT RUN', 'LAST RUN', 'ACTIVE'],
     services: ['NAME', 'NAMESPACE', 'TYPE', 'CLUSTER-IP', 'PORTS', 'AGE'],
     ingresses: ['NAME', 'NAMESPACE', 'CLASS', 'HOSTS', 'ADDRESS', 'AGE'],
     networkpolicies: ['NAME', 'NAMESPACE', 'POD-SELECTOR', 'AGE'],
@@ -158,10 +361,14 @@ const fieldMapping = {
     'CURRENT': 'current',
     'COMPLETIONS': 'completions',
     'DURATION': 'duration',
+    'STARTED': 'startTime',
+    'SOURCE': 'sourceLabel',
     'SCHEDULE': 'schedule',
-    'SUSPEND': 'suspend',
+    'STATUS': 'status',
     'ACTIVE': 'active',
     'LAST SCHEDULE': 'lastSchedule',
+    'LAST RUN': 'lastScheduleTime',
+    'NEXT RUN': 'nextRunTime',
     'TYPE': 'type',
     'CLUSTER-IP': 'clusterIP',
     'PORTS': 'ports',
@@ -197,6 +404,10 @@ function sortItems(items, column, direction) {
             valA = parseAgeToSeconds(valA);
             valB = parseAgeToSeconds(valB);
         }
+        else if (column === 'STARTED' || column === 'LAST RUN' || column === 'NEXT RUN') {
+            valA = parseDateValue(valA);
+            valB = parseDateValue(valB);
+        }
         // Handle numeric fields
         else if (column === 'RESTARTS' || column === 'COUNT' || column === 'DESIRED' ||
             column === 'CURRENT' || column === 'AVAILABLE' || column === 'ACTIVE' ||
@@ -219,6 +430,12 @@ function sortItems(items, column, direction) {
         if (valA > valB) return direction === 'asc' ? 1 : -1;
         return 0;
     });
+}
+
+function parseDateValue(value) {
+    if (!value || value === '-') return 0;
+    const timestamp = new Date(value).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
 }
 
 // Parse age string to seconds for sorting
@@ -1532,6 +1749,16 @@ function updateResourceSummary(resource, items) {
         if (complete > 0) html += `<span class="summary-item"><span class="summary-count status-succeeded">${complete}</span> complete</span>`;
         if (running > 0) html += `<span class="summary-item"><span class="summary-count status-pending">${running}</span> running</span>`;
         if (failed > 0) html += `<span class="summary-item"><span class="summary-count status-failed">${failed}</span> failed</span>`;
+    } else if (resource === 'cronjobs') {
+        let active = 0, suspended = 0, withActiveJobs = 0;
+        items.forEach(item => {
+            if (item.suspend) suspended++;
+            else active++;
+            if ((parseInt(item.active, 10) || 0) > 0) withActiveJobs++;
+        });
+        if (active > 0) html += `<span class="summary-item"><span class="summary-count status-running">${active}</span> active</span>`;
+        if (suspended > 0) html += `<span class="summary-item"><span class="summary-count status-pending">${suspended}</span> suspended</span>`;
+        if (withActiveJobs > 0) html += `<span class="summary-item"><span class="summary-count">${withActiveJobs}</span> with running jobs</span>`;
     } else if (resource === 'events') {
         const typeCounts = {};
         items.forEach(item => {
@@ -1605,6 +1832,8 @@ async function showCRDetail(crdName, namespace, name) {
 
         // Hide Related Pods tab
         document.getElementById('detail-pods-tab').style.display = 'none';
+        document.getElementById('detail-runs-tab').style.display = 'none';
+        document.getElementById('detail-runs').style.display = 'none';
 
         document.getElementById('detail-modal').classList.add('active');
         switchDetailTab('overview');
@@ -3373,6 +3602,7 @@ function generatePodOverview(item) {
                             </div>
                         </div>
                     </div>
+                    ${renderSecurityOverviewSection(item.security)}
                 </div>
                 <div class="overview-actions">
                     <button class="btn btn-secondary" onclick="openLogViewerDirect('${escapeHtml(item.name)}', '${escapeHtml(item.namespace || '')}')">📋 View Logs</button>
@@ -3434,6 +3664,7 @@ function generateDeploymentOverview(item) {
                             </div>
                         </div>
                     </div>
+                    ${renderSecurityOverviewSection(item.security)}
                 </div>
             `;
 }
@@ -3537,6 +3768,7 @@ function generateStatefulSetOverview(item) {
                             </div>
                         </div>
                     </div>
+                    ${renderSecurityOverviewSection(item.security)}
                 </div>
             `;
 }
@@ -3599,6 +3831,7 @@ function generateDaemonSetOverview(item) {
                             </div>
                         </div>
                     </div>
+                    ${renderSecurityOverviewSection(item.security)}
                 </div>
             `;
 }
@@ -3783,9 +4016,15 @@ function generateIngressOverview(item) {
 
 // Job Overview
 function generateJobOverview(item) {
+    const statusClass = statusClassForWorkloadStatus(item.status);
     const statusColor = item.status === 'Complete' ? 'var(--accent-green)' :
         item.status === 'Running' ? 'var(--accent-blue)' :
-            item.status === 'Failed' ? 'var(--accent-red)' : 'var(--text-secondary)';
+            item.status === 'Failed' ? 'var(--accent-red)' :
+                item.status === 'Starting' ? 'var(--accent-yellow)' : 'var(--text-secondary)';
+    const sourceLabel = item.sourceLabel || 'Standalone';
+    const conditions = Array.isArray(item.conditions) && item.conditions.length > 0
+        ? item.conditions.map(c => `<div class="table-cell-secondary">${escapeHtml(c)}</div>`).join('')
+        : '<div class="table-cell-secondary">No terminal conditions recorded yet.</div>';
 
     return `
                 <div class="resource-overview-header">
@@ -3793,52 +4032,105 @@ function generateJobOverview(item) {
                         <span class="status-dot" style="background: ${statusColor};"></span>
                         ${escapeHtml(item.status || 'Unknown')}
                     </div>
+                    <div class="overview-status-badge" style="background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color);">
+                        ${escapeHtml(sourceLabel)}
+                    </div>
                 </div>
                 <div class="overview-cards">
                     <div class="overview-card">
-                        <div class="overview-card-title">📊 Completion</div>
+                        <div class="overview-card-title">📊 Execution</div>
+                        <div class="overview-card-content">
+                            <div class="overview-stat">
+                                <span class="stat-label">Started</span>
+                                <span class="stat-value">${escapeHtml(item.startTime ? formatDateTime(item.startTime) : item.age || '-')}</span>
+                            </div>
+                            <div class="overview-stat">
+                                <span class="stat-label">Completed</span>
+                                <span class="stat-value">${escapeHtml(item.completionTime ? formatDateTime(item.completionTime) : '-')}</span>
+                            </div>
+                            <div class="overview-stat">
+                                <span class="stat-label">Duration</span>
+                                <span class="stat-value">${escapeHtml(item.duration || '-')}</span>
+                            </div>
+                            <div class="overview-stat">
+                                <span class="stat-label">Local Time</span>
+                                <span class="stat-value">${escapeHtml(getActiveTimezoneLabel())}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="overview-card">
+                        <div class="overview-card-title">🧮 Job State</div>
                         <div class="overview-card-content">
                             <div class="overview-stat">
                                 <span class="stat-label">Completions</span>
                                 <span class="stat-value">${escapeHtml(item.completions || '-')}</span>
                             </div>
                             <div class="overview-stat">
-                                <span class="stat-label">Duration</span>
-                                <span class="stat-value">${escapeHtml(item.duration || '-')}</span>
+                                <span class="stat-label">Pods</span>
+                                <span class="stat-value">${escapeHtml(`${item.active || 0} active · ${item.succeeded || 0} succeeded · ${item.failed || 0} failed`)}</span>
+                            </div>
+                            <div class="overview-stat">
+                                <span class="stat-label">Parallelism</span>
+                                <span class="stat-value">${escapeHtml(item.parallelism ?? '-')}</span>
+                            </div>
+                            <div class="overview-stat">
+                                <span class="stat-label">Backoff Limit</span>
+                                <span class="stat-value">${escapeHtml(item.backoffLimit ?? '-')}</span>
                             </div>
                         </div>
                     </div>
                     <div class="overview-card">
-                        <div class="overview-card-title">🐳 Container Image</div>
+                        <div class="overview-card-title">🔎 Source & Image</div>
                         <div class="overview-card-content">
-                            <div class="image-tag" title="${escapeHtml(item.image || '-')}">${escapeHtml(item.image || '-')}</div>
-                        </div>
-                    </div>
-                    <div class="overview-card">
-                        <div class="overview-card-title">📋 Metadata</div>
-                        <div class="overview-card-content">
+                            <div class="overview-stat">
+                                <span class="stat-label">Source</span>
+                                <span class="stat-value">${escapeHtml(sourceLabel)}</span>
+                            </div>
+                            <div class="overview-stat">
+                                <span class="stat-label">Image</span>
+                                <span class="stat-value">${escapeHtml(item.image || '-')}</span>
+                            </div>
+                            ${item.sourceCronJob ? `
+                            <div class="overview-stat">
+                                <span class="stat-label">CronJob</span>
+                                <span class="stat-value">${escapeHtml(item.sourceCronJob)}</span>
+                            </div>` : ''}
                             <div class="overview-stat">
                                 <span class="stat-label">Namespace</span>
                                 <span class="stat-value">${escapeHtml(item.namespace || '-')}</span>
                             </div>
-                            <div class="overview-stat">
-                                <span class="stat-label">Age</span>
-                                <span class="stat-value">${escapeHtml(item.age || '-')}</span>
-                            </div>
                         </div>
                     </div>
+                    <div class="overview-card" style="grid-column: span 3;">
+                        <div class="overview-card-title">📝 Conditions</div>
+                        <div class="overview-card-content">
+                            ${conditions}
+                        </div>
+                    </div>
+                    ${renderSecurityOverviewSection(item.security)}
                 </div>
             `;
 }
 
 // CronJob Overview
 function generateCronJobOverview(item) {
-    const suspendColor = item.suspend === 'True' ? 'var(--accent-yellow)' : 'var(--accent-green)';
+    const suspendColor = item.suspend ? 'var(--accent-yellow)' : 'var(--accent-green)';
+    const upcomingRuns = Array.isArray(item.upcomingRuns) && item.upcomingRuns.length > 0
+        ? item.upcomingRuns.map((run, index) => `
+            <div class="overview-stat">
+                <span class="stat-label">#${index + 1}</span>
+                <span class="stat-value">${escapeHtml(formatDateTime(run))}</span>
+            </div>
+        `).join('')
+        : `<div class="overview-stat"><span class="stat-label">Upcoming</span><span class="stat-value">${escapeHtml(item.scheduleError || item.scheduleNote || 'No future run calculated')}</span></div>`;
 
     return `
                 <div class="resource-overview-header">
                     <div class="overview-status-badge" style="background: ${suspendColor}20; color: ${suspendColor}; border: 1px solid ${suspendColor}40;">
-                        ${item.suspend === 'True' ? '⏸️ Suspended' : '▶️ Active'}
+                        ${item.suspend ? '⏸️ Suspended' : '▶️ Active'}
+                    </div>
+                    <div class="overview-status-badge" style="background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color);">
+                        ${escapeHtml(item.timeZone || getActiveTimezoneLabel())}
                     </div>
                 </div>
                 <div class="overview-cards">
@@ -3850,8 +4142,12 @@ function generateCronJobOverview(item) {
                                 <span class="stat-value" style="font-family: monospace;">${escapeHtml(item.schedule || '-')}</span>
                             </div>
                             <div class="overview-stat">
-                                <span class="stat-label">Last Schedule</span>
-                                <span class="stat-value">${escapeHtml(item.lastSchedule || '-')}</span>
+                                <span class="stat-label">Next Run</span>
+                                <span class="stat-value">${escapeHtml(item.nextRunTime ? formatDateTime(item.nextRunTime) : (item.nextRun || '-'))}</span>
+                            </div>
+                            <div class="overview-stat">
+                                <span class="stat-label">Last Run</span>
+                                <span class="stat-value">${escapeHtml(item.lastScheduleTime ? formatDateTime(item.lastScheduleTime) : (item.lastSchedule || '-'))}</span>
                             </div>
                             <div class="overview-stat">
                                 <span class="stat-label">Active Jobs</span>
@@ -3860,26 +4156,105 @@ function generateCronJobOverview(item) {
                         </div>
                     </div>
                     <div class="overview-card">
-                        <div class="overview-card-title">🐳 Container Image</div>
+                        <div class="overview-card-title">🕒 Timing</div>
                         <div class="overview-card-content">
-                            <div class="image-tag" title="${escapeHtml(item.image || '-')}">${escapeHtml(item.image || '-')}</div>
+                            <div class="overview-stat">
+                                <span class="stat-label">Timezone Source</span>
+                                <span class="stat-value">${escapeHtml(item.timeZoneSource || 'cluster default')}</span>
+                            </div>
+                            <div class="overview-stat">
+                                <span class="stat-label">Shown In</span>
+                                <span class="stat-value">${escapeHtml(getActiveTimezoneLabel())}</span>
+                            </div>
+                            <div class="overview-stat">
+                                <span class="stat-label">Accuracy</span>
+                                <span class="stat-value">${escapeHtml(item.nextRunEstimated ? 'Estimated' : 'Exact')}</span>
+                            </div>
+                            ${item.scheduleNote ? `
+                            <div class="overview-stat">
+                                <span class="stat-label">Note</span>
+                                <span class="stat-value">${escapeHtml(item.scheduleNote)}</span>
+                            </div>` : ''}
                         </div>
                     </div>
                     <div class="overview-card">
-                        <div class="overview-card-title">📋 Metadata</div>
+                        <div class="overview-card-title">📦 Job Template</div>
                         <div class="overview-card-content">
+                            <div class="overview-stat">
+                                <span class="stat-label">Image</span>
+                                <span class="stat-value">${escapeHtml(item.image || '-')}</span>
+                            </div>
+                            <div class="overview-stat">
+                                <span class="stat-label">Concurrency</span>
+                                <span class="stat-value">${escapeHtml(item.concurrencyPolicy || 'Allow')}</span>
+                            </div>
+                            <div class="overview-stat">
+                                <span class="stat-label">History Limits</span>
+                                <span class="stat-value">${escapeHtml(`${item.successfulJobsHistory ?? '-'} success · ${item.failedJobsHistory ?? '-'} failed`)}</span>
+                            </div>
                             <div class="overview-stat">
                                 <span class="stat-label">Namespace</span>
                                 <span class="stat-value">${escapeHtml(item.namespace || '-')}</span>
                             </div>
-                            <div class="overview-stat">
-                                <span class="stat-label">Age</span>
-                                <span class="stat-value">${escapeHtml(item.age || '-')}</span>
-                            </div>
                         </div>
                     </div>
+                    <div class="overview-card" style="grid-column: span 3;">
+                        <div class="overview-card-title">📅 Upcoming Runs (Local Time)</div>
+                        <div class="overview-card-content">
+                            ${upcomingRuns}
+                        </div>
+                    </div>
+                    ${renderSecurityOverviewSection(item.security)}
                 </div>
             `;
+}
+
+function renderCronJobRuns(item) {
+    const runs = Array.isArray(item.recentRuns) ? item.recentRuns : [];
+    const headerNote = escapeHtml(item.scheduleNote || 'Recent executions are shown in your local time.');
+
+    if (runs.length === 0) {
+        return `
+            <div class="detail-helper-text">
+                No recent Jobs were found for this CronJob yet.
+            </div>
+            <div class="detail-helper-subtext">${headerNote}</div>
+        `;
+    }
+
+    const rows = runs.map((run) => `
+        <tr>
+            <td>
+                <div class="table-cell-primary">${escapeHtml(run.name || '-')}</div>
+                <div class="table-cell-secondary">${escapeHtml(run.manualTrigger ? 'manual trigger' : 'scheduled run')}</div>
+            </td>
+            <td>${renderWorkloadStatusBadge(run.status)}</td>
+            <td>${formatDateTimeWithMeta(run.startTime, run.age || '-')}</td>
+            <td>${formatDateTimeWithMeta(run.completionTime, run.status === 'Running' ? 'still running' : '-')}</td>
+            <td>${escapeHtml(run.duration || '-')}</td>
+            <td>${escapeHtml(`${run.active || 0} active · ${run.succeeded || 0} ok · ${run.failed || 0} failed`)}</td>
+        </tr>
+    `).join('');
+
+    return `
+        <div class="detail-helper-text">
+            ${runs.length} recent execution${runs.length === 1 ? '' : 's'} for this CronJob
+        </div>
+        <div class="detail-helper-subtext">${headerNote}</div>
+        <table class="data-table detail-history-table">
+            <thead>
+                <tr>
+                    <th>JOB</th>
+                    <th>STATUS</th>
+                    <th>STARTED (LOCAL)</th>
+                    <th>FINISHED (LOCAL)</th>
+                    <th>DURATION</th>
+                    <th>PODS</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `;
 }
 
 // PVC Overview
@@ -4034,6 +4409,17 @@ function showResourceDetail(item) {
         refsTab.style.display = 'none';
     }
 
+    const runsTab = document.getElementById('detail-runs-tab');
+    const runsContent = document.getElementById('detail-runs');
+    if (currentResource === 'cronjobs') {
+        runsTab.style.display = 'inline-block';
+        runsContent.innerHTML = '<p style="color: var(--text-secondary);">Click the Runs tab to inspect recent executions.</p>';
+        runsContent.dataset.loaded = 'false';
+    } else {
+        runsTab.style.display = 'none';
+        runsContent.style.display = 'none';
+    }
+
     document.getElementById('detail-modal').classList.add('active');
     switchDetailTab('overview');
 }
@@ -4047,6 +4433,7 @@ async function switchDetailTab(tab) {
     document.getElementById('detail-events').style.display = tab === 'events' ? 'block' : 'none';
     document.getElementById('detail-pods').style.display = tab === 'pods' ? 'block' : 'none';
     document.getElementById('detail-refs').style.display = tab === 'refs' ? 'block' : 'none';
+    document.getElementById('detail-runs').style.display = tab === 'runs' ? 'block' : 'none';
 
     // Load YAML on demand
     if (tab === 'yaml' && selectedResource) {
@@ -4240,6 +4627,14 @@ async function switchDetailTab(tab) {
             } catch (error) {
                 refsEl.innerHTML = `<p style="color: var(--accent-red);">Error loading references: ${escapeHtml(error.message)}</p>`;
             }
+        }
+    }
+
+    if (tab === 'runs' && selectedResource && currentResource === 'cronjobs') {
+        const runsEl = document.getElementById('detail-runs');
+        if (runsEl.dataset.loaded !== 'true') {
+            runsEl.innerHTML = renderCronJobRuns(selectedResource);
+            runsEl.dataset.loaded = 'true';
         }
     }
 }
@@ -5918,9 +6313,9 @@ function generateRowHTML(resource, item, index) {
             case 'replicasets':
                 return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.desired || '-'}</td><td>${item.current || '-'}</td><td>${item.ready || '-'}</td><td>${item.age}</td><td class="resource-actions"><button class="resource-action-btn logs" onclick="event.stopPropagation(); openMultiPodLogViewer('${item.name}', '${item.namespace}', '${item.selector || 'app=' + item.name}')">Logs</button><button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('ReplicaSet', '${item.name}', '${item.namespace}')">Topo</button></td></tr>`;
             case 'jobs':
-                return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.completions || '-'}</td><td>${item.duration || '-'}</td><td>${item.age}</td></tr>`;
+                return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${renderWorkloadStatusBadge(item.status)}</td><td>${formatDateTimeWithMeta(item.startTime, item.age || '-')}</td><td>${item.completions || '-'}</td><td>${item.duration || '-'}</td><td><div class="table-cell-primary">${escapeHtml(item.sourceLabel || 'Standalone')}</div><div class="table-cell-secondary">${escapeHtml(item.manualTrigger ? 'manual trigger' : (item.ownerName || item.age || 'job run'))}</div></td></tr>`;
             case 'cronjobs':
-                return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.schedule || '-'}</td><td>${item.suspend ? 'Yes' : 'No'}</td><td>${item.active || 0}</td><td>${item.lastSchedule || '-'}</td></tr>`;
+                return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${renderWorkloadStatusBadge(item.status)}</td><td>${formatScheduleCell(item)}</td><td>${formatCronNextRunCell(item)}</td><td>${formatDateTimeWithMeta(item.lastScheduleTime, item.lastSchedule || '-')}</td><td>${item.active || 0}</td></tr>`;
             case 'services':
                 return `<tr data-index="${index}"><td>${item.name}</td><td>${item.namespace}</td><td>${item.type}</td><td>${item.clusterIP}</td><td>${item.ports}</td><td>${item.age}</td><td class="resource-actions"><button class="resource-action-btn topo" onclick="event.stopPropagation(); showTopologyForResource('Service', '${item.name}', '${item.namespace}')">Topo</button></td></tr>`;
             case 'ingresses':

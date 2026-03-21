@@ -56,14 +56,20 @@ func (rg *ReportGenerator) GenerateComprehensiveReport(ctx context.Context, user
 // GenerateReport gathers cluster data for the specified sections.
 // If sections is nil, all sections are included.
 func (rg *ReportGenerator) GenerateReport(ctx context.Context, username string, sections *ReportSections) (*ComprehensiveReport, error) {
-	// nil means all sections
-	all := sections == nil
-	if all {
-		sections = AllSections()
-	}
+	included := normalizeReportSections(sections)
 	report := &ComprehensiveReport{
-		GeneratedAt: time.Now(),
-		GeneratedBy: username,
+		GeneratedAt:      time.Now(),
+		GeneratedBy:      username,
+		IncludedSections: included,
+	}
+	report.ClusterInfo.Platform = "kubernetes"
+	if rg.server != nil && rg.server.k8sClient != nil && rg.server.k8sClient.Clientset != nil {
+		if version, err := rg.server.k8sClient.Clientset.Discovery().ServerVersion(); err == nil && version != nil {
+			report.ClusterInfo.ServerVersion = version.GitVersion
+			if version.Platform != "" {
+				report.ClusterInfo.Platform = version.Platform
+			}
+		}
 	}
 
 	// Always get nodes (needed for health score and cluster info)
@@ -72,15 +78,19 @@ func (rg *ReportGenerator) GenerateReport(ctx context.Context, username string, 
 		report.NodeSummary.Total = len(nodes)
 		for _, node := range nodes {
 			info := NodeInfo{
-				Name:             node.Name,
-				KubeletVersion:   node.Status.NodeInfo.KubeletVersion,
-				OS:               node.Status.NodeInfo.OSImage,
-				Architecture:     node.Status.NodeInfo.Architecture,
-				ContainerRuntime: node.Status.NodeInfo.ContainerRuntimeVersion,
-				CPUCapacity:      node.Status.Capacity.Cpu().String(),
-				MemoryCapacity:   node.Status.Capacity.Memory().String(),
-				PodCapacity:      node.Status.Capacity.Pods().String(),
-				CreationTime:     node.CreationTimestamp.Format(time.RFC3339),
+				Name:              node.Name,
+				KubeletVersion:    node.Status.NodeInfo.KubeletVersion,
+				OS:                node.Status.NodeInfo.OSImage,
+				Architecture:      node.Status.NodeInfo.Architecture,
+				ContainerRuntime:  node.Status.NodeInfo.ContainerRuntimeVersion,
+				CPUCapacity:       node.Status.Capacity.Cpu().String(),
+				MemoryCapacity:    node.Status.Capacity.Memory().String(),
+				CPUAllocatable:    node.Status.Allocatable.Cpu().String(),
+				MemoryAllocatable: node.Status.Allocatable.Memory().String(),
+				PodCapacity:       node.Status.Capacity.Pods().String(),
+				CreationTime:      node.CreationTimestamp.Format(time.RFC3339),
+				Unschedulable:     node.Spec.Unschedulable,
+				Taints:            formatNodeTaints(node),
 			}
 
 			// Get roles
@@ -106,6 +116,17 @@ func (rg *ReportGenerator) GenerateReport(ctx context.Context, username string, 
 					}
 					break
 				}
+			}
+			var hasPressure bool
+			info.Warnings, hasPressure = nodeWarnings(node)
+			if node.Spec.Unschedulable {
+				report.NodeSummary.Unschedulable++
+			}
+			if len(info.Warnings) > 0 {
+				report.NodeSummary.WarningNodes++
+			}
+			if hasPressure {
+				report.NodeSummary.Pressure++
 			}
 
 			// Get IP
@@ -316,26 +337,28 @@ func (rg *ReportGenerator) GenerateReport(ctx context.Context, username string, 
 	})
 
 	// Get events (warnings only, last 50)
-	events, _ := rg.server.k8sClient.ListEvents(ctx, "")
-	warningEvents := []EventInfo{}
-	for _, event := range events {
-		if event.Type == "Warning" {
-			warningEvents = append(warningEvents, EventInfo{
-				Type:      event.Type,
-				Reason:    event.Reason,
-				Object:    fmt.Sprintf("%s/%s", event.InvolvedObject.Kind, event.InvolvedObject.Name),
-				Message:   event.Message,
-				Count:     int(event.Count),
-				FirstSeen: event.FirstTimestamp.Format(time.RFC3339),
-				LastSeen:  event.LastTimestamp.Format(time.RFC3339),
-			})
+	if included.Events {
+		events, _ := rg.server.k8sClient.ListEvents(ctx, "")
+		warningEvents := []EventInfo{}
+		for _, event := range events {
+			if event.Type == "Warning" {
+				warningEvents = append(warningEvents, EventInfo{
+					Type:      event.Type,
+					Reason:    event.Reason,
+					Object:    fmt.Sprintf("%s/%s", event.InvolvedObject.Kind, event.InvolvedObject.Name),
+					Message:   event.Message,
+					Count:     int(event.Count),
+					FirstSeen: event.FirstTimestamp.Format(time.RFC3339),
+					LastSeen:  event.LastTimestamp.Format(time.RFC3339),
+				})
+			}
 		}
+		// Keep only last 50 warning events
+		if len(warningEvents) > 50 {
+			warningEvents = warningEvents[:50]
+		}
+		report.Events = warningEvents
 	}
-	// Keep only last 50 warning events
-	if len(warningEvents) > 50 {
-		warningEvents = warningEvents[:50]
-	}
-	report.Events = warningEvents
 
 	// Calculate health score
 	report.HealthScore = calculateHealthScore(
@@ -350,18 +373,18 @@ func (rg *ReportGenerator) GenerateReport(ctx context.Context, username string, 
 	}
 
 	// Generate FinOps analysis
-	if sections.FinOps {
+	if included.FinOps {
 		report.FinOpsAnalysis = rg.generateFinOpsAnalysis(ctx, namespaces, report)
 	}
 
 	// Add metrics history if collector is available
-	if sections.Metrics && rg.server.metricsCollector != nil {
+	if included.Metrics && rg.server.metricsCollector != nil {
 		report.MetricsHistory = rg.generateMetricsHistory(ctx)
 	}
 
 	// Run security scan if scanner is available
-	if sections.SecurityBasic && rg.server.securityScanner != nil {
-		if sections.SecurityFull {
+	if included.SecurityBasic && rg.server.securityScanner != nil {
+		if included.SecurityFull {
 			report.SecurityScan = rg.generateFullSecurityScan(ctx)
 		} else {
 			report.SecurityScan = rg.generateSecurityScan(ctx)

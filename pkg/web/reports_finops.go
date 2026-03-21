@@ -3,40 +3,109 @@ package web
 import (
 	"context"
 	"fmt"
-	corev1 "k8s.io/api/core/v1"
 	"sort"
-	"strings"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 func (rg *ReportGenerator) generateFinOpsAnalysis(ctx context.Context, namespaces []corev1.Namespace, report *ComprehensiveReport) FinOpsAnalysis {
 	analysis := FinOpsAnalysis{
+		EstimationModel:          "heuristic compute estimate from running pod requests with live metrics preferred",
 		CostByNamespace:          []NamespaceCost{},
 		CostOptimizations:        []CostOptimization{},
 		UnderutilizedResources:   []UnderutilizedResource{},
 		OverprovisionedWorkloads: []OverprovisionedWorkload{},
 	}
 
-	// Reference costs (approximate AWS EKS pricing)
-	// vCPU: ~$0.04/hour, Memory: ~$0.004/GB/hour
-	const cpuHourlyCost = 0.04     // per vCPU
-	const memoryHourlyCost = 0.004 // per GB
+	// Approximate compute-only reference pricing.
+	// This is intentionally conservative and should be described as a heuristic,
+	// not a cloud billing replacement.
+	const cpuHourlyCost = 0.04
+	const memoryHourlyCost = 0.004
+	const monthlyHours = 730.0
+	const mib = int64(1024 * 1024)
+	const gib = float64(1024 * 1024 * 1024)
 
-	var totalCPURequests, totalCPULimits int64 // millicores
-	var totalMemRequests, totalMemLimits int64 // bytes
-	var totalNodeCPUCapacity int64             // millicores
-	var totalNodeMemCapacity int64             // bytes
-	var podsWithoutRequests, podsWithoutLimits int
-
-	// Calculate node capacity
-	nodes, _ := rg.server.k8sClient.ListNodes(ctx)
-	for _, node := range nodes {
-		cpu := node.Status.Capacity.Cpu()
-		mem := node.Status.Capacity.Memory()
-		totalNodeCPUCapacity += cpu.MilliValue()
-		totalNodeMemCapacity += mem.Value()
+	type podUsage struct {
+		cpuMilli  int64
+		memBytes  int64
+		available bool
 	}
 
-	// Analyze each namespace
+	podUsageByKey := make(map[string]podUsage)
+	metricsSource := "live_metrics"
+
+	for _, ns := range namespaces {
+		metrics, err := rg.server.k8sClient.GetPodMetrics(ctx, ns.Name)
+		if err != nil {
+			metricsSource = "request_fallback"
+			podUsageByKey = make(map[string]podUsage)
+			break
+		}
+		for podName, values := range metrics {
+			if len(values) < 2 {
+				continue
+			}
+			podUsageByKey[ns.Name+"/"+podName] = podUsage{
+				cpuMilli:  values[0],
+				memBytes:  values[1] * mib,
+				available: true,
+			}
+		}
+	}
+
+	if metricsSource == "request_fallback" {
+		for _, ns := range namespaces {
+			metrics, err := rg.server.k8sClient.GetPodMetricsFromRequests(ctx, ns.Name)
+			if err != nil {
+				metricsSource = "unavailable"
+				podUsageByKey = make(map[string]podUsage)
+				break
+			}
+			for podName, values := range metrics {
+				if len(values) < 2 {
+					continue
+				}
+				podUsageByKey[ns.Name+"/"+podName] = podUsage{
+					cpuMilli:  values[0],
+					memBytes:  values[1] * mib,
+					available: true,
+				}
+			}
+		}
+	}
+
+	switch metricsSource {
+	case "live_metrics":
+		analysis.EstimationNotes = append(analysis.EstimationNotes,
+			"Live pod metrics were available and used for usage and efficiency fields.",
+			"Estimated monthly cost uses running pod requests, but bumps to live usage when usage exceeds requests.",
+			"This report estimates compute only and should not be treated as an exact cloud invoice.",
+		)
+	case "request_fallback":
+		analysis.EstimationNotes = append(analysis.EstimationNotes,
+			"metrics-server was unavailable, so usage fields were estimated from pod resource requests.",
+			"Estimated monthly cost is conservative but still heuristic and excludes provider-specific charges such as control-plane, storage, and egress.",
+		)
+	default:
+		analysis.EstimationNotes = append(analysis.EstimationNotes,
+			"Neither live metrics nor request-derived usage were available for all namespaces.",
+			"Usage-based efficiency percentages should be treated as unavailable in this report.",
+		)
+	}
+
+	var totalCPURequests, totalCPULimits int64
+	var totalMemRequests, totalMemLimits int64
+	var totalCPUUsage, totalMemUsage int64
+	var totalNodeCPUAllocatable, totalNodeMemAllocatable int64
+	var podsWithoutRequests, podsWithoutLimits int
+
+	nodes, _ := rg.server.k8sClient.ListNodes(ctx)
+	for _, node := range nodes {
+		totalNodeCPUAllocatable += node.Status.Allocatable.Cpu().MilliValue()
+		totalNodeMemAllocatable += node.Status.Allocatable.Memory().Value()
+	}
+
 	nsCosts := make(map[string]*NamespaceCost)
 
 	for _, ns := range namespaces {
@@ -47,31 +116,42 @@ func (rg *ReportGenerator) generateFinOpsAnalysis(ctx context.Context, namespace
 			PodCount:  len(pods),
 		}
 
-		var nsCPU, nsMem int64
+		var nsCPURequests, nsMemRequests int64
+		var nsCPUUsage, nsMemUsage int64
+		var nsBillableCPU, nsBillableMem int64
 
 		for _, pod := range pods {
+			if pod.Status.Phase != corev1.PodRunning {
+				continue
+			}
+			nsCost.RunningPodCount++
+
+			key := pod.Namespace + "/" + pod.Name
+			usage := podUsageByKey[key]
+
 			podHasRequests := false
 			podHasLimits := false
 
+			var podCPURequests, podMemRequests int64
 			for _, container := range pod.Spec.Containers {
-				// Requests
-				if cpuReq := container.Resources.Requests.Cpu(); cpuReq != nil {
-					nsCPU += cpuReq.MilliValue()
+				if cpuReq, ok := container.Resources.Requests[corev1.ResourceCPU]; ok {
+					podCPURequests += cpuReq.MilliValue()
 					totalCPURequests += cpuReq.MilliValue()
+					nsCPURequests += cpuReq.MilliValue()
 					podHasRequests = true
 				}
-				if memReq := container.Resources.Requests.Memory(); memReq != nil {
-					nsMem += memReq.Value()
+				if memReq, ok := container.Resources.Requests[corev1.ResourceMemory]; ok {
+					podMemRequests += memReq.Value()
 					totalMemRequests += memReq.Value()
+					nsMemRequests += memReq.Value()
 					podHasRequests = true
 				}
 
-				// Limits
-				if cpuLim := container.Resources.Limits.Cpu(); cpuLim != nil {
+				if cpuLim, ok := container.Resources.Limits[corev1.ResourceCPU]; ok {
 					totalCPULimits += cpuLim.MilliValue()
 					podHasLimits = true
 				}
-				if memLim := container.Resources.Limits.Memory(); memLim != nil {
+				if memLim, ok := container.Resources.Limits[corev1.ResourceMemory]; ok {
 					totalMemLimits += memLim.Value()
 					podHasLimits = true
 				}
@@ -83,21 +163,54 @@ func (rg *ReportGenerator) generateFinOpsAnalysis(ctx context.Context, namespace
 			if !podHasLimits {
 				podsWithoutLimits++
 			}
+
+			if usage.available {
+				totalCPUUsage += usage.cpuMilli
+				totalMemUsage += usage.memBytes
+				nsCPUUsage += usage.cpuMilli
+				nsMemUsage += usage.memBytes
+			}
+
+			billableCPU := podCPURequests
+			billableMem := podMemRequests
+			if metricsSource == "live_metrics" && usage.available {
+				if usage.cpuMilli > billableCPU {
+					billableCPU = usage.cpuMilli
+				}
+				if usage.memBytes > billableMem {
+					billableMem = usage.memBytes
+				}
+			}
+			nsBillableCPU += billableCPU
+			nsBillableMem += billableMem
+
+			if metricsSource == "live_metrics" && usage.available && podCPURequests > 0 && podMemRequests > 0 {
+				cpuPct := percentInt64(usage.cpuMilli, podCPURequests)
+				memPct := percentInt64(usage.memBytes, podMemRequests)
+				if cpuPct < 25 && memPct < 25 {
+					analysis.UnderutilizedResources = append(analysis.UnderutilizedResources, UnderutilizedResource{
+						Name:         pod.Name,
+						Namespace:    pod.Namespace,
+						ResourceType: "Pod",
+						CPUUsage:     cpuPct,
+						MemoryUsage:  memPct,
+						Suggestion:   "Review requests/limits or consolidate this workload if low usage persists.",
+					})
+				}
+			}
 		}
 
-		// Calculate namespace cost (monthly estimate)
-		cpuCores := float64(nsCPU) / 1000.0
-		memGB := float64(nsMem) / (1024 * 1024 * 1024)
-		monthlyHours := 730.0 // average hours per month
-
-		nsCost.CPURequests = fmt.Sprintf("%.2f cores", cpuCores)
-		nsCost.MemoryRequests = fmt.Sprintf("%.2f GB", memGB)
-		nsCost.EstimatedCost = (cpuCores*cpuHourlyCost + memGB*memoryHourlyCost) * monthlyHours
+		nsCost.CPURequests = formatCoresFromMilli(nsCPURequests)
+		nsCost.MemoryRequests = formatGBFromBytes(nsMemRequests)
+		nsCost.CPUUsage = formatCoresFromMilli(nsCPUUsage)
+		nsCost.MemoryUsage = formatGBFromBytes(nsMemUsage)
+		nsCost.EstimatedCost = ((float64(nsBillableCPU) / 1000.0) * cpuHourlyCost) +
+			((float64(nsBillableMem) / gib) * memoryHourlyCost)
+		nsCost.EstimatedCost *= monthlyHours
 
 		nsCosts[ns.Name] = nsCost
 	}
 
-	// Calculate total and percentages
 	var totalCost float64
 	for _, nsCost := range nsCosts {
 		totalCost += nsCost.EstimatedCost
@@ -110,156 +223,120 @@ func (rg *ReportGenerator) generateFinOpsAnalysis(ctx context.Context, namespace
 		analysis.CostByNamespace = append(analysis.CostByNamespace, *nsCost)
 	}
 
-	// Sort by cost descending
 	sort.Slice(analysis.CostByNamespace, func(i, j int) bool {
 		return analysis.CostByNamespace[i].EstimatedCost > analysis.CostByNamespace[j].EstimatedCost
 	})
+	sort.Slice(analysis.UnderutilizedResources, func(i, j int) bool {
+		return analysis.UnderutilizedResources[i].CPUUsage < analysis.UnderutilizedResources[j].CPUUsage
+	})
+	if len(analysis.UnderutilizedResources) > 20 {
+		analysis.UnderutilizedResources = analysis.UnderutilizedResources[:20]
+	}
 
 	analysis.TotalEstimatedMonthlyCost = totalCost
-
-	// Resource efficiency
 	analysis.ResourceEfficiency = ResourceEfficiencyInfo{
-		TotalCPURequests:    fmt.Sprintf("%.2f cores", float64(totalCPURequests)/1000.0),
-		TotalCPULimits:      fmt.Sprintf("%.2f cores", float64(totalCPULimits)/1000.0),
-		TotalMemoryRequests: fmt.Sprintf("%.2f GB", float64(totalMemRequests)/(1024*1024*1024)),
-		TotalMemoryLimits:   fmt.Sprintf("%.2f GB", float64(totalMemLimits)/(1024*1024*1024)),
-		PodsWithoutRequests: podsWithoutRequests,
-		PodsWithoutLimits:   podsWithoutLimits,
+		TotalCPURequests:         formatCoresFromMilli(totalCPURequests),
+		TotalCPULimits:           formatCoresFromMilli(totalCPULimits),
+		TotalMemoryRequests:      formatGBFromBytes(totalMemRequests),
+		TotalMemoryLimits:        formatGBFromBytes(totalMemLimits),
+		TotalCPUUsage:            formatCoresFromMilli(totalCPUUsage),
+		TotalMemoryUsage:         formatGBFromBytes(totalMemUsage),
+		CPURequestsVsCapacity:    percentInt64(totalCPURequests, totalNodeCPUAllocatable),
+		MemoryRequestsVsCapacity: percentInt64(totalMemRequests, totalNodeMemAllocatable),
+		PodsWithoutRequests:      podsWithoutRequests,
+		PodsWithoutLimits:        podsWithoutLimits,
+		MetricsSource:            metricsSource,
 	}
 
-	if totalNodeCPUCapacity > 0 {
-		analysis.ResourceEfficiency.CPURequestsVsCapacity = float64(totalCPURequests) / float64(totalNodeCPUCapacity) * 100
-	}
-	if totalNodeMemCapacity > 0 {
-		analysis.ResourceEfficiency.MemoryRequestsVsCapacity = float64(totalMemRequests) / float64(totalNodeMemCapacity) * 100
+	if metricsSource == "live_metrics" {
+		analysis.ResourceEfficiency.CPUUsageVsRequests = percentInt64(totalCPUUsage, totalCPURequests)
+		analysis.ResourceEfficiency.MemoryUsageVsRequests = percentInt64(totalMemUsage, totalMemRequests)
+		analysis.ResourceEfficiency.CPUUsageVsCapacity = percentInt64(totalCPUUsage, totalNodeCPUAllocatable)
+		analysis.ResourceEfficiency.MemoryUsageVsCapacity = percentInt64(totalMemUsage, totalNodeMemAllocatable)
 	}
 
-	// Generate cost optimization recommendations
 	analysis.CostOptimizations = rg.generateCostOptimizations(report, &analysis)
-
-	// Analyze underutilized deployments
-	for _, dep := range report.Deployments {
-		// Check for deployments with many unavailable replicas
-		parts := strings.Split(dep.Ready, "/")
-		if len(parts) == 2 {
-			ready := 0
-			total := 0
-			_, _ = fmt.Sscanf(parts[0], "%d", &ready)
-			_, _ = fmt.Sscanf(parts[1], "%d", &total)
-
-			if total > 1 && ready < total {
-				analysis.OverprovisionedWorkloads = append(analysis.OverprovisionedWorkloads, OverprovisionedWorkload{
-					Name:              dep.Name,
-					Namespace:         dep.Namespace,
-					WorkloadType:      "Deployment",
-					CurrentReplicas:   total,
-					SuggestedReplicas: ready,
-					Reason:            fmt.Sprintf("Only %d/%d replicas are ready - consider reducing replicas or investigating issues", ready, total),
-				})
-			}
-		}
-	}
-
 	return analysis
 }
 
-// generateCostOptimizations creates cost saving recommendations
+// generateCostOptimizations creates cost saving recommendations.
+// The recommendations are intentionally conservative because the report
+// estimate is heuristic and not a full provider billing model.
 func (rg *ReportGenerator) generateCostOptimizations(report *ComprehensiveReport, analysis *FinOpsAnalysis) []CostOptimization {
 	var optimizations []CostOptimization
 
-	// Check for pods without resource requests
 	if analysis.ResourceEfficiency.PodsWithoutRequests > 0 {
 		optimizations = append(optimizations, CostOptimization{
-			Category:        "Resource Management",
-			Description:     fmt.Sprintf("%d pods are running without resource requests defined", analysis.ResourceEfficiency.PodsWithoutRequests),
-			Impact:          "Without resource requests, pods may be scheduled inefficiently leading to resource contention or waste",
-			EstimatedSaving: float64(analysis.ResourceEfficiency.PodsWithoutRequests) * 5.0, // $5 per pod monthly estimate
-			Priority:        "high",
-		})
-	}
-
-	// Check for pods without resource limits
-	if analysis.ResourceEfficiency.PodsWithoutLimits > 0 {
-		optimizations = append(optimizations, CostOptimization{
-			Category:        "Resource Management",
-			Description:     fmt.Sprintf("%d pods are running without resource limits defined", analysis.ResourceEfficiency.PodsWithoutLimits),
-			Impact:          "Without limits, pods can consume unbounded resources affecting cluster stability",
-			EstimatedSaving: float64(analysis.ResourceEfficiency.PodsWithoutLimits) * 3.0,
-			Priority:        "medium",
-		})
-	}
-
-	// Check for low cluster utilization
-	if analysis.ResourceEfficiency.CPURequestsVsCapacity < 30 {
-		optimizations = append(optimizations, CostOptimization{
-			Category:        "Cluster Sizing",
-			Description:     fmt.Sprintf("CPU utilization is only %.1f%% of cluster capacity", analysis.ResourceEfficiency.CPURequestsVsCapacity),
-			Impact:          "Consider reducing node count or using smaller instance types",
-			EstimatedSaving: analysis.TotalEstimatedMonthlyCost * 0.3, // 30% potential savings
-			Priority:        "high",
-		})
-	}
-
-	if analysis.ResourceEfficiency.MemoryRequestsVsCapacity < 30 {
-		optimizations = append(optimizations, CostOptimization{
-			Category:        "Cluster Sizing",
-			Description:     fmt.Sprintf("Memory utilization is only %.1f%% of cluster capacity", analysis.ResourceEfficiency.MemoryRequestsVsCapacity),
-			Impact:          "Consider using memory-optimized instances or reducing node count",
-			EstimatedSaving: analysis.TotalEstimatedMonthlyCost * 0.2,
-			Priority:        "medium",
-		})
-	}
-
-	// Check for failed pods wasting resources
-	if report.Workloads.FailedPods > 0 {
-		optimizations = append(optimizations, CostOptimization{
-			Category:        "Workload Health",
-			Description:     fmt.Sprintf("%d pods are in failed state", report.Workloads.FailedPods),
-			Impact:          "Failed pods may still consume resources and indicate configuration issues",
-			EstimatedSaving: float64(report.Workloads.FailedPods) * 10.0,
-			Priority:        "high",
-		})
-	}
-
-	// Check for pending pods
-	if report.Workloads.PendingPods > 0 {
-		optimizations = append(optimizations, CostOptimization{
-			Category:        "Scheduling",
-			Description:     fmt.Sprintf("%d pods are pending and cannot be scheduled", report.Workloads.PendingPods),
-			Impact:          "Pending pods indicate resource constraints or scheduling issues",
+			Category:        "Resource Governance",
+			Description:     fmt.Sprintf("%d running pods do not declare resource requests", analysis.ResourceEfficiency.PodsWithoutRequests),
+			Impact:          "This weakens scheduling accuracy and makes cost estimates less reliable.",
 			EstimatedSaving: 0,
 			Priority:        "high",
 		})
 	}
 
-	// Check for many restarts indicating instability
-	totalRestarts := 0
-	for _, pod := range report.Pods {
-		totalRestarts += pod.Restarts
-	}
-	if totalRestarts > 10 {
+	if analysis.ResourceEfficiency.PodsWithoutLimits > 0 {
 		optimizations = append(optimizations, CostOptimization{
-			Category:        "Stability",
-			Description:     fmt.Sprintf("Total of %d container restarts detected across pods", totalRestarts),
-			Impact:          "Frequent restarts waste compute resources and may indicate memory/OOM issues",
-			EstimatedSaving: float64(totalRestarts) * 0.5,
+			Category:        "Resource Governance",
+			Description:     fmt.Sprintf("%d running pods do not declare resource limits", analysis.ResourceEfficiency.PodsWithoutLimits),
+			Impact:          "Missing limits increase noisy-neighbor risk and can hide overconsumption.",
+			EstimatedSaving: 0,
 			Priority:        "medium",
 		})
 	}
 
-	// LoadBalancer service costs
+	if analysis.ResourceEfficiency.MetricsSource == "live_metrics" && len(analysis.UnderutilizedResources) > 0 {
+		optimizations = append(optimizations, CostOptimization{
+			Category:        "Rightsizing",
+			Description:     fmt.Sprintf("%d pods are using less than 25%% of both requested CPU and memory", len(analysis.UnderutilizedResources)),
+			Impact:          "These pods are good candidates for request/limit review before changing replica counts.",
+			EstimatedSaving: 0,
+			Priority:        "medium",
+		})
+	}
+
+	if analysis.ResourceEfficiency.CPURequestsVsCapacity < 30 && analysis.ResourceEfficiency.MemoryRequestsVsCapacity < 30 {
+		optimizations = append(optimizations, CostOptimization{
+			Category:        "Cluster Sizing",
+			Description:     fmt.Sprintf("Requested CPU is %.1f%% and requested memory is %.1f%% of allocatable node capacity", analysis.ResourceEfficiency.CPURequestsVsCapacity, analysis.ResourceEfficiency.MemoryRequestsVsCapacity),
+			Impact:          "Review node pool sizing or autoscaler minimums. Savings depend on your actual cloud SKUs and reserved capacity.",
+			EstimatedSaving: 0,
+			Priority:        "medium",
+		})
+	}
+
+	if report.Workloads.FailedPods > 0 {
+		optimizations = append(optimizations, CostOptimization{
+			Category:        "Workload Health",
+			Description:     fmt.Sprintf("%d pods are in Failed state", report.Workloads.FailedPods),
+			Impact:          "Treat this as an operations issue first; direct savings depend on restart policy and workload ownership.",
+			EstimatedSaving: 0,
+			Priority:        "high",
+		})
+	}
+
+	if report.Workloads.PendingPods > 0 {
+		optimizations = append(optimizations, CostOptimization{
+			Category:        "Scheduling",
+			Description:     fmt.Sprintf("%d pods are Pending and cannot currently be scheduled", report.Workloads.PendingPods),
+			Impact:          "Pending pods usually indicate placement or capacity issues rather than immediate savings.",
+			EstimatedSaving: 0,
+			Priority:        "high",
+		})
+	}
+
 	lbCount := 0
 	for _, svc := range report.Services {
 		if svc.Type == "LoadBalancer" {
 			lbCount++
 		}
 	}
-	if lbCount > 3 {
+	if lbCount > 1 {
 		optimizations = append(optimizations, CostOptimization{
 			Category:        "Networking",
 			Description:     fmt.Sprintf("%d LoadBalancer services detected", lbCount),
-			Impact:          "Each LoadBalancer incurs cloud provider costs (~$18/month each). Consider using Ingress controller",
-			EstimatedSaving: float64(lbCount-1) * 18.0, // Keep 1, consolidate others
+			Impact:          "Each LoadBalancer often adds a direct provider charge. Consider consolidating behind Ingress where appropriate.",
+			EstimatedSaving: float64(lbCount-1) * 18.0,
 			Priority:        "medium",
 		})
 	}
@@ -267,4 +344,17 @@ func (rg *ReportGenerator) generateCostOptimizations(report *ComprehensiveReport
 	return optimizations
 }
 
-// GenerateAIAnalysis uses LLM to analyze the cluster state with FinOps focus
+func formatCoresFromMilli(milli int64) string {
+	return fmt.Sprintf("%.2f cores", float64(milli)/1000.0)
+}
+
+func formatGBFromBytes(bytes int64) string {
+	return fmt.Sprintf("%.2f GB", float64(bytes)/(1024*1024*1024))
+}
+
+func percentInt64(value, total int64) float64 {
+	if total <= 0 {
+		return 0
+	}
+	return float64(value) / float64(total) * 100
+}

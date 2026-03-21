@@ -7,6 +7,7 @@ import (
 type ComprehensiveReport struct {
 	GeneratedAt      time.Time           `json:"generated_at"`
 	GeneratedBy      string              `json:"generated_by"`
+	IncludedSections ReportSections      `json:"included_sections"`
 	ClusterInfo      ClusterInfo         `json:"cluster_info"`
 	NodeSummary      NodeSummary         `json:"node_summary"`
 	Nodes            []NodeInfo          `json:"nodes"`
@@ -131,6 +132,8 @@ type MetricsHistorySummary struct {
 // FinOpsAnalysis contains cost optimization insights
 type FinOpsAnalysis struct {
 	TotalEstimatedMonthlyCost float64                   `json:"total_estimated_monthly_cost"`
+	EstimationModel           string                    `json:"estimation_model"`
+	EstimationNotes           []string                  `json:"estimation_notes,omitempty"`
 	CostByNamespace           []NamespaceCost           `json:"cost_by_namespace"`
 	ResourceEfficiency        ResourceEfficiencyInfo    `json:"resource_efficiency"`
 	CostOptimizations         []CostOptimization        `json:"cost_optimizations"`
@@ -140,12 +143,15 @@ type FinOpsAnalysis struct {
 
 // NamespaceCost represents estimated cost per namespace
 type NamespaceCost struct {
-	Namespace      string  `json:"namespace"`
-	PodCount       int     `json:"pod_count"`
-	CPURequests    string  `json:"cpu_requests"`
-	MemoryRequests string  `json:"memory_requests"`
-	EstimatedCost  float64 `json:"estimated_cost"`
-	CostPercentage float64 `json:"cost_percentage"`
+	Namespace       string  `json:"namespace"`
+	PodCount        int     `json:"pod_count"`
+	RunningPodCount int     `json:"running_pod_count"`
+	CPURequests     string  `json:"cpu_requests"`
+	MemoryRequests  string  `json:"memory_requests"`
+	CPUUsage        string  `json:"cpu_usage"`
+	MemoryUsage     string  `json:"memory_usage"`
+	EstimatedCost   float64 `json:"estimated_cost"`
+	CostPercentage  float64 `json:"cost_percentage"`
 }
 
 // ResourceEfficiencyInfo contains resource utilization metrics
@@ -154,10 +160,17 @@ type ResourceEfficiencyInfo struct {
 	TotalCPULimits           string  `json:"total_cpu_limits"`
 	TotalMemoryRequests      string  `json:"total_memory_requests"`
 	TotalMemoryLimits        string  `json:"total_memory_limits"`
+	TotalCPUUsage            string  `json:"total_cpu_usage"`
+	TotalMemoryUsage         string  `json:"total_memory_usage"`
 	CPURequestsVsCapacity    float64 `json:"cpu_requests_vs_capacity"`
 	MemoryRequestsVsCapacity float64 `json:"memory_requests_vs_capacity"`
+	CPUUsageVsRequests       float64 `json:"cpu_usage_vs_requests"`
+	MemoryUsageVsRequests    float64 `json:"memory_usage_vs_requests"`
+	CPUUsageVsCapacity       float64 `json:"cpu_usage_vs_capacity"`
+	MemoryUsageVsCapacity    float64 `json:"memory_usage_vs_capacity"`
 	PodsWithoutRequests      int     `json:"pods_without_requests"`
 	PodsWithoutLimits        int     `json:"pods_without_limits"`
+	MetricsSource            string  `json:"metrics_source"`
 }
 
 // CostOptimization represents a cost saving recommendation
@@ -197,24 +210,32 @@ type ClusterInfo struct {
 }
 
 type NodeSummary struct {
-	Total    int `json:"total"`
-	Ready    int `json:"ready"`
-	NotReady int `json:"not_ready"`
+	Total         int `json:"total"`
+	Ready         int `json:"ready"`
+	NotReady      int `json:"not_ready"`
+	Unschedulable int `json:"unschedulable"`
+	Pressure      int `json:"pressure"`
+	WarningNodes  int `json:"warning_nodes"`
 }
 
 type NodeInfo struct {
-	Name             string   `json:"name"`
-	Status           string   `json:"status"`
-	Roles            []string `json:"roles"`
-	KubeletVersion   string   `json:"kubelet_version"`
-	OS               string   `json:"os"`
-	Architecture     string   `json:"architecture"`
-	CPUCapacity      string   `json:"cpu_capacity"`
-	MemoryCapacity   string   `json:"memory_capacity"`
-	PodCapacity      string   `json:"pod_capacity"`
-	ContainerRuntime string   `json:"container_runtime"`
-	InternalIP       string   `json:"internal_ip"`
-	CreationTime     string   `json:"creation_time"`
+	Name              string   `json:"name"`
+	Status            string   `json:"status"`
+	Roles             []string `json:"roles"`
+	KubeletVersion    string   `json:"kubelet_version"`
+	OS                string   `json:"os"`
+	Architecture      string   `json:"architecture"`
+	CPUCapacity       string   `json:"cpu_capacity"`
+	MemoryCapacity    string   `json:"memory_capacity"`
+	CPUAllocatable    string   `json:"cpu_allocatable"`
+	MemoryAllocatable string   `json:"memory_allocatable"`
+	PodCapacity       string   `json:"pod_capacity"`
+	ContainerRuntime  string   `json:"container_runtime"`
+	InternalIP        string   `json:"internal_ip"`
+	CreationTime      string   `json:"creation_time"`
+	Unschedulable     bool     `json:"unschedulable"`
+	Taints            []string `json:"taints,omitempty"`
+	Warnings          []string `json:"warnings,omitempty"`
 }
 
 type NamespaceSummary struct {
@@ -317,12 +338,12 @@ func NewReportGenerator(server *Server) *ReportGenerator {
 // ReportSections defines which sections to include in the report.
 // If nil or empty, all sections are included (backward compatible).
 type ReportSections struct {
-	Nodes         bool
-	Namespaces    bool
-	Workloads     bool // pods, deployments, services, images
-	Events        bool
-	SecurityBasic bool // pod security, RBAC, network (no Trivy)
-	SecurityFull  bool // full scan with Trivy image vulnerability scanning
-	FinOps        bool
-	Metrics       bool
+	Nodes         bool `json:"nodes"`
+	Namespaces    bool `json:"namespaces"`
+	Workloads     bool `json:"workloads"` // pods, deployments, services, images
+	Events        bool `json:"events"`
+	SecurityBasic bool `json:"security_basic"` // pod security, RBAC, network (no Trivy)
+	SecurityFull  bool `json:"security_full"`  // full scan with Trivy image vulnerability scanning
+	FinOps        bool `json:"finops"`
+	Metrics       bool `json:"metrics"`
 }
