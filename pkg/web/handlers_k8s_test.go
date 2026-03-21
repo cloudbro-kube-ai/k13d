@@ -409,9 +409,29 @@ func setupK8sTestServer(t *testing.T) (*Server, http.Handler) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-job",
 				Namespace: "default",
+				Annotations: map[string]string{
+					"k13d.io/source-cronjob": "test-cronjob",
+				},
+				OwnerReferences: []metav1.OwnerReference{
+					{
+						APIVersion: "batch/v1",
+						Kind:       "CronJob",
+						Name:       "test-cronjob",
+						Controller: boolPtr(true),
+					},
+				},
 			},
 			Spec: batchv1.JobSpec{
 				Completions: &completions,
+				Parallelism: &replicas,
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{Name: "worker", Image: "busybox:1.36"},
+						},
+						RestartPolicy: corev1.RestartPolicyNever,
+					},
+				},
 			},
 			Status: batchv1.JobStatus{
 				Succeeded:      1,
@@ -429,6 +449,19 @@ func setupK8sTestServer(t *testing.T) (*Server, http.Handler) {
 			Spec: batchv1.CronJobSpec{
 				Schedule: "*/5 * * * *",
 				Suspend:  &suspend,
+				TimeZone: strPtr("Asia/Seoul"),
+				JobTemplate: batchv1.JobTemplateSpec{
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{Name: "cleanup", Image: "busybox:1.36"},
+								},
+								RestartPolicy: corev1.RestartPolicyNever,
+							},
+						},
+					},
+				},
 			},
 			Status: batchv1.CronJobStatus{
 				LastScheduleTime: &metav1.Time{Time: time.Now().Add(-3 * time.Minute)},
@@ -1111,6 +1144,18 @@ func TestK8sResourceHandlerJobs(t *testing.T) {
 		if job["completions"] != "1/1" {
 			t.Errorf("Expected completions '1/1', got %v", job["completions"])
 		}
+		if job["status"] != "Complete" {
+			t.Errorf("Expected status 'Complete', got %v", job["status"])
+		}
+		if job["sourceCronJob"] != "test-cronjob" {
+			t.Errorf("Expected sourceCronJob 'test-cronjob', got %v", job["sourceCronJob"])
+		}
+		if job["startTime"] == "" {
+			t.Errorf("Expected startTime to be populated")
+		}
+		if job["image"] != "busybox:1.36" {
+			t.Errorf("Expected image 'busybox:1.36', got %v", job["image"])
+		}
 	})
 
 	t.Run("CronJobs", func(t *testing.T) {
@@ -1139,6 +1184,20 @@ func TestK8sResourceHandlerJobs(t *testing.T) {
 		}
 		if cj["active"].(float64) != 1 {
 			t.Errorf("Expected 1 active job, got %v", cj["active"])
+		}
+		if cj["timeZone"] != "Asia/Seoul" {
+			t.Errorf("Expected timeZone 'Asia/Seoul', got %v", cj["timeZone"])
+		}
+		if cj["nextRunTime"] == "" {
+			t.Errorf("Expected nextRunTime to be populated")
+		}
+		runs, ok := cj["recentRuns"].([]interface{})
+		if !ok || len(runs) == 0 {
+			t.Fatalf("Expected recentRuns to include at least one job, got %T", cj["recentRuns"])
+		}
+		run := runs[0].(map[string]interface{})
+		if run["name"] != "test-job" {
+			t.Errorf("Expected first recent run to be test-job, got %v", run["name"])
 		}
 	})
 }
@@ -1662,4 +1721,8 @@ func TestHandleGlobalSearch_MethodNotAllowed(t *testing.T) {
 	if w.Code != http.StatusMethodNotAllowed {
 		t.Errorf("Expected status %d, got %d", http.StatusMethodNotAllowed, w.Code)
 	}
+}
+
+func strPtr(v string) *string {
+	return &v
 }

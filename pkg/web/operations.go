@@ -511,6 +511,7 @@ func (s *Server) handleCronJobTrigger(w http.ResponseWriter, r *http.Request) {
 			},
 			Annotations: map[string]string{
 				"cronjob.kubernetes.io/instantiate": "manual",
+				cronJobSourceAnnotation:             cronJob.Name,
 			},
 			OwnerReferences: []metav1.OwnerReference{
 				{

@@ -445,38 +445,18 @@ func (s *Server) handleK8sResource(w http.ResponseWriter, r *http.Request) {
 		jobs, e := s.k8sClient.ListJobs(r.Context(), namespace)
 		err = e
 		if err == nil {
-			items = make([]map[string]interface{}, len(jobs))
-			for i, job := range jobs {
-				items[i] = map[string]interface{}{
-					"name":        job.Name,
-					"namespace":   job.Namespace,
-					"completions": getJobCompletions(&job),
-					"duration":    getJobDuration(&job),
-					"age":         formatAge(job.CreationTimestamp.Time),
-				}
-			}
+			items = buildJobItems(jobs)
 		}
 
 	case "cronjobs":
 		cjs, e := s.k8sClient.ListCronJobs(r.Context(), namespace)
 		err = e
 		if err == nil {
-			items = make([]map[string]interface{}, len(cjs))
-			for i, cj := range cjs {
-				lastSchedule := "<never>"
-				if cj.Status.LastScheduleTime != nil {
-					lastSchedule = formatAge(cj.Status.LastScheduleTime.Time) + " ago"
-				}
-				items[i] = map[string]interface{}{
-					"name":         cj.Name,
-					"namespace":    cj.Namespace,
-					"schedule":     cj.Spec.Schedule,
-					"suspend":      cj.Spec.Suspend != nil && *cj.Spec.Suspend,
-					"active":       len(cj.Status.Active),
-					"lastSchedule": lastSchedule,
-					"age":          formatAge(cj.CreationTimestamp.Time),
-				}
+			jobs, jobsErr := s.k8sClient.ListJobs(r.Context(), namespace)
+			if jobsErr != nil {
+				jobs = nil
 			}
+			items = buildCronJobItems(cjs, jobs)
 		}
 
 	case "replicasets", "rs":

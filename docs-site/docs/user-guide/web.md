@@ -76,6 +76,17 @@ Open your browser to: `http://localhost:8080`
 - **Refresh** button for manual refresh
 - **Freshness badge** when cached data is shown first and live data is still revalidating
 
+### Jobs and CronJobs
+
+The Web UI now shows Job and CronJob timing in more operational detail:
+
+- **Jobs** show status, start time, duration, source CronJob/manual trigger, and completion progress
+- **CronJobs** show schedule, active/suspended state, next run, last run, and recent execution history
+- **Detail modal** shows timestamps in your configured local/browser timezone
+- **Runs tab** on CronJobs shows recent Jobs with started/finished time, duration, and pod outcome counts
+
+When a CronJob does not set `.spec.timeZone`, k13d still estimates the next run, but it labels that estimate clearly because Kubernetes ultimately follows the controller-manager timezone.
+
 ## Resource Actions
 
 ### Right-Click Menu
