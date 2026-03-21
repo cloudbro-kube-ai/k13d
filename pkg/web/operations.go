@@ -17,6 +17,17 @@ import (
 	"k8s.io/kubectl/pkg/drain"
 )
 
+// requireK8sClient checks that the K8s client is available and returns false
+// (after writing an error response) if it is not. Handlers should return
+// immediately when this returns false.
+func (s *Server) requireK8sClient(w http.ResponseWriter) bool {
+	if s.k8sClient == nil || s.k8sClient.Clientset == nil {
+		WriteError(w, NewAPIError(ErrCodeK8sError, "Kubernetes client not available"))
+		return false
+	}
+	return true
+}
+
 // ==========================================
 // Deployment Operations
 // ==========================================
@@ -56,6 +67,10 @@ func (s *Server) handleDeploymentScale(w http.ResponseWriter, r *http.Request) {
 	username := r.Header.Get("X-Username")
 	if username == "" {
 		username = "anonymous"
+	}
+
+	if !s.requireK8sClient(w) {
+		return
 	}
 
 	ctx := r.Context()
@@ -124,6 +139,10 @@ func (s *Server) handleDeploymentRestart(w http.ResponseWriter, r *http.Request)
 		username = "anonymous"
 	}
 
+	if !s.requireK8sClient(w) {
+		return
+	}
+
 	ctx := r.Context()
 	clientset := s.k8sClient.Clientset
 
@@ -174,6 +193,10 @@ func (s *Server) handleDeploymentPause(w http.ResponseWriter, r *http.Request) {
 	username := r.Header.Get("X-Username")
 	if username == "" {
 		username = "anonymous"
+	}
+
+	if !s.requireK8sClient(w) {
+		return
 	}
 
 	ctx := r.Context()
@@ -228,6 +251,10 @@ func (s *Server) handleDeploymentResume(w http.ResponseWriter, r *http.Request) 
 		username = "anonymous"
 	}
 
+	if !s.requireK8sClient(w) {
+		return
+	}
+
 	ctx := r.Context()
 	clientset := s.k8sClient.Clientset
 
@@ -275,6 +302,10 @@ func (s *Server) handleDeploymentRollback(w http.ResponseWriter, r *http.Request
 	username := r.Header.Get("X-Username")
 	if username == "" {
 		username = "anonymous"
+	}
+
+	if !s.requireK8sClient(w) {
+		return
 	}
 
 	ctx := r.Context()
@@ -401,6 +432,10 @@ func (s *Server) handleDeploymentHistory(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if !s.requireK8sClient(w) {
+		return
+	}
+
 	ctx := r.Context()
 	clientset := s.k8sClient.Clientset
 
@@ -489,6 +524,10 @@ func (s *Server) handleCronJobTrigger(w http.ResponseWriter, r *http.Request) {
 		username = "anonymous"
 	}
 
+	if !s.requireK8sClient(w) {
+		return
+	}
+
 	ctx := r.Context()
 	clientset := s.k8sClient.Clientset
 
@@ -574,6 +613,10 @@ func (s *Server) handleCronJobSuspend(w http.ResponseWriter, r *http.Request) {
 		username = "anonymous"
 	}
 
+	if !s.requireK8sClient(w) {
+		return
+	}
+
 	ctx := r.Context()
 	clientset := s.k8sClient.Clientset
 
@@ -633,6 +676,10 @@ func (s *Server) handleNodeCordon(w http.ResponseWriter, r *http.Request) {
 	username := r.Header.Get("X-Username")
 	if username == "" {
 		username = "anonymous"
+	}
+
+	if !s.requireK8sClient(w) {
+		return
 	}
 
 	ctx := r.Context()
@@ -701,6 +748,10 @@ func (s *Server) handleNodeDrain(w http.ResponseWriter, r *http.Request) {
 	username := r.Header.Get("X-Username")
 	if username == "" {
 		username = "anonymous"
+	}
+
+	if !s.requireK8sClient(w) {
+		return
 	}
 
 	ctx := r.Context()
@@ -789,6 +840,10 @@ func (s *Server) handleNodePods(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !s.requireK8sClient(w) {
+		return
+	}
+
 	ctx := r.Context()
 	clientset := s.k8sClient.Clientset
 
@@ -861,6 +916,10 @@ func (s *Server) handleStatefulSetScale(w http.ResponseWriter, r *http.Request) 
 		username = "anonymous"
 	}
 
+	if !s.requireK8sClient(w) {
+		return
+	}
+
 	ctx := r.Context()
 	clientset := s.k8sClient.Clientset
 
@@ -927,6 +986,10 @@ func (s *Server) handleStatefulSetRestart(w http.ResponseWriter, r *http.Request
 		username = "anonymous"
 	}
 
+	if !s.requireK8sClient(w) {
+		return
+	}
+
 	ctx := r.Context()
 	clientset := s.k8sClient.Clientset
 
@@ -981,6 +1044,10 @@ func (s *Server) handleDaemonSetRestart(w http.ResponseWriter, r *http.Request) 
 	username := r.Header.Get("X-Username")
 	if username == "" {
 		username = "anonymous"
+	}
+
+	if !s.requireK8sClient(w) {
+		return
 	}
 
 	ctx := r.Context()
