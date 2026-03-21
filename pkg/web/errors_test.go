@@ -1,7 +1,9 @@
 package web
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -453,6 +455,7 @@ func TestGetStatusCodeForError(t *testing.T) {
 		{ErrCodeDatabaseError, http.StatusBadGateway},
 		{ErrCodeLLMError, http.StatusBadGateway},
 		{ErrCodeInternalError, http.StatusInternalServerError},
+		{ErrCodeMethodNotAllowed, http.StatusMethodNotAllowed},
 	}
 
 	for _, tt := range tests {
@@ -460,6 +463,56 @@ func TestGetStatusCodeForError(t *testing.T) {
 			status := getStatusCodeForError(tt.code)
 			if status != tt.wantStatus {
 				t.Errorf("getStatusCodeForError(%s) = %d, want %d", tt.code, status, tt.wantStatus)
+			}
+		})
+	}
+}
+
+func TestWriteMethodNotAllowed(t *testing.T) {
+	w := httptest.NewRecorder()
+	writeMethodNotAllowed(w)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusMethodNotAllowed)
+	}
+
+	var resp APIError
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if resp.Code != ErrCodeMethodNotAllowed {
+		t.Errorf("code = %q, want %q", resp.Code, ErrCodeMethodNotAllowed)
+	}
+}
+
+func TestWriteK8sError(t *testing.T) {
+	tests := []struct {
+		name       string
+		err        error
+		wantCode   string
+		wantStatus int
+	}{
+		{"not found", fmt.Errorf("deployments \"nginx\" not found"), ErrCodeNotFound, http.StatusNotFound},
+		{"forbidden", fmt.Errorf("forbidden: insufficient permissions"), ErrCodeForbidden, http.StatusForbidden},
+		{"timeout", fmt.Errorf("context deadline exceeded (timeout)"), ErrCodeTimeout, http.StatusGatewayTimeout},
+		{"generic", fmt.Errorf("connection refused"), ErrCodeK8sError, http.StatusBadGateway},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			writeK8sError(w, tt.err)
+
+			if w.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d", w.Code, tt.wantStatus)
+			}
+
+			var resp APIError
+			if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+				t.Fatalf("json.Unmarshal() error = %v", err)
+			}
+			if resp.Code != tt.wantCode {
+				t.Errorf("code = %q, want %q", resp.Code, tt.wantCode)
 			}
 		})
 	}
