@@ -724,6 +724,16 @@ func (s *Server) Stop() error {
 		s.authManager.StopCleanup()
 	}
 
+	// Stop all active port forward sessions
+	s.pfMutex.Lock()
+	for id, sess := range s.portForwardSessions {
+		sess.closeOnce.Do(func() {
+			close(sess.stopChan)
+		})
+		delete(s.portForwardSessions, id)
+	}
+	s.pfMutex.Unlock()
+
 	// Disconnect all MCP servers
 	if s.mcpClient != nil {
 		s.mcpClient.DisconnectAll()
