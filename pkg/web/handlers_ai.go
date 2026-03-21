@@ -43,7 +43,7 @@ func (s *Server) handleAgentSettings(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut:
 		role := r.Header.Get("X-User-Role")
 		if role != "admin" {
-			http.Error(w, "Admin access required", http.StatusForbidden)
+			WriteError(w, NewAPIError(ErrCodeForbidden, "Admin access required"))
 			return
 		}
 
@@ -1120,7 +1120,7 @@ type OllamaStatusResponse struct {
 // handleOllamaStatus checks if Ollama is running and lists available models
 func (s *Server) handleOllamaStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -1179,7 +1179,7 @@ type OllamaPullRequest struct {
 // handleOllamaPull pulls a model from Ollama registry
 func (s *Server) handleOllamaPull(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 

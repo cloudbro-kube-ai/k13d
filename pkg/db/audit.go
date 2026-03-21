@@ -88,9 +88,12 @@ var (
 // InitAuditFile initializes the file-based audit log
 func InitAuditFile(path string) error {
 	if path == "" {
-		// TODO: Use xdg.ConfigHome instead of hardcoded ~/.config for cross-platform support.
-		home, _ := os.UserHomeDir()
-		path = filepath.Join(home, ".config", "k13d", "audit.log")
+		configDir, err := os.UserConfigDir()
+		if err != nil {
+			home, _ := os.UserHomeDir()
+			configDir = filepath.Join(home, ".config")
+		}
+		path = filepath.Join(configDir, "k13d", "audit.log")
 	}
 
 	auditConfig.FileLogPath = path

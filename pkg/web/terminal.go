@@ -216,7 +216,7 @@ func (h *TerminalHandler) HandleTerminal(w http.ResponseWriter, r *http.Request)
 	path := r.URL.Path
 	parts := splitPath(path, "/api/terminal/")
 	if len(parts) < 2 {
-		http.Error(w, "Invalid path: expected /api/terminal/{namespace}/{pod}", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid path: expected /api/terminal/{namespace}/{pod}"))
 		return
 	}
 

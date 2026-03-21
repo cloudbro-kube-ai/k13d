@@ -17,7 +17,7 @@ import (
 
 func (s *Server) handleSecurityScan(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -49,7 +49,7 @@ func (s *Server) handleSecurityScan(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleSecurityQuickScan(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -142,7 +142,7 @@ func (s *Server) recordSecurityScan(result *security.ScanResult, namespace, scan
 
 func (s *Server) handleSecurityScanHistory(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -184,7 +184,7 @@ func (s *Server) handleSecurityScanHistory(w http.ResponseWriter, r *http.Reques
 
 func (s *Server) handleSecurityScanStats(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -209,7 +209,7 @@ func (s *Server) handleSecurityScanStats(w http.ResponseWriter, r *http.Request)
 
 func (s *Server) handleSecurityScanDetail(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -244,7 +244,7 @@ func (s *Server) handleSecurityScanDetail(w http.ResponseWriter, r *http.Request
 
 func (s *Server) handleTrivyStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -258,7 +258,7 @@ func (s *Server) handleTrivyStatus(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleTrivyInstall(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -315,7 +315,7 @@ func (s *Server) handleTrivyInstall(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleTrivyInstructions(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 

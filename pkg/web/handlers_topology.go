@@ -45,7 +45,7 @@ func nodeID(kind, namespace, name string) string {
 
 func (s *Server) handleTopology(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -55,7 +55,7 @@ func (s *Server) handleTopology(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := s.buildTopology(ctx, namespace, includeNetPol)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, err.Error()))
 		return
 	}
 
@@ -685,7 +685,7 @@ type ResourceReferencesResponse struct {
 
 func (s *Server) handleResourceReferences(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -693,11 +693,11 @@ func (s *Server) handleResourceReferences(w http.ResponseWriter, r *http.Request
 	name := r.URL.Query().Get("name")
 	namespace := r.URL.Query().Get("namespace")
 	if kind == "" || name == "" || namespace == "" {
-		http.Error(w, "kind, name, and namespace are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "kind, name, and namespace are required"))
 		return
 	}
 	if kind != "Secret" && kind != "ConfigMap" {
-		http.Error(w, "kind must be Secret or ConfigMap", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "kind must be Secret or ConfigMap"))
 		return
 	}
 

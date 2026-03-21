@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -630,8 +631,7 @@ func LoadConfig() (*Config, error) {
 
 	cfg := NewDefaultConfig()
 	if err := yaml.Unmarshal(data, cfg); err != nil {
-		// TODO: Log warning when config file exists but fails to parse.
-		// Currently silently falls back to defaults which can be confusing.
+		fmt.Fprintf(os.Stderr, "Warning: config file exists but failed to parse: %v (using defaults)\n", err)
 		cfg = NewDefaultConfig()
 	} else {
 		expandEnvPlaceholders(cfg)

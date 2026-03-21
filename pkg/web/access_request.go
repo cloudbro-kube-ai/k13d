@@ -291,7 +291,7 @@ func generateAccessRequestID() string {
 // HandleCreateAccessRequest handles POST /api/access/request
 func (m *AccessRequestManager) HandleCreateAccessRequest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -302,19 +302,19 @@ func (m *AccessRequestManager) HandleCreateAccessRequest(w http.ResponseWriter, 
 		Reason    string `json:"reason"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Action == "" || req.Resource == "" {
-		http.Error(w, "Action and resource are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Action and resource are required"))
 		return
 	}
 
 	username := r.Header.Get("X-Username")
 	id, err := m.CreateRequest(username, Action(req.Action), req.Resource, req.Namespace, req.Reason)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, err.Error()))
 		return
 	}
 
@@ -329,7 +329,7 @@ func (m *AccessRequestManager) HandleCreateAccessRequest(w http.ResponseWriter, 
 // HandleListAccessRequests handles GET /api/access/requests
 func (m *AccessRequestManager) HandleListAccessRequests(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -348,14 +348,14 @@ func (m *AccessRequestManager) HandleListAccessRequests(w http.ResponseWriter, r
 // HandleApproveAccessRequest handles POST /api/access/approve/{id}
 func (m *AccessRequestManager) HandleApproveAccessRequest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
 	// Extract ID from URL
 	id := strings.TrimPrefix(r.URL.Path, "/api/access/approve/")
 	if id == "" || id == r.URL.Path {
-		http.Error(w, "Request ID is required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Request ID is required"))
 		return
 	}
 
@@ -363,17 +363,13 @@ func (m *AccessRequestManager) HandleApproveAccessRequest(w http.ResponseWriter,
 		Note string `json:"note"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	reviewer := r.Header.Get("X-Username")
 	if err := m.ApproveRequest(id, reviewer, req.Note); err != nil {
-		status := http.StatusBadRequest
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		http.Error(w, err.Error(), status)
+		WriteErrorSimple(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -387,14 +383,14 @@ func (m *AccessRequestManager) HandleApproveAccessRequest(w http.ResponseWriter,
 // HandleDenyAccessRequest handles POST /api/access/deny/{id}
 func (m *AccessRequestManager) HandleDenyAccessRequest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
 	// Extract ID from URL
 	id := strings.TrimPrefix(r.URL.Path, "/api/access/deny/")
 	if id == "" || id == r.URL.Path {
-		http.Error(w, "Request ID is required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Request ID is required"))
 		return
 	}
 
@@ -402,17 +398,13 @@ func (m *AccessRequestManager) HandleDenyAccessRequest(w http.ResponseWriter, r 
 		Note string `json:"note"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	reviewer := r.Header.Get("X-Username")
 	if err := m.DenyRequest(id, reviewer, req.Note); err != nil {
-		status := http.StatusBadRequest
-		if strings.Contains(err.Error(), "not found") {
-			status = http.StatusNotFound
-		}
-		http.Error(w, err.Error(), status)
+		WriteErrorSimple(w, http.StatusBadRequest, err.Error())
 		return
 	}
 

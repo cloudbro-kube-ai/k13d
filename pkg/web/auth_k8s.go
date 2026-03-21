@@ -423,7 +423,7 @@ func (am *AuthManager) ValidateK8sToken(ctx context.Context, token string) (*Ses
 // This is only available when running locally (not in-cluster)
 func (am *AuthManager) HandleKubeconfigLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 

@@ -16,7 +16,7 @@ func (s *Server) handleRoles(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		s.handleCreateRole(w, r)
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 	}
 }
 
@@ -45,18 +45,18 @@ type roleRequest struct {
 func (s *Server) handleCreateRole(w http.ResponseWriter, r *http.Request) {
 	var req roleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Name == "" {
-		http.Error(w, "Role name is required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Role name is required"))
 		return
 	}
 
 	// Prevent overwriting built-in roles
 	if req.Name == "admin" || req.Name == "user" || req.Name == "viewer" {
-		http.Error(w, "Cannot create role with built-in name: "+req.Name, http.StatusConflict)
+		WriteError(w, NewAPIError(ErrCodeConflict, "Cannot create role with built-in name: "+req.Name))
 		return
 	}
 
@@ -73,11 +73,11 @@ func (s *Server) handleCreateRole(w http.ResponseWriter, r *http.Request) {
 	// Persist to database
 	defJSON, err := json.Marshal(role)
 	if err != nil {
-		http.Error(w, "Failed to serialize role", http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to serialize role"))
 		return
 	}
 	if err := db.SaveCustomRole(req.Name, string(defJSON)); err != nil {
-		http.Error(w, "Failed to save role: "+err.Error(), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to save role: "+err.Error()))
 		return
 	}
 
@@ -96,7 +96,7 @@ func (s *Server) handleCreateRole(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleRoleByName(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimPrefix(r.URL.Path, "/api/roles/")
 	if name == "" {
-		http.Error(w, "Role name is required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Role name is required"))
 		return
 	}
 
@@ -108,7 +108,7 @@ func (s *Server) handleRoleByName(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		s.handleDeleteRole(w, r, name)
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 	}
 }
 
@@ -116,7 +116,7 @@ func (s *Server) handleRoleByName(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleGetRole(w http.ResponseWriter, _ *http.Request, name string) {
 	role := s.authorizer.GetRole(name)
 	if role == nil {
-		http.Error(w, "Role not found: "+name, http.StatusNotFound)
+		WriteError(w, NewAPIError(ErrCodeNotFound, "Role not found: "+name))
 		return
 	}
 
@@ -127,13 +127,13 @@ func (s *Server) handleGetRole(w http.ResponseWriter, _ *http.Request, name stri
 // handleUpdateRole updates a custom role (built-in roles cannot be modified)
 func (s *Server) handleUpdateRole(w http.ResponseWriter, r *http.Request, name string) {
 	if name == "admin" || name == "user" || name == "viewer" {
-		http.Error(w, "Cannot modify built-in role: "+name, http.StatusForbidden)
+		WriteError(w, NewAPIError(ErrCodeForbidden, "Cannot modify built-in role: "+name))
 		return
 	}
 
 	var req roleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
@@ -149,11 +149,11 @@ func (s *Server) handleUpdateRole(w http.ResponseWriter, r *http.Request, name s
 
 	defJSON, err := json.Marshal(role)
 	if err != nil {
-		http.Error(w, "Failed to serialize role", http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to serialize role"))
 		return
 	}
 	if err := db.SaveCustomRole(name, string(defJSON)); err != nil {
-		http.Error(w, "Failed to save role: "+err.Error(), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to save role: "+err.Error()))
 		return
 	}
 
@@ -170,9 +170,9 @@ func (s *Server) handleUpdateRole(w http.ResponseWriter, r *http.Request, name s
 func (s *Server) handleDeleteRole(w http.ResponseWriter, _ *http.Request, name string) {
 	if err := s.authorizer.DeleteRole(name); err != nil {
 		if strings.Contains(err.Error(), "built-in") {
-			http.Error(w, err.Error(), http.StatusForbidden)
+			WriteError(w, NewAPIError(ErrCodeForbidden, err.Error()))
 		} else {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			WriteError(w, NewAPIError(ErrCodeNotFound, err.Error()))
 		}
 		return
 	}
@@ -193,7 +193,7 @@ func (s *Server) handleDeleteRole(w http.ResponseWriter, _ *http.Request, name s
 // handleUserPermissions returns the feature permissions for the current user
 func (s *Server) handleUserPermissions(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 

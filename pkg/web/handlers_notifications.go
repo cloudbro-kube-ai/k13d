@@ -73,7 +73,7 @@ func (s *Server) handleNotificationConfig(w http.ResponseWriter, r *http.Request
 	case http.MethodPost:
 		var cfg NotificationConfig
 		if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 			return
 		}
 
@@ -83,13 +83,13 @@ func (s *Server) handleNotificationConfig(w http.ResponseWriter, r *http.Request
 
 		// Email provider doesn't need webhook URL
 		if cfg.Enabled && cfg.Provider != "email" && cfg.WebhookURL == "" {
-			http.Error(w, "Webhook URL is required when notifications are enabled", http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeValidation, "Webhook URL is required when notifications are enabled"))
 			return
 		}
 
 		if cfg.WebhookURL != "" && cfg.Provider != "email" {
 			if err := validateWebhookURL(cfg.WebhookURL); err != nil {
-				http.Error(w, "Invalid webhook URL: "+err.Error(), http.StatusBadRequest)
+				WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid webhook URL: "+err.Error()))
 				return
 			}
 		}
@@ -146,13 +146,13 @@ func (s *Server) handleNotificationConfig(w http.ResponseWriter, r *http.Request
 		})
 
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 	}
 }
 
 func (s *Server) handleNotificationTest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -161,18 +161,18 @@ func (s *Server) handleNotificationTest(w http.ResponseWriter, r *http.Request) 
 	notifConfigMu.RUnlock()
 
 	if !cfg.Enabled {
-		http.Error(w, "Notifications not configured", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Notifications not configured"))
 		return
 	}
 
 	// Email provider uses SMTP
 	if cfg.Provider == "email" {
 		if s.notifManager == nil {
-			http.Error(w, "Notification manager not initialized", http.StatusInternalServerError)
+			WriteError(w, NewAPIError(ErrCodeInternalError, "Notification manager not initialized"))
 			return
 		}
 		if err := s.notifManager.SendTestEmail(); err != nil {
-			http.Error(w, "Failed to send test email: "+err.Error(), http.StatusInternalServerError)
+			WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to send test email: "+err.Error()))
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -184,26 +184,26 @@ func (s *Server) handleNotificationTest(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if cfg.WebhookURL == "" {
-		http.Error(w, "Webhook URL not configured", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Webhook URL not configured"))
 		return
 	}
 
 	payload, err := buildTestPayload(cfg.Provider, cfg.Channel)
 	if err != nil {
-		http.Error(w, "Failed to build test payload: "+err.Error(), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to build test payload: "+err.Error()))
 		return
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Post(cfg.WebhookURL, "application/json", bytes.NewReader(payload))
 	if err != nil {
-		http.Error(w, "Failed to send test notification: "+err.Error(), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to send test notification: "+err.Error()))
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		http.Error(w, fmt.Sprintf("Webhook returned status %d", resp.StatusCode), http.StatusBadGateway)
+		WriteError(w, NewAPIError(ErrCodeInternalError, fmt.Sprintf("Webhook returned status %d", resp.StatusCode)))
 		return
 	}
 
@@ -216,7 +216,7 @@ func (s *Server) handleNotificationTest(w http.ResponseWriter, r *http.Request) 
 
 func (s *Server) handleNotificationHistory(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -229,7 +229,7 @@ func (s *Server) handleNotificationHistory(w http.ResponseWriter, r *http.Reques
 
 func (s *Server) handleNotificationStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 	running := false

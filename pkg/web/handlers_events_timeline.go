@@ -38,7 +38,7 @@ type EventTimelineResponse struct {
 
 func (s *Server) handleEventTimeline(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -56,7 +56,7 @@ func (s *Server) handleEventTimeline(w http.ResponseWriter, r *http.Request) {
 
 	events, err := s.k8sClient.ListEvents(ctx, namespace)
 	if err != nil {
-		http.Error(w, "Failed to list events: "+err.Error(), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to list events: "+err.Error()))
 		return
 	}
 

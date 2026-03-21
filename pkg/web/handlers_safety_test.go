@@ -290,7 +290,7 @@ func TestSafetyAnalysisHandler(t *testing.T) {
 
 		var req SafetyAnalysisRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Bad request"))
 			return
 		}
 

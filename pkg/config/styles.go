@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -285,8 +286,6 @@ type ContextSkinConfig struct {
 
 // LoadContextSkins loads the context-skin mappings from config.
 // Returns an empty config (not an error) when the file is missing or malformed.
-// TODO: Add debug-level logging when config file exists but fails to parse,
-// so users can diagnose malformed context-skins.yaml files.
 func LoadContextSkins() (*ContextSkinConfig, error) {
 	configDir, err := getConfigDirFunc()
 	if err != nil {
@@ -304,6 +303,7 @@ func LoadContextSkins() (*ContextSkinConfig, error) {
 
 	var cfg ContextSkinConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: context-skins.yaml failed to parse: %v (using defaults)\n", err)
 		return &ContextSkinConfig{Mappings: make(map[string]string)}, nil
 	}
 	if cfg.Mappings == nil {

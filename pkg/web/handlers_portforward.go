@@ -30,7 +30,7 @@ type PortForwardSession struct {
 
 func (s *Server) handlePortForwardStart(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -42,7 +42,7 @@ func (s *Server) handlePortForwardStart(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
@@ -98,7 +98,7 @@ func (s *Server) handlePortForwardStart(w http.ResponseWriter, r *http.Request) 
 
 func (s *Server) handlePortForwardList(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -117,7 +117,7 @@ func (s *Server) handlePortForwardList(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handlePortForwardStop(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -129,7 +129,7 @@ func (s *Server) handlePortForwardStop(w http.ResponseWriter, r *http.Request) {
 	session, ok := s.portForwardSessions[sessionID]
 	if !ok {
 		s.pfMutex.Unlock()
-		http.Error(w, "Session not found", http.StatusNotFound)
+		WriteError(w, NewAPIError(ErrCodeNotFound, "Session not found"))
 		return
 	}
 

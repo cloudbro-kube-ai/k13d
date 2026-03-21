@@ -47,7 +47,7 @@ type RBACVisualizationResponse struct {
 
 func (s *Server) handleRBACVisualization(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -199,7 +199,7 @@ type RBACSubjectDetailResponse struct {
 
 func (s *Server) handleRBACSubjectDetail(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -207,7 +207,7 @@ func (s *Server) handleRBACSubjectDetail(w http.ResponseWriter, r *http.Request)
 	kind := r.URL.Query().Get("kind")
 	namespace := r.URL.Query().Get("namespace")
 	if name == "" || kind == "" {
-		http.Error(w, "name and kind are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "name and kind are required"))
 		return
 	}
 

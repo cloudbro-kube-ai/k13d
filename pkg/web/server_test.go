@@ -351,8 +351,8 @@ func TestHandleCustomResources_NoK8sClient(t *testing.T) {
 
 	server.handleCustomResources(w, req)
 
-	if w.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusServiceUnavailable)
+	if w.Code != http.StatusBadGateway {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadGateway)
 	}
 }
 
@@ -646,5 +646,70 @@ func TestHandleHealth_DevVersion(t *testing.T) {
 
 	if response["version"] != "dev" {
 		t.Errorf("version = %v, want dev", response["version"])
+	}
+}
+
+// Test recoveryMiddleware catches panics and returns 500
+func TestRecoveryMiddleware_CatchesPanic(t *testing.T) {
+	panickingHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("test panic")
+	})
+
+	handler := recoveryMiddleware(panickingHandler)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	w := httptest.NewRecorder()
+
+	// Should not panic
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
+	}
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if response["code"] != ErrCodeInternalError {
+		t.Errorf("error code = %v, want %v", response["code"], ErrCodeInternalError)
+	}
+}
+
+// Test recoveryMiddleware passes through normal requests
+func TestRecoveryMiddleware_PassesThrough(t *testing.T) {
+	normalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	})
+
+	handler := recoveryMiddleware(normalHandler)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	if !strings.Contains(w.Body.String(), `"ok":true`) {
+		t.Errorf("body = %q, want to contain %q", w.Body.String(), `"ok":true`)
+	}
+}
+
+// Test withRecovery delegates to recoveryMiddleware (DRY verification)
+func TestWithRecovery_DelegatesToRecoveryMiddleware(t *testing.T) {
+	panickingFunc := func(w http.ResponseWriter, r *http.Request) {
+		panic("withRecovery test panic")
+	}
+
+	handler := withRecovery(panickingFunc)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	w := httptest.NewRecorder()
+
+	// Should not panic — withRecovery delegates to recoveryMiddleware
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusInternalServerError)
 	}
 }

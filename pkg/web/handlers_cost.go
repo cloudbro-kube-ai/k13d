@@ -48,7 +48,7 @@ type CostRecommendation struct {
 
 func (s *Server) handleCostEstimate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -57,7 +57,7 @@ func (s *Server) handleCostEstimate(w http.ResponseWriter, r *http.Request) {
 
 	pods, err := s.k8sClient.ListPods(ctx, namespace)
 	if err != nil {
-		http.Error(w, "Failed to list pods: "+err.Error(), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to list pods: "+err.Error()))
 		return
 	}
 

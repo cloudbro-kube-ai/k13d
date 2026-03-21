@@ -367,7 +367,7 @@ func TestE2E_DeploymentRestart(t *testing.T) {
 				"namespace": "default",
 				"name":      "non-existent",
 			},
-			expectedStatus: http.StatusInternalServerError, // Server returns 500 for not found in restart
+			expectedStatus: http.StatusNotFound, // ParseK8sError correctly maps "not found" to 404
 		},
 		{
 			name: "missing fields",
@@ -528,7 +528,7 @@ func TestE2E_DaemonSetRestart(t *testing.T) {
 				"namespace": "default",
 				"name":      "non-existent",
 			},
-			expectedStatus: http.StatusInternalServerError, // Server returns 500 for not found
+			expectedStatus: http.StatusNotFound, // ParseK8sError correctly maps "not found" to 404
 		},
 	}
 
@@ -588,7 +588,7 @@ func TestE2E_CronJobSuspend(t *testing.T) {
 				"name":      "non-existent",
 				"suspend":   true,
 			},
-			expectedStatus: http.StatusInternalServerError, // Server returns 500 for not found
+			expectedStatus: http.StatusNotFound, // ParseK8sError correctly maps "not found" to 404
 		},
 	}
 
@@ -938,4 +938,51 @@ func TestE2E_NodeMaintenanceFlow(t *testing.T) {
 			t.Fatalf("uncordon failed: %d - %s", w.Code, w.Body.String())
 		}
 	})
+}
+
+// TestOperations_NilK8sClient verifies that all operation handlers
+// return a structured error instead of panicking when k8sClient is nil.
+func TestOperations_NilK8sClient(t *testing.T) {
+	server := &Server{k8sClient: nil}
+
+	body := `{"namespace":"default","name":"test","replicas":1}`
+	handlers := []struct {
+		name    string
+		method  string
+		handler http.HandlerFunc
+	}{
+		{"scale", http.MethodPost, server.handleDeploymentScale},
+		{"restart", http.MethodPost, server.handleDeploymentRestart},
+		{"pause", http.MethodPost, server.handleDeploymentPause},
+		{"resume", http.MethodPost, server.handleDeploymentResume},
+		{"rollback", http.MethodPost, server.handleDeploymentRollback},
+		{"history", http.MethodGet, server.handleDeploymentHistory},
+		{"statefulset-scale", http.MethodPost, server.handleStatefulSetScale},
+		{"statefulset-restart", http.MethodPost, server.handleStatefulSetRestart},
+		{"daemonset-restart", http.MethodPost, server.handleDaemonSetRestart},
+		{"cronjob-trigger", http.MethodPost, server.handleCronJobTrigger},
+		{"cronjob-suspend", http.MethodPost, server.handleCronJobSuspend},
+		{"node-cordon", http.MethodPost, server.handleNodeCordon},
+		{"node-drain", http.MethodPost, server.handleNodeDrain},
+		{"node-pods", http.MethodGet, server.handleNodePods},
+	}
+
+	for _, h := range handlers {
+		t.Run(h.name, func(t *testing.T) {
+			var req *http.Request
+			if h.method == http.MethodPost {
+				req = httptest.NewRequest(h.method, "/api/test", bytes.NewBufferString(body))
+			} else {
+				req = httptest.NewRequest(h.method, "/api/test?namespace=default&name=test", nil)
+			}
+			w := httptest.NewRecorder()
+
+			// Should NOT panic — requireK8sClient guard catches nil
+			h.handler(w, req)
+
+			if w.Code != http.StatusBadGateway {
+				t.Errorf("%s: status = %d, want %d (ErrCodeK8sError)", h.name, w.Code, http.StatusBadGateway)
+			}
+		})
+	}
 }

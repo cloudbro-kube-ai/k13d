@@ -17,7 +17,7 @@ import (
 // handleHelmReleases lists Helm releases
 func (s *Server) handleHelmReleases(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -26,7 +26,7 @@ func (s *Server) handleHelmReleases(w http.ResponseWriter, r *http.Request) {
 
 	releases, err := s.helmClient.ListReleases(r.Context(), namespace, allNamespaces)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to list releases: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to list releases: %w", err))
 		return
 	}
 
@@ -42,7 +42,7 @@ func (s *Server) handleHelmRelease(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/helm/release/")
 	parts := strings.Split(path, "/")
 	if len(parts) < 1 || parts[0] == "" {
-		http.Error(w, "Release name required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Release name required"))
 		return
 	}
 
@@ -63,7 +63,7 @@ func (s *Server) handleHelmRelease(w http.ResponseWriter, r *http.Request) {
 	case "get", "":
 		release, err := s.helmClient.GetRelease(r.Context(), name, namespace)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to get release: %v", err), http.StatusInternalServerError)
+			writeK8sError(w, fmt.Errorf("failed to get release: %w", err))
 			return
 		}
 		_ = json.NewEncoder(w).Encode(release)
@@ -71,7 +71,7 @@ func (s *Server) handleHelmRelease(w http.ResponseWriter, r *http.Request) {
 	case "history":
 		history, err := s.helmClient.GetReleaseHistory(r.Context(), name, namespace)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to get release history: %v", err), http.StatusInternalServerError)
+			writeK8sError(w, fmt.Errorf("failed to get release history: %w", err))
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -82,7 +82,7 @@ func (s *Server) handleHelmRelease(w http.ResponseWriter, r *http.Request) {
 		allValues := r.URL.Query().Get("all") == "true"
 		values, err := s.helmClient.GetReleaseValues(r.Context(), name, namespace, allValues)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to get release values: %v", err), http.StatusInternalServerError)
+			writeK8sError(w, fmt.Errorf("failed to get release values: %w", err))
 			return
 		}
 		_ = json.NewEncoder(w).Encode(values)
@@ -90,7 +90,7 @@ func (s *Server) handleHelmRelease(w http.ResponseWriter, r *http.Request) {
 	case "manifest":
 		manifest, err := s.helmClient.GetReleaseManifest(r.Context(), name, namespace)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to get release manifest: %v", err), http.StatusInternalServerError)
+			writeK8sError(w, fmt.Errorf("failed to get release manifest: %w", err))
 			return
 		}
 		w.Header().Set("Content-Type", "text/yaml")
@@ -99,21 +99,21 @@ func (s *Server) handleHelmRelease(w http.ResponseWriter, r *http.Request) {
 	case "notes":
 		notes, err := s.helmClient.GetReleaseNotes(r.Context(), name, namespace)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to get release notes: %v", err), http.StatusInternalServerError)
+			writeK8sError(w, fmt.Errorf("failed to get release notes: %w", err))
 			return
 		}
 		w.Header().Set("Content-Type", "text/plain")
 		_, _ = w.Write([]byte(notes))
 
 	default:
-		http.Error(w, "Unknown action", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Unknown action"))
 	}
 }
 
 // handleHelmInstall installs a Helm chart
 func (s *Server) handleHelmInstall(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -127,12 +127,12 @@ func (s *Server) handleHelmInstall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Name == "" || req.Chart == "" {
-		http.Error(w, "Name and chart are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Name and chart are required"))
 		return
 	}
 
@@ -147,7 +147,7 @@ func (s *Server) handleHelmInstall(w http.ResponseWriter, r *http.Request) {
 
 	release, err := s.helmClient.InstallRelease(r.Context(), req.Name, req.Chart, req.Namespace, req.Values, opts)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to install release: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to install release: %w", err))
 		return
 	}
 
@@ -167,7 +167,7 @@ func (s *Server) handleHelmInstall(w http.ResponseWriter, r *http.Request) {
 // handleHelmUpgrade upgrades a Helm release
 func (s *Server) handleHelmUpgrade(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -182,12 +182,12 @@ func (s *Server) handleHelmUpgrade(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Name == "" || req.Chart == "" {
-		http.Error(w, "Name and chart are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Name and chart are required"))
 		return
 	}
 
@@ -203,7 +203,7 @@ func (s *Server) handleHelmUpgrade(w http.ResponseWriter, r *http.Request) {
 
 	release, err := s.helmClient.UpgradeRelease(r.Context(), req.Name, req.Chart, req.Namespace, req.Values, opts)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to upgrade release: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to upgrade release: %w", err))
 		return
 	}
 
@@ -223,7 +223,7 @@ func (s *Server) handleHelmUpgrade(w http.ResponseWriter, r *http.Request) {
 // handleHelmUninstall uninstalls a Helm release
 func (s *Server) handleHelmUninstall(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost && r.Method != http.MethodDelete {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -234,12 +234,12 @@ func (s *Server) handleHelmUninstall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Name == "" {
-		http.Error(w, "Name is required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Name is required"))
 		return
 	}
 
@@ -249,7 +249,7 @@ func (s *Server) handleHelmUninstall(w http.ResponseWriter, r *http.Request) {
 
 	err := s.helmClient.UninstallRelease(r.Context(), req.Name, req.Namespace, req.KeepHistory)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to uninstall release: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to uninstall release: %w", err))
 		return
 	}
 
@@ -269,7 +269,7 @@ func (s *Server) handleHelmUninstall(w http.ResponseWriter, r *http.Request) {
 // handleHelmRollback rolls back a Helm release
 func (s *Server) handleHelmRollback(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -280,12 +280,12 @@ func (s *Server) handleHelmRollback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Name == "" || req.Revision == 0 {
-		http.Error(w, "Name and revision are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Name and revision are required"))
 		return
 	}
 
@@ -295,7 +295,7 @@ func (s *Server) handleHelmRollback(w http.ResponseWriter, r *http.Request) {
 
 	err := s.helmClient.RollbackRelease(r.Context(), req.Name, req.Namespace, req.Revision)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to rollback release: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to rollback release: %w", err))
 		return
 	}
 
@@ -320,7 +320,7 @@ func (s *Server) handleHelmRepos(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		repos, err := s.helmClient.ListRepositories()
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to list repositories: %v", err), http.StatusInternalServerError)
+			writeK8sError(w, fmt.Errorf("failed to list repositories: %w", err))
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -333,17 +333,17 @@ func (s *Server) handleHelmRepos(w http.ResponseWriter, r *http.Request) {
 			URL  string `json:"url"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 			return
 		}
 
 		if req.Name == "" || req.URL == "" {
-			http.Error(w, "Name and URL are required", http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeValidation, "Name and URL are required"))
 			return
 		}
 
 		if err := s.helmClient.AddRepository(req.Name, req.URL); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to add repository: %v", err), http.StatusInternalServerError)
+			writeK8sError(w, fmt.Errorf("failed to add repository: %w", err))
 			return
 		}
 
@@ -361,7 +361,7 @@ func (s *Server) handleHelmRepos(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut:
 		// Update (refresh) all repositories
 		if err := s.helmClient.UpdateRepositories(); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to update repositories: %v", err), http.StatusInternalServerError)
+			writeK8sError(w, fmt.Errorf("failed to update repositories: %w", err))
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "updated"})
@@ -369,12 +369,12 @@ func (s *Server) handleHelmRepos(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		name := r.URL.Query().Get("name")
 		if name == "" {
-			http.Error(w, "Repository name required", http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeValidation, "Repository name required"))
 			return
 		}
 
 		if err := s.helmClient.RemoveRepository(name); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to remove repository: %v", err), http.StatusInternalServerError)
+			writeK8sError(w, fmt.Errorf("failed to remove repository: %w", err))
 			return
 		}
 
@@ -390,26 +390,26 @@ func (s *Server) handleHelmRepos(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "removed"})
 
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 	}
 }
 
 // handleHelmSearch searches for charts in repositories
 func (s *Server) handleHelmSearch(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
 	keyword := r.URL.Query().Get("q")
 	if keyword == "" {
-		http.Error(w, "Search keyword required (q parameter)", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Search keyword required (q parameter)"))
 		return
 	}
 
 	results, err := s.helmClient.SearchCharts(keyword)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to search charts: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to search charts: %w", err))
 		return
 	}
 

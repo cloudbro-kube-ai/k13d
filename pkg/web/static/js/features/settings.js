@@ -1860,7 +1860,7 @@ function toggleMetricsAutoRefresh() {
 // Load version info for About page
 async function loadVersionInfo() {
     try {
-        const resp = await fetch('/api/version');
+        const resp = await fetchWithAuth('/api/version', { silentErrors: true });
         const data = await resp.json();
 
         const versionEl = document.getElementById('about-version');

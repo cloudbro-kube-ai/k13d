@@ -1,6 +1,3 @@
-// TODO: This file duplicates significant logic from cmd/kubectl-k13d/main.go.
-// Extract shared startup logic (flag parsing, DB init, web/TUI runner)
-// into an internal/cli package and keep both main.go files as thin entry points.
 package main
 
 import (
@@ -11,13 +8,12 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
-	"strconv"
 	"syscall"
 	"time"
 	_ "time/tzdata"
 
+	"github.com/cloudbro-kube-ai/k13d/internal/cli"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
-	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 	"github.com/cloudbro-kube-ai/k13d/pkg/log"
 	mcpserver "github.com/cloudbro-kube-ai/k13d/pkg/mcp/server"
 	"github.com/cloudbro-kube-ai/k13d/pkg/ui"
@@ -31,52 +27,20 @@ var (
 	GitCommit = "unknown"
 )
 
-// envDefault returns the environment variable value if set, otherwise the default.
-func envDefault(envKey, defaultVal string) string {
-	if v := os.Getenv(envKey); v != "" {
-		return v
-	}
-	return defaultVal
-}
-
-func envBoolDefault(envKey string, defaultVal bool) bool {
-	v := os.Getenv(envKey)
-	if v == "" {
-		return defaultVal
-	}
-	parsed, err := strconv.ParseBool(v)
-	if err != nil {
-		return defaultVal
-	}
-	return parsed
-}
-
-func envIntDefault(envKey string, defaultVal int) int {
-	v := os.Getenv(envKey)
-	if v == "" {
-		return defaultVal
-	}
-	parsed, err := strconv.Atoi(v)
-	if err != nil {
-		return defaultVal
-	}
-	return parsed
-}
-
 func main() {
 	// Command line flags - Go's flag parser accepts both -flag and --flag forms.
 	// Selected flags also fall back to K13D_* environment variables for Docker/K8s compatibility.
 	// Mode flags
-	webMode := flag.Bool("web", envBoolDefault("K13D_WEB", false), "Start web server mode")
+	webMode := flag.Bool("web", cli.EnvBoolDefault("K13D_WEB", false), "Start web server mode")
 	tuiMode := flag.Bool("tui", false, "Start TUI mode (default when no mode specified)")
 	mcpMode := flag.Bool("mcp", false, "Start MCP server mode (stdio transport)")
-	webPort := flag.Int("port", envIntDefault("K13D_PORT", 8080), "Web server port (used with --web)")
-	configPath := flag.String("config", envDefault("K13D_CONFIG", ""), "Config file path (default: platform XDG config dir + /k13d/config.yaml)")
+	webPort := flag.Int("port", cli.EnvIntDefault("K13D_PORT", 8080), "Web server port (used with --web)")
+	configPath := flag.String("config", cli.EnvDefault("K13D_CONFIG", ""), "Config file path (default: platform XDG config dir + /k13d/config.yaml)")
 
 	// Namespace flags (k9s compatible)
-	namespace := flag.String("namespace", envDefault("K13D_NAMESPACE", ""), "Initial namespace (use 'all' for all namespaces)")
+	namespace := flag.String("namespace", cli.EnvDefault("K13D_NAMESPACE", ""), "Initial namespace (use 'all' for all namespaces)")
 	flag.StringVar(namespace, "n", "", "Initial namespace (short for --namespace)")
-	allNamespaces := flag.Bool("all-namespaces", envBoolDefault("K13D_ALL_NAMESPACES", false), "Start with all namespaces")
+	allNamespaces := flag.Bool("all-namespaces", cli.EnvBoolDefault("K13D_ALL_NAMESPACES", false), "Start with all namespaces")
 	flag.BoolVar(allNamespaces, "A", false, "Start with all namespaces (short for --all-namespaces)")
 
 	// Info flags
@@ -84,14 +48,14 @@ func main() {
 	genCompletion := flag.String("completion", "", "Generate shell completion (bash, zsh, fish)")
 
 	// Web server auth flags (env: K13D_AUTH_MODE, K13D_USERNAME, K13D_PASSWORD)
-	authMode := flag.String("auth-mode", envDefault("K13D_AUTH_MODE", "token"), "Authentication mode: token (K8s RBAC), local (username/password), ldap, oidc")
-	authDisabled := flag.Bool("no-auth", envBoolDefault("K13D_NO_AUTH", false), "Disable authentication (not recommended)")
-	adminUser := flag.String("admin-user", envDefault("K13D_USERNAME", ""), "Default admin username for local auth mode")
-	adminPass := flag.String("admin-password", envDefault("K13D_PASSWORD", ""), "Default admin password for local auth mode")
+	authMode := flag.String("auth-mode", cli.EnvDefault("K13D_AUTH_MODE", "token"), "Authentication mode: token (K8s RBAC), local (username/password), ldap, oidc")
+	authDisabled := flag.Bool("no-auth", cli.EnvBoolDefault("K13D_NO_AUTH", false), "Disable authentication (not recommended)")
+	adminUser := flag.String("admin-user", cli.EnvDefault("K13D_USERNAME", ""), "Default admin username for local auth mode")
+	adminPass := flag.String("admin-password", cli.EnvDefault("K13D_PASSWORD", ""), "Default admin password for local auth mode")
 
 	// Storage flags
-	dbPath := flag.String("db-path", envDefault("K13D_DB_PATH", ""), "SQLite database path (default: platform XDG config dir + /k13d/audit.db)")
-	disableDB := flag.Bool("no-db", envBoolDefault("K13D_NO_DB", false), "Disable database persistence entirely")
+	dbPath := flag.String("db-path", cli.EnvDefault("K13D_DB_PATH", ""), "SQLite database path (default: platform XDG config dir + /k13d/audit.db)")
+	disableDB := flag.Bool("no-db", cli.EnvBoolDefault("K13D_NO_DB", false), "Disable database persistence entirely")
 	showStorageInfo := flag.Bool("storage-info", false, "Show storage configuration and data locations")
 
 	flag.Parse()
@@ -214,31 +178,7 @@ func runMCPServer() {
 }
 
 func runWebServer(cfg *config.Config, port int, authOpts *web.AuthOptions) {
-	// Initialize audit database and file for web mode
-	if cfg.EnableAudit && cfg.IsPersistenceEnabled() {
-		dbCfg := db.DBConfig{
-			Type:     db.DBType(cfg.Storage.DBType),
-			Path:     cfg.GetEffectiveDBPath(),
-			Host:     cfg.Storage.DBHost,
-			Port:     cfg.Storage.DBPort,
-			Database: cfg.Storage.DBName,
-			Username: cfg.Storage.DBUser,
-			Password: cfg.Storage.DBPassword,
-			SSLMode:  cfg.Storage.DBSSLMode,
-		}
-		if err := db.InitWithConfig(dbCfg); err != nil {
-			log.Errorf("Failed to initialize audit database: %v", err)
-		}
-		defer db.Close()
-
-		// Initialize audit file if enabled
-		if cfg.Storage.EnableAuditFile {
-			if err := db.InitAuditFile(cfg.GetEffectiveAuditFilePath()); err != nil {
-				log.Errorf("Failed to initialize audit file: %v", err)
-			}
-			defer db.CloseAuditFile()
-		}
-	}
+	defer cli.InitDB(cfg)()
 
 	// Pass version info to web server
 	versionInfo := &web.VersionInfo{
@@ -288,31 +228,7 @@ func runWebServer(cfg *config.Config, port int, authOpts *web.AuthOptions) {
 }
 
 func runTUI(cfg *config.Config, initialNamespace string) {
-	// Initialize audit database if enabled in config
-	if cfg.EnableAudit && cfg.IsPersistenceEnabled() {
-		dbCfg := db.DBConfig{
-			Type:     db.DBType(cfg.Storage.DBType),
-			Path:     cfg.GetEffectiveDBPath(),
-			Host:     cfg.Storage.DBHost,
-			Port:     cfg.Storage.DBPort,
-			Database: cfg.Storage.DBName,
-			Username: cfg.Storage.DBUser,
-			Password: cfg.Storage.DBPassword,
-			SSLMode:  cfg.Storage.DBSSLMode,
-		}
-		if err := db.InitWithConfig(dbCfg); err != nil {
-			log.Errorf("Failed to initialize audit database: %v", err)
-		}
-		defer db.Close()
-
-		// Initialize audit file logging if enabled
-		if cfg.Storage.EnableAuditFile {
-			if err := db.InitAuditFile(cfg.GetEffectiveAuditFilePath()); err != nil {
-				log.Errorf("Failed to initialize audit file: %v", err)
-			}
-			defer db.CloseAuditFile()
-		}
-	}
+	defer cli.InitDB(cfg)()
 
 	defer func() {
 		if r := recover(); r != nil {

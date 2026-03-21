@@ -26,13 +26,13 @@ func (s *Server) handleToolApprovalSettings(w http.ResponseWriter, r *http.Reque
 		// Check admin role
 		role := r.Header.Get("X-User-Role")
 		if role != "admin" {
-			http.Error(w, "Admin access required", http.StatusForbidden)
+			WriteError(w, NewAPIError(ErrCodeForbidden, "Admin access required"))
 			return
 		}
 
 		var policy config.ToolApprovalPolicy
 		if err := json.NewDecoder(r.Body).Decode(&policy); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 			return
 		}
 
@@ -72,7 +72,7 @@ func (s *Server) handleToolApprovalSettings(w http.ResponseWriter, r *http.Reque
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
 
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 	}
 }
 

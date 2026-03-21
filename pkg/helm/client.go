@@ -334,7 +334,7 @@ func (c *Client) ListRepositories() ([]Repository, error) {
 	repoFile := c.settings.RepositoryConfig
 	f, err := repo.LoadFile(repoFile)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if os.IsNotExist(err) || isNotExistWrapped(err) {
 			return []Repository{}, nil
 		}
 		return nil, fmt.Errorf("failed to load repository file: %w", err)
@@ -591,4 +591,10 @@ type HelmClient interface {
 	AddRepository(name string, url string) error
 	RemoveRepository(name string) error
 	UpdateRepositories() error
+}
+
+// isNotExistWrapped checks if an error chain contains a "no such file" error.
+// repo.LoadFile wraps os-level errors, so os.IsNotExist alone may not match.
+func isNotExistWrapped(err error) bool {
+	return strings.Contains(err.Error(), "no such file or directory")
 }
