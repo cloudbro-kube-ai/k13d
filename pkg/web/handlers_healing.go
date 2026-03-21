@@ -156,12 +156,12 @@ func (s *Server) handleHealingRules(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		var rule HealingRule
 		if err := json.NewDecoder(r.Body).Decode(&rule); err != nil {
-			http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body: "+err.Error()))
 			return
 		}
 		created, err := s.healingStore.AddRule(rule)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeBadRequest, err.Error()))
 			return
 		}
 		w.WriteHeader(http.StatusCreated)
@@ -170,16 +170,16 @@ func (s *Server) handleHealingRules(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut:
 		id := r.URL.Query().Get("id")
 		if id == "" {
-			http.Error(w, "Missing rule id query parameter", http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Missing rule id query parameter"))
 			return
 		}
 		var rule HealingRule
 		if err := json.NewDecoder(r.Body).Decode(&rule); err != nil {
-			http.Error(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body: "+err.Error()))
 			return
 		}
 		if err := s.healingStore.UpdateRule(id, rule); err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			WriteError(w, NewAPIError(ErrCodeNotFound, err.Error()))
 			return
 		}
 		rule.ID = id
@@ -188,23 +188,23 @@ func (s *Server) handleHealingRules(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		id := r.URL.Query().Get("id")
 		if id == "" {
-			http.Error(w, "Missing rule id query parameter", http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Missing rule id query parameter"))
 			return
 		}
 		if err := s.healingStore.DeleteRule(id); err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			WriteError(w, NewAPIError(ErrCodeNotFound, err.Error()))
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 	}
 }
 
 func (s *Server) handleHealingEvents(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 

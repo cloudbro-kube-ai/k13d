@@ -23,7 +23,7 @@ type PodMetricItem struct {
 
 func (s *Server) handlePodMetrics(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -63,7 +63,7 @@ func (s *Server) handlePodMetrics(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleNodeMetrics(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -105,7 +105,7 @@ func (s *Server) handleNodeMetrics(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleClusterMetricsHistory(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -166,7 +166,7 @@ func (s *Server) handleClusterMetricsHistory(w http.ResponseWriter, r *http.Requ
 
 func (s *Server) handleNodeMetricsHistory(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -182,7 +182,7 @@ func (s *Server) handleNodeMetricsHistory(w http.ResponseWriter, r *http.Request
 
 	nodeName := r.URL.Query().Get("node")
 	if nodeName == "" {
-		http.Error(w, "node parameter required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "node parameter required"))
 		return
 	}
 
@@ -233,7 +233,7 @@ func (s *Server) handleNodeMetricsHistory(w http.ResponseWriter, r *http.Request
 
 func (s *Server) handlePodMetricsHistory(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -250,7 +250,7 @@ func (s *Server) handlePodMetricsHistory(w http.ResponseWriter, r *http.Request)
 	namespace := r.URL.Query().Get("namespace")
 	podName := r.URL.Query().Get("pod")
 	if podName == "" {
-		http.Error(w, "pod parameter required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "pod parameter required"))
 		return
 	}
 	if namespace == "" {
@@ -305,7 +305,7 @@ func (s *Server) handlePodMetricsHistory(w http.ResponseWriter, r *http.Request)
 
 func (s *Server) handleMetricsSummary(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -340,7 +340,7 @@ func (s *Server) handleMetricsSummary(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleAggregatedMetrics(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -399,7 +399,7 @@ func (s *Server) handleAggregatedMetrics(w http.ResponseWriter, r *http.Request)
 
 func (s *Server) handleMetricsCollectNow(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 

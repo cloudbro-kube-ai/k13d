@@ -351,8 +351,8 @@ func TestHandleCustomResources_NoK8sClient(t *testing.T) {
 
 	server.handleCustomResources(w, req)
 
-	if w.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want %d", w.Code, http.StatusServiceUnavailable)
+	if w.Code != http.StatusBadGateway {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusBadGateway)
 	}
 }
 

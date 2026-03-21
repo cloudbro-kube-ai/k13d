@@ -24,14 +24,14 @@ type ContextsResponse struct {
 
 func (s *Server) handleContexts(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	config, err := loadingRules.Load()
 	if err != nil {
-		http.Error(w, "Failed to load kubeconfig: "+err.Error(), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to load kubeconfig: "+err.Error()))
 		return
 	}
 
@@ -55,7 +55,7 @@ func (s *Server) handleContexts(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleContextSwitch(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -63,11 +63,11 @@ func (s *Server) handleContextSwitch(w http.ResponseWriter, r *http.Request) {
 		Context string `json:"context"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 	if req.Context == "" {
-		http.Error(w, "Context name is required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Context name is required"))
 		return
 	}
 
@@ -75,17 +75,17 @@ func (s *Server) handleContextSwitch(w http.ResponseWriter, r *http.Request) {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	config, err := loadingRules.Load()
 	if err != nil {
-		http.Error(w, "Failed to load kubeconfig: "+err.Error(), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to load kubeconfig: "+err.Error()))
 		return
 	}
 	if _, ok := config.Contexts[req.Context]; !ok {
-		http.Error(w, "Context not found: "+req.Context, http.StatusNotFound)
+		WriteError(w, NewAPIError(ErrCodeNotFound, "Context not found: "+req.Context))
 		return
 	}
 
 	// Switch the k8s client to the new context
 	if err := s.k8sClient.SwitchContext(req.Context); err != nil {
-		http.Error(w, "Failed to switch context: "+err.Error(), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to switch context: "+err.Error()))
 		return
 	}
 

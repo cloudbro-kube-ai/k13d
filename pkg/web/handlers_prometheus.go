@@ -15,7 +15,7 @@ import (
 // GET /metrics (no auth required for Prometheus scraping)
 func (s *Server) handlePrometheusMetrics(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -187,7 +187,7 @@ func (s *Server) handlePrometheusSettings(w http.ResponseWriter, r *http.Request
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "saved"})
 
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 	}
 }
 
@@ -195,7 +195,7 @@ func (s *Server) handlePrometheusSettings(w http.ResponseWriter, r *http.Request
 // POST /api/prometheus/test
 func (s *Server) handlePrometheusTest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -279,7 +279,7 @@ func (s *Server) handlePrometheusTest(w http.ResponseWriter, r *http.Request) {
 // GET /api/prometheus/query
 func (s *Server) handlePrometheusQuery(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 

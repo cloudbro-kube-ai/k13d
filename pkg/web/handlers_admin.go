@@ -16,7 +16,7 @@ func (s *Server) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		s.authManager.HandleCreateUser(w, r)
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 	}
 }
 
@@ -28,6 +28,6 @@ func (s *Server) handleAdminUserAction(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		s.authManager.HandleDeleteUser(w, r)
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 	}
 }

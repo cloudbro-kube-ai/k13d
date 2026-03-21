@@ -25,7 +25,7 @@ func (rg *ReportGenerator) HandleReports(w http.ResponseWriter, r *http.Request)
 		// Generate report with selected sections
 		report, err := rg.GenerateReport(r.Context(), username, sections)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			WriteError(w, NewAPIError(ErrCodeInternalError, err.Error()))
 			return
 		}
 
@@ -50,7 +50,7 @@ func (rg *ReportGenerator) HandleReports(w http.ResponseWriter, r *http.Request)
 		case "csv":
 			csvData, err := rg.ExportToCSV(report)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				WriteError(w, NewAPIError(ErrCodeInternalError, err.Error()))
 				return
 			}
 			w.Header().Set("Content-Type", "text/csv; charset=utf-8")
@@ -73,7 +73,7 @@ func (rg *ReportGenerator) HandleReports(w http.ResponseWriter, r *http.Request)
 		}
 
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 	}
 }
 
@@ -90,7 +90,7 @@ func (rg *ReportGenerator) HandleReportPreview(w http.ResponseWriter, r *http.Re
 	// Generate report with selected sections
 	report, err := rg.GenerateReport(r.Context(), username, sections)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, err.Error()))
 		return
 	}
 

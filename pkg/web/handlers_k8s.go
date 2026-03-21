@@ -21,7 +21,7 @@ import (
 
 func (s *Server) handleK8sResource(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -550,13 +550,13 @@ func (s *Server) handleResourceYAML(w http.ResponseWriter, r *http.Request, reso
 	// Map resource names to GVR
 	gvr, ok := s.k8sClient.GetGVR(resource)
 	if !ok {
-		http.Error(w, fmt.Sprintf("Unknown resource type: %s", resource), http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, fmt.Sprintf("Unknown resource type: %s", resource)))
 		return
 	}
 
 	yaml, err := s.k8sClient.GetResourceYAML(r.Context(), namespace, name, gvr)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get YAML: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to get YAML: %w", err))
 		return
 	}
 
@@ -571,12 +571,12 @@ func (s *Server) handleResourceYAML(w http.ResponseWriter, r *http.Request, reso
 // GET /api/crd/{crdName}/instances/{name}?namespace=xxx&format=yaml - Get CR instance (optionally as YAML)
 func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
 	if s.k8sClient == nil {
-		http.Error(w, "Kubernetes client not available", http.StatusServiceUnavailable)
+		WriteError(w, NewAPIError(ErrCodeK8sError, "Kubernetes client not available"))
 		return
 	}
 
@@ -627,7 +627,7 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 	if len(parts) == 1 {
 		crdInfo, err := s.k8sClient.GetCRDInfo(r.Context(), crdName)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to get CRD: %v", err), http.StatusNotFound)
+			writeK8sError(w, fmt.Errorf("failed to get CRD: %w", err))
 			return
 		}
 
@@ -648,7 +648,7 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 	if parts[1] == "instances" {
 		crdInfo, err := s.k8sClient.GetCRDInfo(r.Context(), crdName)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to get CRD: %v", err), http.StatusNotFound)
+			writeK8sError(w, fmt.Errorf("failed to get CRD: %w", err))
 			return
 		}
 
@@ -659,7 +659,7 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 			if format == "yaml" {
 				yamlStr, err := s.k8sClient.GetCustomResourceYAML(r.Context(), crdInfo, namespace, instanceName)
 				if err != nil {
-					http.Error(w, fmt.Sprintf("Failed to get CR YAML: %v", err), http.StatusInternalServerError)
+					writeK8sError(w, fmt.Errorf("failed to get CR YAML: %w", err))
 					return
 				}
 				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -669,7 +669,7 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 
 			cr, err := s.k8sClient.GetCustomResource(r.Context(), crdInfo, namespace, instanceName)
 			if err != nil {
-				http.Error(w, fmt.Sprintf("Failed to get CR: %v", err), http.StatusNotFound)
+				writeK8sError(w, fmt.Errorf("failed to get CR: %w", err))
 				return
 			}
 
@@ -749,13 +749,13 @@ func (s *Server) handleCustomResources(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Error(w, "Invalid path", http.StatusBadRequest)
+	WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid path"))
 }
 
 // handlePodLogs handles GET /api/pods/{namespace}/{name}/logs
 func (s *Server) handlePodLogs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -764,7 +764,7 @@ func (s *Server) handlePodLogs(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(path, "/")
 
 	if len(parts) < 3 || parts[2] != "logs" {
-		http.Error(w, "Invalid path. Expected /api/pods/{namespace}/{name}/logs", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid path. Expected /api/pods/{namespace}/{name}/logs"))
 		return
 	}
 
@@ -806,13 +806,13 @@ func (s *Server) handlePodLogs(w http.ResponseWriter, r *http.Request) {
 
 		flusher, ok := w.(http.Flusher)
 		if !ok {
-			http.Error(w, "Streaming not supported", http.StatusInternalServerError)
+			WriteError(w, NewAPIError(ErrCodeInternalError, "Streaming not supported"))
 			return
 		}
 
 		stream, err := req.Stream(r.Context())
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to stream logs: %v", err), http.StatusInternalServerError)
+			writeK8sError(w, fmt.Errorf("failed to stream logs: %w", err))
 			return
 		}
 		defer stream.Close()
@@ -827,7 +827,7 @@ func (s *Server) handlePodLogs(w http.ResponseWriter, r *http.Request) {
 		// Non-streaming logs
 		stream, err := req.Stream(r.Context())
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to get logs: %v", err), http.StatusInternalServerError)
+			writeK8sError(w, fmt.Errorf("failed to get logs: %w", err))
 			return
 		}
 		defer stream.Close()
@@ -844,7 +844,7 @@ func (s *Server) handlePodLogs(w http.ResponseWriter, r *http.Request) {
 // handleWorkloadPods returns pods for a specific workload (deployment, daemonset, statefulset, replicaset)
 func (s *Server) handleWorkloadPods(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -853,7 +853,7 @@ func (s *Server) handleWorkloadPods(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Query().Get("name")
 
 	if namespace == "" || kind == "" || name == "" {
-		http.Error(w, "namespace, kind, and name parameters are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "namespace, kind, and name parameters are required"))
 		return
 	}
 
@@ -867,7 +867,7 @@ func (s *Server) handleWorkloadPods(w http.ResponseWriter, r *http.Request) {
 	case "deployment":
 		dep, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to get deployment: %v", err), http.StatusNotFound)
+			writeK8sError(w, fmt.Errorf("failed to get deployment: %w", err))
 			return
 		}
 		selector = dep.Spec.Selector
@@ -875,7 +875,7 @@ func (s *Server) handleWorkloadPods(w http.ResponseWriter, r *http.Request) {
 	case "daemonset":
 		ds, err := clientset.AppsV1().DaemonSets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to get daemonset: %v", err), http.StatusNotFound)
+			writeK8sError(w, fmt.Errorf("failed to get daemonset: %w", err))
 			return
 		}
 		selector = ds.Spec.Selector
@@ -883,7 +883,7 @@ func (s *Server) handleWorkloadPods(w http.ResponseWriter, r *http.Request) {
 	case "statefulset":
 		sts, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to get statefulset: %v", err), http.StatusNotFound)
+			writeK8sError(w, fmt.Errorf("failed to get statefulset: %w", err))
 			return
 		}
 		selector = sts.Spec.Selector
@@ -891,13 +891,13 @@ func (s *Server) handleWorkloadPods(w http.ResponseWriter, r *http.Request) {
 	case "replicaset":
 		rs, err := clientset.AppsV1().ReplicaSets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to get replicaset: %v", err), http.StatusNotFound)
+			writeK8sError(w, fmt.Errorf("failed to get replicaset: %w", err))
 			return
 		}
 		selector = rs.Spec.Selector
 
 	default:
-		http.Error(w, fmt.Sprintf("Unknown workload kind: %s", kind), http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, fmt.Sprintf("Unknown workload kind: %s", kind)))
 		return
 	}
 
@@ -907,7 +907,7 @@ func (s *Server) handleWorkloadPods(w http.ResponseWriter, r *http.Request) {
 		LabelSelector: labelSelector,
 	})
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to list pods: %v", err), http.StatusInternalServerError)
+		writeK8sError(w, fmt.Errorf("failed to list pods: %w", err))
 		return
 	}
 
@@ -939,7 +939,7 @@ func (s *Server) handleWorkloadPods(w http.ResponseWriter, r *http.Request) {
 // handleClusterOverview returns a high-level cluster overview
 func (s *Server) handleClusterOverview(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -1033,7 +1033,7 @@ type SearchResult struct {
 // handleGlobalSearch searches across multiple resource types
 func (s *Server) handleGlobalSearch(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -1042,7 +1042,7 @@ func (s *Server) handleGlobalSearch(w http.ResponseWriter, r *http.Request) {
 	limitStr := r.URL.Query().Get("limit")
 
 	if query == "" {
-		http.Error(w, "Search query 'q' is required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Search query 'q' is required"))
 		return
 	}
 
@@ -1271,7 +1271,7 @@ type YamlApplyRequest struct {
 // handleYamlApply handles POST /api/k8s/apply for applying YAML manifests
 func (s *Server) handleYamlApply(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 

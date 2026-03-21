@@ -23,7 +23,7 @@ type DiffResponse struct {
 
 func (s *Server) handleResourceDiff(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -33,12 +33,12 @@ func (s *Server) handleResourceDiff(w http.ResponseWriter, r *http.Request) {
 		Namespace string `json:"namespace"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Resource == "" || req.Name == "" {
-		http.Error(w, "Resource type and name are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Resource type and name are required"))
 		return
 	}
 
@@ -47,14 +47,14 @@ func (s *Server) handleResourceDiff(w http.ResponseWriter, r *http.Request) {
 	// Get the GVR for the resource type
 	gvr, ok := s.k8sClient.GetGVR(req.Resource)
 	if !ok {
-		http.Error(w, "Unknown resource type: "+req.Resource, http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Unknown resource type: "+req.Resource))
 		return
 	}
 
 	// Get the current resource
 	obj, err := s.k8sClient.Dynamic.Resource(gvr).Namespace(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
 	if err != nil {
-		http.Error(w, "Failed to get resource: "+err.Error(), http.StatusNotFound)
+		WriteError(w, NewAPIError(ErrCodeNotFound, "Failed to get resource: "+err.Error()))
 		return
 	}
 
@@ -64,7 +64,7 @@ func (s *Server) handleResourceDiff(w http.ResponseWriter, r *http.Request) {
 
 	currentYAML, err := goyaml.Marshal(obj.Object)
 	if err != nil {
-		http.Error(w, "Failed to marshal current YAML", http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to marshal current YAML"))
 		return
 	}
 

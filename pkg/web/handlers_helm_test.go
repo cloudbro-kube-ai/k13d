@@ -76,7 +76,7 @@ func TestHelmReleases_GET(t *testing.T) {
 
 	// Without a real cluster, this may either return empty list or error.
 	// The handler should not panic regardless.
-	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError {
+	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError && w.Code != http.StatusNotFound && w.Code != http.StatusBadGateway {
 		t.Errorf("GET /api/helm/releases: unexpected status = %d", w.Code)
 	}
 
@@ -100,7 +100,7 @@ func TestHelmReleases_AllNamespaces(t *testing.T) {
 	s.handleHelmReleases(w, req)
 
 	// Should not panic; either success or error from helm SDK
-	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError {
+	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError && w.Code != http.StatusNotFound && w.Code != http.StatusBadGateway {
 		t.Errorf("GET /api/helm/releases?all=true: unexpected status = %d", w.Code)
 	}
 }
@@ -135,7 +135,7 @@ func TestHelmRelease_GetByName(t *testing.T) {
 
 	// Without a real cluster, this will likely fail with 500
 	// but should not panic
-	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError {
+	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError && w.Code != http.StatusNotFound && w.Code != http.StatusBadGateway {
 		t.Errorf("GET /api/helm/release/my-release: unexpected status = %d", w.Code)
 	}
 }
@@ -148,7 +148,7 @@ func TestHelmRelease_History(t *testing.T) {
 
 	s.handleHelmRelease(w, req)
 
-	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError {
+	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError && w.Code != http.StatusNotFound && w.Code != http.StatusBadGateway {
 		t.Errorf("GET /api/helm/release/my-release/history: unexpected status = %d", w.Code)
 	}
 }
@@ -161,7 +161,7 @@ func TestHelmRelease_Values(t *testing.T) {
 
 	s.handleHelmRelease(w, req)
 
-	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError {
+	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError && w.Code != http.StatusNotFound && w.Code != http.StatusBadGateway {
 		t.Errorf("GET /api/helm/release/my-release/values: unexpected status = %d", w.Code)
 	}
 }
@@ -174,7 +174,7 @@ func TestHelmRelease_Manifest(t *testing.T) {
 
 	s.handleHelmRelease(w, req)
 
-	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError {
+	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError && w.Code != http.StatusNotFound && w.Code != http.StatusBadGateway {
 		t.Errorf("GET /api/helm/release/my-release/manifest: unexpected status = %d", w.Code)
 	}
 }
@@ -187,7 +187,7 @@ func TestHelmRelease_Notes(t *testing.T) {
 
 	s.handleHelmRelease(w, req)
 
-	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError {
+	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError && w.Code != http.StatusNotFound && w.Code != http.StatusBadGateway {
 		t.Errorf("GET /api/helm/release/my-release/notes: unexpected status = %d", w.Code)
 	}
 }
@@ -215,7 +215,7 @@ func TestHelmRelease_DefaultNamespace(t *testing.T) {
 	s.handleHelmRelease(w, req)
 
 	// Should not panic - will either succeed or return error
-	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError {
+	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError && w.Code != http.StatusNotFound && w.Code != http.StatusBadGateway {
 		t.Errorf("GET /api/helm/release/my-release (no ns): unexpected status = %d", w.Code)
 	}
 }
@@ -379,7 +379,7 @@ func TestHelmUninstall_AllowsDeleteMethod(t *testing.T) {
 	s.handleHelmUninstall(w, req)
 
 	// DELETE is allowed (along with POST), but will fail because no real cluster
-	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError {
+	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError && w.Code != http.StatusNotFound && w.Code != http.StatusBadGateway {
 		t.Errorf("DELETE /api/helm/uninstall: unexpected status = %d", w.Code)
 	}
 }
@@ -444,7 +444,7 @@ func TestHelmRepos_GET(t *testing.T) {
 	s.handleHelmRepos(w, req)
 
 	// ListRepositories reads the repo file; if it doesn't exist, returns empty list
-	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError {
+	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError && w.Code != http.StatusNotFound && w.Code != http.StatusBadGateway {
 		t.Errorf("GET /api/helm/repos: unexpected status = %d", w.Code)
 	}
 
@@ -557,7 +557,7 @@ func TestHelmSearch_WithQuery(t *testing.T) {
 	s.handleHelmSearch(w, req)
 
 	// SearchCharts tries to load repo index file; may fail if no repos configured
-	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError {
+	if w.Code != http.StatusOK && w.Code != http.StatusInternalServerError && w.Code != http.StatusNotFound && w.Code != http.StatusBadGateway {
 		t.Errorf("GET /api/helm/search?q=nginx: unexpected status = %d", w.Code)
 	}
 

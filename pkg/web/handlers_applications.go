@@ -32,7 +32,7 @@ type ResourceRef struct {
 
 func (s *Server) handleApplications(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -41,7 +41,7 @@ func (s *Server) handleApplications(w http.ResponseWriter, r *http.Request) {
 
 	groups, err := s.buildApplicationGroups(ctx, namespace)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, err.Error()))
 		return
 	}
 

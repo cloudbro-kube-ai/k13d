@@ -330,7 +330,7 @@ func generateRandomString(length int) (string, error) {
 // HandleOIDCLogin initiates OIDC login flow
 func (am *AuthManager) HandleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 	if am.oidcProvider == nil {
-		http.Error(w, "OIDC not configured", http.StatusServiceUnavailable)
+		WriteErrorSimple(w, http.StatusServiceUnavailable, "OIDC not configured")
 		return
 	}
 
@@ -339,7 +339,7 @@ func (am *AuthManager) HandleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 
 	authURL, _, err := am.oidcProvider.GetAuthorizationURL(redirectURI)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to generate auth URL: %v", err), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, fmt.Sprintf("Failed to generate auth URL: %v", err)))
 		return
 	}
 
@@ -350,28 +350,28 @@ func (am *AuthManager) HandleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 // HandleOIDCCallback handles the OIDC callback
 func (am *AuthManager) HandleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	if am.oidcProvider == nil {
-		http.Error(w, "OIDC not configured", http.StatusServiceUnavailable)
+		WriteErrorSimple(w, http.StatusServiceUnavailable, "OIDC not configured")
 		return
 	}
 
 	// Check for error from provider
 	if errParam := r.URL.Query().Get("error"); errParam != "" {
 		errDesc := r.URL.Query().Get("error_description")
-		http.Error(w, fmt.Sprintf("OIDC error: %s - %s", errParam, errDesc), http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, fmt.Sprintf("OIDC error: %s - %s", errParam, errDesc)))
 		return
 	}
 
 	// Validate state
 	state := r.URL.Query().Get("state")
 	if !am.oidcProvider.ValidateState(state) {
-		http.Error(w, "Invalid or expired state", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid or expired state"))
 		return
 	}
 
 	// Get authorization code
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		http.Error(w, "Missing authorization code", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Missing authorization code"))
 		return
 	}
 
@@ -379,14 +379,14 @@ func (am *AuthManager) HandleOIDCCallback(w http.ResponseWriter, r *http.Request
 	redirectURI := am.getOIDCRedirectURI(r)
 	tokenResp, err := am.oidcProvider.ExchangeCode(r.Context(), code, redirectURI)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Token exchange failed: %v", err), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, fmt.Sprintf("Token exchange failed: %v", err)))
 		return
 	}
 
 	// Get user info
 	userInfo, err := am.oidcProvider.GetUserInfo(r.Context(), tokenResp.AccessToken)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to get user info: %v", err), http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, fmt.Sprintf("Failed to get user info: %v", err)))
 		return
 	}
 

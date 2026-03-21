@@ -17,7 +17,7 @@ import (
 // GET /api/llm/usage?user=xxx&model=xxx&start=xxx&end=xxx&limit=xxx
 func (s *Server) handleLLMUsage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -87,7 +87,7 @@ func (s *Server) handleLLMUsage(w http.ResponseWriter, r *http.Request) {
 // GET /api/llm/usage/stats?hours=24&user=xxx&provider=xxx
 func (s *Server) handleLLMUsageStats(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 

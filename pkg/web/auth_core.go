@@ -276,7 +276,7 @@ func (am *AuthManager) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		if sessionID == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			WriteError(w, NewAPIError(ErrCodeUnauthorized, "Unauthorized"))
 			return
 		}
 
@@ -286,7 +286,7 @@ func (am *AuthManager) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			if jwtErr == nil {
 				// JWT is valid - check if user is locked
 				if am.IsUserLocked(claims.Username) {
-					http.Error(w, "Account locked", http.StatusForbidden)
+					WriteError(w, NewAPIError(ErrCodeForbidden, "Account locked"))
 					return
 				}
 
@@ -310,14 +310,14 @@ func (am *AuthManager) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		session, err := am.ValidateSession(sessionID)
 		if err != nil {
-			http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
+			WriteError(w, NewAPIError(ErrCodeUnauthorized, "Unauthorized: "+err.Error()))
 			return
 		}
 
 		// Check if user is locked (Teleport-inspired emergency locking)
 		if am.IsUserLocked(session.Username) {
 			am.InvalidateSession(sessionID)
-			http.Error(w, "Account locked", http.StatusForbidden)
+			WriteError(w, NewAPIError(ErrCodeForbidden, "Account locked"))
 			return
 		}
 
@@ -335,7 +335,7 @@ func (am *AuthManager) AdminMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		role := r.Header.Get("X-User-Role")
 		if role != "admin" {
-			http.Error(w, "Admin access required", http.StatusForbidden)
+			WriteError(w, NewAPIError(ErrCodeForbidden, "Admin access required"))
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -468,7 +468,7 @@ func (am *AuthManager) cleanupExpiredSessions() {
 func (am *AuthManager) HandleCSRFToken(w http.ResponseWriter, r *http.Request) {
 	token := am.GenerateCSRFToken()
 	if token == "" {
-		http.Error(w, "Failed to generate CSRF token", http.StatusInternalServerError)
+		WriteError(w, NewAPIError(ErrCodeInternalError, "Failed to generate CSRF token"))
 		return
 	}
 
@@ -510,7 +510,7 @@ func (am *AuthManager) CSRFMiddleware(next http.Handler) http.Handler {
 		}
 
 		if !am.ValidateCSRFToken(csrfToken) {
-			http.Error(w, "Invalid or missing CSRF token", http.StatusForbidden)
+			WriteError(w, NewAPIError(ErrCodeForbidden, "Invalid or missing CSRF token"))
 			return
 		}
 

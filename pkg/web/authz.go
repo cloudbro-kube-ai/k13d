@@ -269,7 +269,7 @@ func (az *Authorizer) FeatureMiddleware(feature Feature) func(http.HandlerFunc) 
 					Source:     "web",
 					Success:    false,
 				})
-				http.Error(w, fmt.Sprintf("Forbidden: role %s does not have access to feature %s", role, feature), http.StatusForbidden)
+				WriteError(w, NewAPIError(ErrCodeForbidden, fmt.Sprintf("Forbidden: role %s does not have access to feature %s", role, feature)))
 				return
 			}
 
@@ -408,7 +408,7 @@ func (az *Authorizer) AuthzMiddleware(resource string, action Action) func(http.
 					AuthzDecision:   "denied",
 				})
 
-				http.Error(w, fmt.Sprintf("Forbidden: %s", reason), http.StatusForbidden)
+				WriteError(w, NewAPIError(ErrCodeForbidden, fmt.Sprintf("Forbidden: %s", reason)))
 				return
 			}
 

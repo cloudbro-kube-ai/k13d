@@ -37,7 +37,7 @@ type VeleroResponse struct {
 
 func (s *Server) handleVeleroBackups(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -92,7 +92,7 @@ func (s *Server) handleVeleroBackups(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleVeleroSchedules(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 

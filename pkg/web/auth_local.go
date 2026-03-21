@@ -232,7 +232,7 @@ type LoginResponse struct {
 // HandleLogin handles login requests
 func (am *AuthManager) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -250,7 +250,7 @@ func (am *AuthManager) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
@@ -298,7 +298,7 @@ func (am *AuthManager) HandleLogin(w http.ResponseWriter, r *http.Request) {
 			if delay > 0 {
 				time.Sleep(delay)
 			}
-			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+			WriteError(w, NewAPIError(ErrCodeUnauthorized, "Invalid credentials"))
 			return
 		}
 	}
@@ -387,7 +387,7 @@ type UserRequest struct {
 // HandleListUsers returns list of all users (admin only)
 func (am *AuthManager) HandleListUsers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -418,18 +418,18 @@ func (am *AuthManager) HandleListUsers(w http.ResponseWriter, r *http.Request) {
 // HandleCreateUser creates a new user (admin only)
 func (am *AuthManager) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
 	var req UserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Username == "" || req.Password == "" {
-		http.Error(w, "Username and password are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Username and password are required"))
 		return
 	}
 
@@ -440,12 +440,12 @@ func (am *AuthManager) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 	// Validate role: accept built-in roles; custom roles validated via roleValidator if set
 	validBuiltIn := req.Role == "admin" || req.Role == "user" || req.Role == "viewer"
 	if !validBuiltIn && (am.roleValidator == nil || !am.roleValidator(req.Role)) {
-		http.Error(w, "Invalid role. Must be admin, user, viewer, or a valid custom role", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid role. Must be admin, user, viewer, or a valid custom role"))
 		return
 	}
 
 	if err := am.CreateUser(req.Username, req.Password, req.Role); err != nil {
-		http.Error(w, err.Error(), http.StatusConflict)
+		WriteError(w, NewAPIError(ErrCodeConflict, err.Error()))
 		return
 	}
 
@@ -469,20 +469,20 @@ func (am *AuthManager) HandleCreateUser(w http.ResponseWriter, r *http.Request) 
 // HandleUpdateUser updates an existing user (admin only)
 func (am *AuthManager) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut && r.Method != http.MethodPatch {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
 	// Get username from URL path
 	username := strings.TrimPrefix(r.URL.Path, "/api/admin/users/")
 	if username == "" || strings.ContainsAny(username, "/\\..") {
-		http.Error(w, "Invalid username", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid username"))
 		return
 	}
 
 	var req UserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
@@ -491,13 +491,13 @@ func (am *AuthManager) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 
 	user, exists := am.users[username]
 	if !exists {
-		http.Error(w, "User not found", http.StatusNotFound)
+		WriteError(w, NewAPIError(ErrCodeNotFound, "User not found"))
 		return
 	}
 
 	// Only allow updating local users
 	if user.Source != "local" && user.Source != "" {
-		http.Error(w, "Cannot update non-local user", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Cannot update non-local user"))
 		return
 	}
 
@@ -505,7 +505,7 @@ func (am *AuthManager) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 	if req.Role != "" {
 		validBuiltIn := req.Role == "admin" || req.Role == "user" || req.Role == "viewer"
 		if !validBuiltIn && (am.roleValidator == nil || !am.roleValidator(req.Role)) {
-			http.Error(w, "Invalid role", http.StatusBadRequest)
+			WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid role"))
 			return
 		}
 		user.Role = req.Role
@@ -529,26 +529,26 @@ func (am *AuthManager) HandleUpdateUser(w http.ResponseWriter, r *http.Request) 
 // HandleDeleteUser deletes a user (admin only)
 func (am *AuthManager) HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
 	// Get username from URL path
 	username := strings.TrimPrefix(r.URL.Path, "/api/admin/users/")
 	if username == "" || strings.ContainsAny(username, "/\\..") {
-		http.Error(w, "Invalid username", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid username"))
 		return
 	}
 
 	// Prevent deleting the current user
 	currentUser := r.Header.Get("X-Username")
 	if username == currentUser {
-		http.Error(w, "Cannot delete your own account", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Cannot delete your own account"))
 		return
 	}
 
 	if err := am.DeleteUser(username); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		WriteError(w, NewAPIError(ErrCodeNotFound, err.Error()))
 		return
 	}
 
@@ -562,7 +562,7 @@ func (am *AuthManager) HandleDeleteUser(w http.ResponseWriter, r *http.Request) 
 // HandleResetPassword resets a user's password (admin only)
 func (am *AuthManager) HandleResetPassword(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -571,17 +571,17 @@ func (am *AuthManager) HandleResetPassword(w http.ResponseWriter, r *http.Reques
 		NewPassword string `json:"new_password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Username == "" || req.NewPassword == "" {
-		http.Error(w, "Username and new password are required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Username and new password are required"))
 		return
 	}
 
 	if len(req.NewPassword) < 12 {
-		http.Error(w, "Password must be at least 12 characters", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Password must be at least 12 characters"))
 		return
 	}
 
@@ -590,12 +590,12 @@ func (am *AuthManager) HandleResetPassword(w http.ResponseWriter, r *http.Reques
 
 	user, exists := am.users[req.Username]
 	if !exists {
-		http.Error(w, "User not found", http.StatusNotFound)
+		WriteError(w, NewAPIError(ErrCodeNotFound, "User not found"))
 		return
 	}
 
 	if user.Source != "local" && user.Source != "" {
-		http.Error(w, "Cannot reset password for non-local user", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Cannot reset password for non-local user"))
 		return
 	}
 
@@ -753,7 +753,7 @@ func (am *AuthManager) LoadUserLocks() {
 // HandleLockUser handles POST /api/admin/lock - locks a user account (admin only)
 func (am *AuthManager) HandleLockUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -761,24 +761,24 @@ func (am *AuthManager) HandleLockUser(w http.ResponseWriter, r *http.Request) {
 		Username string `json:"username"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Username == "" {
-		http.Error(w, "Username is required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Username is required"))
 		return
 	}
 
 	// Prevent self-lock
 	currentUser := r.Header.Get("X-Username")
 	if req.Username == currentUser {
-		http.Error(w, "Cannot lock your own account", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Cannot lock your own account"))
 		return
 	}
 
 	if err := am.LockUser(req.Username, currentUser); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		WriteError(w, NewAPIError(ErrCodeNotFound, err.Error()))
 		return
 	}
 
@@ -792,7 +792,7 @@ func (am *AuthManager) HandleLockUser(w http.ResponseWriter, r *http.Request) {
 // HandleUnlockUser handles POST /api/admin/unlock - unlocks a user account (admin only)
 func (am *AuthManager) HandleUnlockUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		writeMethodNotAllowed(w)
 		return
 	}
 
@@ -800,17 +800,17 @@ func (am *AuthManager) HandleUnlockUser(w http.ResponseWriter, r *http.Request) 
 		Username string `json:"username"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "Invalid request body"))
 		return
 	}
 
 	if req.Username == "" {
-		http.Error(w, "Username is required", http.StatusBadRequest)
+		WriteError(w, NewAPIError(ErrCodeValidation, "Username is required"))
 		return
 	}
 
 	if err := am.UnlockUser(req.Username); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		WriteError(w, NewAPIError(ErrCodeNotFound, err.Error()))
 		return
 	}
 
