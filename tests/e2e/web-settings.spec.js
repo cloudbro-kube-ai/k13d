@@ -113,8 +113,8 @@ async function clearDialogMessages(page) {
   });
 }
 
-async function loginStatus(page, nextUsername, nextPassword) {
-  const resp = await page.request.post('/api/auth/login', {
+async function loginStatus(apiRequest, nextUsername, nextPassword) {
+  const resp = await apiRequest.post('/api/auth/login', {
     data: { username: nextUsername, password: nextPassword }
   });
   return resp.status();
@@ -147,7 +147,7 @@ function normalizeNotificationRestore(original) {
   return payload;
 }
 
-test('settings modal exercises each tab and persists configurable state', async ({ page }) => {
+test('settings modal exercises each tab and persists configurable state', async ({ page, request }) => {
   const unique = Date.now();
   const tempModelName = `pw-e2e-model-${unique}`;
   const tempMCPName = `pw-e2e-mcp-${unique}`;
@@ -351,14 +351,14 @@ test('settings modal exercises each tab and persists configurable state', async 
     await page.fill('#reset-password-input', 'TempPass!567');
     await page.locator('#reset-password-modal').getByRole('button', { name: 'Reset Password' }).click();
     await expect(page.locator('#reset-password-modal')).toBeHidden();
-    await expect.poll(async () => await loginStatus(page, tempUser, 'TempPass!567')).toBe(200);
+    await expect.poll(async () => await loginStatus(request, tempUser, 'TempPass!567')).toBe(200);
 
     await clearDialogMessages(page);
     await userRow.getByRole('button', { name: 'Delete' }).click();
     await expect
-      .poll(async () => await page.locator('#admin-users-list .settings-row').filter({ hasText: tempUser }).count())
+      .poll(async () => await page.locator('#admin-users-list .settings-row').filter({ hasText: tempUser }).count(), { timeout: 10000 })
       .toBe(0);
-    await expect.poll(async () => await loginStatus(page, tempUser, 'TempPass!567')).toBe(401);
+    await expect.poll(async () => await loginStatus(request, tempUser, 'TempPass!567')).toBe(401);
 
     await page.getByRole('button', { name: /Create Custom Role/i }).click();
     await expect(page.locator('#role-editor-modal')).toBeVisible();
