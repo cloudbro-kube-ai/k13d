@@ -2039,7 +2039,8 @@
                             </div>
                         </div>
                         <div style="margin-top:16px;">
-                            <button class="btn btn-primary" id="auth-save-btn" onclick="saveAuthSettings()" style="width:100%;">
+                            <button class="btn btn-primary" id="auth-save-btn" onclick="saveAuthSettings()" style="width:100%;"
+                                disabled title="Authentication provider settings are configured at startup in the current build.">
                                 Save Authentication Settings
                             </button>
                         </div>
@@ -2666,6 +2667,30 @@ spec:
             <div class="modal-footer"
                 style="padding: 12px 24px; border-top: 1px solid var(--border-color); text-align: right;">
                 <button class="btn btn-secondary" onclick="closeReportsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div class="modal-overlay" id="reset-password-modal" role="dialog" aria-modal="true">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Reset Password</h2>
+                <button class="modal-close" onclick="closeResetPasswordModal()" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <div class="form-group">
+                    <label id="reset-password-label">New password for user:</label>
+                    <input type="password" id="reset-password-input" placeholder="Enter new password" class="form-control"
+                        style="width: 100%; margin-top: 8px;" onkeydown="if(event.key === 'Enter') submitResetPassword()">
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 8px;">Min 12 characters required.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer"
+                style="padding: 12px 24px; border-top: 1px solid var(--border-color); text-align: right;">
+                <button class="btn btn-secondary" onclick="closeResetPasswordModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitResetPassword()">Reset Password</button>
             </div>
         </div>
     </div>

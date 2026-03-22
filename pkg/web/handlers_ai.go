@@ -130,6 +130,10 @@ func (s *Server) handleLLMSettings(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, NewAPIError(ErrCodeBadRequest, "Provider and model are required"))
 			return
 		}
+		if config.NormalizeLLMProvider(llmSettings.Provider) != llmSettings.Provider {
+			WriteError(w, NewAPIError(ErrCodeBadRequest, removedEmbeddedLLMMessage()))
+			return
+		}
 
 		// Update LLM settings (protected by mutex)
 		s.aiMu.Lock()
@@ -367,6 +371,56 @@ func (s *Server) handleLLMStatus(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(status)
 }
 
+func buildEffectiveUserMessage(message string, contextText string) string {
+	baseMessage := strings.TrimSpace(message)
+	contextText = strings.TrimSpace(contextText)
+	if contextText == "" {
+		return baseMessage
+	}
+	if baseMessage == "" {
+		return "Context from selected resources:\n" + contextText
+	}
+	return baseMessage + "\n\nContext from selected resources:\n" + contextText
+}
+
+type webAssistantStreamFilter struct {
+	suppressNextToolChunk bool
+	seenAssistantText     bool
+}
+
+func (f *webAssistantStreamFilter) Filter(chunk string) string {
+	if chunk == "" {
+		return ""
+	}
+
+	trimmed := strings.TrimSpace(chunk)
+	if strings.Contains(chunk, "🔧 Executing:") {
+		f.suppressNextToolChunk = true
+		return ""
+	}
+
+	if f.suppressNextToolChunk {
+		if trimmed == "" {
+			return ""
+		}
+		f.suppressNextToolChunk = false
+		return ""
+	}
+
+	if !f.seenAssistantText && trimmed == "" {
+		return ""
+	}
+	if trimmed != "" {
+		f.seenAssistantText = true
+	}
+
+	return chunk
+}
+
+func escapeSSEText(text string) string {
+	return strings.ReplaceAll(text, "\n", "\\n")
+}
+
 // handleAgenticChat handles AI chat with tool calling (Decision Required flow)
 func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -573,7 +627,8 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build message with conversation history and language instruction
-	message := req.Message
+	effectiveMessage := buildEffectiveUserMessage(req.Message, req.Context)
+	message := effectiveMessage
 	var currentSessionID string
 
 	// Handle session-based conversation
@@ -598,7 +653,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 				historyBuilder.WriteString("=== END OF HISTORY ===\n\n")
 				historyBuilder.WriteString("Now respond to the user's NEW message below. Remember all context from the conversation history above.\n\n")
 				historyBuilder.WriteString("NEW USER MESSAGE: ")
-				message = historyBuilder.String() + req.Message
+				message = historyBuilder.String() + effectiveMessage
 			}
 		} else {
 			// Create new session
@@ -637,11 +692,16 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 
 	// Collect response for session storage
 	var responseBuilder strings.Builder
+	streamFilter := &webAssistantStreamFilter{}
 
 	// Run agentic chat with tool execution feedback
 	err := s.aiClient.AskWithToolsAndExecution(r.Context(), message, func(text string) {
-		responseBuilder.WriteString(text)
-		escaped := strings.ReplaceAll(text, "\n", "\\n")
+		filtered := streamFilter.Filter(text)
+		if filtered == "" {
+			return
+		}
+		responseBuilder.WriteString(filtered)
+		escaped := escapeSSEText(filtered)
 		_ = sse.Write(escaped)
 	}, toolApprovalCallback, toolExecutionCallback)
 
@@ -651,9 +711,14 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(errStr, "does not support tools") || strings.Contains(errStr, "not support function") || strings.Contains(errStr, "tool_use is not supported") {
 			// Retry with simple chat mode (no tool calling)
 			responseBuilder.Reset()
+			streamFilter = &webAssistantStreamFilter{}
 			simpleErr := s.aiClient.Ask(r.Context(), message, func(text string) {
-				responseBuilder.WriteString(text)
-				escaped := strings.ReplaceAll(text, "\n", "\\n")
+				filtered := streamFilter.Filter(text)
+				if filtered == "" {
+					return
+				}
+				responseBuilder.WriteString(filtered)
+				escaped := escapeSSEText(filtered)
 				_ = sse.Write(escaped)
 			})
 			if simpleErr != nil {
@@ -704,6 +769,7 @@ func (s *Server) handleAgenticChatJSONMode(w http.ResponseWriter, r *http.Reques
 	if req.Language != "" && req.Language != "en" {
 		langInstruction = getLanguageInstruction(req.Language)
 	}
+	effectiveMessage := buildEffectiveUserMessage(req.Message, req.Context)
 
 	// Create a prompt that instructs the LLM to respond in JSON format
 	langPart := ""
@@ -712,7 +778,8 @@ func (s *Server) handleAgenticChatJSONMode(w http.ResponseWriter, r *http.Reques
 	}
 	jsonModePrompt := fmt.Sprintf(`You are a Kubernetes assistant.%s
 
-The user's question is: "%s"
+User question and selected resource context:
+%s
 
 If you need to execute a kubectl command to answer the question, respond ONLY with a JSON object in this exact format:
 {
@@ -727,7 +794,7 @@ If you can answer the question directly without executing a command, respond ONL
   "answer": "Your answer here"
 }
 
-IMPORTANT: Your response must be valid JSON only. No markdown, no extra text.`, langPart, req.Message)
+IMPORTANT: Your response must be valid JSON only. No markdown, no extra text.`, langPart, effectiveMessage)
 
 	// Get response from LLM
 	response, err := s.aiClient.AskNonStreaming(r.Context(), jsonModePrompt)
@@ -756,7 +823,7 @@ IMPORTANT: Your response must be valid JSON only. No markdown, no extra text.`, 
 
 	if err := json.Unmarshal([]byte(cleanResponse), &jsonResponse); err != nil {
 		// If JSON parsing fails, just return the response as-is (plain text)
-		_ = sse.Write(response)
+		_ = sse.Write(escapeSSEText(response))
 		_ = sse.Write("[DONE]")
 		return
 	}
@@ -764,7 +831,7 @@ IMPORTANT: Your response must be valid JSON only. No markdown, no extra text.`, 
 	// Handle different response formats
 	// Format 1: {thought, answer} - extract just the answer
 	if jsonResponse.Answer != "" && jsonResponse.Action == "" {
-		_ = sse.Write(jsonResponse.Answer)
+		_ = sse.Write(escapeSSEText(jsonResponse.Answer))
 		_ = sse.Write("[DONE]")
 		return
 	}
@@ -776,10 +843,10 @@ IMPORTANT: Your response must be valid JSON only. No markdown, no extra text.`, 
 
 		if category == "read-only" {
 			// Auto-execute read-only commands
-			_ = sse.Write(fmt.Sprintf("[Executing] %s\n", jsonResponse.Command))
+			_ = sse.Write(escapeSSEText(fmt.Sprintf("[Executing] %s\n", jsonResponse.Command)))
 			// In a real implementation, you would execute the command here
 			// For now, we just inform the user
-			_ = sse.Write(fmt.Sprintf("[Note] JSON mode cannot execute commands automatically. Please run: %s\n", jsonResponse.Command))
+			_ = sse.Write(escapeSSEText(fmt.Sprintf("[Note] JSON mode cannot execute commands automatically. Please run: %s\n", jsonResponse.Command)))
 		} else {
 			// Require approval for write commands
 			approvalJSON, _ := json.Marshal(map[string]interface{}{
@@ -790,18 +857,18 @@ IMPORTANT: Your response must be valid JSON only. No markdown, no extra text.`, 
 				"note":        "JSON mode: Command execution requires manual approval. Please copy and run the command if you approve.",
 			})
 			_ = sse.WriteEvent("json_command", string(approvalJSON))
-			_ = sse.Write(fmt.Sprintf("\n**Suggested Command (%s):**\n```\n%s\n```\n%s", category, jsonResponse.Command, jsonResponse.Explanation))
+			_ = sse.Write(escapeSSEText(fmt.Sprintf("\n**Suggested Command (%s):**\n```\n%s\n```\n%s", category, jsonResponse.Command, jsonResponse.Explanation)))
 		}
 
 	case "direct_answer":
-		_ = sse.Write(jsonResponse.Answer)
+		_ = sse.Write(escapeSSEText(jsonResponse.Answer))
 
 	default:
 		// Unknown action - if there's an answer field, use it; otherwise return original
 		if jsonResponse.Answer != "" {
-			_ = sse.Write(jsonResponse.Answer)
+			_ = sse.Write(escapeSSEText(jsonResponse.Answer))
 		} else {
-			_ = sse.Write(response)
+			_ = sse.Write(escapeSSEText(response))
 		}
 	}
 
@@ -830,6 +897,7 @@ func (s *Server) handleSimpleChatMode(w http.ResponseWriter, r *http.Request, re
 	if req.Language != "" && req.Language != "en" {
 		langInstruction = getLanguageInstruction(req.Language)
 	}
+	effectiveMessage := buildEffectiveUserMessage(req.Message, req.Context)
 
 	// Create a helpful prompt for Kubernetes assistance
 	langPart := ""
@@ -846,16 +914,16 @@ IMPORTANT: You cannot execute commands directly. If the user asks you to perform
 When suggesting commands, format them clearly so users can copy and paste them.`, langPart)
 
 	// Build the full prompt
-	fullPrompt := fmt.Sprintf("%s\n\nUser: %s", systemPrompt, req.Message)
+	fullPrompt := fmt.Sprintf("%s\n\nUser: %s", systemPrompt, effectiveMessage)
 
 	// Use streaming if available
 	err := s.aiClient.Ask(r.Context(), fullPrompt, func(chunk string) {
-		_ = sse.Write(chunk)
+		_ = sse.Write(escapeSSEText(chunk))
 	})
 
 	if err != nil {
 		apiErr := ParseLLMError(err, s.cfg.LLM.Provider)
-		_ = sse.Write(fmt.Sprintf("\n\n[ERROR] %s", apiErr.Message))
+		_ = sse.Write(escapeSSEText(fmt.Sprintf("\n\n[ERROR] %s", apiErr.Message)))
 	}
 
 	_ = sse.Write("[DONE]")

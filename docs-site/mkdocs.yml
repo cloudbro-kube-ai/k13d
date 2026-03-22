@@ -194,7 +194,6 @@ nav:
   - AI & LLM:
     - LLM Providers: ai-llm/providers.md
     - Model Settings & Storage: ai-llm/model-settings-storage.md
-    - Embedded LLM: ai-llm/embedded.md
     - Tool Calling: ai-llm/tool-calling.md
     - Benchmarks: ai-llm/benchmarks.md
   - Deployment:

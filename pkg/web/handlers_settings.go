@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
@@ -17,6 +18,14 @@ import (
 // ==========================================
 // Settings Handlers
 // ==========================================
+
+func removedEmbeddedLLMMessage() string {
+	return "Embedded LLM has been removed. Use Ollama for local/private inference instead."
+}
+
+func sanitizeSettingsProvider(provider string) string {
+	return config.NormalizeLLMProvider(provider)
+}
 
 func (s *Server) handleAuditLogs(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -87,7 +96,7 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 			"log_level":     s.cfg.LogLevel,
 			"timezone":      s.cfg.Timezone,
 			"llm": map[string]interface{}{
-				"provider":         s.cfg.LLM.Provider,
+				"provider":         sanitizeSettingsProvider(s.cfg.LLM.Provider),
 				"model":            s.cfg.LLM.Model,
 				"endpoint":         s.cfg.LLM.Endpoint,
 				"reasoning_effort": s.cfg.LLM.ReasoningEffort,
@@ -175,9 +184,10 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 		// Return all model profiles (mask API keys)
 		models := make([]map[string]interface{}, len(s.cfg.Models))
 		for i, m := range s.cfg.Models {
+			provider := sanitizeSettingsProvider(m.Provider)
 			models[i] = map[string]interface{}{
 				"name":            m.Name,
-				"provider":        m.Provider,
+				"provider":        provider,
 				"model":           m.Model,
 				"endpoint":        m.Endpoint,
 				"description":     m.Description,
@@ -185,8 +195,15 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 				"is_active":       m.Name == s.cfg.ActiveModel,
 				"skip_tls_verify": m.SkipTLSVerify,
 			}
-			if warning := modelRegistrationWarning(m.Provider, m.Model); warning != "" {
-				models[i]["warning"] = warning
+			warnings := make([]string, 0, 2)
+			if provider != m.Provider {
+				warnings = append(warnings, removedEmbeddedLLMMessage())
+			}
+			if warning := modelRegistrationWarning(provider, m.Model); warning != "" {
+				warnings = append(warnings, warning)
+			}
+			if len(warnings) > 0 {
+				models[i]["warning"] = strings.Join(warnings, " ")
 			}
 		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -204,6 +221,10 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 
 		if profile.Name == "" || profile.Provider == "" || profile.Model == "" {
 			WriteErrorSimple(w, http.StatusBadRequest, "Name, provider, and model are required")
+			return
+		}
+		if sanitizeSettingsProvider(profile.Provider) != profile.Provider {
+			WriteErrorSimple(w, http.StatusBadRequest, removedEmbeddedLLMMessage())
 			return
 		}
 
@@ -226,7 +247,7 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 			"status": "created",
 			"name":   profile.Name,
 		}
-		if warning := modelRegistrationWarning(profile.Provider, profile.Model); warning != "" {
+		if warning := modelRegistrationWarning(sanitizeSettingsProvider(profile.Provider), profile.Model); warning != "" {
 			response["warning"] = warning
 		}
 
@@ -284,7 +305,7 @@ func (s *Server) handleActiveModel(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"name":        profile.Name,
-			"provider":    profile.Provider,
+			"provider":    sanitizeSettingsProvider(profile.Provider),
 			"model":       profile.Model,
 			"description": profile.Description,
 		})

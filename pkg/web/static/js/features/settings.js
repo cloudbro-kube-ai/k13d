@@ -1177,14 +1177,19 @@ function showRoleModal(options = {}) {
     modal.className = 'modal-overlay';
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
-    modal.innerHTML = `<div class="modal-content" style="max-width:500px;max-height:80vh;overflow-y:auto;">
-                <h3>${escapeHtml(title)}</h3>
-                <div class="form-group"><label>Role Name</label><input type="text" id="new-role-name" class="form-control" placeholder="e.g., developer" value="${escapeHtml(name)}" ${name ? 'readonly' : ''}></div>
-                <div class="form-group"><label>Description</label><input type="text" id="new-role-desc" class="form-control" placeholder="e.g., Developer with limited access" value="${escapeHtml(description)}"></div>
-                <div class="form-group"><label>Allowed Features</label><div id="new-role-features" style="max-height:300px;overflow-y:auto;border:1px solid var(--border-color);padding:8px;border-radius:4px;">${buildRoleFeatureCheckboxes(selectedFeatures)}</div></div>
-                <div style="display:flex;gap:8px;margin-top:16px;">
+    modal.innerHTML = `<div class="modal" style="max-width:500px;">
+                <div class="modal-header">
+                    <h2>${escapeHtml(title)}</h2>
+                    <button class="modal-close" onclick="closeRoleModal()" aria-label="Close">&times;</button>
+                </div>
+                <div class="modal-body" style="max-height:60vh;overflow-y:auto;">
+                    <div class="form-group"><label>Role Name</label><input type="text" id="new-role-name" class="form-control" placeholder="e.g., developer" value="${escapeHtml(name)}" ${name ? 'readonly' : ''}></div>
+                    <div class="form-group"><label>Description</label><input type="text" id="new-role-desc" class="form-control" placeholder="e.g., Developer with limited access" value="${escapeHtml(description)}"></div>
+                    <div class="form-group"><label>Allowed Features</label><div id="new-role-features" style="max-height:300px;overflow-y:auto;border:1px solid var(--border-color);padding:8px;border-radius:4px;">${buildRoleFeatureCheckboxes(selectedFeatures)}</div></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeRoleModal()">Cancel</button>
                     <button class="btn btn-primary" onclick="${submitAction}">${escapeHtml(submitLabel)}</button>
-                    <button class="btn" onclick="closeRoleModal()">Cancel</button>
                 </div>
             </div>`;
     document.body.appendChild(modal);
@@ -1405,26 +1410,33 @@ async function loadAdminUsers() {
             return;
         }
 
-        container.innerHTML = data.users.map(u => `
+        container.innerHTML = data.users.map(u => {
+            const isMe = currentUser && currentUser.username === u.username;
+            return `
                     <div class="settings-row" style="background:var(--bg-primary);padding:12px;border-radius:8px;margin-bottom:8px;">
                         <div style="flex:1;">
                             <div style="font-weight:bold;display:flex;align-items:center;gap:8px;">
                                 ${escapeHtml(u.username)}
                                 <span style="background:${u.role === 'admin' ? 'var(--accent-red)' : u.role === 'user' ? 'var(--accent-blue)' : 'var(--bg-tertiary)'};color:${u.role === 'admin' || u.role === 'user' ? '#fff' : 'var(--text-primary)'};padding:2px 8px;border-radius:4px;font-size:10px;text-transform:uppercase;">${u.role}</span>
                                 <span style="background:var(--bg-tertiary);padding:2px 8px;border-radius:4px;font-size:10px;">${u.source || 'local'}</span>
+                                ${isMe ? '<span style="background:var(--bg-secondary);color:var(--text-secondary);padding:2px 8px;border-radius:4px;font-size:9px;">(YOU)</span>' : ''}
                             </div>
                             <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
                                 ${u.email ? escapeHtml(u.email) + ' · ' : ''}Last login: ${u.last_login ? formatDateTime(u.last_login) : 'Never'}
                             </div>
                         </div>
-                        <div style="display:flex;gap:8px;">
+                        <div style="display:flex;gap:8px;align-items:center;">
                             ${u.source === 'local' ? `
-                                <button class="btn btn-secondary" onclick="showResetPasswordModal('${escapeHtml(u.username)}')" style="padding:4px 12px;font-size:12px;">Reset Password</button>
-                                <button class="btn btn-secondary" onclick="deleteUser('${escapeHtml(u.username)}')" style="padding:4px 12px;font-size:12px;color:var(--accent-red);">Delete</button>
+                                <button class="btn btn-secondary" onclick="showResetPasswordModal(this.dataset.username)" data-username="${escapeHtml(u.username)}" style="padding:4px 12px;font-size:12px;">Reset Password</button>
+                                ${!isMe ? `
+                                <button class="btn btn-icon" onclick="deleteUser(this.dataset.username)" data-username="${escapeHtml(u.username)}" title="Delete User" style="color:var(--accent-red);cursor:pointer;padding:4px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                                </button>` : ''}
                             ` : '<span style="font-size:11px;color:var(--text-secondary);">External user</span>'}
                         </div>
                     </div>
-                `).join('');
+                `;
+        }).join('');
     } catch (e) {
         console.error('Failed to load admin users:', e);
         document.getElementById('admin-users-list').innerHTML = '<p style="color:var(--accent-red);">Failed to load users.</p>';
@@ -1570,12 +1582,19 @@ async function addUser() {
         });
 
         if (!resp.ok) {
-            const error = await resp.text();
-            throw new Error(error);
+            let errorMsg = 'Failed to create user';
+            try {
+                const data = await resp.json();
+                errorMsg = data.detail || data.message || errorMsg;
+            } catch (e) {
+                const text = await resp.text();
+                errorMsg = text || errorMsg;
+            }
+            throw new Error(errorMsg);
         }
 
         hideAddUserForm();
-        loadAdminUsers();
+        await loadAdminUsers();
         alert('User created successfully');
     } catch (e) {
         alert('Failed to create user: ' + e.message);
@@ -1591,21 +1610,54 @@ async function deleteUser(username) {
         });
 
         if (!resp.ok) {
-            const error = await resp.text();
-            throw new Error(error);
+            let errorMsg = 'Failed to delete user';
+            try {
+                const data = await resp.json();
+                errorMsg = data.detail || data.message || errorMsg;
+            } catch (e) {
+                const text = await resp.text();
+                errorMsg = text || errorMsg;
+            }
+            throw new Error(errorMsg);
         }
 
-        loadAdminUsers();
+        await loadAdminUsers();
         alert('User deleted successfully');
     } catch (e) {
         alert('Failed to delete user: ' + e.message);
     }
 }
 
-function showResetPasswordModal(username) {
-    const newPassword = prompt('Enter new password for ' + username + ':');
-    if (!newPassword) return;
+let resetPasswordUsername = '';
 
+function showResetPasswordModal(username) {
+    if (!username) return;
+    resetPasswordUsername = username;
+    document.getElementById('reset-password-label').textContent = `New password for user: ${username}`;
+    document.getElementById('reset-password-input').value = '';
+    document.getElementById('reset-password-modal').classList.add('active');
+    document.getElementById('reset-password-input').focus();
+}
+
+function closeResetPasswordModal() {
+    document.getElementById('reset-password-modal').classList.remove('active');
+    resetPasswordUsername = '';
+}
+
+function submitResetPassword() {
+    const newPassword = document.getElementById('reset-password-input').value;
+    if (!newPassword) {
+        alert('Please enter a new password.');
+        return;
+    }
+
+    if (newPassword.length < 12) {
+        alert('Password must be at least 12 characters long.');
+        return;
+    }
+
+    const username = resetPasswordUsername;
+    closeResetPasswordModal();
     resetUserPassword(username, newPassword);
 }
 
@@ -1618,8 +1670,15 @@ async function resetUserPassword(username, newPassword) {
         });
 
         if (!resp.ok) {
-            const error = await resp.text();
-            throw new Error(error);
+            let errorMsg = 'Failed to reset password';
+            try {
+                const data = await resp.json();
+                errorMsg = data.detail || data.message || errorMsg;
+            } catch (e) {
+                const text = await resp.text();
+                errorMsg = text || errorMsg;
+            }
+            throw new Error(errorMsg);
         }
 
         alert('Password reset successfully');

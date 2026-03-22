@@ -3,6 +3,10 @@
 # Terminate any existing k13d processes
 killall k13d
 
+
+# Clean previous build artifacts
+rm -rf ./build/* 
+
 # Build the application
 make build
 

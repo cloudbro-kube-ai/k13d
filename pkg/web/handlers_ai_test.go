@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -942,6 +943,27 @@ func TestLLMSettings_InvalidBody(t *testing.T) {
 	}
 }
 
+func TestLLMSettings_RejectsEmbeddedProvider(t *testing.T) {
+	s := setupAITestServer(t, false)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/settings/llm", strings.NewReader(`{"provider":"embedded","model":"legacy-local"}`))
+	w := httptest.NewRecorder()
+
+	s.handleLLMSettings(w, req)
+
+	var body map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	if body["code"] != ErrCodeBadRequest {
+		t.Fatalf("Expected error code %s, got %v", ErrCodeBadRequest, body["code"])
+	}
+	if !strings.Contains(fmt.Sprint(body["detail"]), "Embedded LLM has been removed") {
+		t.Fatalf("expected embedded removal detail, got %#v", body["detail"])
+	}
+}
+
 // ==================== handleLLMTest Tests ====================
 
 func TestLLMTest_NilClientWithoutBody(t *testing.T) {
@@ -1122,5 +1144,44 @@ func TestGetLLMCapabilities_Providers(t *testing.T) {
 	// With nil client, JSONMode and MaxTokens are not populated (early return)
 	if caps.JSONMode != false {
 		t.Errorf("Expected JSONMode=false when client is nil, got %v", caps.JSONMode)
+	}
+}
+
+func TestBuildEffectiveUserMessage(t *testing.T) {
+	t.Run("without selected context", func(t *testing.T) {
+		got := buildEffectiveUserMessage("show pods in default", "")
+		if got != "show pods in default" {
+			t.Fatalf("expected base message only, got %q", got)
+		}
+	})
+
+	t.Run("with selected context", func(t *testing.T) {
+		contextText := `[deployments] nginx (ns: default): {"ready":"3/3"}`
+		got := buildEffectiveUserMessage("what exists in default?", contextText)
+		want := "what exists in default?\n\nContext from selected resources:\n" + contextText
+		if got != want {
+			t.Fatalf("expected combined message %q, got %q", want, got)
+		}
+	})
+}
+
+func TestWebAssistantStreamFilter(t *testing.T) {
+	filter := &webAssistantStreamFilter{}
+
+	if got := filter.Filter("\n\n🔧 Executing: kubectl\n"); got != "" {
+		t.Fatalf("expected executing banner to be suppressed, got %q", got)
+	}
+
+	if got := filter.Filter("```\nNAME READY STATUS\npod/nginx 1/1 Running\n```\n"); got != "" {
+		t.Fatalf("expected tool output block to be suppressed, got %q", got)
+	}
+
+	if got := filter.Filter("\n"); got != "" {
+		t.Fatalf("expected leading whitespace after tool output to be suppressed, got %q", got)
+	}
+
+	finalChunk := "default namespace currently has nginx, backend, frontend, and database workloads."
+	if got := filter.Filter(finalChunk); got != finalChunk {
+		t.Fatalf("expected final natural-language answer to pass through, got %q", got)
 	}
 }
