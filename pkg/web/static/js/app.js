@@ -2289,10 +2289,21 @@ function showDashboardActionNotification(message) {
     }, 2000);
 }
 
+function stripAIContextFromMessage(message) {
+    const rawMessage = String(message || '');
+    const marker = '\n\nContext from selected resources:';
+    const markerIndex = rawMessage.indexOf(marker);
+    if (markerIndex === -1) {
+        return rawMessage.trim();
+    }
+    return rawMessage.slice(0, markerIndex).trim();
+}
+
 // AI Chat
 async function sendMessage() {
     const input = document.getElementById('ai-input');
     const message = input.value.trim();
+    const context = getContextForAI();
     
     // If it's already generation, skip validation to allow Stop button to work
     if (isLoading) return;
@@ -2338,7 +2349,8 @@ async function sendMessage() {
             showSafetyConfirmation(analysis,
                 () => {
                     // User confirmed - proceed
-                    proceedWithMessage(message);
+                    addDebugLog('request', 'AI Request', { message, context: aiContextItems });
+                    proceedWithMessage(message, context);
                     resolve();
                 },
                 () => {
@@ -2350,7 +2362,8 @@ async function sendMessage() {
         });
     }
 
-    await proceedWithMessage(message);
+    addDebugLog('request', 'AI Request', { message, context: aiContextItems });
+    await proceedWithMessage(message, context);
 }
 
 function stopGeneration() {
@@ -2362,7 +2375,7 @@ function stopGeneration() {
     }
 }
 
-async function proceedWithMessage(message) {
+async function proceedWithMessage(message, context = '') {
     isLoading = true;
     const sendBtn = document.getElementById('send-btn');
     const aiInput = document.getElementById('ai-input');
@@ -2379,7 +2392,7 @@ async function proceedWithMessage(message) {
 
     try {
         // Always use agentic mode
-        await sendMessageAgentic(message);
+        await sendMessageAgentic(message, context);
     } finally {
         isLoading = false;
         if (sendBtn) sendBtn.disabled = false;
@@ -2462,7 +2475,7 @@ async function searchAndNavigateToResource(name) {
 }
 
 // Agentic chat with tool calling and Decision Required flow
-async function sendMessageAgentic(message) {
+async function sendMessageAgentic(message, context = '') {
     const container = document.getElementById('ai-messages');
     const div = document.createElement('div');
     div.className = 'message assistant streaming';
@@ -2481,7 +2494,7 @@ async function sendMessageAgentic(message) {
         const response = await fetchWithAuth('/api/chat/agentic', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, language: currentLanguage, session_id: currentSessionId }),
+            body: JSON.stringify({ message, context, language: currentLanguage, session_id: currentSessionId }),
             signal: signal
         });
 
@@ -2852,7 +2865,7 @@ function addMessage(content, isUser = false) {
     const div = document.createElement('div');
     div.className = `message ${isUser ? 'user' : 'assistant'}`;
 
-    let formatted = content;
+    let formatted = isUser ? stripAIContextFromMessage(content) : content;
     if (!isUser) {
         formatted = content.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
         formatted = formatted.replace(/\n/g, '<br>');
@@ -3476,7 +3489,7 @@ function addMessageToDOM(content, isUser, scroll = true) {
     const div = document.createElement('div');
     div.className = `message ${isUser ? 'user' : 'assistant'}`;
 
-    let formattedContent = content;
+    let formattedContent = isUser ? stripAIContextFromMessage(content) : content;
     if (!isUser) {
         formattedContent = formatResourceLinks(marked.parse(content));
     }
@@ -4972,7 +4985,7 @@ function renderContextChips() {
 function getContextForAI() {
     if (aiContextItems.length === 0) return '';
 
-    return '\n\nContext from selected resources:\n' + aiContextItems.map(item => {
+    return aiContextItems.map(item => {
         return `[${item.type}] ${item.name}${item.namespace ? ` (ns: ${item.namespace})` : ''}: ${JSON.stringify(item.data)}`;
     }).join('\n');
 }
@@ -5018,58 +5031,6 @@ function addRowClickHandlers() {
         }
     });
 }
-
-// Override sendMessage to include context (uses agentic mode)
-const originalSendMessage = sendMessage;
-sendMessage = async function () {
-    const input = document.getElementById('ai-input');
-    let message = input.value.trim();
-        if (isLoading) return;
-    if (!message) {
-        const originalPlaceholder = input.placeholder;
-        input.placeholder = t('msg_enter_question') || '질문을 입력해 주세요.';
-        input.classList.add('error');
-        input.focus();
-        
-        // Remove error state when user types
-        const onInput = () => {
-            input.classList.remove('error');
-            input.placeholder = originalPlaceholder;
-            input.removeEventListener('input', onInput);
-        };
-        input.addEventListener('input', onInput);
-        return;
-    }
-
-    // Add context if available
-    const contextStr = getContextForAI();
-    if (contextStr) {
-        message += contextStr;
-    }
-
-    // Log request in debug mode
-    addDebugLog('request', 'AI Request', { message, context: aiContextItems });
-
-    // Save query to history for arrow key navigation
-    saveQueryToHistory(message.split('\n\nContext from selected resources:')[0]);
-    aiHistoryIndex = -1;
-    aiCurrentDraft = '';
-
-    isLoading = true;
-    document.getElementById('send-btn').disabled = true;
-    input.value = '';
-    input.disabled = true;
-
-    addMessage(message.split('\n\nContext from selected resources:')[0], true);
-
-    // Use agentic mode
-    await sendMessageAgentic(message);
-
-    isLoading = false;
-    document.getElementById('send-btn').disabled = false;
-    input.disabled = false;
-    input.focus();
-};
 
 // ==========================================
 // Terminal Functions (xterm.js + WebSocket)

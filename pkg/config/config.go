@@ -234,6 +234,60 @@ type ModelProfile struct {
 	Description     string `yaml:"description" json:"description,omitempty"`         // User description
 }
 
+// NormalizeLLMProvider rewrites legacy provider names to their supported equivalent.
+func NormalizeLLMProvider(provider string) string {
+	if strings.EqualFold(strings.TrimSpace(provider), "embedded") {
+		return "ollama"
+	}
+	return provider
+}
+
+// NormalizeLegacyLLMProviders updates deprecated provider values in-place.
+// This keeps older configs usable without surfacing removed providers in the UI.
+func (c *Config) NormalizeLegacyLLMProviders() bool {
+	if c == nil {
+		return false
+	}
+
+	changed := false
+
+	normalizeLLMConfig := func(llm *LLMConfig) {
+		if llm == nil {
+			return
+		}
+		normalizedProvider := NormalizeLLMProvider(llm.Provider)
+		if normalizedProvider != llm.Provider {
+			llm.Provider = normalizedProvider
+			if strings.TrimSpace(llm.Endpoint) == "" {
+				llm.Endpoint = DefaultOllamaEndpoint
+			}
+			if strings.TrimSpace(llm.Model) == "" {
+				llm.Model = DefaultOllamaModel
+			}
+			changed = true
+		}
+	}
+
+	normalizeLLMConfig(&c.LLM)
+
+	for i := range c.Models {
+		normalizedProvider := NormalizeLLMProvider(c.Models[i].Provider)
+		if normalizedProvider == c.Models[i].Provider {
+			continue
+		}
+		c.Models[i].Provider = normalizedProvider
+		if strings.TrimSpace(c.Models[i].Endpoint) == "" {
+			c.Models[i].Endpoint = DefaultOllamaEndpoint
+		}
+		if strings.TrimSpace(c.Models[i].Model) == "" {
+			c.Models[i].Model = DefaultOllamaModel
+		}
+		changed = true
+	}
+
+	return changed
+}
+
 // MCPConfig holds MCP server configurations
 type MCPConfig struct {
 	Servers []MCPServer `yaml:"servers" json:"servers"`
@@ -469,7 +523,7 @@ func (c *Config) SetActiveModel(name string) bool {
 	for _, m := range c.Models {
 		if m.Name == name {
 			c.ActiveModel = name
-			c.LLM.Provider = m.Provider
+			c.LLM.Provider = NormalizeLLMProvider(m.Provider)
 			c.LLM.Model = m.Model
 			c.LLM.Endpoint = m.Endpoint
 			c.LLM.APIKey = m.APIKey
@@ -490,7 +544,7 @@ func (c *Config) SyncActiveModelProfileFromLLM() bool {
 			continue
 		}
 
-		c.Models[i].Provider = c.LLM.Provider
+		c.Models[i].Provider = NormalizeLLMProvider(c.LLM.Provider)
 		c.Models[i].Model = c.LLM.Model
 		c.Models[i].Endpoint = c.LLM.Endpoint
 		c.Models[i].APIKey = c.LLM.APIKey
@@ -505,6 +559,7 @@ func (c *Config) SyncActiveModelProfileFromLLM() bool {
 
 // AddModelProfile adds a new model profile
 func (c *Config) AddModelProfile(profile ModelProfile) {
+	profile.Provider = NormalizeLLMProvider(profile.Provider)
 	// Check if name already exists, update if so
 	for i, m := range c.Models {
 		if m.Name == profile.Name {
@@ -619,6 +674,7 @@ func LoadConfig() (*Config, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		cfg := NewDefaultConfig()
 		applyEnvOverrides(cfg)
+		cfg.NormalizeLegacyLLMProviders()
 		return cfg, nil
 	}
 
@@ -626,6 +682,7 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		cfg := NewDefaultConfig()
 		applyEnvOverrides(cfg)
+		cfg.NormalizeLegacyLLMProviders()
 		return cfg, nil // Fail gracefully to defaults
 	}
 
@@ -638,6 +695,7 @@ func LoadConfig() (*Config, error) {
 	}
 
 	applyEnvOverrides(cfg)
+	cfg.NormalizeLegacyLLMProviders()
 	return cfg, nil
 }
 

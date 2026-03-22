@@ -88,6 +88,7 @@ type PendingToolApproval struct {
 
 type ChatRequest struct {
 	Message   string `json:"message"`
+	Context   string `json:"context,omitempty"`    // Selected resource context for the AI prompt only
 	SessionID string `json:"session_id,omitempty"` // Session ID for conversation history
 	Language  string `json:"language,omitempty"`   // Display language preference (e.g., "ko", "en")
 }

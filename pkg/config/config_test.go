@@ -126,6 +126,43 @@ func TestNewDefaultConfig(t *testing.T) {
 	}
 }
 
+func TestNormalizeLegacyLLMProviders(t *testing.T) {
+	cfg := &Config{
+		LLM: LLMConfig{
+			Provider: "embedded",
+			Model:    "",
+			Endpoint: "",
+		},
+		Models: []ModelProfile{
+			{Name: "legacy-local", Provider: "embedded", Model: "", Endpoint: ""},
+			{Name: "gpt-4", Provider: "openai", Model: "gpt-4"},
+		},
+	}
+
+	changed := cfg.NormalizeLegacyLLMProviders()
+	if !changed {
+		t.Fatal("expected NormalizeLegacyLLMProviders to report a change")
+	}
+	if cfg.LLM.Provider != "ollama" {
+		t.Fatalf("LLM.Provider = %q, want ollama", cfg.LLM.Provider)
+	}
+	if cfg.LLM.Model != DefaultOllamaModel {
+		t.Fatalf("LLM.Model = %q, want %q", cfg.LLM.Model, DefaultOllamaModel)
+	}
+	if cfg.LLM.Endpoint != DefaultOllamaEndpoint {
+		t.Fatalf("LLM.Endpoint = %q, want %q", cfg.LLM.Endpoint, DefaultOllamaEndpoint)
+	}
+	if cfg.Models[0].Provider != "ollama" {
+		t.Fatalf("Models[0].Provider = %q, want ollama", cfg.Models[0].Provider)
+	}
+	if cfg.Models[0].Model != DefaultOllamaModel {
+		t.Fatalf("Models[0].Model = %q, want %q", cfg.Models[0].Model, DefaultOllamaModel)
+	}
+	if cfg.Models[0].Endpoint != DefaultOllamaEndpoint {
+		t.Fatalf("Models[0].Endpoint = %q, want %q", cfg.Models[0].Endpoint, DefaultOllamaEndpoint)
+	}
+}
+
 func TestGetActiveModelProfile(t *testing.T) {
 	tests := []struct {
 		name        string

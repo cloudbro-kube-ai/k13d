@@ -154,6 +154,26 @@ func TestSettings_GET(t *testing.T) {
 	}
 }
 
+func TestSettings_GET_NormalizesLegacyEmbeddedProvider(t *testing.T) {
+	s := setupSettingsTestServer(t)
+	s.cfg.LLM.Provider = "embedded"
+
+	req := httptest.NewRequest(http.MethodGet, "/api/settings", nil)
+	w := httptest.NewRecorder()
+
+	s.handleSettings(w, req)
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	llm := resp["llm"].(map[string]interface{})
+	if llm["provider"] != "ollama" {
+		t.Fatalf("llm.provider = %v, want ollama", llm["provider"])
+	}
+}
+
 func TestSettings_MethodNotAllowed(t *testing.T) {
 	s := setupSettingsTestServer(t)
 
@@ -373,6 +393,43 @@ func TestModels_GET_IncludesOllamaWarning(t *testing.T) {
 	t.Fatal("expected local-ollama model in response")
 }
 
+func TestModels_GET_NormalizesLegacyEmbeddedProvider(t *testing.T) {
+	s := setupSettingsTestServer(t)
+	s.cfg.Models = append(s.cfg.Models, config.ModelProfile{
+		Name:     "legacy-embedded",
+		Provider: "embedded",
+		Model:    "legacy-local",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/models", nil)
+	w := httptest.NewRecorder()
+
+	s.handleModels(w, req)
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	models := resp["models"].([]interface{})
+	for _, raw := range models {
+		model := raw.(map[string]interface{})
+		if model["name"] != "legacy-embedded" {
+			continue
+		}
+		if model["provider"] != "ollama" {
+			t.Fatalf("provider = %v, want ollama", model["provider"])
+		}
+		warning, _ := model["warning"].(string)
+		if !strings.Contains(warning, "Embedded LLM has been removed") {
+			t.Fatalf("expected embedded removal warning, got %q", warning)
+		}
+		return
+	}
+
+	t.Fatal("expected legacy-embedded model in response")
+}
+
 func TestModels_POST_OllamaIncludesWarning(t *testing.T) {
 	t.Setenv("K13D_CONFIG", filepath.Join(t.TempDir(), "config.yaml"))
 
@@ -440,6 +497,23 @@ func TestModels_POST_PersistsProfileToConfig(t *testing.T) {
 	}
 
 	t.Fatalf("expected saved model profile in %s", configPath)
+}
+
+func TestModels_POST_RejectsEmbeddedProvider(t *testing.T) {
+	s := setupSettingsTestServer(t)
+
+	body := `{"name":"legacy","provider":"embedded","model":"old-local"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/models", strings.NewReader(body))
+	w := httptest.NewRecorder()
+
+	s.handleModels(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("POST /api/models: status = %d, want %d", w.Code, http.StatusBadRequest)
+	}
+	if !strings.Contains(w.Body.String(), "Embedded LLM has been removed") {
+		t.Fatalf("expected embedded removal message, got %s", w.Body.String())
+	}
 }
 
 func TestModels_DELETE_MissingName(t *testing.T) {
@@ -510,6 +584,27 @@ func TestActiveModel_GET(t *testing.T) {
 	}
 	if resp["model"] != "gpt-4" {
 		t.Errorf("model = %v, want gpt-4", resp["model"])
+	}
+}
+
+func TestActiveModel_GET_NormalizesLegacyEmbeddedProvider(t *testing.T) {
+	s := setupSettingsTestServer(t)
+	s.cfg.ActiveModel = "legacy"
+	s.cfg.Models = []config.ModelProfile{
+		{Name: "legacy", Provider: "embedded", Model: "legacy-local"},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/models/active", nil)
+	w := httptest.NewRecorder()
+
+	s.handleActiveModel(w, req)
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+	if resp["provider"] != "ollama" {
+		t.Fatalf("provider = %v, want ollama", resp["provider"])
 	}
 }
 

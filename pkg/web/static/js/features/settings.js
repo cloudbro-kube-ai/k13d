@@ -1594,7 +1594,7 @@ async function addUser() {
         }
 
         hideAddUserForm();
-        loadAdminUsers();
+        await loadAdminUsers();
         alert('User created successfully');
     } catch (e) {
         alert('Failed to create user: ' + e.message);
@@ -1621,7 +1621,7 @@ async function deleteUser(username) {
             throw new Error(errorMsg);
         }
 
-        loadAdminUsers();
+        await loadAdminUsers();
         alert('User deleted successfully');
     } catch (e) {
         alert('Failed to delete user: ' + e.message);

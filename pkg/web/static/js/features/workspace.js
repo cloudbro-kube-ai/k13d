@@ -810,6 +810,10 @@ function filterChatHistory(query) {
 
 // Generate a meaningful chat title from the first message
 function generateChatTitle(content) {
+    if (typeof stripAIContextFromMessage === 'function') {
+        content = stripAIContextFromMessage(content);
+    }
+
     // Remove markdown, code blocks, and extra whitespace
     let title = content
         .replace(/```[\s\S]*?```/g, '')  // Remove code blocks
