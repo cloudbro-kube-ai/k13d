@@ -1184,6 +1184,131 @@ func TestGeminiProvider_AskWithTools_WithFunctionCall(t *testing.T) {
 	}
 }
 
+func TestGeminiProvider_AskWithTools_PreservesThoughtSignatureAndFunctionCallID(t *testing.T) {
+	callCount := 0
+	var secondRequest geminiRequest
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if callCount == 2 {
+			if err := json.NewDecoder(r.Body).Decode(&secondRequest); err != nil {
+				t.Fatalf("failed to decode second Gemini request: %v", err)
+			}
+		} else {
+			_, _ = io.Copy(io.Discard, r.Body)
+		}
+
+		var resp geminiResponse
+		if callCount == 1 {
+			resp = geminiResponse{
+				Candidates: []struct {
+					Content struct {
+						Parts []geminiPart `json:"parts"`
+					} `json:"content"`
+				}{
+					{
+						Content: struct {
+							Parts []geminiPart `json:"parts"`
+						}{
+							Parts: []geminiPart{
+								{
+									Text:             "Need to inspect the cluster first.",
+									Thought:          true,
+									ThoughtSignature: "sig-turn-1",
+								},
+								{
+									ThoughtSignature: "sig-turn-1-call",
+									FunctionCall: &geminiFuncCall{
+										ID:   "call-123",
+										Name: "kubectl",
+										Args: map[string]interface{}{"command": "kubectl get pods -n default"},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+		} else {
+			resp = geminiResponse{
+				Candidates: []struct {
+					Content struct {
+						Parts []geminiPart `json:"parts"`
+					} `json:"content"`
+				}{
+					{
+						Content: struct {
+							Parts []geminiPart `json:"parts"`
+						}{
+							Parts: []geminiPart{{Text: "Done."}},
+						},
+					},
+				},
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	p, _ := NewGeminiProvider(&ProviderConfig{
+		Provider: "gemini",
+		Model:    "gemini-3-pro-preview",
+		APIKey:   "test-key",
+		Endpoint: srv.URL,
+	})
+
+	err := p.(ToolProvider).AskWithTools(
+		context.Background(),
+		"what is in the default namespace?",
+		[]ToolDefinition{{
+			Type: "function",
+			Function: FunctionDef{
+				Name:        "kubectl",
+				Description: "Execute kubectl commands",
+				Parameters:  map[string]interface{}{"type": "object"},
+			},
+		}},
+		nil,
+		func(call ToolCall) ToolResult {
+			return ToolResult{
+				ToolCallID: call.ID,
+				Content:    "pod/nginx Running",
+			}
+		},
+	)
+	if err != nil {
+		t.Fatalf("AskWithTools: %v", err)
+	}
+
+	if got := len(secondRequest.Contents); got != 3 {
+		t.Fatalf("second request contents = %d, want 3", got)
+	}
+
+	modelParts := secondRequest.Contents[1].Parts
+	if len(modelParts) != 2 {
+		t.Fatalf("model parts = %d, want 2", len(modelParts))
+	}
+	if modelParts[0].ThoughtSignature != "sig-turn-1" {
+		t.Fatalf("first thoughtSignature = %q, want sig-turn-1", modelParts[0].ThoughtSignature)
+	}
+	if modelParts[1].ThoughtSignature != "sig-turn-1-call" {
+		t.Fatalf("function thoughtSignature = %q, want sig-turn-1-call", modelParts[1].ThoughtSignature)
+	}
+	if modelParts[1].FunctionCall == nil || modelParts[1].FunctionCall.ID != "call-123" {
+		t.Fatalf("function call id = %#v, want call-123", modelParts[1].FunctionCall)
+	}
+
+	resultParts := secondRequest.Contents[2].Parts
+	if len(resultParts) != 1 || resultParts[0].FunctionResponse == nil {
+		t.Fatalf("function response parts = %#v, want one functionResponse", resultParts)
+	}
+	if resultParts[0].FunctionResponse.ID != "call-123" {
+		t.Fatalf("function response id = %q, want call-123", resultParts[0].FunctionResponse.ID)
+	}
+}
+
 // ===========================================================================
 // Azure OpenAI Provider Tests
 // ===========================================================================

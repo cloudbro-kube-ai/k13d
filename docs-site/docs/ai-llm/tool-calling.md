@@ -1,6 +1,6 @@
 # Tool Calling
 
-k13d uses AI tool calling to execute kubectl commands and, when explicitly enabled, limited bash commands and MCP tools based on natural language requests. The agentic `kubectl` prompt and command contract are aligned with [kubectl-ai](https://github.com/GoogleCloudPlatform/kubectl-ai).
+k13d uses AI tool calling to execute kubectl commands and, when explicitly enabled, limited bash commands and MCP tools based on natural language requests. The agentic `kubectl` prompt and command contract are aligned with [kubectl-ai](https://github.com/GoogleCloudPlatform/kubectl-ai), including kubectl-first few-shot patterns for inventory, troubleshooting, cluster status, and safe verify-then-act workflows.
 
 Important: the connected model itself must support **tools/function calling**. This is especially important for **Ollama**. Some Ollama models can connect and produce text, but k13d's AI Assistant will not work correctly unless the selected model explicitly supports tools.
 

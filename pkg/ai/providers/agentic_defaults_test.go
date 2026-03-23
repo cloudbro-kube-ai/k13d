@@ -57,6 +57,15 @@ func TestBuildToolUseShimSystemPromptUsesSortedToolInventory(t *testing.T) {
 	if !strings.Contains(prompt, "Reflect on 5-7 different ways to solve the given query or task.") {
 		t.Fatalf("prompt should carry kubectl-ai reasoning guidance, got %q", prompt)
 	}
+	if !strings.Contains(prompt, "kubectl Few-Shot Playbook (kubectl-ai style):") {
+		t.Fatalf("prompt should include kubectl few-shot guidance, got %q", prompt)
+	}
+	if !strings.Contains(prompt, "User: \"Tell me the current cluster status.\"") {
+		t.Fatalf("prompt should include cluster status few-shot example, got %q", prompt)
+	}
+	if !strings.Contains(prompt, "synthesize the results in natural language instead of returning only raw command output") {
+		t.Fatalf("prompt should require natural-language synthesis after tool use, got %q", prompt)
+	}
 
 	alphaIdx := strings.Index(prompt, `"name": "alpha_tool"`)
 	zetaIdx := strings.Index(prompt, `"name": "zeta_tool"`)

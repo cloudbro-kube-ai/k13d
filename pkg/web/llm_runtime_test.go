@@ -15,6 +15,9 @@ func TestCreateUsableAIClient(t *testing.T) {
 			"UPSTAGE_API_KEY",
 			"ANTHROPIC_API_KEY",
 			"GOOGLE_API_KEY",
+			"LITELLM_API_KEY",
+			"LITELLM_ENDPOINT",
+			"LITELLM_BASE_URL",
 			"AZURE_OPENAI_API_KEY",
 			"AZURE_OPENAI_ENDPOINT",
 			"OLLAMA_HOST",
@@ -59,6 +62,22 @@ func TestCreateUsableAIClient(t *testing.T) {
 			t.Fatal("expected ready=true when env fallback provides an API key")
 		}
 	})
+
+	t.Run("litellm gateway can be ready without explicit API key", func(t *testing.T) {
+		client, ready, err := createUsableAIClient(&config.LLMConfig{
+			Provider: "litellm",
+			Model:    "gpt-4o-mini",
+		})
+		if err != nil {
+			t.Fatalf("createUsableAIClient() error = %v", err)
+		}
+		if client == nil {
+			t.Fatal("expected client to be created")
+		}
+		if !ready {
+			t.Fatal("expected ready=true for LiteLLM gateway default auth mode")
+		}
+	})
 }
 
 func TestProcessE2EEnvStripsProviderSecrets(t *testing.T) {
@@ -66,6 +85,7 @@ func TestProcessE2EEnvStripsProviderSecrets(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "secret")
 	t.Setenv("UPSTAGE_API_KEY", "secret")
 	t.Setenv("GOOGLE_API_KEY", "secret")
+	t.Setenv("LITELLM_API_KEY", "secret")
 	t.Setenv("AWS_ACCESS_KEY_ID", "secret")
 	t.Setenv("SAFE_VAR", "keep-me")
 
@@ -83,7 +103,7 @@ func TestProcessE2EEnvStripsProviderSecrets(t *testing.T) {
 	if _, ok := joined["K13D_LLM_PROVIDER"]; ok {
 		t.Fatal("expected K13D_* variables to be stripped from process E2E env")
 	}
-	for _, key := range []string{"OPENAI_API_KEY", "UPSTAGE_API_KEY", "GOOGLE_API_KEY", "AWS_ACCESS_KEY_ID"} {
+	for _, key := range []string{"OPENAI_API_KEY", "UPSTAGE_API_KEY", "GOOGLE_API_KEY", "LITELLM_API_KEY", "AWS_ACCESS_KEY_ID"} {
 		if _, ok := joined[key]; ok {
 			t.Fatalf("expected %s to be stripped from process E2E env", key)
 		}

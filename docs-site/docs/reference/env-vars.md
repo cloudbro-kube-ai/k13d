@@ -20,6 +20,7 @@ Default config paths are:
 | `K13D_NAMESPACE` | Initial namespace | cluster default |
 | `K13D_ALL_NAMESPACES` | Start with all namespaces | `false` |
 | `KUBECONFIG` | Kubeconfig path used by client-go | client-go default |
+| `K13D_KUBECTL_PATH` | Absolute path override for the `kubectl` binary used by AI tool execution | auto-discover from PATH/common locations |
 | `XDG_CONFIG_HOME` | XDG config base directory override | platform default |
 
 ## Authentication
@@ -66,6 +67,9 @@ If `api_key` or `endpoint` is not set in `config.yaml`, the provider factory als
 | Variable | Used For |
 |----------|----------|
 | `OPENAI_API_KEY` | `openai`, fallback for `upstage`/`solar` |
+| `LITELLM_API_KEY` | `litellm` |
+| `LITELLM_ENDPOINT` | `litellm` endpoint fallback |
+| `LITELLM_BASE_URL` | `litellm` endpoint fallback alias |
 | `UPSTAGE_API_KEY` | `upstage` / `solar` |
 | `ANTHROPIC_API_KEY` | `anthropic` |
 | `GOOGLE_API_KEY` | `gemini` |
@@ -105,6 +109,16 @@ export K13D_LLM_PROVIDER=ollama
 export K13D_LLM_MODEL=gpt-oss:20b
 export OLLAMA_HOST=localhost:11434
 k13d
+```
+
+### LiteLLM Gateway
+
+```bash
+export K13D_LLM_PROVIDER=litellm
+export K13D_LLM_MODEL=gpt-4o-mini
+export LITELLM_ENDPOINT=http://localhost:4000
+export LITELLM_API_KEY=your-master-key # optional if proxy auth is disabled
+k13d --web
 ```
 
 ### Custom Config Path

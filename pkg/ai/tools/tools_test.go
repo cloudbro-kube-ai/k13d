@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -68,5 +69,60 @@ func TestValidateBashToolCommandBlocksKubernetesBypass(t *testing.T) {
 		} else if !strings.Contains(err.Error(), "cannot be approved") {
 			t.Fatalf("ValidateBashToolCommand(%q) error = %q, want cannot be approved guidance", command, err.Error())
 		}
+	}
+}
+
+func TestResolveKubectlPathWithUsesOverride(t *testing.T) {
+	t.Parallel()
+
+	got, err := resolveKubectlPathWith("/custom/kubectl", func(candidate string) (string, error) {
+		if candidate == "/custom/kubectl" {
+			return candidate, nil
+		}
+		return "", fmt.Errorf("unexpected lookup: %s", candidate)
+	})
+	if err != nil {
+		t.Fatalf("resolveKubectlPathWith() error = %v", err)
+	}
+	if got != "/custom/kubectl" {
+		t.Fatalf("resolveKubectlPathWith() = %q, want /custom/kubectl", got)
+	}
+}
+
+func TestResolveKubectlPathWithFallsBackToCommonLocations(t *testing.T) {
+	t.Parallel()
+
+	got, err := resolveKubectlPathWith("", func(candidate string) (string, error) {
+		switch candidate {
+		case "kubectl":
+			return "", fmt.Errorf("not in PATH")
+		case "/usr/bin/kubectl":
+			return candidate, nil
+		default:
+			return "", fmt.Errorf("not found: %s", candidate)
+		}
+	})
+	if err != nil {
+		t.Fatalf("resolveKubectlPathWith() error = %v", err)
+	}
+	if got != "/usr/bin/kubectl" {
+		t.Fatalf("resolveKubectlPathWith() = %q, want /usr/bin/kubectl", got)
+	}
+}
+
+func TestResolveKubectlPathWithReturnsHelpfulError(t *testing.T) {
+	t.Parallel()
+
+	_, err := resolveKubectlPathWith("", func(candidate string) (string, error) {
+		return "", fmt.Errorf("not found: %s", candidate)
+	})
+	if err == nil {
+		t.Fatal("resolveKubectlPathWith() expected error")
+	}
+	if !strings.Contains(err.Error(), kubectlPathEnvVar) {
+		t.Fatalf("error = %q, want env var hint", err)
+	}
+	if !strings.Contains(err.Error(), "common locations") {
+		t.Fatalf("error = %q, want common locations guidance", err)
 	}
 }

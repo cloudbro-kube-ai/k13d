@@ -17,8 +17,6 @@
         recentAnalysis: null,
         analysisHistory: []
     };
-    let selectedOllamaModel = null;
-    let ollamaModels = [];
 
     function loadGuardrailsConfig() {
         try {
@@ -268,193 +266,6 @@
         limitDisplay.textContent = 'K8s Safety: Active';
     }
 
-    async function checkOllamaStatus() {
-        const statusDot = document.getElementById('ollama-status-dot');
-        const statusText = document.getElementById('ollama-status-text');
-        const notInstalled = document.getElementById('ollama-not-installed');
-        const installed = document.getElementById('ollama-installed');
-        if (!statusDot || !statusText || !notInstalled || !installed) {
-            return;
-        }
-
-        statusDot.style.background = '#888';
-        statusText.textContent = 'Checking Ollama status...';
-
-        try {
-            const response = await fetchWithAuth('/api/llm/ollama/status');
-            if (response.ok) {
-                const data = await response.json();
-                if (data.running) {
-                    ollamaModels = data.models || [];
-                    statusDot.style.background = 'var(--accent-green)';
-                    statusText.textContent = `Ollama running - ${ollamaModels.length} model(s) available`;
-                    notInstalled.style.display = 'none';
-                    installed.style.display = 'block';
-                    renderOllamaModels();
-                    return;
-                }
-            }
-        } catch (e) {
-            console.warn('Failed to check Ollama status:', e);
-        }
-
-        statusDot.style.background = 'var(--accent-yellow)';
-        statusText.textContent = 'Ollama not detected';
-        notInstalled.style.display = 'block';
-        installed.style.display = 'none';
-    }
-
-    function renderOllamaModels() {
-        const container = document.getElementById('ollama-models-list');
-        const useBtn = document.getElementById('use-ollama-btn');
-        if (!container || !useBtn) {
-            return;
-        }
-
-        if (ollamaModels.length === 0) {
-            container.innerHTML = '<span style="color:var(--text-secondary);font-size:12px;">No models installed. Pull a model to get started.</span>';
-            useBtn.disabled = true;
-            return;
-        }
-
-        container.innerHTML = ollamaModels.map((model) => {
-            const name = model.name || model;
-            const size = model.size ? `(${formatOllamaModelSize(model.size)})` : '';
-            const isSelected = selectedOllamaModel === name;
-            return `<button class="btn ${isSelected ? 'btn-primary' : 'btn-secondary'}"
-                    onclick="selectOllamaModel('${name}')"
-                    style="font-size:11px;padding:4px 10px;">
-                    ${name} ${size}
-                </button>`;
-        }).join('');
-
-        useBtn.disabled = !selectedOllamaModel;
-    }
-
-    function selectOllamaModel(modelName) {
-        selectedOllamaModel = modelName;
-        renderOllamaModels();
-    }
-
-    function useOllamaModel() {
-        if (!selectedOllamaModel) {
-            return;
-        }
-
-        document.getElementById('setting-llm-provider').value = 'ollama';
-        document.getElementById('setting-llm-model').value = selectedOllamaModel;
-        document.getElementById('setting-llm-endpoint').value = 'http://localhost:11434';
-        document.getElementById('setting-llm-apikey').value = '';
-
-        updateEndpointPlaceholder(false);
-        showToast(`Configured to use Ollama model: ${selectedOllamaModel}`, 'success');
-    }
-
-    function showOllamaInstallInstructions(os) {
-        const container = document.getElementById('ollama-install-instructions');
-        if (!container) {
-            return;
-        }
-
-        container.style.display = 'block';
-
-        let instructions = '';
-        switch (os) {
-            case 'macos':
-                instructions = `
-                        <div style="margin-bottom:8px;color:var(--accent-blue);">macOS Installation:</div>
-                        <div style="margin-bottom:8px;">Option 1 - Homebrew:</div>
-                        <code style="display:block;background:#000;padding:8px;border-radius:4px;margin-bottom:8px;">brew install ollama</code>
-                        <div style="margin-bottom:8px;">Option 2 - Direct Download:</div>
-                        <a href="https://ollama.ai/download" target="_blank" style="color:var(--accent-cyan);">Download from ollama.ai →</a>
-                        <div style="margin-top:12px;color:var(--text-secondary);">After installation, start Ollama:</div>
-                        <code style="display:block;background:#000;padding:8px;border-radius:4px;margin-top:4px;">ollama serve</code>
-                    `;
-                break;
-            case 'linux':
-                instructions = `
-                        <div style="margin-bottom:8px;color:var(--accent-blue);">Linux Installation:</div>
-                        <div style="margin-bottom:4px;">Run this command in terminal:</div>
-                        <code style="display:block;background:#000;padding:8px;border-radius:4px;margin-bottom:8px;word-break:break-all;">curl -fsSL https://ollama.ai/install.sh | sh</code>
-                        <div style="margin-top:12px;color:var(--text-secondary);">After installation, start Ollama:</div>
-                        <code style="display:block;background:#000;padding:8px;border-radius:4px;margin-top:4px;">ollama serve</code>
-                    `;
-                break;
-            case 'windows':
-                instructions = `
-                        <div style="margin-bottom:8px;color:var(--accent-blue);">Windows Installation:</div>
-                        <div style="margin-bottom:8px;">Download the installer from:</div>
-                        <a href="https://ollama.ai/download" target="_blank" style="color:var(--accent-cyan);">Download from ollama.ai →</a>
-                        <div style="margin-top:12px;color:var(--text-secondary);">After installation, Ollama will start automatically.</div>
-                    `;
-                break;
-        }
-
-        container.innerHTML = instructions;
-    }
-
-    function showOllamaPullDialog() {
-        const dialog = document.getElementById('ollama-pull-dialog');
-        if (!dialog) {
-            return;
-        }
-        dialog.style.display = dialog.style.display === 'none' ? 'block' : 'none';
-    }
-
-    async function pullOllamaModel(modelName) {
-        let requestedModel = modelName;
-        if (!requestedModel) {
-            requestedModel = document.getElementById('ollama-custom-model').value.trim();
-        }
-        if (!requestedModel) {
-            showToast('Please enter a model name', 'error');
-            return;
-        }
-
-        const statusDiv = document.getElementById('ollama-pull-status');
-        if (!statusDiv) {
-            return;
-        }
-
-        statusDiv.style.display = 'block';
-        statusDiv.innerHTML = `<span style="color:var(--accent-yellow);">Pulling ${requestedModel}... This may take several minutes.</span>`;
-
-        try {
-            const response = await fetchWithAuth('/api/llm/ollama/pull', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: requestedModel })
-            });
-            const result = await response.json();
-
-            if (result.error) {
-                statusDiv.innerHTML = `<span style="color:var(--accent-red);">Error: ${result.error}</span>`;
-                return;
-            }
-
-            statusDiv.innerHTML = `<span style="color:var(--accent-green);">Model ${requestedModel} pulled successfully.</span>`;
-            setTimeout(checkOllamaStatus, 1000);
-        } catch (e) {
-            statusDiv.innerHTML = `
-                    <span style="color:var(--accent-yellow);">Run this command in your terminal:</span>
-                    <code style="display:block;background:#000;padding:8px;border-radius:4px;margin-top:4px;">ollama pull ${requestedModel}</code>
-                    <button class="btn btn-secondary" onclick="checkOllamaStatus()" style="margin-top:8px;font-size:11px;">Refresh Status</button>
-                `;
-        }
-    }
-
-    function formatOllamaModelSize(bytes) {
-        if (!bytes) {
-            return '';
-        }
-        const gb = bytes / (1024 * 1024 * 1024);
-        if (gb >= 1) {
-            return gb.toFixed(1) + 'GB';
-        }
-        const mb = bytes / (1024 * 1024);
-        return mb.toFixed(0) + 'MB';
-    }
-
     function toggleGuardrailsSetting() {
         const toggle = document.getElementById('guardrails-toggle');
         if (!toggle) {
@@ -534,7 +345,6 @@
     }
 
     function onLLMTabOpened() {
-        checkOllamaStatus();
         loadGuardrailsSettingsUI();
     }
 
@@ -542,12 +352,6 @@
     global.checkGuardrails = checkGuardrails;
     global.showSafetyConfirmation = showSafetyConfirmation;
     global.closeSafetyConfirmation = closeSafetyConfirmation;
-    global.checkOllamaStatus = checkOllamaStatus;
-    global.selectOllamaModel = selectOllamaModel;
-    global.useOllamaModel = useOllamaModel;
-    global.showOllamaInstallInstructions = showOllamaInstallInstructions;
-    global.showOllamaPullDialog = showOllamaPullDialog;
-    global.pullOllamaModel = pullOllamaModel;
     global.toggleGuardrailsSetting = toggleGuardrailsSetting;
     global.toggleStrictMode = toggleStrictMode;
     global.toggleAutoAnalyze = toggleAutoAnalyze;
