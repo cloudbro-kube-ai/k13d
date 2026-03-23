@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"sort"
 	"strings"
@@ -16,6 +17,8 @@ import (
 // MCP tools (pods_list, namespaces_list, etc.) have specific names that LLMs may guess incorrectly.
 // Not used for kubectl/bash only - those names are standard and unlikely to be hallucinated.
 const ToolNameInstruction = "CRITICAL: Use ONLY the exact tool names from the function schema. Never invent, guess, or abbreviate tool names (e.g. do not use pod_list if the schema says pods_list).\n\n"
+
+const kubectlPathEnvVar = "K13D_KUBECTL_PATH"
 
 // ToolType represents the type of tool
 type ToolType string
@@ -317,17 +320,53 @@ func (r *Registry) Execute(ctx context.Context, call *ToolCall) *ToolResult {
 // Executor handles actual tool execution
 type Executor struct {
 	kubectlPath string
+	kubectlErr  error
 	bashPath    string
 	timeout     time.Duration
 }
 
 // NewExecutor creates a new tool executor
 func NewExecutor() *Executor {
+	kubectlPath, kubectlErr := resolveKubectlPath()
 	return &Executor{
-		kubectlPath: "kubectl",
+		kubectlPath: kubectlPath,
+		kubectlErr:  kubectlErr,
 		bashPath:    "/bin/bash",
 		timeout:     30 * time.Second,
 	}
+}
+
+func resolveKubectlPath() (string, error) {
+	return resolveKubectlPathWith(strings.TrimSpace(os.Getenv(kubectlPathEnvVar)), exec.LookPath)
+}
+
+func resolveKubectlPathWith(override string, lookPath func(string) (string, error)) (string, error) {
+	if override != "" {
+		resolved, err := lookPath(override)
+		if err != nil {
+			return "", fmt.Errorf("%s is set to %q but that binary is not executable: %w", kubectlPathEnvVar, override, err)
+		}
+		return resolved, nil
+	}
+
+	candidates := []string{
+		"kubectl",
+		"microk8s.kubectl",
+		"/usr/local/bin/kubectl",
+		"/usr/bin/kubectl",
+		"/bin/kubectl",
+		"/snap/bin/kubectl",
+		"/snap/bin/microk8s.kubectl",
+		"/opt/homebrew/bin/kubectl",
+		"/usr/local/bin/microk8s.kubectl",
+	}
+	for _, candidate := range candidates {
+		if resolved, err := lookPath(candidate); err == nil {
+			return resolved, nil
+		}
+	}
+
+	return "", fmt.Errorf("kubectl binary not found in PATH or common locations; install kubectl or set %s to its absolute path", kubectlPathEnvVar)
 }
 
 // Execute runs a tool with the given arguments
@@ -406,6 +445,10 @@ func (e *Executor) executeBash(ctx context.Context, argsJSON string) (string, er
 
 // runKubectlCommand executes kubectl with explicit arguments (no shell interpolation)
 func (e *Executor) runKubectlCommand(ctx context.Context, args []string, timeout time.Duration) (string, error) {
+	if e.kubectlErr != nil {
+		return "", e.kubectlErr
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 

@@ -20,6 +20,7 @@ Default config paths are:
 | `K13D_NAMESPACE` | Initial namespace | cluster default |
 | `K13D_ALL_NAMESPACES` | Start with all namespaces | `false` |
 | `KUBECONFIG` | Kubeconfig path used by client-go | client-go default |
+| `K13D_KUBECTL_PATH` | Absolute path override for the `kubectl` binary used by AI tool execution | auto-discover from PATH/common locations |
 | `XDG_CONFIG_HOME` | XDG config base directory override | platform default |
 
 ## Authentication
