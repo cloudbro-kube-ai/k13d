@@ -210,6 +210,7 @@ test('settings modal exercises each tab and persists configurable state', async 
     console.log('[settings] ai');
     await openSettings(page);
     await switchTab(page, 'AI', '#settings-ai');
+    await expect(page.locator('#ollama-setup-section')).toHaveCount(0);
     await expect(page.locator('#setting-llm-provider')).not.toHaveValue('');
     await expect.poll(async () => page.locator('#setting-llm-model').inputValue()).not.toBe('');
 
