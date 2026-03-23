@@ -258,6 +258,15 @@ func TestProviderFactoryCreate(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "create litellm provider",
+			config: &ProviderConfig{
+				Provider: "litellm",
+				Model:    "gpt-4o-mini",
+				Endpoint: "http://localhost:4000",
+			},
+			wantErr: false,
+		},
+		{
 			name: "create ollama provider",
 			config: &ProviderConfig{
 				Provider: "ollama",
@@ -351,7 +360,7 @@ func TestProviderFactoryListProviders(t *testing.T) {
 	factory := GetFactory()
 	providers := factory.ListProviders()
 
-	expectedProviders := []string{"openai", "ollama", "gemini", "bedrock", "azopenai", "azure"}
+	expectedProviders := []string{"openai", "litellm", "ollama", "gemini", "bedrock", "azopenai", "azure"}
 	for _, expected := range expectedProviders {
 		if !containsString(providers, expected) {
 			t.Errorf("expected providers to contain %q, got %q", expected, providers)
@@ -794,6 +803,7 @@ func TestProviderNames(t *testing.T) {
 		expected string
 	}{
 		{mustCreateProvider(t, "openai"), "openai"},
+		{mustCreateProvider(t, "litellm"), "litellm"},
 		{mustCreateProvider(t, "ollama"), "ollama"},
 		{mustCreateProvider(t, "gemini"), "gemini"},
 		{mustCreateProvider(t, "bedrock"), "bedrock"},
@@ -1076,7 +1086,7 @@ func TestTLSSkipVerifyDisabled(t *testing.T) {
 func TestFactoryAllProvidersRegistered(t *testing.T) {
 	factory := GetFactory()
 
-	expectedProviders := []string{"solar", "upstage", "openai", "ollama", "gemini", "bedrock", "azopenai", "azure"}
+	expectedProviders := []string{"solar", "upstage", "openai", "litellm", "ollama", "gemini", "bedrock", "azopenai", "azure"}
 
 	for _, name := range expectedProviders {
 		t.Run(name, func(t *testing.T) {

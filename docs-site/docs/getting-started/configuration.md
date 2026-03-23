@@ -173,7 +173,7 @@ Typical save paths:
 ```yaml title="~/.config/k13d/config.yaml"
 # LLM Configuration
 llm:
-  provider: upstage         # upstage, openai, ollama, azopenai, anthropic, gemini, bedrock
+  provider: upstage         # upstage, openai, litellm, ollama, azopenai, anthropic, gemini, bedrock
   model: solar-pro2         # Model name
   endpoint: ""              # Custom endpoint (optional)
   api_key: ""               # API key
@@ -661,7 +661,7 @@ active_model: solar-pro2
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | Yes | Unique profile name (used in `:model <name>`) |
-| `provider` | Yes | LLM provider: `upstage`, `openai`, `ollama`, `anthropic`, `azopenai`, `gemini`, `bedrock` |
+| `provider` | Yes | LLM provider: `upstage`, `openai`, `litellm`, `ollama`, `anthropic`, `azopenai`, `gemini`, `bedrock` |
 | `model` | Yes | Model identifier (e.g., `gpt-4o`, `solar-pro2`, `gpt-oss:20b`) |
 | `endpoint` | No | Custom API endpoint (required for Ollama/Azure) |
 | `api_key` | No | API key (can also use environment variables) |

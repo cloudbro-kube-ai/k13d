@@ -9,8 +9,9 @@ Need the exact save/switch/storage behavior across Web UI and TUI? See [Model Se
 | Provider | Models | Local | API Key |
 |----------|--------|-------|---------|
 | **OpenAI** | GPT-4o, o3-mini, GPT-4 | No | Required |
+| **LiteLLM Gateway** | Proxy-defined aliases via one OpenAI-compatible endpoint | No | Optional |
 | **Anthropic** | Claude Sonnet 4.6, Opus 4.6, Haiku 4.5 | No | Required |
-| **Google Gemini** | Gemini 2.5 Flash, 2.0 | No | Required |
+| **Google Gemini** | Gemini 2.5, 3.x preview, 2.0 | No | Required |
 | **Upstage Solar** | Solar Pro2, Solar Pro | No | Required |
 | **Ollama** | Llama, Qwen, Mistral, etc. | Yes | Not needed |
 | **Azure OpenAI** | GPT-4, GPT-3.5 | No | Required |
@@ -35,6 +36,24 @@ Or via environment variable:
 export OPENAI_API_KEY=sk-your-key-here
 k13d --web
 ```
+
+### LiteLLM Gateway
+
+Use LiteLLM when you want one OpenAI-compatible gateway in front of multiple model providers.
+
+```yaml
+llm:
+  provider: litellm
+  model: gpt-4o-mini
+  endpoint: http://localhost:4000
+  api_key: ${LITELLM_API_KEY} # optional if your proxy runs without auth
+```
+
+This is the recommended **gradual migration** path:
+
+- Keep existing direct providers for known-good production paths
+- Add a `litellm` profile for new models or experiments
+- Move teams over profile-by-profile instead of rewriting every provider integration at once
 
 ### Anthropic (Claude)
 
@@ -64,6 +83,11 @@ llm:
   model: gemini-2.5-flash
   api_key: ${GOOGLE_API_KEY}
 ```
+
+Gemini 3.x preview models are also supported when you use their full model IDs, for example:
+
+- `gemini-3-pro-preview`
+- `gemini-3-flash-preview`
 
 ### Ollama (Local)
 
@@ -163,12 +187,12 @@ For what this changes in `llm`, `models[]`, and `active_model`, see [Model Setti
 
 ### Feature Comparison
 
-| Feature | OpenAI | Anthropic | Gemini | Ollama | Solar |
-|---------|--------|-----------|--------|--------|-------|
-| Streaming | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Tool Calling | ✅ | ✅ | ✅ | Model-dependent | ✅ |
-| Vision | ✅ | ✅ | ✅ | ⚠️ | ❌ |
-| Context Length | 128K | 200K | 1M | Varies | 32K |
+| Feature | OpenAI | LiteLLM | Anthropic | Gemini | Ollama | Solar |
+|---------|--------|---------|-----------|--------|--------|-------|
+| Streaming | ✅ | Proxy-dependent | ✅ | ✅ | ✅ | ✅ |
+| Tool Calling | ✅ | Model/proxy-dependent | ✅ | ✅ | Model-dependent | ✅ |
+| Vision | ✅ | Proxy-dependent | ✅ | ✅ | ⚠️ | ❌ |
+| Context Length | 128K | Proxy-dependent | 200K | 1M | Varies | 32K |
 
 ### Tool Calling Support
 
@@ -186,10 +210,9 @@ AI: [Calls kubectl scale deployment nginx --replicas=5]
 | Provider | Typical Latency |
 |----------|-----------------|
 | OpenAI GPT-4 | 2-5 seconds |
-| OpenAI GPT-3.5 | 0.5-2 seconds |
+| LiteLLM proxy | Depends on routed backend |
 | Anthropic Claude | 2-4 seconds |
 | Ollama (local) | 1-10 seconds* |
-| Embedded | 2-20 seconds* |
 
 *Depends on hardware
 
@@ -201,8 +224,8 @@ AI: [Calls kubectl scale deployment nginx --replicas=5]
 | GPT-3.5 | ~$0.50 |
 | Claude 3 Opus | ~$15 |
 | Gemini Pro | ~$0.50 |
+| LiteLLM | Depends on routed backend |
 | Ollama | Free (local) |
-| Embedded | Free (local) |
 
 ## Recommended Configurations
 

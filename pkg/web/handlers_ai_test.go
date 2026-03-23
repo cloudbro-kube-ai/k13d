@@ -123,6 +123,7 @@ func TestLLMStatus_DefaultEndpointHints(t *testing.T) {
 		expectedEndpoint string
 	}{
 		{"openai", "https://api.openai.com/v1"},
+		{"litellm", "http://localhost:4000"},
 		{"ollama", "http://localhost:11434"},
 		{"anthropic", "https://api.anthropic.com"},
 		{"gemini", "https://generativelanguage.googleapis.com/v1beta"},

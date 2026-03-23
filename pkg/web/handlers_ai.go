@@ -349,6 +349,8 @@ func (s *Server) handleLLMStatus(w http.ResponseWriter, r *http.Request) {
 		switch s.cfg.LLM.Provider {
 		case "openai":
 			status["default_endpoint"] = "https://api.openai.com/v1"
+		case "litellm":
+			status["default_endpoint"] = "http://localhost:4000"
 		case "gemini":
 			status["default_endpoint"] = "https://generativelanguage.googleapis.com/v1beta"
 		case "ollama":
@@ -1002,6 +1004,13 @@ func getLLMCapabilities(client *ai.Client, provider string) LLMCapabilities {
 		} else {
 			caps.Recommendation = "Consider using Gemini Pro for tool calling support"
 		}
+	case "litellm":
+		caps.JSONMode = true
+		if caps.ToolCalling {
+			caps.Recommendation = "LiteLLM gateway mode enabled for gradual multi-provider rollout"
+		} else {
+			caps.Recommendation = "Verify the selected LiteLLM model alias supports tool calling"
+		}
 	case "ollama":
 		caps.JSONMode = true
 		if caps.ToolCalling {
@@ -1086,7 +1095,10 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 	var client *ai.Client
 	// Create temporary client if provider is specified
 	// For Ollama, API key is not required
-	noKeyProviders := map[string]bool{"ollama": true}
+	noKeyProviders := map[string]bool{
+		"ollama":  true,
+		"litellm": true,
+	}
 	if provider != "" && (apiKey != "" || noKeyProviders[provider]) {
 		// Create temporary client with provided config
 		tempConfig := config.LLMConfig{
@@ -1128,8 +1140,13 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	effectiveProvider := provider
+	if effectiveProvider == "" {
+		effectiveProvider = s.cfg.LLM.Provider
+	}
+
 	// For Gemini, filter to only generateContent-capable models
-	if provider == "gemini" || s.cfg.LLM.Provider == "gemini" {
+	if effectiveProvider == "gemini" {
 		var filtered []string
 		for _, m := range models {
 			if strings.HasPrefix(m, "gemini-") {

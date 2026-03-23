@@ -448,6 +448,14 @@ func TestClient_GetEndpoint(t *testing.T) {
 			expected: "https://api.openai.com/v1",
 		},
 		{
+			name: "litellm default",
+			cfg: &config.LLMConfig{
+				Provider: "litellm",
+				Model:    "gpt-4o-mini",
+			},
+			expected: "http://localhost:4000",
+		},
+		{
 			name: "ollama default",
 			cfg: &config.LLMConfig{
 				Provider: "ollama",

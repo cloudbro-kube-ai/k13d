@@ -35,6 +35,7 @@ func GetFactory() *ProviderFactory {
 		defaultFactory.Register("solar", NewOpenAIProvider)   // Upstage Solar (OpenAI-compatible)
 		defaultFactory.Register("upstage", NewOpenAIProvider) // alias for solar
 		defaultFactory.Register("openai", NewOpenAIProvider)
+		defaultFactory.Register("litellm", NewLiteLLMProvider)
 		defaultFactory.Register("ollama", NewOllamaProvider)
 		defaultFactory.Register("gemini", NewGeminiProvider)
 		defaultFactory.Register("bedrock", NewBedrockProvider)
@@ -104,6 +105,16 @@ func applyEnvFallbacks(cfg *ProviderConfig) *ProviderConfig {
 		}
 		if clone.Endpoint == "" {
 			clone.Endpoint = os.Getenv("AZURE_OPENAI_ENDPOINT")
+		}
+	case "litellm":
+		if clone.APIKey == "" {
+			clone.APIKey = os.Getenv("LITELLM_API_KEY")
+		}
+		if clone.Endpoint == "" {
+			clone.Endpoint = os.Getenv("LITELLM_ENDPOINT")
+		}
+		if clone.Endpoint == "" {
+			clone.Endpoint = os.Getenv("LITELLM_BASE_URL")
 		}
 	case "ollama":
 		if clone.Endpoint == "" {

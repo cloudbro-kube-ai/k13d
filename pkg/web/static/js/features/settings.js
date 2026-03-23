@@ -415,7 +415,8 @@ async function loadLLMStatus() {
             statusText.textContent = 'Configuration Incomplete';
             statusText.style.color = 'var(--text-secondary)';
             const missing = [];
-            if (!status.has_api_key) missing.push('API key');
+            const providerNeedsAPIKey = !['ollama', 'bedrock', 'litellm'].includes(status.provider);
+            if (providerNeedsAPIKey && !status.has_api_key) missing.push('API key');
             if (!status.endpoint && !status.default_endpoint) missing.push('endpoint');
             statusDetail.textContent = missing.length > 0 ? 'Missing: ' + missing.join(', ') : 'Check configuration';
         }
@@ -432,6 +433,7 @@ function updateEndpointPlaceholder(setDefaults = true) {
     const defaults = {
         'upstage': { placeholder: 'https://api.upstage.ai/v1', hint: '(Default: Upstage Solar API)', model: 'solar-pro2', apiKeyHint: 'up_...' },
         'openai': { placeholder: 'https://api.openai.com/v1', hint: '(Default: OpenAI API)', model: 'gpt-4o', apiKeyHint: 'sk-...' },
+        'litellm': { placeholder: 'http://localhost:4000', hint: '(Default: LiteLLM proxy)', model: 'gpt-4o-mini', apiKeyHint: 'master key (optional)' },
         'ollama': { placeholder: 'http://localhost:11434', hint: '(Required for Ollama)', model: 'gpt-oss:20b', apiKeyHint: '' },
         'gemini': { placeholder: 'https://generativelanguage.googleapis.com/v1beta', hint: '(Default: Gemini API)', model: 'gemini-2.5-flash', apiKeyHint: 'AIza...' },
         'anthropic': { placeholder: 'https://api.anthropic.com', hint: '(Default: Anthropic API)', model: 'claude-sonnet-4-6', apiKeyHint: 'sk-ant-...' },
@@ -473,7 +475,8 @@ function updateEndpointPlaceholder(setDefaults = true) {
             'upstage': { url: 'https://console.upstage.ai/api-keys', text: 'Get API Key →' },
             'openai': { url: 'https://platform.openai.com/api-keys', text: 'Get API Key →' },
             'anthropic': { url: 'https://console.anthropic.com/settings/keys', text: 'Get API Key →' },
-            'gemini': { url: 'https://aistudio.google.com/app/apikey', text: 'Get API Key →' }
+            'gemini': { url: 'https://aistudio.google.com/app/apikey', text: 'Get API Key →' },
+            'litellm': { url: 'https://docs.litellm.ai/docs/proxy/quick_start', text: 'Gateway Docs →' }
         };
 
         if (links[provider]) {
@@ -547,7 +550,7 @@ async function fetchAvailableModels() {
     const modelInput = document.getElementById('setting-llm-model');
     const btn = document.getElementById('fetch-models-btn');
 
-    if (!apiKey && provider !== 'ollama') {
+    if (!apiKey && !['ollama', 'litellm'].includes(provider)) {
         status.textContent = 'API key required';
         status.style.color = 'var(--accent-red)';
         return;
@@ -1709,6 +1712,7 @@ async function loadSettings() {
             const defaults = {
                 'upstage': { model: 'solar-pro2', endpoint: 'https://api.upstage.ai/v1' },
                 'openai': { model: 'gpt-4o', endpoint: 'https://api.openai.com/v1' },
+                'litellm': { model: 'gpt-4o-mini', endpoint: 'http://localhost:4000' },
                 'ollama': { model: 'gpt-oss:20b', endpoint: 'http://localhost:11434' },
                 'gemini': { model: 'gemini-2.5-flash', endpoint: 'https://generativelanguage.googleapis.com/v1beta' },
                 'anthropic': { model: 'claude-sonnet-4-6', endpoint: 'https://api.anthropic.com' }

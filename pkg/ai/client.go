@@ -168,6 +168,8 @@ func (c *Client) GetEndpoint() string {
 		return "https://api.upstage.ai/v1"
 	case "openai":
 		return "https://api.openai.com/v1"
+	case "litellm":
+		return "http://localhost:4000"
 	case "gemini":
 		return "https://generativelanguage.googleapis.com/v1beta"
 	case "ollama":

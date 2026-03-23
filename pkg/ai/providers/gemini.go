@@ -25,16 +25,20 @@ type geminiContent struct {
 
 type geminiPart struct {
 	Text             string            `json:"text,omitempty"`
+	Thought          bool              `json:"thought,omitempty"`
+	ThoughtSignature string            `json:"thoughtSignature,omitempty"`
 	FunctionCall     *geminiFuncCall   `json:"functionCall,omitempty"`
 	FunctionResponse *geminiFuncResult `json:"functionResponse,omitempty"`
 }
 
 type geminiFuncCall struct {
+	ID   string                 `json:"id,omitempty"`
 	Name string                 `json:"name"`
 	Args map[string]interface{} `json:"args"`
 }
 
 type geminiFuncResult struct {
+	ID       string                 `json:"id,omitempty"`
 	Name     string                 `json:"name"`
 	Response map[string]interface{} `json:"response"`
 }
@@ -455,6 +459,7 @@ func (p *GeminiProvider) AskWithTools(ctx context.Context, prompt string, tools 
 
 			resultParts = append(resultParts, geminiPart{
 				FunctionResponse: &geminiFuncResult{
+					ID:   fc.FunctionCall.ID,
 					Name: fc.FunctionCall.Name,
 					Response: map[string]interface{}{
 						"result": result.Content,
