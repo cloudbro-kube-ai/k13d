@@ -41,6 +41,14 @@ k13d --web
 
 Use LiteLLM when you want one OpenAI-compatible gateway in front of multiple model providers.
 
+Examples below are pinned to **LiteLLM `v1.82.3-stable.patch.2`**, which was the latest stable release on March 29, 2026.
+
+```bash
+docker run --rm -p 4000:4000 \
+  -e LITELLM_MASTER_KEY=your-master-key \
+  ghcr.io/berriai/litellm:v1.82.3-stable.patch.2
+```
+
 ```yaml
 llm:
   provider: litellm

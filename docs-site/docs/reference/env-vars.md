@@ -113,6 +113,8 @@ k13d
 
 ### LiteLLM Gateway
 
+If you run LiteLLM with Docker, prefer a pinned stable image tag such as `ghcr.io/berriai/litellm:v1.82.3-stable.patch.2` instead of a floating `latest` tag.
+
 ```bash
 export K13D_LLM_PROVIDER=litellm
 export K13D_LLM_MODEL=gpt-4o-mini
