@@ -30,3 +30,23 @@ This page will be expanded when Docker support is ready, including:
 - supported Docker Compose examples
 - versioning and upgrade guidance
 - persistence, auth, and security recommendations
+
+## LiteLLM Sidecar / Gateway Note
+
+If you run k13d against a separate LiteLLM gateway today, pin the LiteLLM image to a stable tag instead of `latest`.
+
+Current stable reference used in the docs:
+
+```bash
+docker run --rm -p 4000:4000 \
+  -e LITELLM_MASTER_KEY=your-master-key \
+  ghcr.io/berriai/litellm:v1.82.3-stable.patch.2
+```
+
+Then point k13d at it:
+
+```bash
+export K13D_LLM_PROVIDER=litellm
+export K13D_LLM_MODEL=gpt-4o-mini
+export LITELLM_ENDPOINT=http://localhost:4000
+```
