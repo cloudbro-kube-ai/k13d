@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -278,15 +277,7 @@ func (a *Agent) handleToolCall(call providers.ToolCall) providers.ToolResult {
 	toolCall := &ToolCallInfo{
 		ID:      call.ID,
 		Name:    call.Function.Name,
-		Command: call.Function.Arguments,
-	}
-
-	// Parse arguments to extract command
-	var args map[string]interface{}
-	if err := json.Unmarshal([]byte(call.Function.Arguments), &args); err == nil {
-		if cmd, ok := args["command"].(string); ok {
-			toolCall.Command = cmd
-		}
+		Command: tools.ExtractCommandForDisplay(call.Function.Name, call.Function.Arguments),
 	}
 
 	// Analyze safety using shell parser

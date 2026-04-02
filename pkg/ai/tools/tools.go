@@ -63,6 +63,91 @@ type BashArgs struct {
 	Timeout int    `json:"timeout,omitempty"` // seconds
 }
 
+// ExtractCommandForDisplay returns the best-effort command string from tool
+// arguments for approval prompts, logs, and audit trails.
+func ExtractCommandForDisplay(toolName, argsJSON string) string {
+	trimmed := strings.TrimSpace(argsJSON)
+	if trimmed == "" {
+		return ""
+	}
+
+	var raw interface{}
+	if err := json.Unmarshal([]byte(trimmed), &raw); err != nil {
+		// Fall back to the raw payload so the UI never renders an empty command box.
+		return trimmed
+	}
+
+	return strings.TrimSpace(extractCommandValue(strings.ToLower(toolName), raw))
+}
+
+func extractCommandValue(toolName string, raw interface{}) string {
+	switch value := raw.(type) {
+	case string:
+		return strings.TrimSpace(value)
+
+	case map[string]interface{}:
+		for _, key := range preferredCommandKeys(toolName) {
+			if nested, ok := value[key]; ok {
+				if command := extractCommandValue(toolName, nested); command != "" {
+					return command
+				}
+			}
+		}
+
+		for _, key := range []string{"arguments", "input", "params"} {
+			if nested, ok := value[key]; ok {
+				if command := extractCommandValue(toolName, nested); command != "" {
+					return command
+				}
+			}
+		}
+
+		if args, ok := value["args"]; ok {
+			if command := extractCommandValue(toolName, args); command != "" {
+				return command
+			}
+		}
+
+		if isCommandLikeTool(toolName) {
+			for key, nested := range value {
+				switch key {
+				case "timeout", "namespace", "server", "tool", "tool_name", "id", "name", "type", "kind", "category":
+					continue
+				}
+				if command := extractCommandValue(toolName, nested); command != "" {
+					return command
+				}
+			}
+		}
+
+	case []interface{}:
+		parts := make([]string, 0, len(value))
+		for _, item := range value {
+			if part := extractCommandValue(toolName, item); part != "" {
+				parts = append(parts, part)
+			}
+		}
+		if len(parts) > 0 {
+			return strings.Join(parts, " ")
+		}
+	}
+
+	return ""
+}
+
+func preferredCommandKeys(toolName string) []string {
+	if isCommandLikeTool(toolName) {
+		return []string{"command", "cmd", "script"}
+	}
+	return []string{"command"}
+}
+
+func isCommandLikeTool(toolName string) bool {
+	return strings.Contains(toolName, "bash") ||
+		strings.Contains(toolName, "kubectl") ||
+		strings.Contains(toolName, "shell")
+}
+
 // MCPToolExecutor interface for executing MCP tools
 type MCPToolExecutor interface {
 	CallTool(ctx context.Context, toolName string, args map[string]interface{}) (string, error)

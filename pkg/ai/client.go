@@ -2,7 +2,6 @@ package ai
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -253,13 +252,7 @@ func (c *Client) AskWithToolsAndExecution(ctx context.Context, prompt string, ca
 
 	// Tool callback that requests approval before execution
 	toolCallback := func(call providers.ToolCall) providers.ToolResult {
-		// Extract command from arguments
-		var args map[string]interface{}
-		_ = json.Unmarshal([]byte(call.Function.Arguments), &args)
-		command := ""
-		if cmd, ok := args["command"].(string); ok {
-			command = cmd
-		}
+		command := tools.ExtractCommandForDisplay(call.Function.Name, call.Function.Arguments)
 
 		// Request approval if callback provided
 		if toolApprovalCallback != nil {

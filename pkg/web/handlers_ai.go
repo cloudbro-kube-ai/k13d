@@ -10,6 +10,7 @@ import (
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai/session"
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai/tools"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 	"github.com/cloudbro-kube-ai/k13d/pkg/log"
@@ -435,17 +436,7 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 
 	// Tool approval callback
 	toolApprovalCallback := func(toolName string, argsJSON string) bool {
-		// Parse arguments to get the command
-		var args map[string]interface{}
-		if err := json.Unmarshal([]byte(argsJSON), &args); err != nil {
-			// If JSON parsing fails, proceed with empty args
-			args = make(map[string]interface{})
-		}
-
-		command := ""
-		if cmd, ok := args["command"].(string); ok {
-			command = cmd
-		}
+		command := tools.ExtractCommandForDisplay(toolName, argsJSON)
 
 		// Classify the command
 		category := classifyCommand(command)
