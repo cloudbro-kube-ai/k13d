@@ -23,10 +23,16 @@ import (
 	"github.com/cloudbro-kube-ai/k13d/pkg/mcp"
 	"github.com/cloudbro-kube-ai/k13d/pkg/metrics"
 	"github.com/cloudbro-kube-ai/k13d/pkg/security"
+	"github.com/cloudbro-kube-ai/k13d/pkg/web/frontendbundle"
 )
 
 //go:embed static/*
 var staticFiles embed.FS
+
+var (
+	embeddedBundleMu sync.Mutex
+	embeddedBundles  = map[string][]byte{}
+)
 
 // VersionInfo holds build version information
 type VersionInfo struct {
@@ -631,19 +637,13 @@ func (s *Server) Start() error {
 	staticFS, err := fs.Sub(staticFiles, "static")
 	var staticHandler http.Handler
 	if err != nil {
-		staticHandler = http.FileServer(http.Dir("pkg/web/static"))
-	} else {
-		staticHandler = http.FileServer(http.FS(staticFS))
+		return fmt.Errorf("prepare embedded static filesystem: %w", err)
 	}
+	staticHandler = http.FileServer(http.FS(staticFS))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// For index.html (root path), inject auth mode as inline script
 		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
-			var indexData []byte
-			if err != nil {
-				indexData, _ = os.ReadFile("pkg/web/static/index.html")
-			} else {
-				indexData, _ = fs.ReadFile(staticFiles, "static/index.html")
-			}
+			indexData, _ := fs.ReadFile(staticFS, "index.html")
 			if indexData != nil {
 				authMode := s.authManager.GetAuthMode()
 				html := string(indexData)
@@ -661,6 +661,10 @@ func (s *Server) Start() error {
 				_, _ = w.Write([]byte(html))
 				return
 			}
+		}
+
+		if serveGeneratedBundle(w, r, staticFS) {
+			return
 		}
 		staticHandler.ServeHTTP(w, r)
 	})
@@ -694,6 +698,63 @@ func (s *Server) Start() error {
 
 	fmt.Printf("\n  Web server started at http://localhost:%d\n", s.port)
 	return s.server.ListenAndServe()
+}
+
+func serveGeneratedBundle(w http.ResponseWriter, r *http.Request, staticFS fs.FS) bool {
+	var (
+		bundleName  string
+		contentType string
+		builder     func(fs.FS) ([]byte, error)
+	)
+
+	switch r.URL.Path {
+	case "/bundle.css":
+		bundleName = "bundle.css"
+		contentType = "text/css; charset=utf-8"
+		builder = frontendbundle.BuildCSSBundle
+	case "/bundle.js":
+		bundleName = "bundle.js"
+		contentType = "application/javascript; charset=utf-8"
+		builder = frontendbundle.BuildJSBundle
+	default:
+		return false
+	}
+
+	// Prefer prebuilt bundles when they were embedded at build time.
+	if content, err := fs.ReadFile(staticFS, bundleName); err == nil {
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		_, _ = w.Write(content)
+		return true
+	}
+
+	content, err := cachedGeneratedBundle(bundleName, staticFS, builder)
+	if err != nil {
+		http.Error(w, "frontend bundle unavailable", http.StatusInternalServerError)
+		return true
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Cache-Control", "public, max-age=300")
+	_, _ = w.Write(content)
+	return true
+}
+
+func cachedGeneratedBundle(name string, staticFS fs.FS, builder func(fs.FS) ([]byte, error)) ([]byte, error) {
+	embeddedBundleMu.Lock()
+	defer embeddedBundleMu.Unlock()
+
+	if content, ok := embeddedBundles[name]; ok {
+		return content, nil
+	}
+
+	content, err := builder(staticFS)
+	if err != nil {
+		return nil, err
+	}
+
+	embeddedBundles[name] = content
+	return content, nil
 }
 
 func (s *Server) Stop() error {
