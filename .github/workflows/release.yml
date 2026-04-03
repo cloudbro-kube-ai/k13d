@@ -83,7 +83,7 @@ jobs:
       - name: Docker meta
         if: env.DOCKERHUB_USER != ''
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: fjvbn2003/k13d
           tags: |
