@@ -1,0 +1,563 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ai-llm/benchmarks/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ai-llm/benchmarks/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/ai-llm/benchmarks/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ai-llm/embedded/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ai-llm/embedded/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/ai-llm/embedded/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ai-llm/model-settings-storage/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ai-llm/model-settings-storage/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/ai-llm/model-settings-storage/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ai-llm/providers/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ai-llm/providers/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/ai-llm/providers/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ai-llm/tool-calling/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ai-llm/tool-calling/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/ai-llm/tool-calling/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/concepts/ai-assistant/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/concepts/ai-assistant/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/concepts/ai-assistant/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/concepts/architecture/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/concepts/architecture/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/concepts/architecture/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/concepts/mcp-integration/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/concepts/mcp-integration/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/concepts/mcp-integration/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/concepts/security/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/concepts/security/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/concepts/security/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/concepts/tui-architecture/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/concepts/tui-architecture/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/concepts/tui-architecture/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/concepts/tui-stability-pattern-review/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/concepts/tui-stability-pattern-review/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/concepts/tui-stability-pattern-review/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/deployment/air-gapped/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/deployment/air-gapped/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/deployment/air-gapped/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/deployment/docker/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/deployment/docker/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/deployment/docker/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/deployment/helm/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/deployment/helm/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/deployment/helm/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/deployment/kubernetes/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/deployment/kubernetes/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/deployment/kubernetes/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/features/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/features/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/features/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/features/ai-assistant/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/features/ai-assistant/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/features/ai-assistant/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/features/security/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/features/security/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/features/security/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/features/tui/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/features/tui/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/features/tui/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/features/web-ui/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/features/web-ui/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/features/web-ui/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/getting-started/configuration/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/getting-started/configuration/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/getting-started/configuration/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/getting-started/installation/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/getting-started/installation/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/getting-started/installation/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/getting-started/overview/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/getting-started/overview/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/getting-started/overview/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/getting-started/quick-start/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/getting-started/quick-start/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/getting-started/quick-start/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/ENTERPRISE_OPERATIONS/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/ENTERPRISE_OPERATIONS/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/reference/ENTERPRISE_OPERATIONS/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/RELEASE_REVIEW_REPORT/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/RELEASE_REVIEW_REPORT/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/reference/RELEASE_REVIEW_REPORT/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/STABILITY_ANALYSIS/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/STABILITY_ANALYSIS/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/reference/STABILITY_ANALYSIS/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/STABILITY_ARCHITECTURE/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/STABILITY_ARCHITECTURE/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/reference/STABILITY_ARCHITECTURE/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/api/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/api/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/reference/api/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/changelog/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/changelog/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/reference/changelog/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/cli/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/cli/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/reference/cli/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/env-vars/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/env-vars/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/reference/env-vars/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/feature-gap-analysis/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/feature-gap-analysis/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/reference/feature-gap-analysis/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/teleport-comparison/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/teleport-comparison/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/reference/teleport-comparison/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/tui-testing/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/reference/tui-testing/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/reference/tui-testing/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/user-guide/reports/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/user-guide/reports/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/user-guide/reports/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/user-guide/shortcuts/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/user-guide/shortcuts/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/user-guide/shortcuts/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/user-guide/tui/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/user-guide/tui/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/user-guide/tui/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/user-guide/web/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/user-guide/web/"/>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ko/user-guide/web/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/ai-llm/benchmarks/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/ai-llm/benchmarks/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ai-llm/benchmarks/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/ai-llm/embedded/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/ai-llm/embedded/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ai-llm/embedded/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/ai-llm/model-settings-storage/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/ai-llm/model-settings-storage/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ai-llm/model-settings-storage/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/ai-llm/providers/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/ai-llm/providers/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ai-llm/providers/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/ai-llm/tool-calling/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/ai-llm/tool-calling/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0ai-llm/tool-calling/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/concepts/ai-assistant/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/concepts/ai-assistant/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0concepts/ai-assistant/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/concepts/architecture/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/concepts/architecture/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0concepts/architecture/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/concepts/mcp-integration/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/concepts/mcp-integration/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0concepts/mcp-integration/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/concepts/security/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/concepts/security/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0concepts/security/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/concepts/tui-architecture/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/concepts/tui-architecture/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0concepts/tui-architecture/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/concepts/tui-stability-pattern-review/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/concepts/tui-stability-pattern-review/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0concepts/tui-stability-pattern-review/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/deployment/air-gapped/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/deployment/air-gapped/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0deployment/air-gapped/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/deployment/docker/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/deployment/docker/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0deployment/docker/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/deployment/helm/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/deployment/helm/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0deployment/helm/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/deployment/kubernetes/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/deployment/kubernetes/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0deployment/kubernetes/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/features/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/features/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0features/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/features/ai-assistant/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/features/ai-assistant/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0features/ai-assistant/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/features/security/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/features/security/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0features/security/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/features/tui/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/features/tui/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0features/tui/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/features/web-ui/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/features/web-ui/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0features/web-ui/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/getting-started/configuration/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/getting-started/configuration/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0getting-started/configuration/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/getting-started/installation/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/getting-started/installation/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0getting-started/installation/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/getting-started/overview/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/getting-started/overview/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0getting-started/overview/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/getting-started/quick-start/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/getting-started/quick-start/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0getting-started/quick-start/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/user-guide/tui/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/user-guide/tui/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0user-guide/tui/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/user-guide/web/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/user-guide/web/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0user-guide/web/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/ENTERPRISE_OPERATIONS/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/ENTERPRISE_OPERATIONS/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0reference/ENTERPRISE_OPERATIONS/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/RELEASE_REVIEW_REPORT/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/RELEASE_REVIEW_REPORT/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0reference/RELEASE_REVIEW_REPORT/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/STABILITY_ANALYSIS/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/STABILITY_ANALYSIS/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0reference/STABILITY_ANALYSIS/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/STABILITY_ARCHITECTURE/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/STABILITY_ARCHITECTURE/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0reference/STABILITY_ARCHITECTURE/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/api/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/api/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0reference/api/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/changelog/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/changelog/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0reference/changelog/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/cli/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/cli/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0reference/cli/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/env-vars/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/env-vars/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0reference/env-vars/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/feature-gap-analysis/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/feature-gap-analysis/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0reference/feature-gap-analysis/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/teleport-comparison/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/teleport-comparison/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0reference/teleport-comparison/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/tui-testing/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/reference/tui-testing/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0reference/tui-testing/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/user-guide/reports/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/user-guide/reports/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0user-guide/reports/"/>
+    </url>
+    <url>
+        <loc>https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/user-guide/shortcuts/</loc>
+        <lastmod>2026-04-03</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ko" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0/ko/user-guide/shortcuts/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://cloudbro-kube-ai.github.io/k13d/v1.0.0user-guide/shortcuts/"/>
+    </url>
+</urlset>
