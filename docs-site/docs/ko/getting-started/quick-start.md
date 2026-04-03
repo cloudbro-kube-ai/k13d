@@ -1,24 +1,24 @@
-# Quick Start
+# 빠른 시작
 
-This is the easiest workshop path for `k13d`:
+내일 실습 기준으로 가장 쉬운 방법만 안내합니다.
 
-1. Make sure `kubectl` already works
-2. Download the release asset for your OS and CPU
-3. Extract it
-4. Run the Web UI locally
+1. `kubectl` 이 먼저 되는지 확인
+2. 운영체제에 맞는 Release Asset 다운로드
+3. 압축 해제
+4. Web UI 실행
 
-!!! success "Workshop default"
-    Start with the **single binary** from [Release v1.0.0](https://github.com/cloudbro-kube-ai/k13d/releases/tag/v1.0.0).
+!!! success "실습 권장 시작 방법"
+    [Release v1.0.0](https://github.com/cloudbro-kube-ai/k13d/releases/tag/v1.0.0) 의 **단일 바이너리**를 바로 실행하세요.
 
-    - Open `http://localhost:9090`
-    - Username: `admin`
-    - Password: printed in the terminal when k13d starts
+    - 접속 주소: `http://localhost:9090`
+    - 아이디: `admin`
+    - 비밀번호: k13d 실행 후 터미널에 출력됨
 
-!!! info "What to download"
-    Use the main `k13d_v1.0.0_<os>_<arch>` asset for the workshop.
-    The `k13d-plugin_v1.0.0_<os>_<arch>` assets are optional and are only needed if you specifically want `kubectl k13d`.
+!!! info "무엇을 받으면 되나요?"
+    실습은 `k13d_v1.0.0_<os>_<arch>` 자산을 받으면 됩니다.
+    `k13d-plugin_v1.0.0_<os>_<arch>` 는 `kubectl k13d` 형태로 쓰고 싶을 때만 선택하세요.
 
-## Most Common Commands
+## 가장 많이 쓰는 실행 명령
 
 ### Web UI
 
@@ -32,23 +32,17 @@ This is the easiest workshop path for `k13d`:
 ./k13d
 ```
 
-## Before You Start
+## 시작 전 확인
 
-You only need three things:
-
-- A running Kubernetes cluster
-- `kubectl` installed
-- A working kubeconfig
-
-Check it first:
+아래 명령이 먼저 되어야 합니다.
 
 ```bash
 kubectl get nodes
 ```
 
-If that command works, you are ready.
+이 명령이 정상 동작하면 바로 진행하면 됩니다.
 
-## Download And Run
+## 운영체제별 설치 및 실행
 
 === "macOS (Apple Silicon)"
 
@@ -122,22 +116,28 @@ If that command works, you are ready.
     .\k13d.exe --web --port 9090 --auth-mode local
     ```
 
-After the command starts:
+실행 후에는 다음 순서로 들어가면 됩니다.
 
-1. Open `http://localhost:9090`
-2. Log in with username `admin`
-3. Copy the password from the terminal
+1. 브라우저에서 `http://localhost:9090` 접속
+2. 아이디 `admin` 입력
+3. 터미널에 나온 비밀번호 입력
 
-!!! tip "macOS note"
-    After extracting the archive, run both `xattr` commands before opening `k13d`.
-    If macOS says an attribute does not exist, you can ignore that message.
+!!! tip "macOS 사용자"
+    압축 해제 후에는 아래 두 줄을 꼭 실행하세요.
 
-!!! tip "Windows note"
-    If SmartScreen blocks the app, click **More info** and then **Run anyway**.
+    ```bash
+    xattr -d com.apple.quarantine ./k13d
+    xattr -d com.apple.provenance ./k13d
+    ```
 
-## Want The TUI Instead?
+    `No such xattr` 메시지가 나오면 이미 제거된 상태이므로 무시해도 됩니다.
 
-If you want the terminal dashboard instead of the Web UI, run:
+!!! tip "Windows 사용자"
+    SmartScreen 경고가 뜨면 **More info** → **Run anyway** 를 선택하세요.
+
+## TUI로 바로 시작하고 싶다면
+
+기본 TUI 실행 명령은 아래 한 줄입니다.
 
 === "macOS / Linux"
 
@@ -151,11 +151,11 @@ If you want the terminal dashboard instead of the Web UI, run:
     .\k13d.exe
     ```
 
-## Optional: `kubectl k13d`
+## 선택 사항: `kubectl k13d`
 
-If you specifically want the kubectl plugin, download the matching `k13d-plugin` asset from the same release.
+`kubectl k13d` 형태로 쓰고 싶다면 같은 릴리즈에서 `k13d-plugin` 자산을 받으면 됩니다.
 
-Example for **macOS Apple Silicon**:
+예시: **macOS Apple Silicon**
 
 ```bash
 curl -L -o k13d-plugin_v1.0.0_darwin_arm64.tar.gz \
@@ -168,10 +168,10 @@ sudo mv ./kubectl-k13d /usr/local/bin/
 kubectl k13d
 ```
 
-`k13d-plugin` assets are available for **macOS** and **Linux**.
+`k13d-plugin` 자산은 **macOS** 와 **Linux** 에서 제공됩니다.
 
-## Next Steps
+## 다음 문서
 
-- [Configuration](configuration.md)
+- [설정](configuration.md)
 - [Web Dashboard](../user-guide/web.md)
 - [TUI Dashboard](../user-guide/tui.md)

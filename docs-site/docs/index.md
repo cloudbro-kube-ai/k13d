@@ -44,7 +44,7 @@ It bridges the gap between traditional cluster management and natural language A
 
     Get up and running in minutes
 
-    [:octicons-arrow-right-24: Installation](getting-started/installation.md)
+    [:octicons-arrow-right-24: Quick Start](getting-started/quick-start.md)
 
 -   :material-kubernetes:{ .lg .middle } __TUI Dashboard__
 
@@ -149,29 +149,33 @@ It bridges the gap between traditional cluster management and natural language A
     k13d currently recommends **local single-binary usage** for both the **TUI** and **Web UI**.
     Docker, Docker Compose, Kubernetes, Helm, and other in-cluster deployment paths are still **Beta / in preparation** and are not officially supported yet.
 
-=== "TUI"
+=== "1. Download"
+
+    Download the matching asset from [Release v1.0.0](https://github.com/cloudbro-kube-ai/k13d/releases/tag/v1.0.0).
+
+    - macOS Apple Silicon: `k13d_v1.0.0_darwin_arm64.tar.gz`
+    - macOS Intel: `k13d_v1.0.0_darwin_amd64.tar.gz`
+    - Linux amd64: `k13d_v1.0.0_linux_amd64.tar.gz`
+    - Linux arm64: `k13d_v1.0.0_linux_arm64.tar.gz`
+    - Windows amd64: `k13d_v1.0.0_windows_amd64.zip`
+
+=== "2. Run Web UI"
 
     ```bash
-    git clone https://github.com/cloudbro-kube-ai/k13d.git
-    cd k13d
-    make build
-    ./build/k13d
+    ./k13d --web --port 9090 --auth-mode local
     ```
 
-=== "Web UI"
+    TUI default:
 
     ```bash
-    git clone https://github.com/cloudbro-kube-ai/k13d.git
-    cd k13d
-    make build
-    ./build/k13d --web --auth-mode local --port 8080
+    ./k13d
     ```
 
-=== "Deployment Docs (Beta)"
+=== "Need your exact OS / CPU?"
 
     ```text
-    See Deployment > Docker / Kubernetes / Helm for roadmap and reference material.
-    Those paths are still being prepared and are not officially supported yet.
+    See Quick Start for macOS Intel, macOS Apple Silicon, Linux amd64, Linux arm64,
+    Windows, plus the required macOS xattr commands.
     ```
 
 ---
