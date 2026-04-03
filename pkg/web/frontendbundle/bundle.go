@@ -62,7 +62,7 @@ func WriteBundles(staticDir string) error {
 	if err != nil {
 		return fmt.Errorf("build CSS bundle: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(staticDir, "bundle.css"), cssBundle, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(staticDir, "bundle.css"), cssBundle, 0o600); err != nil {
 		return fmt.Errorf("write bundle.css: %w", err)
 	}
 
@@ -70,7 +70,7 @@ func WriteBundles(staticDir string) error {
 	if err != nil {
 		return fmt.Errorf("build JS bundle: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(staticDir, "bundle.js"), jsBundle, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(staticDir, "bundle.js"), jsBundle, 0o600); err != nil {
 		return fmt.Errorf("write bundle.js: %w", err)
 	}
 
