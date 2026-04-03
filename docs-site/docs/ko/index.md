@@ -7,32 +7,40 @@ Terminal UI(TUI)와 Web UI를 모두 제공하며, AI Assistant가 내장되어 
 
 ## 30초 만에 시작하기
 
-### 1. 다운로드
+실습은 **Release Asset 다운로드 → 압축 해제 → 실행** 만 하면 됩니다.
 
-[Releases](https://github.com/cloudbro-kube-ai/k13d/releases) 페이지에서 플랫폼에 맞는 바이너리를 다운로드하세요.
+### 1. 먼저 확인
 
 ```bash
-tar xzf k13d_*.tar.gz && chmod +x k13d
+kubectl get nodes
 ```
+
+### 2. 운영체제에 맞는 자산 다운로드
+
+[Releases](https://github.com/cloudbro-kube-ai/k13d/releases/tag/v1.0.0) 페이지의 **Assets** 에서 내 OS / CPU 에 맞는 파일을 선택하세요.
+
+- macOS Apple Silicon: `k13d_v1.0.0_darwin_arm64.tar.gz`
+- macOS Intel: `k13d_v1.0.0_darwin_amd64.tar.gz`
+- Linux x86_64: `k13d_v1.0.0_linux_amd64.tar.gz`
+- Linux arm64: `k13d_v1.0.0_linux_arm64.tar.gz`
+- Windows x86_64: `k13d_v1.0.0_windows_amd64.zip`
+
+### 3. 자세한 명령은 빠른 시작 문서에서 그대로 복사
+
+- [빠른 시작](getting-started/quick-start.md)
 
 !!! tip "macOS 사용자"
-    Gatekeeper가 실행을 차단하면 다음 명령을 실행하세요:
+    압축 해제 후에는 아래 두 줄을 꼭 실행하세요.
+
     ```bash
     xattr -d com.apple.quarantine ./k13d
+    xattr -d com.apple.provenance ./k13d
     ```
 
-### 2. 실행
+Web UI 권장 실행 명령은 `./k13d --web --port 9090 --auth-mode local` 이고,
+브라우저에서 `http://localhost:9090` 으로 접속하면 됩니다.
 
-```bash
-# Web UI (권장)
-./k13d --web --auth-mode local
-# 브라우저에서 http://localhost:8080 접속 (Username: admin / Password: 터미널에 출력됨)
-
-# TUI
-./k13d
-```
-
-kubeconfig는 자동으로 감지됩니다. 별도의 설정 없이 바로 사용할 수 있습니다.
+TUI 기본 실행 명령은 `./k13d` 입니다.
 
 ---
 
