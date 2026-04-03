@@ -2,6 +2,28 @@
 
 All notable changes to k13d are documented here.
 
+## [1.0.0] - 2026-04-03
+
+### Added
+- LiteLLM gateway mode for flexible LLM routing
+- Kubectl few-shot prompt guidance for more reliable AI tool usage
+- Password reset modal and improved admin user-management flows
+- Workload security context visibility and richer job/cronjob timing details
+
+### Changed
+- Promoted k13d to the stable `v1.0.0` release line
+- Refined Web API architecture around structured JSON errors
+- Extracted shared CLI logic for the main binary and kubectl plugin
+- Continued UI/Web modularization to improve maintainability
+
+### Fixed
+- TUI namespace-switch race paths
+- AI decision execution path to avoid shell indirection
+- Local-auth settings stability and legacy Ollama settings cleanup
+- Port-forward shutdown cleanup and additional web handler hardening
+
+---
+
 ## [0.8.5] - 2026-02-16
 
 ### Added

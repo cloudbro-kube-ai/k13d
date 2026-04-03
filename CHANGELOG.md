@@ -5,6 +5,29 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-04-03
+
+### Added
+- **LiteLLM Gateway Mode**: Added gateway-based LLM access for broader provider compatibility and centralized model routing
+- **AI Prompting Improvements**: Added kubectl few-shot guidance to improve tool selection quality and command generation
+- **Web UI: Password Reset Flow**: Added a dedicated password reset modal and improved admin user-management flows
+- **Web UI: Workload Details**: Surfaced workload security context information and enriched job/cronjob timing details
+
+### Changed
+- **Release Milestone**: Promoted k13d to `v1.0.0` as the stable baseline for the unified TUI, Web UI, and AI-assisted Kubernetes workflow
+- **Web API Architecture**: Migrated the web surface to structured JSON errors and grouped route registration for maintainability
+- **CLI Architecture**: Extracted shared CLI logic into `internal/cli` to reduce duplication between `k13d` and `kubectl-k13d`
+- **Codebase Maintainability**: Continued modularization across `pkg/ui` and `pkg/web` to reduce large-file complexity ahead of the stable release line
+
+### Fixed
+- **TUI Stability**: Removed namespace-switch race paths and executed AI decisions without going through a shell
+- **Web UI Stability**: Stabilized local-auth assistant settings flows, removed the legacy Ollama settings panel, and closed port-forward sessions on shutdown
+- **Web API Robustness**: Added nil guards for operation handlers, consolidated raw fetch calls behind authenticated helpers, and hardened reports/FinOps analysis
+- **Tool Execution Reliability**: Hardened kubectl tool path discovery and pinned the LiteLLM image reference to a stable tag
+
+### Tests
+- Added broader regression coverage for CLI initialization, route registration, web settings, Helm/config packages, and structured error handling
+
 ## [0.9.8] - 2026-03-15
 
 ### Added
