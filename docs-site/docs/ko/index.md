@@ -17,13 +17,14 @@ kubectl get nodes
 
 ### 2. 운영체제에 맞는 자산 다운로드
 
-[Releases](https://github.com/cloudbro-kube-ai/k13d/releases/tag/v1.0.0) 페이지의 **Assets** 에서 내 OS / CPU 에 맞는 파일을 선택하세요.
+[Release v1.0.1](https://github.com/cloudbro-kube-ai/k13d/releases/tag/v1.0.1) 페이지의 **Assets** 에서 내 OS / CPU 에 맞는 파일을 선택하세요.
+전체 릴리즈와 자산 목록은 [GitHub Releases 페이지](https://github.com/cloudbro-kube-ai/k13d/releases) 에서 확인할 수 있습니다.
 
-- macOS Apple Silicon: `k13d_v1.0.0_darwin_arm64.tar.gz`
-- macOS Intel: `k13d_v1.0.0_darwin_amd64.tar.gz`
-- Linux x86_64: `k13d_v1.0.0_linux_amd64.tar.gz`
-- Linux arm64: `k13d_v1.0.0_linux_arm64.tar.gz`
-- Windows x86_64: `k13d_v1.0.0_windows_amd64.zip`
+- macOS Apple Silicon: `k13d_v1.0.1_darwin_arm64.tar.gz`
+- macOS Intel: `k13d_v1.0.1_darwin_amd64.tar.gz`
+- Linux x86_64: `k13d_v1.0.1_linux_amd64.tar.gz`
+- Linux arm64: `k13d_v1.0.1_linux_arm64.tar.gz`
+- Windows x86_64: `k13d_v1.0.1_windows_amd64.zip`
 
 ### 3. 자세한 명령은 빠른 시작 문서에서 그대로 복사
 

@@ -8,15 +8,16 @@ This is the easiest workshop path for `k13d`:
 4. Run the Web UI locally
 
 !!! success "Workshop default"
-    Start with the **single binary** from [Release v1.0.0](https://github.com/cloudbro-kube-ai/k13d/releases/tag/v1.0.0).
+    Start with the **single binary** from [Release v1.0.1](https://github.com/cloudbro-kube-ai/k13d/releases/tag/v1.0.1).
+    If you want to browse every asset first, open the full [GitHub Releases page](https://github.com/cloudbro-kube-ai/k13d/releases).
 
     - Open `http://localhost:9090`
     - Username: `admin`
     - Password: printed in the terminal when k13d starts
 
 !!! info "What to download"
-    Use the main `k13d_v1.0.0_<os>_<arch>` asset for the workshop.
-    The `k13d-plugin_v1.0.0_<os>_<arch>` assets are optional and are only needed if you specifically want `kubectl k13d`.
+    Use the main `k13d_v1.0.1_<os>_<arch>` asset for the workshop.
+    The `k13d-plugin_v1.0.1_<os>_<arch>` assets are optional and are only needed if you specifically want `kubectl k13d`.
 
 ## Most Common Commands
 
@@ -53,11 +54,11 @@ If that command works, you are ready.
 === "macOS (Apple Silicon)"
 
     ```bash
-    curl -L -o k13d_v1.0.0_darwin_arm64.tar.gz \
-      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.0/k13d_v1.0.0_darwin_arm64.tar.gz
+    curl -L -o k13d_v1.0.1_darwin_arm64.tar.gz \
+      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.1/k13d_v1.0.1_darwin_arm64.tar.gz
 
-    tar -zxvf k13d_v1.0.0_darwin_arm64.tar.gz
-    cd k13d_v1.0.0_darwin_arm64
+    tar -zxvf k13d_v1.0.1_darwin_arm64.tar.gz
+    cd k13d_v1.0.1_darwin_arm64
     chmod +x ./k13d
 
     # Remove quarantine and provenance attributes
@@ -70,11 +71,11 @@ If that command works, you are ready.
 === "macOS (Intel)"
 
     ```bash
-    curl -L -o k13d_v1.0.0_darwin_amd64.tar.gz \
-      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.0/k13d_v1.0.0_darwin_amd64.tar.gz
+    curl -L -o k13d_v1.0.1_darwin_amd64.tar.gz \
+      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.1/k13d_v1.0.1_darwin_amd64.tar.gz
 
-    tar -zxvf k13d_v1.0.0_darwin_amd64.tar.gz
-    cd k13d_v1.0.0_darwin_amd64
+    tar -zxvf k13d_v1.0.1_darwin_amd64.tar.gz
+    cd k13d_v1.0.1_darwin_amd64
     chmod +x ./k13d
 
     # Remove quarantine and provenance attributes
@@ -87,11 +88,11 @@ If that command works, you are ready.
 === "Linux (amd64)"
 
     ```bash
-    curl -L -o k13d_v1.0.0_linux_amd64.tar.gz \
-      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.0/k13d_v1.0.0_linux_amd64.tar.gz
+    curl -L -o k13d_v1.0.1_linux_amd64.tar.gz \
+      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.1/k13d_v1.0.1_linux_amd64.tar.gz
 
-    tar -zxvf k13d_v1.0.0_linux_amd64.tar.gz
-    cd k13d_v1.0.0_linux_amd64
+    tar -zxvf k13d_v1.0.1_linux_amd64.tar.gz
+    cd k13d_v1.0.1_linux_amd64
     chmod +x ./k13d
 
     ./k13d --web --port 9090 --auth-mode local
@@ -100,11 +101,11 @@ If that command works, you are ready.
 === "Linux (arm64)"
 
     ```bash
-    curl -L -o k13d_v1.0.0_linux_arm64.tar.gz \
-      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.0/k13d_v1.0.0_linux_arm64.tar.gz
+    curl -L -o k13d_v1.0.1_linux_arm64.tar.gz \
+      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.1/k13d_v1.0.1_linux_arm64.tar.gz
 
-    tar -zxvf k13d_v1.0.0_linux_arm64.tar.gz
-    cd k13d_v1.0.0_linux_arm64
+    tar -zxvf k13d_v1.0.1_linux_arm64.tar.gz
+    cd k13d_v1.0.1_linux_arm64
     chmod +x ./k13d
 
     ./k13d --web --port 9090 --auth-mode local
@@ -113,11 +114,11 @@ If that command works, you are ready.
 === "Windows (amd64)"
 
     ```powershell
-    curl.exe -L -o k13d_v1.0.0_windows_amd64.zip `
-      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.0/k13d_v1.0.0_windows_amd64.zip
+    curl.exe -L -o k13d_v1.0.1_windows_amd64.zip `
+      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.1/k13d_v1.0.1_windows_amd64.zip
 
-    Expand-Archive .\k13d_v1.0.0_windows_amd64.zip -DestinationPath .
-    cd .\k13d_v1.0.0_windows_amd64
+    Expand-Archive .\k13d_v1.0.1_windows_amd64.zip -DestinationPath .
+    cd .\k13d_v1.0.1_windows_amd64
 
     .\k13d.exe --web --port 9090 --auth-mode local
     ```
@@ -153,15 +154,15 @@ If you want the terminal dashboard instead of the Web UI, run:
 
 ## Optional: `kubectl k13d`
 
-If you specifically want the kubectl plugin, download the matching `k13d-plugin` asset from the same release.
+If you specifically want the kubectl plugin, download the matching `k13d-plugin` asset from the same release or browse the full [GitHub Releases page](https://github.com/cloudbro-kube-ai/k13d/releases).
 
 Example for **macOS Apple Silicon**:
 
 ```bash
-curl -L -o k13d-plugin_v1.0.0_darwin_arm64.tar.gz \
-  https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.0/k13d-plugin_v1.0.0_darwin_arm64.tar.gz
+curl -L -o k13d-plugin_v1.0.1_darwin_arm64.tar.gz \
+  https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.1/k13d-plugin_v1.0.1_darwin_arm64.tar.gz
 
-tar -zxvf k13d-plugin_v1.0.0_darwin_arm64.tar.gz
+tar -zxvf k13d-plugin_v1.0.1_darwin_arm64.tar.gz
 chmod +x ./kubectl-k13d
 sudo mv ./kubectl-k13d /usr/local/bin/
 

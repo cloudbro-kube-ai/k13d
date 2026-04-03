@@ -8,6 +8,7 @@ before:
   hooks:
     - go mod tidy
     - go generate ./...
+    - go run scripts/build-frontend.go
     - bash scripts/download-trivy.sh
     - bash scripts/package-helm.sh {{ .Version }}
 

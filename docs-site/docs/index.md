@@ -151,13 +151,14 @@ It bridges the gap between traditional cluster management and natural language A
 
 === "1. Download"
 
-    Download the matching asset from [Release v1.0.0](https://github.com/cloudbro-kube-ai/k13d/releases/tag/v1.0.0).
+    Download the matching asset from [Release v1.0.1](https://github.com/cloudbro-kube-ai/k13d/releases/tag/v1.0.1).
+    You can also browse every available asset on the full [GitHub Releases page](https://github.com/cloudbro-kube-ai/k13d/releases).
 
-    - macOS Apple Silicon: `k13d_v1.0.0_darwin_arm64.tar.gz`
-    - macOS Intel: `k13d_v1.0.0_darwin_amd64.tar.gz`
-    - Linux amd64: `k13d_v1.0.0_linux_amd64.tar.gz`
-    - Linux arm64: `k13d_v1.0.0_linux_arm64.tar.gz`
-    - Windows amd64: `k13d_v1.0.0_windows_amd64.zip`
+    - macOS Apple Silicon: `k13d_v1.0.1_darwin_arm64.tar.gz`
+    - macOS Intel: `k13d_v1.0.1_darwin_amd64.tar.gz`
+    - Linux amd64: `k13d_v1.0.1_linux_amd64.tar.gz`
+    - Linux arm64: `k13d_v1.0.1_linux_arm64.tar.gz`
+    - Windows amd64: `k13d_v1.0.1_windows_amd64.zip`
 
 === "2. Run Web UI"
 
