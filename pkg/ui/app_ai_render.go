@@ -9,12 +9,13 @@ import (
 )
 
 func (a *App) resetAIConversation() {
+	a.aiMx.Lock()
+	a.aiConversationTurns = 0
+	a.aiConversationHistory = nil
+	a.aiMx.Unlock()
 	if a.aiPanel == nil {
 		return
 	}
-	a.aiMx.Lock()
-	a.aiConversationTurns = 0
-	a.aiMx.Unlock()
 	a.aiPanel.Clear()
 	fmt.Fprint(a.aiPanel,
 		"[#7aa2f7::b]AI Assistant[-::-]\n"+

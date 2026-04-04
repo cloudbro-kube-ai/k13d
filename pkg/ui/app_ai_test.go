@@ -116,6 +116,8 @@ func TestHandleAICommandHelpClearAndUnknown(t *testing.T) {
 	}
 
 	app.startAITurn("Will this be cleared?", aiPromptContext{Resource: "pods"}, "chat")
+	app.addAIConversationMessage("user", "Will this be cleared?")
+	app.addAIConversationMessage("assistant", "Yes, this should disappear.")
 	if !app.handleAICommand("/clear") {
 		t.Fatal("/clear should be handled as an AI command")
 	}
@@ -126,6 +128,35 @@ func TestHandleAICommandHelpClearAndUnknown(t *testing.T) {
 	}
 	if strings.Contains(text, "Will this be cleared?") {
 		t.Fatalf("expected /clear to reset prior transcript, got:\n%s", text)
+	}
+
+	app.aiMx.RLock()
+	historyLen := len(app.aiConversationHistory)
+	app.aiMx.RUnlock()
+	if historyLen != 0 {
+		t.Fatalf("expected /clear to reset AI conversation history, got %d messages", historyLen)
+	}
+}
+
+func TestBuildAIConversationPromptIncludesPriorTurns(t *testing.T) {
+	app := CreateMinimalTestApp()
+	app.addAIConversationMessage("user", "Show me failing pods")
+	app.addAIConversationMessage("assistant", "I found failing-pod with repeated restarts.")
+
+	prompt := app.buildAIConversationPrompt(buildAIPrompt("What did I ask before?", aiPromptContext{
+		Resource:  "pods",
+		Namespace: "default",
+	}))
+
+	for _, want := range []string{
+		"=== CONVERSATION HISTORY ===",
+		"[1] USER: Show me failing pods",
+		"[2] ASSISTANT: I found failing-pod with repeated restarts.",
+		"What did I ask before?",
+	} {
+		if !strings.Contains(prompt, want) {
+			t.Fatalf("conversation-aware prompt missing %q\n%s", want, prompt)
+		}
 	}
 }
 
