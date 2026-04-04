@@ -178,13 +178,14 @@ type App struct {
 	cancelLock sync.Mutex         // Protects cancelFn updates
 
 	// AI tool approval state (protected by aiMx)
-	aiMx                sync.RWMutex
-	pendingDecisions    []PendingDecision
-	pendingToolApproval chan bool
-	aiConversationTurns int
-	attachedAIContext   aiAttachedSelection
-	toolApprovalFocus   tview.Primitive
-	currentToolCallInfo struct {
+	aiMx                  sync.RWMutex
+	pendingDecisions      []PendingDecision
+	pendingToolApproval   chan bool
+	aiConversationTurns   int
+	aiConversationHistory []aiConversationMessage
+	attachedAIContext     aiAttachedSelection
+	toolApprovalFocus     tview.Primitive
+	currentToolCallInfo   struct {
 		Name    string
 		Args    string
 		Command string

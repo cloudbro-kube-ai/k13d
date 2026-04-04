@@ -48,6 +48,7 @@ func (a *App) askAI(question string) {
 
 	promptCtx := a.loadDetailedAIContext(a.getAIPromptContext())
 	prompt := buildAIPrompt(question, promptCtx)
+	prompt = a.buildAIConversationPrompt(prompt)
 
 	a.aiMx.RLock()
 	client := a.aiClient
@@ -71,6 +72,7 @@ func (a *App) askAI(question string) {
 		a.setAIStatus("[cyan]Thinking...[-]")
 		a.applyAIChrome()
 	})
+	a.addAIConversationMessage("user", question)
 
 	ctx := a.getAppContext()
 	var (
@@ -239,6 +241,7 @@ func (a *App) askAI(question string) {
 	if !client.SupportsTools() {
 		a.analyzeAndShowDecisions(finalResponse)
 	}
+	a.addAIConversationMessage("assistant", finalResponse)
 }
 
 // parseJSON is a helper to parse JSON arguments
