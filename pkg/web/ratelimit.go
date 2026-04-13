@@ -136,13 +136,14 @@ func RateLimitMiddleware(apiLimiter, authLimiter *RateLimiter) func(http.Handler
 			var limiter *RateLimiter
 			var limitType string
 
-			if isAuthEndpoint(r.URL.Path) {
+			switch {
+			case isAuthEndpoint(r.URL.Path):
 				limiter = authLimiter
 				limitType = "auth"
-			} else if isAPIEndpoint(r.URL.Path) {
+			case isAPIEndpoint(r.URL.Path):
 				limiter = apiLimiter
 				limitType = "api"
-			} else {
+			default:
 				// No rate limiting for static files
 				next.ServeHTTP(w, r)
 				return

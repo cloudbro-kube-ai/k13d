@@ -81,7 +81,8 @@ func SaveModelProfile(profile *ModelProfile) error {
 	var existingID int64
 	err := DB.QueryRow("SELECT id FROM model_profiles WHERE name = ?", profile.Name).Scan(&existingID)
 
-	if err == sql.ErrNoRows {
+	switch err {
+	case sql.ErrNoRows:
 		// Insert new profile
 		query := `
 		INSERT INTO model_profiles (
@@ -102,7 +103,7 @@ func SaveModelProfile(profile *ModelProfile) error {
 		profile.ID, _ = result.LastInsertId()
 		profile.CreatedAt = now
 		profile.UpdatedAt = now
-	} else if err == nil {
+	case nil:
 		// Update existing profile
 		query := `
 		UPDATE model_profiles SET
@@ -138,7 +139,7 @@ func SaveModelProfile(profile *ModelProfile) error {
 
 		profile.ID = existingID
 		profile.UpdatedAt = now
-	} else {
+	default:
 		return err
 	}
 

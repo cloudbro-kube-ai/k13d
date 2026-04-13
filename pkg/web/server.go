@@ -188,12 +188,13 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, versionInfo
 	fmt.Printf("  Login UI: %s\n", describeLoginUI(authConfig))
 
 	aiClient, ready, err := createUsableAIClient(&cfg.LLM)
-	if err != nil {
+	switch {
+	case err != nil:
 		fmt.Printf("  AI client creation failed: %v\n", err)
 		aiClient = nil
-	} else if ready {
+	case ready:
 		fmt.Printf("  AI client: Ready\n")
-	} else {
+	default:
 		aiClient = nil
 		fmt.Printf("  AI client: Not configured (missing endpoint or credentials)\n")
 	}
