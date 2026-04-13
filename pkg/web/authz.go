@@ -49,6 +49,7 @@ const (
 	FeatureSettingsAdmin    Feature = "settings_admin"
 	FeatureSettingsSecurity Feature = "settings_security"
 	FeatureSettingsNotif    Feature = "settings_notif"
+	FeatureHostTerminal     Feature = "host_terminal"
 )
 
 // AllFeatures returns all defined feature constants
@@ -62,6 +63,7 @@ func AllFeatures() []Feature {
 		FeatureNetworkPolicy, FeatureRBACViz,
 		FeatureSettingsGeneral, FeatureSettingsAdmin, FeatureSettingsSecurity,
 		FeatureSettingsNotif,
+		FeatureHostTerminal,
 	}
 }
 

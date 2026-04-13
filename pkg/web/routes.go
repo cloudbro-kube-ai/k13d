@@ -114,6 +114,7 @@ func (s *Server) registerK8sRoutes(mux *http.ServeMux) {
 	// WebSocket terminal (feature-gated)
 	terminalHandler := NewTerminalHandler(s.k8sClient)
 	mux.HandleFunc("/api/terminal/", auth(s.authorizer.FeatureMiddleware(FeatureTerminal)(terminalHandler.HandleTerminal)))
+	mux.HandleFunc("/api/tui/shell", auth(s.authorizer.FeatureMiddleware(FeatureHostTerminal)(s.HandleTUIShell)))
 
 	// GitOps status (ArgoCD / Flux)
 	mux.HandleFunc("/api/gitops/status", auth(s.handleGitOpsStatus))
