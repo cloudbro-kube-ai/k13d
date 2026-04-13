@@ -27,7 +27,7 @@ require (
 	k8s.io/kubectl v0.35.3
 	k8s.io/metrics v0.35.3
 	modernc.org/sqlite v1.46.1
-	mvdan.cc/sh/v3 v3.13.0
+	mvdan.cc/sh/v3 v3.13.1
 	sigs.k8s.io/yaml v1.6.0
 )
 
