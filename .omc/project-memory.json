@@ -176,6 +176,12 @@
       "type": "file"
     },
     {
+      "path": "pkg/web/tui_shell_handler.go",
+      "accessCount": 9,
+      "lastAccessed": 1776318274619,
+      "type": "file"
+    },
+    {
       "path": "pkg/web/static/js/app.js",
       "accessCount": 7,
       "lastAccessed": 1776316864666,
@@ -189,8 +195,8 @@
     },
     {
       "path": "",
-      "accessCount": 5,
-      "lastAccessed": 1776315964682,
+      "accessCount": 6,
+      "lastAccessed": 1776318588049,
       "type": "directory"
     },
     {
@@ -203,12 +209,6 @@
       "path": "pkg/web/authz.go",
       "accessCount": 5,
       "lastAccessed": 1776316821892,
-      "type": "file"
-    },
-    {
-      "path": "pkg/web/tui_shell_handler.go",
-      "accessCount": 5,
-      "lastAccessed": 1776316864096,
       "type": "file"
     },
     {

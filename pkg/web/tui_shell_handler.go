@@ -3,7 +3,6 @@ package web
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -84,6 +83,7 @@ func (s *Server) HandleTUIShell(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// Read from WebSocket and send to PTY
+loop:
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
@@ -97,8 +97,8 @@ func (s *Server) HandleTUIShell(w http.ResponseWriter, r *http.Request) {
 
 		switch msg.Type {
 		case "input":
-			if _, err := io.WriteString(f, msg.Data); err != nil {
-				break
+			if _, err := f.WriteString(msg.Data); err != nil {
+				break loop
 			}
 		case "resize":
 			_ = pty.Setsize(f, &pty.Winsize{
