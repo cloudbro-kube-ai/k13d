@@ -7130,3 +7130,18 @@ function closeTuiTerminal() {
     }
     window.removeEventListener('resize', handleTuiResize);
 }
+
+async function initExperimentalFeatures() {
+    try {
+        const resp = await fetch('/api/features');
+        if (!resp.ok) return;
+        const features = await resp.json();
+        if (features.experimental) {
+            const selector = document.getElementById('ai-mode-selector');
+            if (selector) selector.style.display = '';
+        }
+    } catch (e) {
+        // ignore — experimental features simply stay hidden
+    }
+}
+window.addEventListener('load', initExperimentalFeatures);

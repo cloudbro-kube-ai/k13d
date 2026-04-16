@@ -156,7 +156,7 @@ func (az *Authorizer) registerDefaultRoles() {
 			},
 		},
 		AllowedFeatures: []Feature{"*"},
-		DeniedFeatures:  []Feature{FeatureSettingsAdmin, FeatureSettingsSecurity},
+		DeniedFeatures:  []Feature{FeatureSettingsAdmin, FeatureSettingsSecurity, FeatureHostTerminal},
 	}
 
 	// admin: full access, no deny rules, all features

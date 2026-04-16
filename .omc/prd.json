@@ -1,0 +1,64 @@
+{
+  "title": "Gate terminal view behind --experimental flag",
+  "description": "The TUI/terminal view (host shell via WebSocket/PTY) must only be available when k13d is started with --experimental. Without the flag: no route, no UI button.",
+  "stories": [
+    {
+      "id": "US-001",
+      "title": "Add --experimental CLI flag",
+      "passes": true,
+      "acceptanceCriteria": [
+        "flag.Bool('experimental') is defined in cmd/kube-ai-dashboard-cli/main.go",
+        "K13D_EXPERIMENTAL env var is the fallback default",
+        "Experimental: *experimental is set on authOpts before calling runWebServer"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Thread experimental flag into Server struct",
+      "passes": true,
+      "acceptanceCriteria": [
+        "AuthOptions struct has Experimental bool field in pkg/web/auth_core.go",
+        "Server struct has experimental bool field in pkg/web/server.go",
+        "NewServerWithAuth sets s.experimental = authOpts.Experimental before returning"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Gate /api/tui/shell route registration",
+      "passes": true,
+      "acceptanceCriteria": [
+        "In pkg/web/routes.go, /api/tui/shell is only registered when s.experimental is true",
+        "HandleTUIShell in tui_shell_handler.go returns 403 if !s.experimental (defence in depth)"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Expose /api/features public endpoint",
+      "passes": true,
+      "acceptanceCriteria": [
+        "/api/features is registered as a public (no-auth) route in registerPublicRoutes",
+        "handleFeatures returns JSON {\"experimental\": true|false} reflecting s.experimental"
+      ]
+    },
+    {
+      "id": "US-005",
+      "title": "Hide TUI button in frontend unless experimental",
+      "passes": true,
+      "acceptanceCriteria": [
+        "ai-mode-selector div has id='ai-mode-selector' and style='display:none' in index.html",
+        "initExperimentalFeatures() fetches /api/features and shows selector only when experimental===true",
+        "initExperimentalFeatures is wired to window 'load' event in app.js"
+      ]
+    },
+    {
+      "id": "US-006",
+      "title": "Build and test pass",
+      "passes": true,
+      "acceptanceCriteria": [
+        "go build ./... succeeds with no errors",
+        "go vet ./... reports no issues",
+        "go test -race ./... passes"
+      ]
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import "net/http"
 func (s *Server) registerPublicRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/health", withRecovery(s.handleHealth))
 	mux.HandleFunc("/api/version", s.handleVersion)
+	mux.HandleFunc("/api/features", s.handleFeatures)
 
 	// Authentication (public for login/logout flow)
 	mux.HandleFunc("/api/auth/login", s.authManager.HandleLogin)
@@ -114,7 +115,9 @@ func (s *Server) registerK8sRoutes(mux *http.ServeMux) {
 	// WebSocket terminal (feature-gated)
 	terminalHandler := NewTerminalHandler(s.k8sClient)
 	mux.HandleFunc("/api/terminal/", auth(s.authorizer.FeatureMiddleware(FeatureTerminal)(terminalHandler.HandleTerminal)))
-	mux.HandleFunc("/api/tui/shell", auth(s.authorizer.FeatureMiddleware(FeatureHostTerminal)(s.HandleTUIShell)))
+	if s.experimental {
+		mux.HandleFunc("/api/tui/shell", auth(s.authorizer.FeatureMiddleware(FeatureHostTerminal)(s.HandleTUIShell)))
+	}
 
 	// GitOps status (ArgoCD / Flux)
 	mux.HandleFunc("/api/gitops/status", auth(s.handleGitOpsStatus))

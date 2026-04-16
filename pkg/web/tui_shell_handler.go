@@ -14,8 +14,13 @@ import (
 )
 
 // HandleTUIShell handles a WebSocket connection that provides a local shell on the host.
-// This is used for the "TUI Mode" in the AI panel.
+// This is used for the "TUI Mode" in the AI panel (experimental feature).
 func (s *Server) HandleTUIShell(w http.ResponseWriter, r *http.Request) {
+	if !s.experimental {
+		http.Error(w, "experimental features not enabled", http.StatusForbidden)
+		return
+	}
+
 	// Upgrade to WebSocket
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
