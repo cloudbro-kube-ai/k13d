@@ -177,9 +177,15 @@
     },
     {
       "path": "pkg/web/tui_shell_handler.go",
-      "accessCount": 9,
-      "lastAccessed": 1776318274619,
+      "accessCount": 13,
+      "lastAccessed": 1776319910005,
       "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 8,
+      "lastAccessed": 1776319828724,
+      "type": "directory"
     },
     {
       "path": "pkg/web/static/js/app.js",
@@ -192,12 +198,6 @@
       "accessCount": 6,
       "lastAccessed": 1776317225399,
       "type": "file"
-    },
-    {
-      "path": "",
-      "accessCount": 6,
-      "lastAccessed": 1776318588049,
-      "type": "directory"
     },
     {
       "path": "pkg/web/routes.go",
@@ -263,6 +263,12 @@
       "path": "cmd/kubectl-k13d/main.go",
       "accessCount": 1,
       "lastAccessed": 1776315993764,
+      "type": "file"
+    },
+    {
+      "path": ".golangci.yml",
+      "accessCount": 1,
+      "lastAccessed": 1776319766227,
       "type": "file"
     }
   ],

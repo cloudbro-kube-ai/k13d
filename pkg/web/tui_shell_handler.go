@@ -27,17 +27,11 @@ func (s *Server) HandleTUIShell(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// Choose shell
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		shell = "/bin/bash"
-		if _, err := os.Stat(shell); err != nil {
-			shell = "/bin/sh"
-		}
-	}
+	// Choose shell — validate against known safe shells to prevent command injection (gosec G204)
+	shell := resolveShell(os.Getenv("SHELL"))
 
 	// Create command
-	cmd := exec.Command(shell)
+	cmd := exec.Command(shell) // #nosec G204 -- shell is validated against an allowlist
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 
 	// Start the command with a pty
@@ -109,4 +103,34 @@ loop:
 			_ = writeMsg("pong", "")
 		}
 	}
+}
+
+// resolveShell returns a validated shell path from the given candidate.
+// Only known safe absolute paths are accepted; falls back to /bin/sh.
+func resolveShell(candidate string) string {
+	allowed := []string{
+		"/bin/sh",
+		"/bin/bash",
+		"/bin/zsh",
+		"/bin/fish",
+		"/usr/bin/sh",
+		"/usr/bin/bash",
+		"/usr/bin/zsh",
+		"/usr/bin/fish",
+		"/usr/local/bin/bash",
+		"/usr/local/bin/zsh",
+		"/usr/local/bin/fish",
+	}
+	for _, s := range allowed {
+		if candidate == s {
+			return s
+		}
+	}
+	// fallback
+	for _, s := range []string{"/bin/bash", "/bin/sh"} {
+		if _, err := os.Stat(s); err == nil {
+			return s
+		}
+	}
+	return "/bin/sh"
 }
