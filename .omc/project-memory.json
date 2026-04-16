@@ -1,0 +1,276 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1776314952047,
+  "projectRoot": "/Users/baeseoeun/workspace/k13d",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Go",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "go.mod"
+        ]
+      },
+      {
+        "name": "C/C++",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "Makefile"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "go",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "make build",
+    "testCommand": "make test",
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "scripts",
+      "tests"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "benchmarks": {
+      "path": "benchmarks",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1776314952024,
+      "keyFiles": [
+        "README.md",
+        "model_hints.yaml"
+      ]
+    },
+    "build": {
+      "path": "build",
+      "purpose": "Build output",
+      "fileCount": 2,
+      "lastAccessed": 1776314952028,
+      "keyFiles": [
+        "k13d",
+        "k13d.log"
+      ]
+    },
+    "cmd": {
+      "path": "cmd",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1776314952028,
+      "keyFiles": []
+    },
+    "deploy": {
+      "path": "deploy",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1776314952029,
+      "keyFiles": []
+    },
+    "docs-site": {
+      "path": "docs-site",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1776314952029,
+      "keyFiles": [
+        "mkdocs.yml",
+        "requirements.txt"
+      ]
+    },
+    "internal": {
+      "path": "internal",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1776314952030,
+      "keyFiles": []
+    },
+    "pkg": {
+      "path": "pkg",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1776314952030,
+      "keyFiles": []
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 5,
+      "lastAccessed": 1776314952031,
+      "keyFiles": [
+        "build-frontend.go",
+        "build-llm-bundle.sh",
+        "docker-test.sh",
+        "download-trivy.sh",
+        "package-helm.sh"
+      ]
+    },
+    "skills": {
+      "path": "skills",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1776314952031,
+      "keyFiles": []
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 0,
+      "lastAccessed": 1776314952031,
+      "keyFiles": []
+    },
+    "docs-site/docs": {
+      "path": "docs-site/docs",
+      "purpose": "Documentation",
+      "fileCount": 1,
+      "lastAccessed": 1776314952032,
+      "keyFiles": [
+        "index.md"
+      ]
+    },
+    "pkg/config": {
+      "path": "pkg/config",
+      "purpose": "Configuration files",
+      "fileCount": 12,
+      "lastAccessed": 1776314952032,
+      "keyFiles": [
+        "aliases.go",
+        "aliases_test.go",
+        "config.go"
+      ]
+    },
+    "tests/mocks": {
+      "path": "tests/mocks",
+      "purpose": "Mock data",
+      "fileCount": 2,
+      "lastAccessed": 1776314952033,
+      "keyFiles": [
+        "Dockerfile.openai",
+        "mock_openai.go"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "pkg/web/server.go",
+      "accessCount": 15,
+      "lastAccessed": 1776317247456,
+      "type": "file"
+    },
+    {
+      "path": "pkg/web/tui_shell_handler.go",
+      "accessCount": 13,
+      "lastAccessed": 1776319910005,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 8,
+      "lastAccessed": 1776319828724,
+      "type": "directory"
+    },
+    {
+      "path": "pkg/web/static/js/app.js",
+      "accessCount": 7,
+      "lastAccessed": 1776316864666,
+      "type": "directory"
+    },
+    {
+      "path": "cmd/kube-ai-dashboard-cli/main.go",
+      "accessCount": 6,
+      "lastAccessed": 1776317225399,
+      "type": "file"
+    },
+    {
+      "path": "pkg/web/routes.go",
+      "accessCount": 5,
+      "lastAccessed": 1776316740461,
+      "type": "file"
+    },
+    {
+      "path": "pkg/web/authz.go",
+      "accessCount": 5,
+      "lastAccessed": 1776316821892,
+      "type": "file"
+    },
+    {
+      "path": "pkg/web",
+      "accessCount": 4,
+      "lastAccessed": 1776317259311,
+      "type": "directory"
+    },
+    {
+      "path": "pkg/web/auth_core.go",
+      "accessCount": 3,
+      "lastAccessed": 1776316731390,
+      "type": "file"
+    },
+    {
+      "path": "pkg/ui",
+      "accessCount": 2,
+      "lastAccessed": 1776315077799,
+      "type": "directory"
+    },
+    {
+      "path": "pkg/web/static/index.html",
+      "accessCount": 2,
+      "lastAccessed": 1776316135434,
+      "type": "file"
+    },
+    {
+      "path": "pkg/web/terminal.go",
+      "accessCount": 2,
+      "lastAccessed": 1776316752809,
+      "type": "file"
+    },
+    {
+      "path": "pkg/ui/app.go",
+      "accessCount": 1,
+      "lastAccessed": 1776315077994,
+      "type": "file"
+    },
+    {
+      "path": "pkg/ui/ai_panel.go",
+      "accessCount": 1,
+      "lastAccessed": 1776315714262,
+      "type": "file"
+    },
+    {
+      "path": "pkg/web/static",
+      "accessCount": 1,
+      "lastAccessed": 1776315970285,
+      "type": "directory"
+    },
+    {
+      "path": "cmd/kubectl-k13d/main.go",
+      "accessCount": 1,
+      "lastAccessed": 1776315993764,
+      "type": "file"
+    },
+    {
+      "path": ".golangci.yml",
+      "accessCount": 1,
+      "lastAccessed": 1776319766227,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

@@ -58,6 +58,9 @@ func main() {
 	disableDB := flag.Bool("no-db", cli.EnvBoolDefault("K13D_NO_DB", false), "Disable database persistence entirely")
 	showStorageInfo := flag.Bool("storage-info", false, "Show storage configuration and data locations")
 
+	// Experimental features flag
+	experimental := flag.Bool("experimental", cli.EnvBoolDefault("K13D_EXPERIMENTAL", false), "Enable experimental features (unstable, subject to change)")
+
 	flag.Parse()
 
 	if *configPath != "" {
@@ -136,6 +139,7 @@ func main() {
 			Disabled:        *authDisabled,
 			DefaultAdmin:    *adminUser,
 			DefaultPassword: *adminPass,
+			Experimental:    *experimental,
 		}
 		runWebServer(cfg, *webPort, authOpts)
 		return

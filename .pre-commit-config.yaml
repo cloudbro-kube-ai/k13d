@@ -12,6 +12,12 @@ repos:
         language: system
         pass_filenames: false
         files: \.go$
+      - id: golangci-lint
+        name: golangci-lint
+        entry: golangci-lint run --config .golangci.yml
+        language: system
+        pass_filenames: false
+        files: \.go$
 
   # Secrets detection - blocks commits with leaked credentials
   - repo: https://github.com/gitleaks/gitleaks

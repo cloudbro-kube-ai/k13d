@@ -1099,7 +1099,8 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 		"ollama":  true,
 		"litellm": true,
 	}
-	if provider != "" && (apiKey != "" || noKeyProviders[provider]) {
+	switch {
+	case provider != "" && (apiKey != "" || noKeyProviders[provider]):
 		// Create temporary client with provided config
 		tempConfig := config.LLMConfig{
 			Provider: provider,
@@ -1118,9 +1119,9 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-	} else if s.aiClient != nil {
+	case s.aiClient != nil:
 		client = s.aiClient
-	} else {
+	default:
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"models": []string{},
 			"error":  "No AI client configured",

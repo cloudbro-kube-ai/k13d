@@ -41,11 +41,12 @@ func GetDaemonSetsView(ctx context.Context, client *k8s.Client, namespace, filte
 
 		// Status color
 		color := tcell.ColorWhite
-		if ds.Status.NumberReady == ds.Status.DesiredNumberScheduled && ds.Status.DesiredNumberScheduled > 0 {
+		switch {
+		case ds.Status.NumberReady == ds.Status.DesiredNumberScheduled && ds.Status.DesiredNumberScheduled > 0:
 			color = tcell.ColorGreen
-		} else if ds.Status.NumberReady == 0 && ds.Status.DesiredNumberScheduled > 0 {
+		case ds.Status.NumberReady == 0 && ds.Status.DesiredNumberScheduled > 0:
 			color = tcell.ColorRed
-		} else if ds.Status.NumberReady < ds.Status.DesiredNumberScheduled {
+		case ds.Status.NumberReady < ds.Status.DesiredNumberScheduled:
 			color = tcell.ColorYellow
 		}
 

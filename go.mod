@@ -3,11 +3,12 @@
 // The module works correctly despite the cosmetic typo.
 module github.com/cloudbro-kube-ai/k13d
 
-go 1.25.8
+go 1.25.9
 
 require (
 	github.com/adrg/xdg v0.5.3
 	github.com/cenkalti/backoff/v4 v4.3.0
+	github.com/creack/pty v1.1.24
 	github.com/gdamore/tcell/v2 v2.13.8
 	github.com/go-ldap/ldap/v3 v3.4.12
 	github.com/go-sql-driver/mysql v1.9.3

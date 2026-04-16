@@ -221,12 +221,13 @@ func (s *Server) handleNetworkPolicyVisualization(w http.ResponseWriter, r *http
 		for _, ingress := range np.Spec.Ingress {
 			ports := formatPolicyPorts(ingress.Ports)
 			for _, from := range ingress.From {
-				rule := ""
-				if from.PodSelector != nil {
+				var rule string
+				switch {
+				case from.PodSelector != nil:
 					rule = "From pods: " + formatSelector(from.PodSelector.MatchLabels)
-				} else if from.NamespaceSelector != nil {
+				case from.NamespaceSelector != nil:
 					rule = "From ns: " + formatSelector(from.NamespaceSelector.MatchLabels)
-				} else if from.IPBlock != nil {
+				case from.IPBlock != nil:
 					rule = "From IP: " + from.IPBlock.CIDR
 				}
 				if rule != "" && ports != "all" {
@@ -243,12 +244,13 @@ func (s *Server) handleNetworkPolicyVisualization(w http.ResponseWriter, r *http
 		for _, egress := range np.Spec.Egress {
 			ports := formatPolicyPorts(egress.Ports)
 			for _, to := range egress.To {
-				rule := ""
-				if to.PodSelector != nil {
+				var rule string
+				switch {
+				case to.PodSelector != nil:
 					rule = "To pods: " + formatSelector(to.PodSelector.MatchLabels)
-				} else if to.NamespaceSelector != nil {
+				case to.NamespaceSelector != nil:
 					rule = "To ns: " + formatSelector(to.NamespaceSelector.MatchLabels)
-				} else if to.IPBlock != nil {
+				case to.IPBlock != nil:
 					rule = "To IP: " + to.IPBlock.CIDR
 				}
 				if rule != "" && ports != "all" {

@@ -6943,3 +6943,205 @@ async function runAutoTroubleshoot() {
         sendMessage();
     }
 }
+
+// ==========================================
+// TUI Mode (Local Host Shell)
+// ==========================================
+let currentTuiTerminal = null;
+let currentTuiWs = null;
+let tuiFitAddon = null;
+let currentAIMode = 'chat'; // 'chat' or 'tui'
+
+function setAIMode(mode) {
+    if (currentAIMode === mode) return;
+    currentAIMode = mode;
+
+    const chatBtn = document.getElementById('ai-btn-chat');
+    const tuiBtn = document.getElementById('ai-btn-tui');
+    const aiMessages = document.getElementById('ai-messages');
+    const tuiPanel = document.getElementById('ai-tui-panel');
+    const inputContainer = document.getElementById('ai-input-container');
+    const contextChips = document.getElementById('context-chips');
+    const guardrails = document.getElementById('guardrails-status');
+
+    if (mode === 'tui') {
+        chatBtn.classList.remove('active');
+        tuiBtn.classList.add('active');
+        aiMessages.style.display = 'none';
+        tuiPanel.style.display = 'flex';
+        if (inputContainer) {
+            inputContainer.style.visibility = 'hidden';
+            inputContainer.style.height = '0';
+            inputContainer.style.padding = '0';
+            inputContainer.style.margin = '0';
+        }
+        if (contextChips) contextChips.style.display = 'none';
+        if (guardrails) guardrails.style.display = 'none';
+        initTuiTerminal();
+    } else {
+        chatBtn.classList.add('active');
+        tuiBtn.classList.remove('active');
+        aiMessages.style.display = 'block';
+        tuiPanel.style.display = 'none';
+        if (inputContainer) {
+            inputContainer.style.visibility = 'visible';
+            inputContainer.style.height = '';
+            inputContainer.style.padding = '';
+            inputContainer.style.margin = '';
+        }
+        if (contextChips) contextChips.style.display = 'flex';
+        if (guardrails) guardrails.style.display = 'flex';
+        closeTuiTerminal();
+    }
+}
+
+function initTuiTerminal() {
+    if (currentTuiTerminal) return;
+
+    const container = document.getElementById('ai-tui-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // Standard k13d terminal theme
+    const theme = {
+        background: '#1a1b26',
+        foreground: '#c0caf5',
+        cursor: '#c0caf5',
+        selection: '#33467c',
+        black: '#15161e',
+        red: '#f7768e',
+        green: '#9ece6a',
+        yellow: '#e0af68',
+        blue: '#7aa2f7',
+        magenta: '#bb9af7',
+        cyan: '#7dcfff',
+        white: '#a9b1d6'
+    };
+
+    if (typeof Terminal === 'undefined') {
+        console.error('xterm.js (Terminal) not loaded');
+        return;
+    }
+
+    currentTuiTerminal = new Terminal({
+        cursorBlink: true,
+        fontSize: 12,
+        fontFamily: "'SF Mono', 'Monaco', 'Menlo', monospace",
+        theme: theme
+    });
+
+    if (typeof FitAddon !== 'undefined') {
+        tuiFitAddon = new FitAddon.FitAddon();
+        currentTuiTerminal.loadAddon(tuiFitAddon);
+    }
+
+    if (typeof WebLinksAddon !== 'undefined') {
+        currentTuiTerminal.loadAddon(new WebLinksAddon.WebLinksAddon());
+    }
+
+    currentTuiTerminal.open(container);
+    if (tuiFitAddon) {
+        setTimeout(() => tuiFitAddon.fit(), 100);
+    }
+
+    connectTuiWs();
+}
+
+function connectTuiWs() {
+    if (currentTuiWs) {
+        currentTuiWs.onclose = null;
+        currentTuiWs.close();
+    }
+
+    const overlay = document.getElementById('ai-tui-overlay');
+    const status = document.getElementById('ai-tui-status');
+    if (overlay) overlay.style.display = 'flex';
+    if (status) status.textContent = 'Connecting to host shell...';
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // Use token if available
+    const token = (typeof authToken !== 'undefined') ? authToken : localStorage.getItem('k13d-token');
+    const wsQuery = (token && token !== 'anonymous') ? '?token=' + encodeURIComponent(token) : '';
+    const wsUrl = `${wsProtocol}//${window.location.host}/api/tui/shell${wsQuery}`;
+
+    currentTuiWs = new WebSocket(wsUrl);
+
+    currentTuiWs.onopen = () => {
+        if (overlay) overlay.style.display = 'none';
+        currentTuiTerminal.writeln('\x1b[32m● Host terminal connected\x1b[0m');
+        
+        if (tuiFitAddon) {
+            const dims = tuiFitAddon.proposeDimensions();
+            if (dims) {
+                currentTuiWs.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }));
+            }
+        }
+    };
+
+    currentTuiWs.onmessage = (event) => {
+        try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'output') {
+                currentTuiTerminal.write(msg.data);
+            } else if (msg.type === 'error') {
+                currentTuiTerminal.writeln('\x1b[31mError: ' + msg.data + '\x1b[0m');
+            }
+        } catch (e) {
+            currentTuiTerminal.write(event.data);
+        }
+    };
+
+    currentTuiWs.onclose = () => {
+        if (currentAIMode === 'tui') {
+            if (overlay) overlay.style.display = 'flex';
+            if (status) status.textContent = 'Connection closed. Reconnect in 2s...';
+            setTimeout(connectTuiWs, 2000);
+        }
+    };
+
+    currentTuiTerminal.onData((data) => {
+        if (currentTuiWs && currentTuiWs.readyState === WebSocket.OPEN) {
+            currentTuiWs.send(JSON.stringify({ type: 'input', data: data }));
+        }
+    });
+
+    window.addEventListener('resize', handleTuiResize);
+}
+
+function handleTuiResize() {
+    if (tuiFitAddon && currentTuiTerminal) {
+        tuiFitAddon.fit();
+        const dims = tuiFitAddon.proposeDimensions();
+        if (dims && currentTuiWs && currentTuiWs.readyState === WebSocket.OPEN) {
+            currentTuiWs.send(JSON.stringify({ type: 'resize', cols: dims.cols, rows: dims.rows }));
+        }
+    }
+}
+
+function closeTuiTerminal() {
+    if (currentTuiWs) {
+        currentTuiWs.onclose = null;
+        currentTuiWs.close();
+        currentTuiWs = null;
+    }
+    if (currentTuiTerminal) {
+        currentTuiTerminal.dispose();
+        currentTuiTerminal = null;
+    }
+    window.removeEventListener('resize', handleTuiResize);
+}
+
+async function initExperimentalFeatures() {
+    try {
+        const resp = await fetch('/api/features');
+        if (!resp.ok) return;
+        const features = await resp.json();
+        if (features.experimental) {
+            const selector = document.getElementById('ai-mode-selector');
+            if (selector) selector.style.display = '';
+        }
+    } catch (e) {
+        // ignore — experimental features simply stay hidden
+    }
+}
+window.addEventListener('load', initExperimentalFeatures);

@@ -783,9 +783,12 @@
                         <button class="chat-history-toggle" id="chat-history-toggle" onclick="toggleChatHistory()"
                             title="Chat History">📋</button>
                         <span>AI Assistant</span>
+                        <div class="ai-mode-selector" id="ai-mode-selector" style="display:none">
+                            <button class="ai-mode-btn active" id="ai-btn-chat" onclick="setAIMode('chat')" title="Chat View">Chat</button>
+                            <button class="ai-mode-btn" id="ai-btn-tui" onclick="setAIMode('tui')" title="Terminal View">TUI</button>
+                        </div>
                         <span class="ai-status-dot" id="ai-status-dot" title="Checking connection...">●</span>
                         <span class="ai-badge" id="ai-model-badge" style="cursor:pointer;" onclick="openAIModelSettings()" title="Click to change model settings">Loading...</span>
-                        <!-- <span style="cursor:pointer;opacity:0.6;font-size:12px;" onclick="openAIModelSettings()" title="AI Model Settings">⚙️</span> -->
                         <button class="debug-toggle" id="debug-toggle" onclick="toggleDebugMode()"
                             style="margin-left: auto;" title="Toggle Debug Mode">🐛 Debug</button>
                     </div>
@@ -813,6 +816,15 @@
                                 <br>- "Scale deployment to 3 replicas"
                                 <br><br>
                                 <strong>Tip:</strong> Click any resource row to add it as context for AI analysis!
+                            </div>
+                        </div>
+                    </div>
+                    <!-- TUI Panel (Host Terminal) -->
+                    <div id="ai-tui-panel" style="display: none; flex: 1; min-height: 0; background: #1a1b26; position: relative; overflow: hidden;">
+                        <div id="ai-tui-container" style="width: 100%; height: 100%;"></div>
+                        <div id="ai-tui-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10; display: none;">
+                            <div style="background: var(--bg-primary); padding: 12px 20px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <span id="ai-tui-status">Connecting...</span>
                             </div>
                         </div>
                     </div>

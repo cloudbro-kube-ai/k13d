@@ -155,11 +155,12 @@ func (s *Server) fetchPulseData(ctx context.Context, namespace string) WebPulseD
 	if jobs, err := k.ListJobs(ctx, namespace); err == nil {
 		data.JobsTotal = len(jobs)
 		for _, job := range jobs {
-			if job.Status.Succeeded > 0 && job.Status.Active == 0 {
+			switch {
+			case job.Status.Succeeded > 0 && job.Status.Active == 0:
 				data.JobsComplete++
-			} else if job.Status.Failed > 0 && job.Status.Active == 0 {
+			case job.Status.Failed > 0 && job.Status.Active == 0:
 				data.JobsFailed++
-			} else if job.Status.Active > 0 {
+			case job.Status.Active > 0:
 				data.JobsActive++
 			}
 		}
