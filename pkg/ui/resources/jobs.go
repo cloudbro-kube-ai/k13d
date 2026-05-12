@@ -44,11 +44,12 @@ func GetJobsView(ctx context.Context, client *k8s.Client, namespace, filter stri
 
 		// Status color
 		color := tcell.ColorWhite
-		if succeeded >= completions {
+		switch {
+		case succeeded >= completions:
 			color = tcell.ColorGreen
-		} else if job.Status.Failed > 0 {
+		case job.Status.Failed > 0:
 			color = tcell.ColorRed
-		} else if job.Status.Active > 0 {
+		case job.Status.Active > 0:
 			color = tcell.ColorYellow
 		}
 

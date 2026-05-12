@@ -5,6 +5,17 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-04-13
+
+### Security
+- **Go Standard Library**: Upgraded Go version from `1.25.8` to `1.25.9` to resolve standard library vulnerabilities:
+  - [GO-2026-4869](https://pkg.go.dev/vuln/GO-2026-4869): Unbounded allocation in `archive/tar`
+  - Multiple TLS-related vulnerabilities affecting standard HTTP/LDAP clients
+
+### Changed
+- **CI/CD**: Updated all GitHub Action workflows and Docker base image to Go `1.25.9`
+- **Linting**: Added `golangci-lint` to pre-commit hooks for consistent local quality checks
+
 ## [1.0.0] - 2026-04-03
 
 ### Added

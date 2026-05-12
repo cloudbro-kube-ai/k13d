@@ -163,14 +163,15 @@ func (a *Analyzer) analyzeKubectl(report *Report, parsed *ParsedCommand) {
 	}
 
 	// Check verb type
-	if a.readOnlyVerbs[verb] {
+	switch {
+	case a.readOnlyVerbs[verb]:
 		report.Type = TypeReadOnly
 		report.IsReadOnly = true
 		// Read-only doesn't require approval by default
-	} else if a.writeVerbs[verb] {
+	case a.writeVerbs[verb]:
 		report.Type = TypeWrite
 		report.RequiresApproval = true
-	} else {
+	default:
 		report.Type = TypeUnknown
 		report.RequiresApproval = true
 	}
@@ -219,13 +220,14 @@ func (a *Analyzer) analyzeHelm(report *Report, parsed *ParsedCommand) {
 		"rollback":  true,
 	}
 
-	if readOnlyHelmVerbs[verb] {
+	switch {
+	case readOnlyHelmVerbs[verb]:
 		report.Type = TypeReadOnly
 		report.IsReadOnly = true
-	} else if writeHelmVerbs[verb] {
+	case writeHelmVerbs[verb]:
 		report.Type = TypeWrite
 		report.RequiresApproval = true
-	} else {
+	default:
 		report.Type = TypeUnknown
 		report.RequiresApproval = true
 	}

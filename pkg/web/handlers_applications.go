@@ -296,13 +296,14 @@ func (s *Server) buildApplicationGroups(ctx context.Context, namespace string) (
 
 	// Calculate status
 	for _, g := range groupMap {
-		if g.PodCount == 0 {
+		switch {
+		case g.PodCount == 0:
 			g.Status = "healthy"
-		} else if g.ReadyPods == g.PodCount {
+		case g.ReadyPods == g.PodCount:
 			g.Status = "healthy"
-		} else if g.ReadyPods == 0 {
+		case g.ReadyPods == 0:
 			g.Status = "failing"
-		} else {
+		default:
 			g.Status = "degraded"
 		}
 	}

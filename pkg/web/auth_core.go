@@ -79,6 +79,7 @@ type AuthOptions struct {
 	Disabled        bool   // Disable authentication entirely
 	DefaultAdmin    string // Default admin username for local mode
 	DefaultPassword string // Default admin password for local mode
+	Experimental    bool   // Enable experimental features (unstable)
 }
 
 // NewAuthManager creates a new AuthManager

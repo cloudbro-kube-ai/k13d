@@ -121,11 +121,12 @@ func (s *Server) handleClusterMetricsHistory(w http.ResponseWriter, r *http.Requ
 
 	// Parse query parameters - support both minutes and hours
 	minutes := 5 // Default to 5 minutes
-	if m := r.URL.Query().Get("minutes"); m != "" {
-		_, _ = fmt.Sscanf(m, "%d", &minutes)
-	} else if h := r.URL.Query().Get("hours"); h != "" {
+	switch {
+	case r.URL.Query().Get("minutes") != "":
+		_, _ = fmt.Sscanf(r.URL.Query().Get("minutes"), "%d", &minutes)
+	case r.URL.Query().Get("hours") != "":
 		var hours int
-		_, _ = fmt.Sscanf(h, "%d", &hours)
+		_, _ = fmt.Sscanf(r.URL.Query().Get("hours"), "%d", &hours)
 		minutes = hours * 60
 	}
 	limit := 1000
@@ -188,11 +189,12 @@ func (s *Server) handleNodeMetricsHistory(w http.ResponseWriter, r *http.Request
 
 	// Parse query parameters - support both minutes and hours
 	minutes := 5 // Default to 5 minutes
-	if m := r.URL.Query().Get("minutes"); m != "" {
-		_, _ = fmt.Sscanf(m, "%d", &minutes)
-	} else if h := r.URL.Query().Get("hours"); h != "" {
+	switch {
+	case r.URL.Query().Get("minutes") != "":
+		_, _ = fmt.Sscanf(r.URL.Query().Get("minutes"), "%d", &minutes)
+	case r.URL.Query().Get("hours") != "":
 		var hours int
-		_, _ = fmt.Sscanf(h, "%d", &hours)
+		_, _ = fmt.Sscanf(r.URL.Query().Get("hours"), "%d", &hours)
 		minutes = hours * 60
 	}
 	limit := 1000
@@ -259,11 +261,12 @@ func (s *Server) handlePodMetricsHistory(w http.ResponseWriter, r *http.Request)
 
 	// Parse query parameters - support both minutes and hours
 	minutes := 5 // Default to 5 minutes
-	if m := r.URL.Query().Get("minutes"); m != "" {
-		_, _ = fmt.Sscanf(m, "%d", &minutes)
-	} else if h := r.URL.Query().Get("hours"); h != "" {
+	switch {
+	case r.URL.Query().Get("minutes") != "":
+		_, _ = fmt.Sscanf(r.URL.Query().Get("minutes"), "%d", &minutes)
+	case r.URL.Query().Get("hours") != "":
 		var hours int
-		_, _ = fmt.Sscanf(h, "%d", &hours)
+		_, _ = fmt.Sscanf(r.URL.Query().Get("hours"), "%d", &hours)
 		minutes = hours * 60
 	}
 	limit := 1000
@@ -356,21 +359,23 @@ func (s *Server) handleAggregatedMetrics(w http.ResponseWriter, r *http.Request)
 
 	// Parse query parameters - support both minutes and hours
 	minutes := 5 // Default to 5 minutes
-	if m := r.URL.Query().Get("minutes"); m != "" {
-		_, _ = fmt.Sscanf(m, "%d", &minutes)
-	} else if h := r.URL.Query().Get("hours"); h != "" {
+	switch {
+	case r.URL.Query().Get("minutes") != "":
+		_, _ = fmt.Sscanf(r.URL.Query().Get("minutes"), "%d", &minutes)
+	case r.URL.Query().Get("hours") != "":
 		var hours int
-		_, _ = fmt.Sscanf(h, "%d", &hours)
+		_, _ = fmt.Sscanf(r.URL.Query().Get("hours"), "%d", &hours)
 		minutes = hours * 60
 	}
 	interval := r.URL.Query().Get("interval")
 	if interval == "" {
 		// Auto-select interval based on time range
-		if minutes <= 60 {
+		switch {
+		case minutes <= 60:
 			interval = "minute"
-		} else if minutes <= 1440 { // 24 hours
+		case minutes <= 1440: // 24 hours
 			interval = "hour"
-		} else {
+		default:
 			interval = "day"
 		}
 	}

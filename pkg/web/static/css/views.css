@@ -1842,6 +1842,49 @@
             display: none;
         }
 
+        .ai-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            background: var(--surface-secondary);
+            border-bottom: 1px solid var(--border-color);
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .ai-mode-selector {
+            display: flex;
+            gap: 2px;
+            margin-left: 8px;
+            background: var(--bg-tertiary);
+            padding: 2px;
+            border-radius: 6px;
+            border: 1px solid rgba(122, 162, 247, 0.1);
+        }
+
+        .ai-mode-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .ai-mode-btn:hover {
+            color: var(--text-primary);
+            background: rgba(122, 162, 247, 0.1);
+        }
+
+        .ai-mode-btn.active {
+            background: var(--accent-blue);
+            color: #1a1b26;
+            font-weight: 600;
+        }
+
         .search-result-item {
             display: flex;
             align-items: center;

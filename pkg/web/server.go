@@ -80,6 +80,9 @@ type Server struct {
 	// Port forwarding sessions
 	portForwardSessions map[string]*PortForwardSession
 	pfMutex             sync.Mutex
+
+	// Feature flags
+	experimental bool // true when --experimental flag is passed
 }
 
 // PendingToolApproval represents a tool call waiting for user approval
@@ -163,7 +166,12 @@ func NewServerWithAuth(cfg *config.Config, port int, authOpts *AuthOptions, vers
 		authConfig.DefaultPassword = authOpts.DefaultPassword
 	}
 
-	return newServer(cfg, port, authConfig, versionInfo)
+	s, err := newServer(cfg, port, authConfig, versionInfo)
+	if err != nil {
+		return nil, err
+	}
+	s.experimental = authOpts.Experimental
+	return s, nil
 }
 
 // newServer contains the shared initialization logic for both constructors.
@@ -188,12 +196,13 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, versionInfo
 	fmt.Printf("  Login UI: %s\n", describeLoginUI(authConfig))
 
 	aiClient, ready, err := createUsableAIClient(&cfg.LLM)
-	if err != nil {
+	switch {
+	case err != nil:
 		fmt.Printf("  AI client creation failed: %v\n", err)
 		aiClient = nil
-	} else if ready {
+	case ready:
 		fmt.Printf("  AI client: Ready\n")
-	} else {
+	default:
 		aiClient = nil
 		fmt.Printf("  AI client: Not configured (missing endpoint or credentials)\n")
 	}
@@ -946,4 +955,11 @@ func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(info)
+}
+
+func (s *Server) handleFeatures(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]bool{
+		"experimental": s.experimental,
+	})
 }
