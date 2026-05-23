@@ -35,6 +35,7 @@ func TestHandleGitHubAutomationWebhookAccepted(t *testing.T) {
 			"title":"Automate me",
 			"body":"Please automate",
 			"html_url":"https://github.com/cloudbro-kube-ai/k13d/issues/1",
+			"author_association":"MEMBER",
 			"user":{"login":"alice"},
 			"labels":[{"name":"codex:auto"}]
 		}
@@ -98,6 +99,35 @@ func TestHandleGitHubAutomationJobNotFound(t *testing.T) {
 	s.handleGitHubAutomationJob(rec, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestHandleGitHubAutomationStatusRedactsSecrets(t *testing.T) {
+	cfg := config.NewDefaultConfig()
+	cfg.GitHub.Enabled = true
+	cfg.GitHub.WebhookSecret = "webhook-secret-value"
+	cfg.GitHub.PersonalAccessToken = "github_pat_abcdefghijklmnopqrstuvwxyz123456"
+	cfg.GitHub.DevelopmentCommand = []string{"sh", "-c", "echo github_pat_abcdefghijklmnopqrstuvwxyz123456"}
+
+	manager, err := automation.NewManager(cfg.GitHub)
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	defer manager.Close()
+
+	s := &Server{cfg: cfg, automation: manager}
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/github-automation/status", nil)
+	rec := httptest.NewRecorder()
+	s.handleGitHubAutomationStatus(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	if bytes.Contains([]byte(body), []byte(cfg.GitHub.WebhookSecret)) || bytes.Contains([]byte(body), []byte(cfg.GitHub.PersonalAccessToken)) {
+		t.Fatalf("status body leaked secret: %s", body)
+	}
+	if !bytes.Contains([]byte(body), []byte("personal_access_token_configured")) {
+		t.Fatalf("status body = %s, want configured flag", body)
 	}
 }
 

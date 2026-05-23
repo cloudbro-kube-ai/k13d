@@ -130,6 +130,12 @@ func TestNewDefaultConfig(t *testing.T) {
 	if !cfg.GitHub.AutoCreatePR {
 		t.Error("GitHub.AutoCreatePR should be true by default")
 	}
+	if cfg.GitHub.AllowIssueMerge {
+		t.Error("GitHub.AllowIssueMerge should be false by default")
+	}
+	if cfg.GitHub.MergeMethod != "squash" {
+		t.Errorf("GitHub.MergeMethod = %s, want squash", cfg.GitHub.MergeMethod)
+	}
 	if !cfg.GitHub.WaitForCI {
 		t.Error("GitHub.WaitForCI should be true by default")
 	}
@@ -138,6 +144,18 @@ func TestNewDefaultConfig(t *testing.T) {
 	}
 	if cfg.GitHub.CIPollIntervalSeconds != 10 {
 		t.Errorf("GitHub.CIPollIntervalSeconds = %d, want 10", cfg.GitHub.CIPollIntervalSeconds)
+	}
+	if !cfg.GitHub.RequireAuthorOrgMember {
+		t.Error("GitHub.RequireAuthorOrgMember should be true by default")
+	}
+	if !cfg.GitHub.MentionOrgMembers {
+		t.Error("GitHub.MentionOrgMembers should be true by default")
+	}
+	if cfg.GitHub.MentionMaxMembers != 20 {
+		t.Errorf("GitHub.MentionMaxMembers = %d, want 20", cfg.GitHub.MentionMaxMembers)
+	}
+	if cfg.GitHub.ReviewLanguage != "ko" {
+		t.Errorf("GitHub.ReviewLanguage = %s, want ko", cfg.GitHub.ReviewLanguage)
 	}
 	if cfg.GitHub.PreviewPathPrefix != "/previews" {
 		t.Errorf("GitHub.PreviewPathPrefix = %s, want /previews", cfg.GitHub.PreviewPathPrefix)
@@ -694,6 +712,12 @@ func TestApplyEnvOverrides_GitHubAutomation(t *testing.T) {
 	t.Setenv("K13D_GITHUB_AUTOMATION_TOKEN", "token")
 	t.Setenv("K13D_GITHUB_AUTOMATION_REPO_PATH", "/tmp/repo")
 	t.Setenv("K13D_GITHUB_AUTOMATION_TRIGGER_LABEL", "run:auto")
+	t.Setenv("K13D_GITHUB_AUTOMATION_REQUIRE_ORG_MEMBER", "false")
+	t.Setenv("K13D_GITHUB_AUTOMATION_MENTION_ORG_MEMBERS", "false")
+	t.Setenv("K13D_GITHUB_AUTOMATION_MENTION_MAX_MEMBERS", "7")
+	t.Setenv("K13D_GITHUB_AUTOMATION_REVIEW_LANGUAGE", "en")
+	t.Setenv("K13D_GITHUB_AUTOMATION_ALLOW_ISSUE_MERGE", "true")
+	t.Setenv("K13D_GITHUB_AUTOMATION_MERGE_METHOD", "rebase")
 	t.Setenv("K13D_GITHUB_AUTOMATION_WAIT_FOR_CI", "false")
 	t.Setenv("K13D_GITHUB_AUTOMATION_AUTO_DEPLOY_PREVIEW", "true")
 	t.Setenv("K13D_GITHUB_AUTOMATION_PREVIEW_URL_BASE", "https://fingerscore.net")
@@ -715,6 +739,24 @@ func TestApplyEnvOverrides_GitHubAutomation(t *testing.T) {
 	}
 	if cfg.GitHub.TriggerLabel != "run:auto" {
 		t.Fatalf("TriggerLabel = %s", cfg.GitHub.TriggerLabel)
+	}
+	if cfg.GitHub.RequireAuthorOrgMember {
+		t.Fatal("RequireAuthorOrgMember should be overridden to false")
+	}
+	if cfg.GitHub.MentionOrgMembers {
+		t.Fatal("MentionOrgMembers should be overridden to false")
+	}
+	if cfg.GitHub.MentionMaxMembers != 7 {
+		t.Fatalf("MentionMaxMembers = %d", cfg.GitHub.MentionMaxMembers)
+	}
+	if cfg.GitHub.ReviewLanguage != "en" {
+		t.Fatalf("ReviewLanguage = %s", cfg.GitHub.ReviewLanguage)
+	}
+	if !cfg.GitHub.AllowIssueMerge {
+		t.Fatal("AllowIssueMerge should be overridden to true")
+	}
+	if cfg.GitHub.MergeMethod != "rebase" {
+		t.Fatalf("MergeMethod = %s", cfg.GitHub.MergeMethod)
 	}
 	if cfg.GitHub.WaitForCI {
 		t.Fatal("WaitForCI should be overridden to false")

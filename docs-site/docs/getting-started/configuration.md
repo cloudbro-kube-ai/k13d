@@ -257,6 +257,8 @@ If you expose the Web UI directly on HTTPS, GitHub can call it with a standard w
 https://your-domain.example/api/github/automation/webhook
 ```
 
+Enable both **Issues** and **Issue comments** in the GitHub webhook. `issues` events start development runs, while `issue_comment` events handle natural-language review and merge requests.
+
 Recommended config:
 
 ```yaml
@@ -266,6 +268,10 @@ github_automation:
   personal_access_token: ${GITHUB_TOKEN}
   allowed_repositories:
     - cloudbro-kube-ai/k13d
+  require_author_org_member: true
+  mention_org_members: true
+  mention_max_members: 20
+  review_language: ko
   trigger_label: codex:auto
   base_branch: main
   remote: origin
@@ -284,6 +290,8 @@ github_automation:
   auto_commit: true
   auto_push: true
   auto_create_pr: true
+  allow_issue_merge: true
+  merge_method: squash
   pull_request_draft: true
   cleanup_worktrees: false
   max_concurrent_jobs: 1
@@ -295,8 +303,17 @@ Behavior summary:
 - Default trigger label: `codex:auto`
 - Webhook signature: validated with `X-Hub-Signature-256`
 - Repository gate: matched against `allowed_repositories`
-- Workspace isolation: each issue gets its own git worktree under `worktree_root`
-- PR/reporting: enabled when `personal_access_token` is configured
+- Author gate: `require_author_org_member: true` only runs issues opened by members of the repository owner organization
+- Reviewer notification: `mention_org_members: true` mentions organization members when a trusted issue is accepted
+- Assignment: trusted issues are assigned to the issue author
+- Reviewers: organization members are requested as reviewers on the generated or reused PR
+- Review language: `review_language: ko` makes built-in issue comments and PR review wrappers Korean
+- Codex review: `review_command: ./scripts/run-agent-review.sh` runs `codex exec review` and posts the result as a PR Review
+- Workspace isolation: each issue gets one stable git worktree under `worktree_root`
+- PR/reporting: one issue maps to one stable branch and one open PR when `personal_access_token` is configured
+- Issue review: organization members can comment `k13d 코드리뷰 해줘` on the issue to re-run the configured review command on the linked PR
+- Issue merge: `allow_issue_merge: true` lets trusted organization members comment `k13d merge 해줘` on the issue to merge the linked PR and close the issue as completed
+- Token safety: GitHub token env vars are not forwarded to agent commands, and captured output is redacted
 - CI gate: `wait_for_ci` waits for GitHub check runs on the pushed commit before review/deploy
 - Preview deploy: `deploy_preview_command` can expose branch previews through the same k13d domain
 
@@ -316,6 +333,7 @@ Behavior summary:
 | `{worktree}` | Issue-specific git worktree path |
 | `{branch}` | Generated branch name |
 | `{base_branch}` | Base branch used for the worktree |
+| `{review_language}` | Preferred review language, default `ko` |
 | `{preview_slug}` | URL-safe preview slug, available to `deploy_preview_command` |
 | `{preview_path}` | Preview path such as `/previews/codex-issue-123/` |
 | `{preview_url}` | Full preview URL when `preview_url_base` is configured |
@@ -362,8 +380,18 @@ Operational notes:
 - `development_command` is required when automation is enabled.
 - `repo_path` must point at the local clone that will be used as the source repo.
 - `personal_access_token` is optional for local execution, but required if you want automatic issue comments, draft PR creation, or PR reviews.
+- `require_author_org_member: true` needs either GitHub's `author_association` webhook value to be `OWNER`/`MEMBER` or a token with organization membership read access.
+- `mention_org_members: true` also needs a GitHub token that can list organization members; `mention_max_members` limits mention volume.
+- k13d assigns the issue author to the accepted issue and requests organization members as PR reviewers after the PR is created or reused.
+- Branch names are stable per issue number, for example `codex/issue-123`, so re-running automation for the same issue continues on the same branch and reuses the existing open PR.
+- `scripts/run-agent-review.sh` is the provided Codex review wrapper. It runs `codex exec review`, includes uncommitted changes when reviewing pre-commit automation output, and writes the last Codex message to stdout for PR Review creation.
+- Review commands are handled from `issue_comment` webhooks when the comment includes `k13d` and a review phrase such as `k13d 코드리뷰 해줘`, `k13d 리뷰해줘`, or `k13d review`.
+- `allow_issue_merge` is disabled by default. Enable it only when the token is scoped for the target repository and branch protection still enforces the checks/reviews you want.
+- Merge commands are handled from `issue_comment` webhooks. Supported natural-language examples include `k13d merge 해줘`, `k13d main에 merge 해줘`, and `k13d 병합해줘`. After GitHub accepts the merge, k13d closes the issue with `state_reason: completed`.
+- k13d removes GitHub token-like env vars from `development_command`, `review_command`, and `deploy_preview_command` environments, then redacts GitHub token patterns from captured logs before storing or commenting them.
+- `review_language: ko` is passed to commands as `{review_language}` and `K13D_GHA_REVIEW_LANGUAGE`; include it in your agent prompt if the external review command should also write Korean.
 - `wait_for_ci` also requires `personal_access_token` because k13d reads GitHub check runs through the GitHub API.
-- `deploy_preview_command` should start or update the branch preview and print `K13D_PREVIEW_TARGET=...` if you want k13d to reverse-proxy it.
+- `deploy_preview_command` should start or update the branch preview and print `K13D_PREVIEW_TARGET=...` if you want k13d to reverse-proxy it. When deployment succeeds, the completion comment includes the human verification link such as `https://fingerscore.net/previews/<branch>/`.
 - `cleanup_worktrees: false` is the safer starting point so you can inspect failed jobs.
 - Keep `max_concurrent_jobs` low unless your agent/runtime is known to be stable under parallel worktrees.
 

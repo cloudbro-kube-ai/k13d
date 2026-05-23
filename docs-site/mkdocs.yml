@@ -189,6 +189,7 @@ nav:
   - User Guide:
     - TUI Dashboard: user-guide/tui.md
     - Web Dashboard: user-guide/web.md
+    - GitHub Issue Automation: user-guide/github-issue-automation.md
     - Keyboard Shortcuts: user-guide/shortcuts.md
     - Reports: user-guide/reports.md
   - AI & LLM:
