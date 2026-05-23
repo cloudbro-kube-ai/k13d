@@ -13,21 +13,22 @@ import (
 )
 
 type Config struct {
-	LLM           LLMConfig           `yaml:"llm" json:"llm"`
-	Models        []ModelProfile      `yaml:"models" json:"models"`               // Multiple LLM model profiles
-	ActiveModel   string              `yaml:"active_model" json:"active_model"`   // Currently active model profile name
-	MCP           MCPConfig           `yaml:"mcp" json:"mcp"`                     // MCP server configuration
-	Storage       StorageConfig       `yaml:"storage" json:"storage"`             // Data storage configuration
-	Prometheus    PrometheusConfig    `yaml:"prometheus" json:"prometheus"`       // Prometheus integration configuration
-	Authorization AuthorizationConfig `yaml:"authorization" json:"authorization"` // RBAC authorization (Teleport-inspired)
-	Anonymization AnonymizationConfig `yaml:"anonymization" json:"anonymization"` // Data anonymization before LLM calls
-	Notifications NotificationsConfig `yaml:"notifications" json:"notifications"` // Event notification dispatch
-	ReportPath    string              `yaml:"report_path" json:"report_path"`
-	EnableAudit   bool                `yaml:"enable_audit" json:"enable_audit"`
-	Language      string              `yaml:"language" json:"language"`
-	BeginnerMode  bool                `yaml:"beginner_mode" json:"beginner_mode"`
-	LogLevel      string              `yaml:"log_level" json:"log_level"`
-	Timezone      string              `yaml:"timezone" json:"timezone"`
+	LLM           LLMConfig              `yaml:"llm" json:"llm"`
+	Models        []ModelProfile         `yaml:"models" json:"models"`             // Multiple LLM model profiles
+	ActiveModel   string                 `yaml:"active_model" json:"active_model"` // Currently active model profile name
+	MCP           MCPConfig              `yaml:"mcp" json:"mcp"`                   // MCP server configuration
+	GitHub        GitHubAutomationConfig `yaml:"github_automation" json:"github_automation"`
+	Storage       StorageConfig          `yaml:"storage" json:"storage"`             // Data storage configuration
+	Prometheus    PrometheusConfig       `yaml:"prometheus" json:"prometheus"`       // Prometheus integration configuration
+	Authorization AuthorizationConfig    `yaml:"authorization" json:"authorization"` // RBAC authorization (Teleport-inspired)
+	Anonymization AnonymizationConfig    `yaml:"anonymization" json:"anonymization"` // Data anonymization before LLM calls
+	Notifications NotificationsConfig    `yaml:"notifications" json:"notifications"` // Event notification dispatch
+	ReportPath    string                 `yaml:"report_path" json:"report_path"`
+	EnableAudit   bool                   `yaml:"enable_audit" json:"enable_audit"`
+	Language      string                 `yaml:"language" json:"language"`
+	BeginnerMode  bool                   `yaml:"beginner_mode" json:"beginner_mode"`
+	LogLevel      string                 `yaml:"log_level" json:"log_level"`
+	Timezone      string                 `yaml:"timezone" json:"timezone"`
 }
 
 // RuntimeSourceInfo describes where runtime configuration came from.
@@ -44,6 +45,7 @@ var (
 	userHomeDirFunc = os.UserHomeDir
 	xdgConfigHomeFn = func() string { return xdg.ConfigHome }
 	xdgDataHomeFn   = func() string { return xdg.DataHome }
+	xdgCacheHomeFn  = func() string { return xdg.CacheHome }
 	runtimeGOOS     = runtime.GOOS
 )
 
@@ -61,6 +63,29 @@ type NotificationsConfig struct {
 	Events       []string   `yaml:"events" json:"events"`
 	PollInterval int        `yaml:"poll_interval" json:"poll_interval"` // seconds, default 30
 	SMTP         SMTPConfig `yaml:"smtp" json:"smtp,omitempty"`
+}
+
+// GitHubAutomationConfig controls webhook-triggered issue automation that runs
+// local coding and review commands, then reports results back to GitHub.
+type GitHubAutomationConfig struct {
+	Enabled             bool     `yaml:"enabled" json:"enabled"`
+	WebhookSecret       string   `yaml:"webhook_secret" json:"-"`
+	PersonalAccessToken string   `yaml:"personal_access_token" json:"-"`
+	AllowedRepositories []string `yaml:"allowed_repositories" json:"allowed_repositories"`
+	TriggerLabel        string   `yaml:"trigger_label" json:"trigger_label"`
+	BaseBranch          string   `yaml:"base_branch" json:"base_branch"`
+	Remote              string   `yaml:"remote" json:"remote"`
+	RepoPath            string   `yaml:"repo_path" json:"repo_path"`
+	WorktreeRoot        string   `yaml:"worktree_root" json:"worktree_root"`
+	BranchPrefix        string   `yaml:"branch_prefix" json:"branch_prefix"`
+	DevelopmentCommand  []string `yaml:"development_command" json:"development_command"`
+	ReviewCommand       []string `yaml:"review_command" json:"review_command"`
+	AutoCommit          bool     `yaml:"auto_commit" json:"auto_commit"`
+	AutoPush            bool     `yaml:"auto_push" json:"auto_push"`
+	AutoCreatePR        bool     `yaml:"auto_create_pr" json:"auto_create_pr"`
+	PullRequestDraft    bool     `yaml:"pull_request_draft" json:"pull_request_draft"`
+	CleanupWorktrees    bool     `yaml:"cleanup_worktrees" json:"cleanup_worktrees"`
+	MaxConcurrentJobs   int      `yaml:"max_concurrent_jobs" json:"max_concurrent_jobs"`
 }
 
 // SMTPConfig holds email notification settings
@@ -396,6 +421,12 @@ func DefaultAuditFilePath() string {
 	return filepath.Join(xdgConfigHomeFn(), "k13d", "audit.log")
 }
 
+// DefaultGitHubAutomationWorktreeRoot returns the default scratch directory
+// used for GitHub issue automation worktrees.
+func DefaultGitHubAutomationWorktreeRoot() string {
+	return filepath.Join(xdgCacheHomeFn(), "k13d", "github-automation", "worktrees")
+}
+
 // DefaultSessionsPath returns the default sessions directory
 func DefaultSessionsPath() string {
 	return filepath.Join(xdgDataHomeFn(), "k13d", "sessions")
@@ -468,6 +499,20 @@ func NewDefaultConfig() *Config {
 		ActiveModel: "solar-pro2",
 		MCP: MCPConfig{
 			Servers: []MCPServer{},
+		},
+		GitHub: GitHubAutomationConfig{
+			Enabled:           false,
+			TriggerLabel:      "codex:auto",
+			BaseBranch:        "main",
+			Remote:            "origin",
+			WorktreeRoot:      DefaultGitHubAutomationWorktreeRoot(),
+			BranchPrefix:      "codex/issue-",
+			AutoCommit:        true,
+			AutoPush:          true,
+			AutoCreatePR:      true,
+			PullRequestDraft:  true,
+			CleanupWorktrees:  false,
+			MaxConcurrentJobs: 1,
 		},
 		Prometheus: PrometheusConfig{
 			ExposeMetrics:      false,
@@ -757,6 +802,21 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := os.Getenv("K13D_DEFAULT_ROLE"); v != "" {
 		cfg.Authorization.DefaultTUIRole = v
+	}
+	if v := os.Getenv("K13D_GITHUB_AUTOMATION_ENABLED"); v != "" {
+		cfg.GitHub.Enabled = strings.EqualFold(v, "true") || v == "1" || strings.EqualFold(v, "yes")
+	}
+	if v := os.Getenv("K13D_GITHUB_AUTOMATION_WEBHOOK_SECRET"); v != "" {
+		cfg.GitHub.WebhookSecret = v
+	}
+	if v := os.Getenv("K13D_GITHUB_AUTOMATION_TOKEN"); v != "" {
+		cfg.GitHub.PersonalAccessToken = v
+	}
+	if v := os.Getenv("K13D_GITHUB_AUTOMATION_REPO_PATH"); v != "" {
+		cfg.GitHub.RepoPath = v
+	}
+	if v := os.Getenv("K13D_GITHUB_AUTOMATION_TRIGGER_LABEL"); v != "" {
+		cfg.GitHub.TriggerLabel = v
 	}
 }
 

@@ -118,6 +118,21 @@ func TestNewDefaultConfig(t *testing.T) {
 	if !cfg.EnableAudit {
 		t.Error("EnableAudit should be true by default")
 	}
+	if cfg.GitHub.TriggerLabel != "codex:auto" {
+		t.Errorf("GitHub.TriggerLabel = %s, want codex:auto", cfg.GitHub.TriggerLabel)
+	}
+	if !cfg.GitHub.AutoCommit {
+		t.Error("GitHub.AutoCommit should be true by default")
+	}
+	if !cfg.GitHub.AutoPush {
+		t.Error("GitHub.AutoPush should be true by default")
+	}
+	if !cfg.GitHub.AutoCreatePR {
+		t.Error("GitHub.AutoCreatePR should be true by default")
+	}
+	if cfg.GitHub.WorktreeRoot == "" {
+		t.Error("GitHub.WorktreeRoot should not be empty")
+	}
 	if cfg.Authorization.ToolApproval.AutoApproveReadOnly {
 		t.Error("ToolApproval.AutoApproveReadOnly should be false by default")
 	}
@@ -657,6 +672,33 @@ func TestConfigSaveLoad(t *testing.T) {
 	}
 	if loadedCfg.Language != "ko" {
 		t.Errorf("LoadConfig().Language = %s, want ko", loadedCfg.Language)
+	}
+}
+
+func TestApplyEnvOverrides_GitHubAutomation(t *testing.T) {
+	cfg := NewDefaultConfig()
+	t.Setenv("K13D_GITHUB_AUTOMATION_ENABLED", "true")
+	t.Setenv("K13D_GITHUB_AUTOMATION_WEBHOOK_SECRET", "secret")
+	t.Setenv("K13D_GITHUB_AUTOMATION_TOKEN", "token")
+	t.Setenv("K13D_GITHUB_AUTOMATION_REPO_PATH", "/tmp/repo")
+	t.Setenv("K13D_GITHUB_AUTOMATION_TRIGGER_LABEL", "run:auto")
+
+	applyEnvOverrides(cfg)
+
+	if !cfg.GitHub.Enabled {
+		t.Fatal("expected GitHub automation to be enabled from env")
+	}
+	if cfg.GitHub.WebhookSecret != "secret" {
+		t.Fatalf("WebhookSecret = %s", cfg.GitHub.WebhookSecret)
+	}
+	if cfg.GitHub.PersonalAccessToken != "token" {
+		t.Fatalf("PersonalAccessToken = %s", cfg.GitHub.PersonalAccessToken)
+	}
+	if cfg.GitHub.RepoPath != "/tmp/repo" {
+		t.Fatalf("RepoPath = %s", cfg.GitHub.RepoPath)
+	}
+	if cfg.GitHub.TriggerLabel != "run:auto" {
+		t.Fatalf("TriggerLabel = %s", cfg.GitHub.TriggerLabel)
 	}
 }
 

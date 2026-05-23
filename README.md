@@ -171,6 +171,7 @@ For configuration details, model profiles, storage paths, and example `config.ya
 - **Dashboard** — Pods, Deployments, Services, all resources with real-time status
 - **AI Assistant** — Ask questions, AI executes kubectl with explicit approval by default
   The default agentic toolset is kubectl-first. `bash` and MCP tools are opt-in, and unsupported interactive kubectl flows are hard-blocked instead of sent to approval.
+- **GitHub Issue Automation** — Receive GitHub issue webhooks, run an agent-driven dev command in an isolated worktree, optionally create a PR and attach an automated review
 - **Topology** — Graph & tree visualization of resource relationships
 - **Reports** — Cluster health, node checks, security audit, heuristic FinOps cost analysis
 - **Metrics** — Historical CPU/Memory/Pods/Nodes charts (SQLite-backed, 7-day retention)
@@ -258,6 +259,46 @@ The AI assistant can:
 - Prefer `kubectl` over `bash`; shell access is treated as a last resort
 - Expose `bash` and MCP tools only when you explicitly enable them in `config.yaml`
 - Hard-block unsupported interactive flows such as `kubectl edit`, `kubectl port-forward`, and `kubectl exec -it`
+
+## GitHub Issue Automation
+
+k13d can also act as a lightweight GitHub issue autopilot. When GitHub sends an `issues` webhook to the Web server, k13d can:
+
+- gate execution by label, by default `codex:auto`
+- create an isolated git worktree per issue
+- run your configured development command
+- optionally run a separate review command
+- auto-commit, auto-push, and create a draft PR
+- post an issue comment and PR review when a GitHub token is configured
+
+This is designed for local or self-hosted operation. If you run k13d directly on a public HTTPS endpoint, GitHub can reach it without extra relay infrastructure:
+
+```text
+https://your-domain.example/api/github/automation/webhook
+```
+
+Example `config.yaml` section:
+
+```yaml
+github_automation:
+  enabled: true
+  webhook_secret: ${K13D_GITHUB_AUTOMATION_WEBHOOK_SECRET}
+  personal_access_token: ${GITHUB_TOKEN}
+  allowed_repositories:
+    - cloudbro-kube-ai/k13d
+  trigger_label: codex:auto
+  repo_path: /absolute/path/to/k13d
+  worktree_root: ~/.cache/k13d/github-automation
+  development_command: ./scripts/run-agent-dev.sh
+  review_command: ./scripts/run-agent-review.sh
+```
+
+The development and review commands are fully configurable so you can wire in Codex, Claude Code, Gemini CLI, or your own wrapper scripts. For the full config reference, placeholders, environment variables, and webhook flow, see:
+
+- [Configuration Guide](docs-site/docs/getting-started/configuration.md)
+- [Web UI Guide](docs-site/docs/user-guide/web.md)
+- [Architecture](docs-site/docs/concepts/architecture.md)
+- [Environment Variables](docs-site/docs/reference/env-vars.md)
 - Scale deployments, restart rollouts
 - Analyze YAML, events, and logs in context
 - Use MCP tools for extended capabilities

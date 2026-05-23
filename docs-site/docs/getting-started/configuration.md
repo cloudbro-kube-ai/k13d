@@ -241,6 +241,103 @@ llm:
 
 `--auth-mode ldap` and `--auth-mode oidc` select those auth paths, but the stock binary does not yet expose every provider-specific LDAP/OIDC field as dedicated CLI flags. The Web UI settings page currently shows runtime auth status and does not persist provider configuration into `config.yaml`.
 
+## GitHub Issue Automation
+
+k13d can receive GitHub `issues` webhooks and run an automated local development workflow. This is useful when you want a new ticket to trigger a development agent, a review pass, and optionally draft PR creation from the same machine that is already serving the Web UI.
+
+The public webhook endpoint is:
+
+```text
+POST /api/github/automation/webhook
+```
+
+If you expose the Web UI directly on HTTPS, GitHub can call it with a standard webhook URL such as:
+
+```text
+https://your-domain.example/api/github/automation/webhook
+```
+
+Recommended config:
+
+```yaml
+github_automation:
+  enabled: true
+  webhook_secret: ${K13D_GITHUB_AUTOMATION_WEBHOOK_SECRET}
+  personal_access_token: ${GITHUB_TOKEN}
+  allowed_repositories:
+    - cloudbro-kube-ai/k13d
+  trigger_label: codex:auto
+  base_branch: main
+  remote: origin
+  repo_path: /absolute/path/to/repository
+  worktree_root: ~/.cache/k13d/github-automation
+  branch_prefix: codex/issue-
+  development_command: ./scripts/run-agent-dev.sh
+  review_command: ./scripts/run-agent-review.sh
+  auto_commit: true
+  auto_push: true
+  auto_create_pr: true
+  pull_request_draft: true
+  cleanup_worktrees: false
+  max_concurrent_jobs: 1
+```
+
+Behavior summary:
+
+- Supported GitHub actions: `opened`, `reopened`, `labeled`
+- Default trigger label: `codex:auto`
+- Webhook signature: validated with `X-Hub-Signature-256`
+- Repository gate: matched against `allowed_repositories`
+- Workspace isolation: each issue gets its own git worktree under `worktree_root`
+- PR/reporting: enabled when `personal_access_token` is configured
+
+### Command Placeholders
+
+`development_command` and `review_command` are plain shell commands. k13d expands the following placeholders before execution:
+
+| Placeholder | Meaning |
+|-------------|---------|
+| `{issue_number}` | GitHub issue number |
+| `{issue_title}` | Issue title |
+| `{issue_body}` | Issue body text |
+| `{issue_url}` | Issue URL |
+| `{issue_author}` | Issue author login |
+| `{repository}` | `owner/repo` |
+| `{repo_path}` | Local repository path |
+| `{worktree}` | Issue-specific git worktree path |
+| `{branch}` | Generated branch name |
+| `{base_branch}` | Base branch used for the worktree |
+
+k13d also exports the same values as `K13D_GHA_*` environment variables for scripts that prefer environment-driven inputs.
+
+Example with a wrapper script:
+
+```yaml
+github_automation:
+  development_command: ./scripts/run-agent-dev.sh
+  review_command: ./scripts/run-agent-review.sh
+```
+
+Example with inline commands:
+
+```yaml
+github_automation:
+  development_command: >
+    codex exec --cwd "{worktree}" "Read issue #{issue_number}: {issue_title}.
+    Implement the requested change, run fmt, test, and build, then stop."
+  review_command: >
+    codex exec --cwd "{worktree}" "Review the issue #{issue_number} changes.
+    Focus on bugs, regressions, security, and missing tests."
+```
+
+Operational notes:
+
+- `development_command` is required when automation is enabled.
+- `repo_path` must point at the local clone that will be used as the source repo.
+- `personal_access_token` is optional for local execution, but required if you want automatic issue comments, draft PR creation, or PR reviews.
+- `cleanup_worktrees: false` is the safer starting point so you can inspect failed jobs.
+- Keep `max_concurrent_jobs` low unless your agent/runtime is known to be stable under parallel worktrees.
+
 ---
 
 ## LLM Providers
