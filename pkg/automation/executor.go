@@ -48,7 +48,7 @@ func (e *DefaultExecutor) Execute(ctx context.Context, job *Job) (*ExecutionResu
 	if worktreeRoot == "" {
 		worktreeRoot = config.DefaultGitHubAutomationWorktreeRoot()
 	}
-	if err := os.MkdirAll(worktreeRoot, 0o755); err != nil {
+	if err := os.MkdirAll(worktreeRoot, 0o750); err != nil {
 		return nil, err
 	}
 
@@ -200,7 +200,7 @@ func (e *DefaultExecutor) runCommand(ctx context.Context, dir string, args []str
 	if len(args) == 0 {
 		return "", fmt.Errorf("empty command")
 	}
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec G204 -- commands come from local admin-only github_automation config.
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), buildCommandEnv(placeholders)...)
 	var stdout, stderr bytes.Buffer
@@ -399,7 +399,7 @@ func DetectGitHubRepository(ctx context.Context, repoPath, remote string) (strin
 	if strings.TrimSpace(remote) == "" {
 		remote = "origin"
 	}
-	cmd := exec.CommandContext(ctx, "git", "-C", repoPath, "remote", "get-url", remote)
+	cmd := exec.CommandContext(ctx, "git", "-C", repoPath, "remote", "get-url", remote) // #nosec G204 -- repo path and remote come from local admin config.
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err

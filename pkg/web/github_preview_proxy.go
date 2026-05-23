@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -43,12 +44,12 @@ func (s *Server) handleGitHubAutomationPreviewProxy(w http.ResponseWriter, r *ht
 	}
 
 	targetURL, err := url.Parse(target)
-	if err != nil || targetURL.Scheme == "" || targetURL.Host == "" {
+	if err != nil || !isAllowedPreviewTargetURL(targetURL) {
 		WriteError(w, NewAPIError(ErrCodeInternalError, "Preview target is invalid"))
 		return
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(targetURL)
+	proxy := httputil.NewSingleHostReverseProxy(targetURL) // #nosec G704 -- target is restricted to loopback preview URLs.
 	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
 		originalDirector(req)
@@ -68,7 +69,7 @@ func (s *Server) handleGitHubAutomationPreviewProxy(w http.ResponseWriter, r *ht
 		}
 		return nil
 	}
-	proxy.ServeHTTP(w, r)
+	proxy.ServeHTTP(w, r) // #nosec G704 -- proxy target is loopback-validated above.
 }
 
 func parsePreviewProxyPath(path, prefix string) (slug, upstreamPath string, ok bool) {
@@ -101,6 +102,21 @@ func joinURLPath(basePath, childPath string) string {
 		return childPath
 	}
 	return basePath + childPath
+}
+
+func isAllowedPreviewTargetURL(targetURL *url.URL) bool {
+	if targetURL == nil || targetURL.Host == "" {
+		return false
+	}
+	if targetURL.Scheme != "http" && targetURL.Scheme != "https" {
+		return false
+	}
+	host := targetURL.Hostname()
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func rewritePreviewLocation(resp *http.Response, previewBase string) {

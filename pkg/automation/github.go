@@ -198,7 +198,7 @@ func (c *GitHubClient) post(ctx context.Context, path string, payload interface{
 	req.Header.Set("X-GitHub-Api-Version", githubAPIVersion)
 	req.Header.Set("User-Agent", "k13d-github-automation")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req) // #nosec G704 -- GitHub API base URL is fixed and request paths are generated internally.
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,7 @@ func (c *GitHubClient) get(ctx context.Context, path string, out interface{}) er
 	req.Header.Set("X-GitHub-Api-Version", githubAPIVersion)
 	req.Header.Set("User-Agent", "k13d-github-automation")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req) // #nosec G704 -- GitHub API base URL is fixed and request paths are generated internally.
 	if err != nil {
 		return err
 	}
