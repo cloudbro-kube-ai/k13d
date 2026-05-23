@@ -55,7 +55,13 @@ func (e *DefaultExecutor) Execute(ctx context.Context, job *Job) (*ExecutionResu
 	branch := buildBranchName(e.cfg.BranchPrefix, job.IssueNumber, job.IssueTitle)
 	worktreePath := filepath.Join(worktreeRoot, fmt.Sprintf("issue-%d-%d", job.IssueNumber, e.now().Unix()))
 	baseRef := e.resolveBaseRef(ctx)
-	if _, err := e.runCommand(ctx, repoPath, []string{"git", "worktree", "add", "--force", "-B", branch, worktreePath, baseRef}, nil); err != nil {
+	if err := e.removeExistingAutomationWorktrees(ctx, repoPath, worktreeRoot, branch, job.IssueNumber); err != nil {
+		return nil, err
+	}
+	if out, err := e.runCommand(ctx, repoPath, []string{"git", "worktree", "add", "--force", "-B", branch, worktreePath, baseRef}, nil); err != nil {
+		if strings.TrimSpace(out) != "" {
+			return nil, fmt.Errorf("create worktree: %w: %s", err, out)
+		}
 		return nil, fmt.Errorf("create worktree: %w", err)
 	}
 
@@ -173,6 +179,94 @@ func (e *DefaultExecutor) DeployPreview(ctx context.Context, job *Job, result *E
 		TargetURL: targetURL,
 		Log:       log,
 	}, nil
+}
+
+type gitWorktreeEntry struct {
+	path   string
+	branch string
+}
+
+func (e *DefaultExecutor) removeExistingAutomationWorktrees(ctx context.Context, repoPath, worktreeRoot, branch string, issueNumber int) error {
+	out, err := e.runCommand(ctx, repoPath, []string{"git", "worktree", "list", "--porcelain"}, nil)
+	if err != nil {
+		return fmt.Errorf("list worktrees: %w", err)
+	}
+
+	expectedBranchRef := "refs/heads/" + branch
+	expectedPrefix := fmt.Sprintf("issue-%d-", issueNumber)
+	for _, entry := range parseGitWorktreeList(out) {
+		if entry.branch != expectedBranchRef && entry.branch != branch {
+			continue
+		}
+		if !strings.HasPrefix(filepath.Base(entry.path), expectedPrefix) {
+			continue
+		}
+		if !isPathWithin(worktreeRoot, entry.path) {
+			continue
+		}
+		if _, err := e.runCommand(ctx, repoPath, []string{"git", "worktree", "remove", "--force", entry.path}, nil); err != nil {
+			return fmt.Errorf("remove stale automation worktree %q: %w", entry.path, err)
+		}
+	}
+	_, _ = e.runCommand(ctx, repoPath, []string{"git", "worktree", "prune"}, nil)
+	return nil
+}
+
+func parseGitWorktreeList(output string) []gitWorktreeEntry {
+	var entries []gitWorktreeEntry
+	current := gitWorktreeEntry{}
+	flush := func() {
+		if current.path == "" {
+			return
+		}
+		entries = append(entries, current)
+		current = gitWorktreeEntry{}
+	}
+
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			flush()
+			continue
+		}
+		switch {
+		case strings.HasPrefix(line, "worktree "):
+			flush()
+			current.path = strings.TrimSpace(strings.TrimPrefix(line, "worktree "))
+		case strings.HasPrefix(line, "branch "):
+			current.branch = strings.TrimSpace(strings.TrimPrefix(line, "branch "))
+		}
+	}
+	flush()
+	return entries
+}
+
+func isPathWithin(root, path string) bool {
+	rootAbs, err := canonicalPath(root)
+	if err != nil {
+		return false
+	}
+	pathAbs, err := canonicalPath(path)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(rootAbs, pathAbs)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel))
+}
+
+func canonicalPath(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	resolved, err := filepath.EvalSymlinks(abs)
+	if err == nil {
+		return resolved, nil
+	}
+	return abs, nil
 }
 
 func (e *DefaultExecutor) resolveBaseRef(ctx context.Context) string {
