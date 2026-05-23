@@ -9,6 +9,7 @@ The Web UI offers:
 - **Modern Interface**: Responsive design with dark/light themes
 - **Real-time Updates**: Stale-first dashboard refresh with background revalidation
 - **AI Assistant**: Integrated chat interface
+- **GitHub Automation Receiver**: Optional webhook endpoint for issue-driven dev/review jobs
 - **Multi-cluster**: Switch between contexts
 - **Reports**: Generate cluster analysis reports
 
@@ -216,6 +217,76 @@ The recent prompt history is stored in browser `localStorage` under `k13d_query_
 Settings → AI → MCP Servers
 
 Manage external MCP servers for extended AI capabilities.
+
+## GitHub Issue Automation
+
+The Web server can also act as a GitHub webhook receiver for issue-driven automation. This is useful if you want a newly labeled issue to trigger:
+
+- an isolated git worktree
+- a development-agent command
+- an optional review-agent command
+- auto-commit / auto-push
+- draft PR creation and issue comment reporting
+- GitHub check-run waiting before review/deploy
+- branch preview routing through the same Web UI domain
+
+### Webhook Endpoint
+
+```text
+POST /api/github/automation/webhook
+```
+
+Typical public URL:
+
+```text
+https://your-domain.example/api/github/automation/webhook
+```
+
+If you already expose k13d directly on `443`, GitHub can reach this endpoint without another relay service.
+
+### Status Endpoints
+
+There is not yet a dedicated GUI page for automation jobs. Today, the operational view is API-based:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/api/admin/github-automation/status` | Current enablement, config summary, recent jobs |
+| `/api/admin/github-automation/jobs` | Same summary response for admin polling |
+| `/api/admin/github-automation/jobs/{id}` | Details for one queued/running/finished job |
+
+### Trigger Rules
+
+- Only GitHub `issues` webhooks are supported right now
+- Default label gate: `codex:auto`
+- Supported issue actions: `opened`, `reopened`, `labeled`
+- Webhook signatures are verified with `X-Hub-Signature-256`
+- Repositories can be allow-listed in `config.yaml`
+
+### Practical Setup Pattern
+
+1. Run k13d Web UI on a reachable HTTPS endpoint.
+2. Configure `github_automation` in `config.yaml`.
+3. Add a GitHub webhook for `Issues`.
+4. Set the same webhook secret in GitHub and in `config.yaml`.
+5. Label an issue with `codex:auto`.
+
+When the job finishes, k13d can comment back on the issue and create a draft PR if a GitHub token is configured.
+
+### Branch Preview URLs
+
+If k13d is the only service exposed on your public `443` endpoint, use path-based previews:
+
+```text
+https://fingerscore.net/previews/<branch-slug>/
+```
+
+The preview deploy command can start each branch on a different local port and print:
+
+```text
+K13D_PREVIEW_TARGET=http://127.0.0.1:18123
+```
+
+k13d stores that target on the automation job and reverse-proxies `/previews/<branch-slug>/...` to it. The browser app also rewrites its own `/api/...` calls under the preview path, so the preview talks to the branch instance rather than the main server.
 
 ### User Management
 

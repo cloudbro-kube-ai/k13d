@@ -489,7 +489,8 @@ func (am *AuthManager) CSRFMiddleware(next http.Handler) http.Handler {
 		// Skip CSRF check for login/logout/OIDC endpoints (no session exists yet or OAuth flow)
 		if r.URL.Path == "/api/auth/login" || r.URL.Path == "/api/auth/logout" ||
 			r.URL.Path == "/api/auth/kubeconfig" ||
-			strings.HasPrefix(r.URL.Path, "/api/auth/oidc/") {
+			strings.HasPrefix(r.URL.Path, "/api/auth/oidc/") ||
+			r.URL.Path == "/api/github/automation/webhook" {
 			next.ServeHTTP(w, r)
 			return
 		}

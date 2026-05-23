@@ -107,6 +107,7 @@ func TestCriticalEndpointsRegistered(t *testing.T) {
 		"/api/auth/login",
 		"/api/auth/logout",
 		"/api/auth/status",
+		"/api/github/automation/webhook",
 	}
 
 	for _, ep := range endpoints {

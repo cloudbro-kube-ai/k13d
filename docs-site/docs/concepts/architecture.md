@@ -25,6 +25,7 @@ k13d is designed as a single-binary application that combines a TUI dashboard, w
 │                    │ • Safety Analyzer│                          │
 │                    │ • Session Store  │                          │
 │                    │ • Audit Logger   │                          │
+│                    │ • Issue Automation│                         │
 │                    └────────┬─────────┘                          │
 │                             │                                    │
 │         ┌───────────────────┼───────────────────┐               │
@@ -61,6 +62,7 @@ k13d is designed as a single-binary application that combines a TUI dashboard, w
 | **ai/safety** | `pkg/ai/safety/` | Command safety analysis |
 | **ai/tools** | `pkg/ai/tools/` | Tool registry & execution |
 | **ai/sessions** | `pkg/ai/sessions/` | Conversation session management |
+| **automation** | `pkg/automation/` | GitHub issue webhook queue, worktree execution, PR/reporting |
 | **k8s** | `pkg/k8s/` | Kubernetes client wrapper |
 | **db** | `pkg/db/` | SQLite audit logging |
 | **config** | `pkg/config/` | Configuration management (config, aliases, views, hotkeys, plugins) |
@@ -186,6 +188,13 @@ CREATE TABLE audit_logs (
 /api/chat/agentic           # SSE streaming chat
 /api/tool/approve           # Tool approve/reject
 
+# GitHub Issue Automation
+/api/github/automation/webhook          # Public GitHub issues webhook
+/api/admin/github-automation/status     # Admin status + recent jobs
+/api/admin/github-automation/jobs       # Admin jobs summary
+/api/admin/github-automation/jobs/{id}  # Admin single-job details
+/previews/{branch-slug}/...             # Branch preview reverse proxy
+
 # Kubernetes Resources
 /api/k8s/pods               # Pod list
 /api/k8s/deployments        # Deployment list
@@ -220,6 +229,64 @@ Browser                          Server
    │◄── SSE: event: stream_end ────│
    │                               │
 ```
+
+## GitHub Issue Automation Flow
+
+The issue automation path is intentionally local-first. k13d receives a GitHub issue webhook, validates it, and then runs the configured agent commands inside an isolated git worktree.
+
+```
+GitHub Issues Webhook
+        │
+        ▼
+┌──────────────────────────┐
+│ /api/github/automation/  │
+│ webhook                  │
+└────────────┬─────────────┘
+             │ verify signature
+             ▼
+┌──────────────────────────┐
+│ automation.Manager       │
+│ - label gate             │
+│ - repo allow-list        │
+│ - active job dedupe      │
+│ - worker queue           │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│ automation.Executor      │
+│ - create worktree        │
+│ - checkout issue branch  │
+│ - run development cmd    │
+│ - commit / push          │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│ GitHub REST integration  │
+│ - draft PR               │
+│ - wait for check runs    │
+│ - PR review              │
+│ - issue comment          │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│ Preview deploy           │
+│ - deploy command output  │
+│ - preview target registry│
+│ - /previews/<branch>/    │
+└──────────────────────────┘
+```
+
+Important characteristics:
+
+- commands are fully configurable in `config.yaml`
+- each issue runs in its own worktree under `worktree_root`
+- automation is off by default
+- without a GitHub token, local execution still works, but PR/comments/reviews are skipped
+- the webhook route is public by design, so the shared secret and allowed repository list are both important
+- branch previews use path-based reverse proxying so one public domain can expose many local branch instances
 
 ## Next Steps
 

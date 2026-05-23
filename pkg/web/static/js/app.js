@@ -5115,7 +5115,8 @@ function connectTerminalWebSocket() {
     if (terminalContainer) wsParams.set('container', terminalContainer);
     if (authToken && authToken !== 'anonymous') wsParams.set('token', authToken);
     const wsQuery = wsParams.toString() ? '?' + wsParams.toString() : '';
-    const wsUrl = `${wsProtocol}//${window.location.host}/api/terminal/${terminalNamespace}/${terminalPodName}${wsQuery}`;
+    const wsBasePath = window.K13D_BASE_PATH || '';
+    const wsUrl = `${wsProtocol}//${window.location.host}${wsBasePath}/api/terminal/${terminalNamespace}/${terminalPodName}${wsQuery}`;
 
     currentTerminalWs = new WebSocket(wsUrl);
 
@@ -7062,7 +7063,8 @@ function connectTuiWs() {
     // Use token if available
     const token = (typeof authToken !== 'undefined') ? authToken : localStorage.getItem('k13d-token');
     const wsQuery = (token && token !== 'anonymous') ? '?token=' + encodeURIComponent(token) : '';
-    const wsUrl = `${wsProtocol}//${window.location.host}/api/tui/shell${wsQuery}`;
+    const wsBasePath = window.K13D_BASE_PATH || '';
+    const wsUrl = `${wsProtocol}//${window.location.host}${wsBasePath}/api/tui/shell${wsQuery}`;
 
     currentTuiWs = new WebSocket(wsUrl);
 

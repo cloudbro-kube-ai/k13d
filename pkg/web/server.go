@@ -16,6 +16,7 @@ import (
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai/session"
+	"github.com/cloudbro-kube-ai/k13d/pkg/automation"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 	"github.com/cloudbro-kube-ai/k13d/pkg/helm"
@@ -76,6 +77,7 @@ type Server struct {
 
 	// Notification manager
 	notifManager *NotificationManager
+	automation   *automation.Manager
 
 	// Port forwarding sessions
 	portForwardSessions map[string]*PortForwardSession
@@ -298,6 +300,19 @@ func newServer(cfg *config.Config, port int, authConfig *AuthConfig, versionInfo
 		Provider:   cfg.Notifications.Provider,
 	}
 	notifConfigMu.Unlock()
+
+	// Initialize GitHub issue automation manager
+	if automationManager, err := automation.NewManager(cfg.GitHub); err != nil {
+		fmt.Printf("  GitHub Automation: Failed to initialize (%v)\n", err)
+	} else {
+		server.automation = automationManager
+		if automationManager.Enabled() {
+			fmt.Printf("  GitHub Automation: Enabled (label: %s, worktree root: %s)\n",
+				cfg.GitHub.TriggerLabel, cfg.GitHub.WorktreeRoot)
+		} else {
+			fmt.Printf("  GitHub Automation: Disabled\n")
+		}
+	}
 
 	// Initialize and start metrics collector for historical charts
 	metricsCollector, err := metrics.NewCollector(k8sClient, metrics.DefaultConfig())
@@ -776,6 +791,9 @@ func (s *Server) Stop() error {
 	if s.notifManager != nil {
 		s.notifManager.Stop()
 	}
+	if s.automation != nil {
+		s.automation.Close()
+	}
 
 	// Stop rate limiter cleanup goroutines
 	if s.apiRateLimiter != nil {
@@ -919,14 +937,15 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status := map[string]interface{}{
-		"status":       "ok",
-		"timestamp":    time.Now(),
-		"ai_ready":     s.aiClient != nil && s.aiClient.IsReady(),
-		"k8s_ready":    s.k8sClient != nil,
-		"db_ready":     db.DB != nil,
-		"auth_enabled": s.authManager.config.Enabled,
-		"auth_mode":    s.authManager.GetAuthMode(),
-		"version":      version,
+		"status":                    "ok",
+		"timestamp":                 time.Now(),
+		"ai_ready":                  s.aiClient != nil && s.aiClient.IsReady(),
+		"k8s_ready":                 s.k8sClient != nil,
+		"db_ready":                  db.DB != nil,
+		"auth_enabled":              s.authManager.config.Enabled,
+		"auth_mode":                 s.authManager.GetAuthMode(),
+		"github_automation_enabled": s.automation != nil && s.automation.Enabled(),
+		"version":                   version,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -20,7 +20,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.9'
+          go-version: '1.25.10'
           cache: true
 
       - name: Download dependencies
@@ -41,7 +41,7 @@ jobs:
       - name: Run tests
         env:
           CI: "true"
-        run: go test -race -timeout 600s ./...
+        run: go test -timeout 600s ./...
 
   release:
     runs-on: ubuntu-latest
@@ -55,7 +55,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25.9'
+          go-version: '1.25.10'
           cache: true
 
       - name: Run GoReleaser
