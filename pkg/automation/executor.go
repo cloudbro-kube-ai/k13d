@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 
 type Executor interface {
 	Execute(ctx context.Context, job *Job) (*ExecutionResult, error)
+	DeployPreview(ctx context.Context, job *Job, result *ExecutionResult) (*PreviewDeployment, error)
 }
 
 type DefaultExecutor struct {
@@ -137,6 +139,42 @@ func (e *DefaultExecutor) Execute(ctx context.Context, job *Job) (*ExecutionResu
 	}, nil
 }
 
+func (e *DefaultExecutor) DeployPreview(ctx context.Context, job *Job, result *ExecutionResult) (*PreviewDeployment, error) {
+	if !e.cfg.AutoDeployPreview || len(e.cfg.DeployPreviewCommand) == 0 || result == nil {
+		return nil, nil
+	}
+	worktreePath := strings.TrimSpace(result.WorktreePath)
+	if worktreePath == "" {
+		return nil, fmt.Errorf("preview deployment requires a worktree path")
+	}
+
+	slug := buildPreviewSlug(result.Branch)
+	previewPath := previewPathForSlug(e.cfg.PreviewPathPrefix, slug)
+	publicURL := previewPublicURL(e.cfg.PreviewURLBase, previewPath)
+	placeholders := jobPlaceholders(job, e.repoPath, worktreePath, result.Branch, e.cfg.BaseBranch)
+	placeholders["preview_slug"] = slug
+	placeholders["preview_path"] = previewPath
+	placeholders["preview_url"] = publicURL
+
+	log, err := e.runCommand(ctx, worktreePath, expandArgs(e.cfg.DeployPreviewCommand, placeholders), placeholders)
+	if err != nil {
+		return &PreviewDeployment{Slug: slug, PublicURL: publicURL, Log: log}, fmt.Errorf("preview deployment command failed: %w", err)
+	}
+	targetURL, outputURL := parsePreviewDeploymentOutput(log)
+	if outputURL != "" {
+		publicURL = outputURL
+	}
+	if targetURL == "" && publicURL == "" {
+		return &PreviewDeployment{Slug: slug, Log: log}, fmt.Errorf("preview deployment did not report a target or public URL")
+	}
+	return &PreviewDeployment{
+		Slug:      slug,
+		PublicURL: publicURL,
+		TargetURL: targetURL,
+		Log:       log,
+	}, nil
+}
+
 func (e *DefaultExecutor) resolveBaseRef(ctx context.Context) string {
 	baseBranch := strings.TrimSpace(e.cfg.BaseBranch)
 	if baseBranch == "" {
@@ -199,7 +237,7 @@ func buildCommandEnv(placeholders map[string]string) []string {
 	keys := []string{
 		"issue_number", "issue_title", "issue_body", "issue_url",
 		"issue_author", "repository", "branch", "worktree",
-		"repo_path", "base_branch",
+		"repo_path", "base_branch", "preview_slug", "preview_path", "preview_url",
 	}
 	env := make([]string, 0, len(keys))
 	for _, key := range keys {
@@ -266,6 +304,68 @@ func buildBranchName(prefix string, issueNumber int, title string) string {
 		branch = branch[:120]
 	}
 	return strings.TrimSuffix(branch, "-")
+}
+
+func buildPreviewSlug(branch string) string {
+	slug := sanitizeBranchToken(strings.ReplaceAll(branch, "/", "-"))
+	if slug == "" {
+		return "preview"
+	}
+	return slug
+}
+
+func previewPathForSlug(prefix, slug string) string {
+	prefix = strings.TrimSpace(prefix)
+	if prefix == "" {
+		prefix = "/previews"
+	}
+	if !strings.HasPrefix(prefix, "/") {
+		prefix = "/" + prefix
+	}
+	prefix = strings.TrimRight(prefix, "/")
+	return prefix + "/" + slug + "/"
+}
+
+func previewPublicURL(baseURL, previewPath string) string {
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if baseURL == "" {
+		return previewPath
+	}
+	return baseURL + previewPath
+}
+
+func parsePreviewDeploymentOutput(output string) (targetURL, publicURL string) {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		key, value, ok := strings.Cut(line, "=")
+		if !ok {
+			key, value, ok = strings.Cut(line, ":")
+		}
+		if !ok {
+			continue
+		}
+		key = strings.ToUpper(strings.TrimSpace(key))
+		value = strings.Trim(strings.TrimSpace(value), `"'`)
+		if value == "" {
+			continue
+		}
+		switch key {
+		case "K13D_PREVIEW_TARGET", "PREVIEW_TARGET", "TARGET_URL":
+			if isHTTPURL(value) {
+				targetURL = value
+			}
+		case "K13D_PREVIEW_URL", "PREVIEW_URL", "PUBLIC_URL":
+			if strings.HasPrefix(value, "/") || isHTTPURL(value) {
+				publicURL = value
+			}
+		}
+	}
+	return targetURL, publicURL
+}
+
+func isHTTPURL(value string) bool {
+	parsed, err := url.Parse(value)
+	return err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https") && parsed.Host != ""
 }
 
 var branchSanitizer = regexp.MustCompile(`[^a-z0-9._/-]+`)

@@ -130,6 +130,18 @@ func TestNewDefaultConfig(t *testing.T) {
 	if !cfg.GitHub.AutoCreatePR {
 		t.Error("GitHub.AutoCreatePR should be true by default")
 	}
+	if !cfg.GitHub.WaitForCI {
+		t.Error("GitHub.WaitForCI should be true by default")
+	}
+	if cfg.GitHub.CIWaitTimeoutSeconds != 600 {
+		t.Errorf("GitHub.CIWaitTimeoutSeconds = %d, want 600", cfg.GitHub.CIWaitTimeoutSeconds)
+	}
+	if cfg.GitHub.CIPollIntervalSeconds != 10 {
+		t.Errorf("GitHub.CIPollIntervalSeconds = %d, want 10", cfg.GitHub.CIPollIntervalSeconds)
+	}
+	if cfg.GitHub.PreviewPathPrefix != "/previews" {
+		t.Errorf("GitHub.PreviewPathPrefix = %s, want /previews", cfg.GitHub.PreviewPathPrefix)
+	}
 	if cfg.GitHub.WorktreeRoot == "" {
 		t.Error("GitHub.WorktreeRoot should not be empty")
 	}
@@ -682,6 +694,10 @@ func TestApplyEnvOverrides_GitHubAutomation(t *testing.T) {
 	t.Setenv("K13D_GITHUB_AUTOMATION_TOKEN", "token")
 	t.Setenv("K13D_GITHUB_AUTOMATION_REPO_PATH", "/tmp/repo")
 	t.Setenv("K13D_GITHUB_AUTOMATION_TRIGGER_LABEL", "run:auto")
+	t.Setenv("K13D_GITHUB_AUTOMATION_WAIT_FOR_CI", "false")
+	t.Setenv("K13D_GITHUB_AUTOMATION_AUTO_DEPLOY_PREVIEW", "true")
+	t.Setenv("K13D_GITHUB_AUTOMATION_PREVIEW_URL_BASE", "https://fingerscore.net")
+	t.Setenv("K13D_GITHUB_AUTOMATION_PREVIEW_PATH_PREFIX", "/branches")
 
 	applyEnvOverrides(cfg)
 
@@ -699,6 +715,18 @@ func TestApplyEnvOverrides_GitHubAutomation(t *testing.T) {
 	}
 	if cfg.GitHub.TriggerLabel != "run:auto" {
 		t.Fatalf("TriggerLabel = %s", cfg.GitHub.TriggerLabel)
+	}
+	if cfg.GitHub.WaitForCI {
+		t.Fatal("WaitForCI should be overridden to false")
+	}
+	if !cfg.GitHub.AutoDeployPreview {
+		t.Fatal("AutoDeployPreview should be overridden to true")
+	}
+	if cfg.GitHub.PreviewURLBase != "https://fingerscore.net" {
+		t.Fatalf("PreviewURLBase = %s", cfg.GitHub.PreviewURLBase)
+	}
+	if cfg.GitHub.PreviewPathPrefix != "/branches" {
+		t.Fatalf("PreviewPathPrefix = %s", cfg.GitHub.PreviewPathPrefix)
 	}
 }
 

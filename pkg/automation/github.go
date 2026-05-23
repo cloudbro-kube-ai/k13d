@@ -20,6 +20,7 @@ type GitHubReporter interface {
 	PostIssueComment(ctx context.Context, repo string, issueNumber int, body string) error
 	CreatePullRequest(ctx context.Context, repo, title, head, base, body string, draft bool) (*PullRequestInfo, error)
 	CreatePullRequestReview(ctx context.Context, repo string, prNumber int, body string) error
+	WaitForChecks(ctx context.Context, repo, ref string, timeout, interval time.Duration) (*CIResult, error)
 }
 
 type GitHubClient struct {
@@ -73,6 +74,110 @@ func (c *GitHubClient) CreatePullRequestReview(ctx context.Context, repo string,
 	return c.post(ctx, fmt.Sprintf("/repos/%s/pulls/%d/reviews", repo, prNumber), payload, nil)
 }
 
+func (c *GitHubClient) WaitForChecks(ctx context.Context, repo, ref string, timeout, interval time.Duration) (*CIResult, error) {
+	if timeout <= 0 {
+		timeout = 10 * time.Minute
+	}
+	if interval <= 0 {
+		interval = 10 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		result, done, err := c.checkRuns(ctx, repo, ref)
+		if err != nil {
+			return nil, err
+		}
+		if done {
+			if result.Conclusion == "success" {
+				return result, nil
+			}
+			return result, fmt.Errorf("github checks completed with conclusion %q", result.Conclusion)
+		}
+
+		select {
+		case <-ctx.Done():
+			if result != nil && result.Summary != "" {
+				return result, fmt.Errorf("timed out waiting for github checks: %s", result.Summary)
+			}
+			return result, fmt.Errorf("timed out waiting for github checks")
+		case <-ticker.C:
+		}
+	}
+}
+
+func (c *GitHubClient) checkRuns(ctx context.Context, repo, ref string) (*CIResult, bool, error) {
+	resp := struct {
+		TotalCount int `json:"total_count"`
+		CheckRuns  []struct {
+			Name       string `json:"name"`
+			Status     string `json:"status"`
+			Conclusion string `json:"conclusion"`
+			HTMLURL    string `json:"html_url"`
+		} `json:"check_runs"`
+	}{}
+	path := fmt.Sprintf("/repos/%s/commits/%s/check-runs?per_page=100", repo, ref)
+	if err := c.get(ctx, path, &resp); err != nil {
+		return nil, false, err
+	}
+	if resp.TotalCount == 0 {
+		return &CIResult{Status: "pending", Summary: "no check runs found yet"}, false, nil
+	}
+
+	pending := 0
+	failed := 0
+	detailsURL := ""
+	for _, run := range resp.CheckRuns {
+		if detailsURL == "" {
+			detailsURL = run.HTMLURL
+		}
+		if run.Status != "completed" {
+			pending++
+			continue
+		}
+		if !isSuccessfulCheckConclusion(run.Conclusion) {
+			failed++
+			if run.HTMLURL != "" {
+				detailsURL = run.HTMLURL
+			}
+		}
+	}
+	if pending > 0 {
+		return &CIResult{
+			Status:  "pending",
+			URL:     detailsURL,
+			Summary: fmt.Sprintf("%d/%d check runs still pending", pending, resp.TotalCount),
+		}, false, nil
+	}
+	if failed > 0 {
+		return &CIResult{
+			Status:     "completed",
+			Conclusion: "failure",
+			URL:        detailsURL,
+			Summary:    fmt.Sprintf("%d/%d check runs failed", failed, resp.TotalCount),
+		}, true, nil
+	}
+	return &CIResult{
+		Status:     "completed",
+		Conclusion: "success",
+		URL:        detailsURL,
+		Summary:    fmt.Sprintf("%d check runs passed", resp.TotalCount),
+	}, true, nil
+}
+
+func isSuccessfulCheckConclusion(conclusion string) bool {
+	switch conclusion {
+	case "success", "neutral", "skipped":
+		return true
+	default:
+		return false
+	}
+}
+
 func (c *GitHubClient) post(ctx context.Context, path string, payload interface{}, out interface{}) error {
 	if strings.TrimSpace(c.token) == "" {
 		return fmt.Errorf("github automation token is not configured")
@@ -104,6 +209,38 @@ func (c *GitHubClient) post(ctx context.Context, path string, payload interface{
 		return fmt.Errorf("github api %s returned %d: %s", path, resp.StatusCode, strings.TrimSpace(string(respBody)))
 	}
 
+	if out != nil && len(respBody) > 0 {
+		if err := json.Unmarshal(respBody, out); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *GitHubClient) get(ctx context.Context, path string, out interface{}) error {
+	if strings.TrimSpace(c.token) == "" {
+		return fmt.Errorf("github automation token is not configured")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", githubAPIVersion)
+	req.Header.Set("User-Agent", "k13d-github-automation")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("github api %s returned %d: %s", path, resp.StatusCode, strings.TrimSpace(string(respBody)))
+	}
 	if out != nil && len(respBody) > 0 {
 		if err := json.Unmarshal(respBody, out); err != nil {
 			return err

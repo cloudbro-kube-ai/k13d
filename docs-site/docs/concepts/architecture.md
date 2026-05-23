@@ -193,6 +193,7 @@ CREATE TABLE audit_logs (
 /api/admin/github-automation/status     # Admin status + recent jobs
 /api/admin/github-automation/jobs       # Admin jobs summary
 /api/admin/github-automation/jobs/{id}  # Admin single-job details
+/previews/{branch-slug}/...             # Branch preview reverse proxy
 
 # Kubernetes Resources
 /api/k8s/pods               # Pod list
@@ -257,16 +258,24 @@ GitHub Issues Webhook
 │ - create worktree        │
 │ - checkout issue branch  │
 │ - run development cmd    │
-│ - run review cmd         │
 │ - commit / push          │
 └────────────┬─────────────┘
              │
              ▼
 ┌──────────────────────────┐
-│ GitHub REST reporting    │
-│ - issue comment          │
+│ GitHub REST integration  │
 │ - draft PR               │
+│ - wait for check runs    │
 │ - PR review              │
+│ - issue comment          │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│ Preview deploy           │
+│ - deploy command output  │
+│ - preview target registry│
+│ - /previews/<branch>/    │
 └──────────────────────────┘
 ```
 
@@ -277,6 +286,7 @@ Important characteristics:
 - automation is off by default
 - without a GitHub token, local execution still works, but PR/comments/reviews are skipped
 - the webhook route is public by design, so the shared secret and allowed repository list are both important
+- branch previews use path-based reverse proxying so one public domain can expose many local branch instances
 
 ## Next Steps
 

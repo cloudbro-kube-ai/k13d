@@ -100,3 +100,16 @@ func TestHandleGitHubAutomationJobNotFound(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 }
+
+func TestParsePreviewProxyPath(t *testing.T) {
+	slug, upstreamPath, ok := parsePreviewProxyPath("/previews/codex-issue-7/api/health", "/previews")
+	if !ok {
+		t.Fatal("expected preview path to parse")
+	}
+	if slug != "codex-issue-7" {
+		t.Fatalf("slug = %q", slug)
+	}
+	if upstreamPath != "/api/health" {
+		t.Fatalf("upstreamPath = %q", upstreamPath)
+	}
+}

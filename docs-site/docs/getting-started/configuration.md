@@ -274,6 +274,13 @@ github_automation:
   branch_prefix: codex/issue-
   development_command: ./scripts/run-agent-dev.sh
   review_command: ./scripts/run-agent-review.sh
+  wait_for_ci: true
+  ci_wait_timeout_seconds: 600
+  ci_poll_interval_seconds: 10
+  auto_deploy_preview: true
+  deploy_preview_command: ./scripts/deploy-preview.sh
+  preview_url_base: https://fingerscore.net
+  preview_path_prefix: /previews
   auto_commit: true
   auto_push: true
   auto_create_pr: true
@@ -290,10 +297,12 @@ Behavior summary:
 - Repository gate: matched against `allowed_repositories`
 - Workspace isolation: each issue gets its own git worktree under `worktree_root`
 - PR/reporting: enabled when `personal_access_token` is configured
+- CI gate: `wait_for_ci` waits for GitHub check runs on the pushed commit before review/deploy
+- Preview deploy: `deploy_preview_command` can expose branch previews through the same k13d domain
 
 ### Command Placeholders
 
-`development_command` and `review_command` are plain shell commands. k13d expands the following placeholders before execution:
+`development_command`, `review_command`, and `deploy_preview_command` are plain shell commands. k13d expands the following placeholders before execution:
 
 | Placeholder | Meaning |
 |-------------|---------|
@@ -307,6 +316,9 @@ Behavior summary:
 | `{worktree}` | Issue-specific git worktree path |
 | `{branch}` | Generated branch name |
 | `{base_branch}` | Base branch used for the worktree |
+| `{preview_slug}` | URL-safe preview slug, available to `deploy_preview_command` |
+| `{preview_path}` | Preview path such as `/previews/codex-issue-123/` |
+| `{preview_url}` | Full preview URL when `preview_url_base` is configured |
 
 k13d also exports the same values as `K13D_GHA_*` environment variables for scripts that prefer environment-driven inputs.
 
@@ -316,6 +328,7 @@ Example with a wrapper script:
 github_automation:
   development_command: ./scripts/run-agent-dev.sh
   review_command: ./scripts/run-agent-review.sh
+  deploy_preview_command: ./scripts/deploy-preview.sh
 ```
 
 Example with inline commands:
@@ -330,11 +343,27 @@ github_automation:
     Focus on bugs, regressions, security, and missing tests."
 ```
 
+Example preview deploy script output:
+
+```text
+K13D_PREVIEW_TARGET=http://127.0.0.1:18123
+```
+
+When `preview_url_base: https://fingerscore.net` and `preview_path_prefix: /previews` are set, k13d publishes that target through:
+
+```text
+https://fingerscore.net/previews/{preview_slug}/
+```
+
+This path-based preview routing is useful when you only have one public URL. Each branch can run on a different local port, while k13d on `443` reverse-proxies `/previews/<branch>/...` to the correct local target.
+
 Operational notes:
 
 - `development_command` is required when automation is enabled.
 - `repo_path` must point at the local clone that will be used as the source repo.
 - `personal_access_token` is optional for local execution, but required if you want automatic issue comments, draft PR creation, or PR reviews.
+- `wait_for_ci` also requires `personal_access_token` because k13d reads GitHub check runs through the GitHub API.
+- `deploy_preview_command` should start or update the branch preview and print `K13D_PREVIEW_TARGET=...` if you want k13d to reverse-proxy it.
 - `cleanup_worktrees: false` is the safer starting point so you can inspect failed jobs.
 - Keep `max_concurrent_jobs` low unless your agent/runtime is known to be stable under parallel worktrees.
 

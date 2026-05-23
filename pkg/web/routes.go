@@ -22,6 +22,7 @@ func (s *Server) registerPublicRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/auth/ldap/status", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleLDAPStatus)))
 	mux.HandleFunc("/api/auth/ldap/test", s.authManager.AuthMiddleware(s.authManager.AdminMiddleware(s.authManager.HandleLDAPTest)))
 	mux.HandleFunc("/api/github/automation/webhook", withRecovery(s.handleGitHubAutomationWebhook))
+	mux.HandleFunc(s.githubPreviewPathPrefix()+"/", withRecovery(s.handleGitHubAutomationPreviewProxy))
 
 	// Prometheus scrape endpoint (no auth for scraping)
 	if s.cfg.Prometheus.ExposeMetrics {

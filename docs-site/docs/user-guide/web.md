@@ -227,6 +227,8 @@ The Web server can also act as a GitHub webhook receiver for issue-driven automa
 - an optional review-agent command
 - auto-commit / auto-push
 - draft PR creation and issue comment reporting
+- GitHub check-run waiting before review/deploy
+- branch preview routing through the same Web UI domain
 
 ### Webhook Endpoint
 
@@ -269,6 +271,22 @@ There is not yet a dedicated GUI page for automation jobs. Today, the operationa
 5. Label an issue with `codex:auto`.
 
 When the job finishes, k13d can comment back on the issue and create a draft PR if a GitHub token is configured.
+
+### Branch Preview URLs
+
+If k13d is the only service exposed on your public `443` endpoint, use path-based previews:
+
+```text
+https://fingerscore.net/previews/<branch-slug>/
+```
+
+The preview deploy command can start each branch on a different local port and print:
+
+```text
+K13D_PREVIEW_TARGET=http://127.0.0.1:18123
+```
+
+k13d stores that target on the automation job and reverse-proxies `/previews/<branch-slug>/...` to it. The browser app also rewrites its own `/api/...` calls under the preview path, so the preview talks to the branch instance rather than the main server.
 
 ### User Management
 

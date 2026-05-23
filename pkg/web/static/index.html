@@ -7,6 +7,34 @@
     <title>k13d - kube-ai-dashboard</title>
     <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
     <link rel="shortcut icon" href="assets/logo.svg" />
+    <script>
+        (function () {
+            const match = window.location.pathname.match(/^\/previews\/[^/]+(?=\/|$)/);
+            const basePath = match ? match[0] : '';
+            window.K13D_BASE_PATH = basePath;
+            window.k13dPath = function (path) {
+                if (!basePath || typeof path !== 'string' || !path.startsWith('/')) return path;
+                if (path.startsWith(basePath + '/')) return path;
+                return basePath + path;
+            };
+            if (!basePath || !window.fetch) return;
+            const nativeFetch = window.fetch.bind(window);
+            window.fetch = function (input, init) {
+                if (typeof input === 'string') {
+                    input = window.k13dPath(input);
+                } else if (input instanceof URL && input.origin === window.location.origin) {
+                    input = new URL(window.k13dPath(input.pathname) + input.search + input.hash, input.origin);
+                } else if (input instanceof Request) {
+                    const reqURL = new URL(input.url, window.location.origin);
+                    if (reqURL.origin === window.location.origin && reqURL.pathname.startsWith('/api/')) {
+                        const rewritten = new URL(window.k13dPath(reqURL.pathname) + reqURL.search + reqURL.hash, reqURL.origin);
+                        input = new Request(rewritten, input);
+                    }
+                }
+                return nativeFetch(input, init);
+            };
+        })();
+    </script>
     <!-- All assets vendored locally for air-gapped environments -->
     <!-- xterm.js for terminal -->
     <link rel="stylesheet" href="vendor/xterm.css" />

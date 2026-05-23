@@ -267,8 +267,10 @@ k13d can also act as a lightweight GitHub issue autopilot. When GitHub sends an 
 - gate execution by label, by default `codex:auto`
 - create an isolated git worktree per issue
 - run your configured development command
+- wait for GitHub checks on the pushed branch
 - optionally run a separate review command
 - auto-commit, auto-push, and create a draft PR
+- deploy a branch preview behind the same domain, for example `/previews/codex-issue-123-fix/`
 - post an issue comment and PR review when a GitHub token is configured
 
 This is designed for local or self-hosted operation. If you run k13d directly on a public HTTPS endpoint, GitHub can reach it without extra relay infrastructure:
@@ -291,9 +293,16 @@ github_automation:
   worktree_root: ~/.cache/k13d/github-automation
   development_command: ./scripts/run-agent-dev.sh
   review_command: ./scripts/run-agent-review.sh
+  wait_for_ci: true
+  auto_deploy_preview: true
+  deploy_preview_command: ./scripts/deploy-preview.sh
+  preview_url_base: https://fingerscore.net
+  preview_path_prefix: /previews
 ```
 
-The development and review commands are fully configurable so you can wire in Codex, Claude Code, Gemini CLI, or your own wrapper scripts. For the full config reference, placeholders, environment variables, and webhook flow, see:
+The development, review, and preview deployment commands are fully configurable so you can wire in Codex, Claude Code, Gemini CLI, or your own wrapper scripts. A local preview command can start the built branch on a localhost port and print `K13D_PREVIEW_TARGET=http://127.0.0.1:<port>`. k13d then exposes it through the main Web server as `https://fingerscore.net/previews/<branch-slug>/`, which keeps preview access on a single public URL.
+
+For the full config reference, placeholders, environment variables, and webhook flow, see:
 
 - [Configuration Guide](docs-site/docs/getting-started/configuration.md)
 - [Web UI Guide](docs-site/docs/user-guide/web.md)

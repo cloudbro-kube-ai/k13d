@@ -44,6 +44,10 @@ Default config paths are:
 | `K13D_GITHUB_AUTOMATION_TOKEN` | GitHub token used for issue comments, PR creation, and PR reviews | none |
 | `K13D_GITHUB_AUTOMATION_REPO_PATH` | Local repository path used as the source worktree repo | none |
 | `K13D_GITHUB_AUTOMATION_TRIGGER_LABEL` | Label that allows an issue webhook to queue a job | `codex:auto` |
+| `K13D_GITHUB_AUTOMATION_WAIT_FOR_CI` | Wait for GitHub check runs before review/deploy | `true` |
+| `K13D_GITHUB_AUTOMATION_AUTO_DEPLOY_PREVIEW` | Run the configured preview deployment command after CI succeeds | `false` |
+| `K13D_GITHUB_AUTOMATION_PREVIEW_URL_BASE` | Public base URL used when building preview links | none |
+| `K13D_GITHUB_AUTOMATION_PREVIEW_PATH_PREFIX` | Path prefix for branch previews on the main Web server | `/previews` |
 
 ## Storage
 
@@ -141,6 +145,9 @@ export K13D_GITHUB_AUTOMATION_WEBHOOK_SECRET=replace-me
 export K13D_GITHUB_AUTOMATION_TOKEN=ghp_xxx
 export K13D_GITHUB_AUTOMATION_REPO_PATH=/absolute/path/to/repo
 export K13D_GITHUB_AUTOMATION_TRIGGER_LABEL=codex:auto
+export K13D_GITHUB_AUTOMATION_WAIT_FOR_CI=true
+export K13D_GITHUB_AUTOMATION_AUTO_DEPLOY_PREVIEW=true
+export K13D_GITHUB_AUTOMATION_PREVIEW_URL_BASE=https://fingerscore.net
 k13d --web --auth-mode local
 ```
 

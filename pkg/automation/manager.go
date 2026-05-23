@@ -160,6 +160,21 @@ func (m *Manager) GetJob(id string) (*Job, bool) {
 	return &copyJob, true
 }
 
+func (m *Manager) GetPreviewTarget(slug string) (string, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return "", false
+	}
+	for _, job := range m.jobs {
+		if job.PreviewSlug == slug && strings.TrimSpace(job.PreviewTarget) != "" {
+			return job.PreviewTarget, true
+		}
+	}
+	return "", false
+}
+
 func (m *Manager) worker() {
 	for {
 		select {
@@ -205,12 +220,23 @@ func (m *Manager) runJob(job *Job) {
 		} else {
 			job.PullRequestURL = pr.URL
 			job.PullRequestNumber = pr.Number
-			if strings.TrimSpace(result.ReviewLog) != "" {
-				if reviewErr := m.reporter.CreatePullRequestReview(m.ctx, job.Repository, pr.Number, buildReviewBody(job, result)); reviewErr != nil {
-					job.Warnings = append(job.Warnings, "failed to create pull request review: "+reviewErr.Error())
-				}
-			}
 		}
+	}
+
+	if err := m.waitForCI(job, result); err != nil {
+		m.finishJob(job, result, err)
+		return
+	}
+
+	if result != nil && job.PullRequestNumber > 0 && m.reporter != nil && strings.TrimSpace(result.ReviewLog) != "" {
+		if reviewErr := m.reporter.CreatePullRequestReview(m.ctx, job.Repository, job.PullRequestNumber, buildReviewBody(job, result)); reviewErr != nil {
+			job.Warnings = append(job.Warnings, "failed to create pull request review: "+reviewErr.Error())
+		}
+	}
+
+	if err := m.deployPreview(job, result); err != nil {
+		m.finishJob(job, result, err)
+		return
 	}
 
 	job.Status = JobStatusSucceeded
@@ -219,6 +245,79 @@ func (m *Manager) runJob(job *Job) {
 	m.persistJob(job)
 	m.releaseIssueLock(job)
 	m.postCompletionComment(job, result, nil)
+}
+
+func (m *Manager) waitForCI(job *Job, result *ExecutionResult) error {
+	if !m.cfg.WaitForCI || result == nil || !result.HasChanges || !m.cfg.AutoPush {
+		return nil
+	}
+	if m.reporter == nil {
+		job.Warnings = append(job.Warnings, "wait_for_ci is enabled but github token is not configured")
+		return nil
+	}
+	ref := strings.TrimSpace(result.CommitSHA)
+	if ref == "" {
+		ref = strings.TrimSpace(result.Branch)
+	}
+	if ref == "" {
+		job.Warnings = append(job.Warnings, "wait_for_ci skipped because no commit SHA or branch was produced")
+		return nil
+	}
+
+	m.updateJob(job.ID, func(current *Job) {
+		current.Status = JobStatusWaitingCI
+		current.StatusReason = "waiting for GitHub checks"
+	})
+
+	ciResult, err := m.reporter.WaitForChecks(
+		m.ctx,
+		job.Repository,
+		ref,
+		time.Duration(ciWaitTimeoutSeconds(m.cfg))*time.Second,
+		time.Duration(ciPollIntervalSeconds(m.cfg))*time.Second,
+	)
+	if ciResult != nil {
+		job.CIStatus = ciResult.Status
+		job.CIConclusion = ciResult.Conclusion
+		job.CIURL = ciResult.URL
+	}
+	if err != nil {
+		if job.CIStatus == "" {
+			job.CIStatus = "failed"
+		}
+		if job.CIConclusion == "" {
+			job.CIConclusion = "failure"
+		}
+		return fmt.Errorf("ci checks failed: %w", err)
+	}
+	if job.CIStatus == "" {
+		job.CIStatus = "completed"
+	}
+	if job.CIConclusion == "" {
+		job.CIConclusion = "success"
+	}
+	return nil
+}
+
+func (m *Manager) deployPreview(job *Job, result *ExecutionResult) error {
+	deployment, err := m.executor.DeployPreview(m.ctx, job, result)
+	if deployment == nil && err == nil {
+		return nil
+	}
+	m.updateJob(job.ID, func(current *Job) {
+		current.Status = JobStatusDeploying
+		current.StatusReason = "deploying branch preview"
+	})
+	if deployment != nil {
+		job.PreviewSlug = deployment.Slug
+		job.PreviewURL = deployment.PublicURL
+		job.PreviewTarget = deployment.TargetURL
+		job.DeploymentLog = deployment.Log
+	}
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (m *Manager) finishJob(job *Job, result *ExecutionResult, execErr error) {
@@ -238,6 +337,20 @@ func (m *Manager) finishJob(job *Job, result *ExecutionResult, execErr error) {
 	m.persistJob(job)
 	m.releaseIssueLock(job)
 	m.postCompletionComment(job, result, execErr)
+}
+
+func ciWaitTimeoutSeconds(cfg config.GitHubAutomationConfig) int {
+	if cfg.CIWaitTimeoutSeconds > 0 {
+		return cfg.CIWaitTimeoutSeconds
+	}
+	return 600
+}
+
+func ciPollIntervalSeconds(cfg config.GitHubAutomationConfig) int {
+	if cfg.CIPollIntervalSeconds > 0 {
+		return cfg.CIPollIntervalSeconds
+	}
+	return 10
 }
 
 func (m *Manager) persistJob(job *Job) {
@@ -348,6 +461,15 @@ func buildIssueComment(job *Job, result *ExecutionResult, execErr error) string 
 	if job.PullRequestURL != "" {
 		fmt.Fprintf(&b, "- Pull request: %s\n", job.PullRequestURL)
 	}
+	if job.CIConclusion != "" {
+		fmt.Fprintf(&b, "- CI: `%s`\n", job.CIConclusion)
+	}
+	if job.CIURL != "" {
+		fmt.Fprintf(&b, "- CI details: %s\n", job.CIURL)
+	}
+	if job.PreviewURL != "" {
+		fmt.Fprintf(&b, "- Preview: %s\n", job.PreviewURL)
+	}
 	if !job.HasChanges {
 		b.WriteString("- Result: no file changes were produced\n")
 	}
@@ -359,6 +481,11 @@ func buildIssueComment(job *Job, result *ExecutionResult, execErr error) string 
 	if strings.TrimSpace(job.ReviewLog) != "" {
 		b.WriteString("\n### Review summary\n\n```text\n")
 		b.WriteString(job.ReviewLog)
+		b.WriteString("\n```\n")
+	}
+	if strings.TrimSpace(job.DeploymentLog) != "" {
+		b.WriteString("\n### Deployment output\n\n```text\n")
+		b.WriteString(job.DeploymentLog)
 		b.WriteString("\n```\n")
 	}
 	if len(job.Warnings) > 0 {

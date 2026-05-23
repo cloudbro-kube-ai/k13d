@@ -7,6 +7,8 @@ type JobStatus string
 const (
 	JobStatusQueued    JobStatus = "queued"
 	JobStatusRunning   JobStatus = "running"
+	JobStatusWaitingCI JobStatus = "waiting_for_ci"
+	JobStatusDeploying JobStatus = "deploying"
 	JobStatusSucceeded JobStatus = "succeeded"
 	JobStatusFailed    JobStatus = "failed"
 	JobStatusIgnored   JobStatus = "ignored"
@@ -30,9 +32,16 @@ type Job struct {
 	CommitSHA         string    `json:"commit_sha,omitempty"`
 	PullRequestURL    string    `json:"pull_request_url,omitempty"`
 	PullRequestNumber int       `json:"pull_request_number,omitempty"`
+	CIStatus          string    `json:"ci_status,omitempty"`
+	CIConclusion      string    `json:"ci_conclusion,omitempty"`
+	CIURL             string    `json:"ci_url,omitempty"`
+	PreviewSlug       string    `json:"preview_slug,omitempty"`
+	PreviewURL        string    `json:"preview_url,omitempty"`
+	PreviewTarget     string    `json:"preview_target,omitempty"`
 	HasChanges        bool      `json:"has_changes"`
 	DevelopmentLog    string    `json:"development_log,omitempty"`
 	ReviewLog         string    `json:"review_log,omitempty"`
+	DeploymentLog     string    `json:"deployment_log,omitempty"`
 	DiffStat          string    `json:"diff_stat,omitempty"`
 	Error             string    `json:"error,omitempty"`
 	Warnings          []string  `json:"warnings,omitempty"`
@@ -70,6 +79,20 @@ type ExecutionResult struct {
 	DevelopmentLog string
 	ReviewLog      string
 	DiffStat       string
+}
+
+type CIResult struct {
+	Status     string
+	Conclusion string
+	URL        string
+	Summary    string
+}
+
+type PreviewDeployment struct {
+	Slug      string
+	PublicURL string
+	TargetURL string
+	Log       string
 }
 
 type PullRequestInfo struct {
