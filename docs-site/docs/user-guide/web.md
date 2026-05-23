@@ -258,6 +258,7 @@ There is not yet a dedicated GUI page for automation jobs. Today, the operationa
 
 - Only GitHub `issues` webhooks are supported right now
 - Default label gate: `codex:auto`
+- Apply `codex:auto` only to issues you want the local automation runner to execute
 - Supported issue actions: `opened`, `reopened`, `labeled`
 - Webhook signatures are verified with `X-Hub-Signature-256`
 - Repositories can be allow-listed in `config.yaml`
