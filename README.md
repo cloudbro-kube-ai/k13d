@@ -265,12 +265,14 @@ The AI assistant can:
 k13d can also act as a lightweight GitHub issue autopilot. When GitHub sends an `issues` webhook to the Web server, k13d can:
 
 - gate execution by label, by default `codex:auto`
-- create an isolated git worktree per issue
+- guide humans through a friendly `Codex 개발 요청` Issue Form before automation starts
+- create or reuse one stable issue branch and worktree, for example `codex/issue-123`
 - run your configured development command
 - wait for GitHub checks on the pushed branch
 - optionally run a separate review command
-- auto-commit, auto-push, and create a draft PR
-- deploy a branch preview behind the same domain, for example `/previews/codex-issue-123-fix/`
+- auto-commit, auto-push, and create or reuse exactly one draft PR for that issue branch
+- assign the issue author and request organization members as PR reviewers
+- deploy a branch preview behind the same domain, for example `/previews/codex-issue-123/`
 - post an issue comment and PR review when a GitHub token is configured
 
 This is designed for local or self-hosted operation. If you run k13d directly on a public HTTPS endpoint, GitHub can reach it without extra relay infrastructure:
@@ -288,24 +290,31 @@ github_automation:
   personal_access_token: ${GITHUB_TOKEN}
   allowed_repositories:
     - cloudbro-kube-ai/k13d
+  require_author_org_member: true
+  mention_org_members: true
+  mention_max_members: 20
+  review_language: ko
   trigger_label: codex:auto
   repo_path: /absolute/path/to/k13d
   worktree_root: ~/.cache/k13d/github-automation
   development_command: ./scripts/run-agent-dev.sh
   review_command: ./scripts/run-agent-review.sh
   wait_for_ci: true
+  allow_issue_merge: true
+  merge_method: squash
   auto_deploy_preview: true
   deploy_preview_command: ./scripts/deploy-preview.sh
   preview_url_base: https://fingerscore.net
   preview_path_prefix: /previews
 ```
 
-The development, review, and preview deployment commands are fully configurable so you can wire in Codex, Claude Code, Gemini CLI, or your own wrapper scripts. A local preview command can start the built branch on a localhost port and print `K13D_PREVIEW_TARGET=http://127.0.0.1:<port>`. k13d then exposes it through the main Web server as `https://fingerscore.net/previews/<branch-slug>/`, which keeps preview access on a single public URL.
+The development, review, and preview deployment commands are fully configurable so you can wire in Codex, Claude Code, Gemini CLI, or your own wrapper scripts. The included `scripts/run-agent-review.sh` wrapper runs `codex exec review` and emits a Korean PR review summary. By default, k13d comments and PR reviews in Korean, mentions organization members when a trusted issue is accepted, assigns the issue author, requests organization members as PR reviewers, and includes the branch preview link after deployment succeeds. One issue maps to one stable branch and one open PR, so re-labeling or reopening the issue continues on the same branch. Organization members can comment `k13d 코드리뷰 해줘` on the issue to re-run the configured review command, and if `allow_issue_merge` is enabled they can comment `k13d merge 해줘` to merge the linked PR into the base branch after human preview verification. After a successful issue-requested merge, k13d closes the GitHub issue as completed. k13d never forwards GitHub token env vars to development/review/deploy commands and redacts GitHub token patterns from captured output. A local preview command can start the built branch on a localhost port and print `K13D_PREVIEW_TARGET=http://127.0.0.1:<port>`. k13d then exposes it through the main Web server as `https://fingerscore.net/previews/<branch-slug>/`, which keeps preview access on a single public URL. After CI/CD finishes, k13d also posts that verification path on the generated PR so reviewers do not have to jump back to the issue.
 
 For the full config reference, placeholders, environment variables, and webhook flow, see:
 
 - [Configuration Guide](docs-site/docs/getting-started/configuration.md)
 - [Web UI Guide](docs-site/docs/user-guide/web.md)
+- [GitHub Issue Automation Guide](docs-site/docs/user-guide/github-issue-automation.md)
 - [Architecture](docs-site/docs/concepts/architecture.md)
 - [Environment Variables](docs-site/docs/reference/env-vars.md)
 - Scale deployments, restart rollouts

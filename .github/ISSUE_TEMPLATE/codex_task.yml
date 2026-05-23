@@ -1,0 +1,117 @@
+name: Codex 개발 요청
+description: 원하는 변경을 자연어로 적으면, 검토 후 Codex 자동 개발로 이어갈 수 있어요.
+title: "[Codex] "
+labels: ["triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        편하게 적어주세요. 완벽한 요구사항이 아니어도 괜찮습니다.
+
+        이 템플릿은 "이슈 등록 → 검토 → `codex:auto` 라벨 적용 → 자동 개발/PR/리뷰/배포 확인" 흐름에 맞춰져 있습니다.
+        보안을 위해 비밀번호, 토큰, kubeconfig, API key 같은 비밀 정보는 절대 넣지 말아주세요.
+
+  - type: dropdown
+    id: request_type
+    attributes:
+      label: 어떤 요청인가요?
+      description: 가장 가까운 항목을 골라주세요.
+      options:
+        - 버그 수정
+        - 기능 추가
+        - UI/UX 개선
+        - 문서 개선
+        - 리팩토링
+        - 테스트/CI 개선
+        - 잘 모르겠어요
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 한 줄 목표
+      description: 이 이슈가 해결되면 무엇이 좋아지나요?
+      placeholder: 예) Web UI에서 Job/CronJob 실행 이력을 더 쉽게 확인하고 싶어요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 현재 불편한 점 또는 배경
+      description: 지금 어떤 화면/명령/상황에서 불편한지 알려주세요.
+      placeholder: |
+        예)
+        - Web UI > Workloads > CronJobs에서 다음 실행 시간이 잘 보이지 않아요.
+        - 사용자는 UTC가 아니라 로컬 시간으로 보고 싶어요.
+
+  - type: textarea
+    id: desired_behavior
+    attributes:
+      label: 원하는 동작
+      description: 결과가 어떻게 보이면 좋을지 자연어로 적어주세요.
+      placeholder: |
+        예)
+        - 마지막 실행 시간, 다음 실행 시간, 최근 성공/실패 여부를 한눈에 보고 싶어요.
+        - 시간은 브라우저 로컬 시간으로 표시해주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 완료 기준
+      description: Codex와 리뷰어가 "끝났다"고 판단할 수 있는 기준을 적어주세요.
+      placeholder: |
+        예)
+        - CronJob 상세 화면에 최근 실행 Job 목록이 보인다.
+        - 다음 실행 시간이 로컬 시간과 UTC를 함께 보여준다.
+        - 관련 테스트가 추가된다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: 확인 방법
+      description: 가능하다면 테스트 명령이나 직접 확인할 화면을 적어주세요.
+      placeholder: |
+        예)
+        - go test ./pkg/web ./pkg/k8s
+        - Web UI에서 CronJob 상세 화면을 열어 확인
+
+  - type: dropdown
+    id: risk
+    attributes:
+      label: 위험도 느낌
+      description: 잘 모르겠으면 "보통"을 선택해도 됩니다.
+      options:
+        - 낮음 - 문서/문구/작은 UI 수정
+        - 보통 - 기능 수정 또는 테스트 추가
+        - 높음 - 인증/권한/배포/데이터 변경
+        - 잘 모르겠어요
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: 안전 확인
+      description: 자동 개발로 이어질 수 있으니 아래 내용을 확인해주세요.
+      options:
+        - label: 이 이슈에는 비밀번호, 토큰, kubeconfig, API key 같은 비밀 정보를 넣지 않았습니다.
+          required: true
+        - label: 변경 범위가 너무 크면 작은 이슈로 나눌 수 있다는 점을 이해했습니다.
+          required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        다음 단계:
+
+        1. organization member가 이슈 내용을 확인합니다.
+        2. 자동 개발을 시작해도 괜찮으면 `codex:auto` 라벨을 붙입니다.
+        3. k13d가 같은 이슈 번호의 브랜치와 PR을 만들거나 재사용합니다.
+        4. PR, CI 결과, 배포 확인 링크가 이슈 댓글로 올라옵니다.
+        5. 추가 리뷰가 필요하면 `k13d 코드리뷰 해줘`, 확인 후 병합하려면 `k13d merge 해줘`라고 댓글을 남길 수 있습니다.

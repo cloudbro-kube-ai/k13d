@@ -228,7 +228,7 @@ The Web server can also act as a GitHub webhook receiver for issue-driven automa
 - auto-commit / auto-push
 - draft PR creation and issue comment reporting
 - GitHub check-run waiting before review/deploy
-- branch preview routing through the same Web UI domain
+- branch preview routing through the same Web UI domain, with verification links posted back to the PR after CI/CD
 
 ### Webhook Endpoint
 
@@ -256,8 +256,18 @@ There is not yet a dedicated GUI page for automation jobs. Today, the operationa
 
 ### Trigger Rules
 
-- Only GitHub `issues` webhooks are supported right now
+- GitHub `issues` webhooks start automation jobs, and `issue_comment` webhooks handle review/merge commands
 - Default label gate: `codex:auto`
+- The `Codex 개발 요청` GitHub Issue Form collects goal, context, desired behavior, acceptance criteria, validation, and safety confirmation
+- Issue authors must be members of the repository owner organization when `require_author_org_member` is enabled
+- Trusted issues can mention organization members when `mention_org_members` is enabled
+- Trusted issues are assigned to the issue author
+- Generated PRs request organization members as reviewers
+- One issue uses one stable branch, such as `codex/issue-123`, and reuses the existing open PR on later runs
+- If `review_command` is configured, organization members can comment `k13d 코드리뷰 해줘` on the issue to re-run Codex review and post a PR Review
+- If `allow_issue_merge` is enabled, organization members can comment `k13d merge 해줘` on the issue to merge the linked PR and close the issue as completed
+- GitHub token env vars are stripped from automation command environments and redacted from captured output
+- Built-in issue comments and PR review wrappers use Korean by default through `review_language: ko`
 - Supported issue actions: `opened`, `reopened`, `labeled`
 - Webhook signatures are verified with `X-Hub-Signature-256`
 - Repositories can be allow-listed in `config.yaml`
@@ -266,11 +276,13 @@ There is not yet a dedicated GUI page for automation jobs. Today, the operationa
 
 1. Run k13d Web UI on a reachable HTTPS endpoint.
 2. Configure `github_automation` in `config.yaml`.
-3. Add a GitHub webhook for `Issues`.
+3. Add a GitHub webhook for `Issues` and `Issue comments`.
 4. Set the same webhook secret in GitHub and in `config.yaml`.
-5. Label an issue with `codex:auto`.
+5. Create a `Codex 개발 요청` issue, review it, then label it with `codex:auto`.
 
 When the job finishes, k13d can comment back on the issue and create a draft PR if a GitHub token is configured.
+
+For author requirements and a recommended issue template, see the [GitHub Issue Automation Guide](github-issue-automation.md).
 
 ### Branch Preview URLs
 
@@ -286,7 +298,7 @@ The preview deploy command can start each branch on a different local port and p
 K13D_PREVIEW_TARGET=http://127.0.0.1:18123
 ```
 
-k13d stores that target on the automation job and reverse-proxies `/previews/<branch-slug>/...` to it. The browser app also rewrites its own `/api/...` calls under the preview path, so the preview talks to the branch instance rather than the main server.
+k13d stores that target on the automation job and reverse-proxies `/previews/<branch-slug>/...` to it. The browser app also rewrites its own `/api/...` calls under the preview path, so the preview talks to the branch instance rather than the main server. After CI and preview deployment succeed, the issue completion comment and generated PR comment include the preview URL as a human verification link.
 
 ### User Management
 
