@@ -21,6 +21,7 @@ When a trusted issue is accepted, k13d can mention organization members in the f
 ## Before You Create an Issue
 
 Use automation for small, reviewable changes. A good issue should be scoped enough that the local runner can make one focused PR.
+Issue-driven development can be tested with a small docs-only request before using it for product changes.
 
 The repository provides friendly GitHub Issue Forms:
 
