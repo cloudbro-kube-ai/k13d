@@ -279,6 +279,20 @@ k13d can also act as a lightweight GitHub issue autopilot. When GitHub sends an 
 - mark follow-up development as active with a 🚀 reaction on the triggering issue comment
 - run PR Preview CD on a self-hosted `fingerscore` runner, publishing PRs under `/previews/pr-<number>/`
 
+### Issue-Driven Development Quick Start
+
+Use this flow when you want to drive development from GitHub Issues instead of local commands:
+
+1. Open a `Codex 개발 요청` issue and describe the goal, current context, requested behavior, acceptance criteria, validation, and safety notes.
+2. Do not include secrets such as tokens, kubeconfigs, passwords, or API keys.
+3. An organization member reviews the issue and adds `codex:auto` only when it is safe to start automation.
+4. k13d marks the issue with `codex:running`, creates or reuses `codex/issue-<number>`, and opens or reuses one PR for that issue.
+5. Review the PR comment or issue control panel for the CI result and Preview URL.
+6. If the Preview needs more work, comment on the issue with `k13d 수정해줘: ...`; k13d reacts to that comment with 🚀 and continues on the same PR.
+7. To request another automated review, comment `k13d 코드리뷰 해줘`.
+8. After human Preview verification, check the merge box in the issue control panel or comment `k13d merge 해줘` when issue merge is enabled.
+9. After a successful issue-requested merge, k13d closes the issue as completed.
+
 This is designed for local or self-hosted operation. If you run k13d directly on a public HTTPS endpoint, GitHub can reach it without extra relay infrastructure:
 
 ```text
@@ -321,6 +335,7 @@ For the full config reference, placeholders, environment variables, and webhook 
 - [GitHub Issue Automation Guide](docs-site/docs/user-guide/github-issue-automation.md)
 - [Architecture](docs-site/docs/concepts/architecture.md)
 - [Environment Variables](docs-site/docs/reference/env-vars.md)
+
 - Scale deployments, restart rollouts
 - Analyze YAML, events, and logs in context
 - Use MCP tools for extended capabilities

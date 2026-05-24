@@ -68,6 +68,39 @@ Explain the current behavior, error, or relevant page/command.
 
 If you use the `Codex 개발 요청` Issue Form, GitHub asks for the same information with friendlier questions. The form intentionally applies only a triage label. An organization member should review the request first, then add `codex:auto` when it is safe to start automation.
 
+## Issue-Only Development Loop
+
+The intended user experience is that a human can stay on the GitHub Issue page from request to merge:
+
+| Step | Human Action | k13d Signal |
+|------|--------------|-------------|
+| 1 | Open a `Codex 개발 요청` issue | Issue starts as normal triage work |
+| 2 | Maintainer reviews scope and safety | No code runs yet |
+| 3 | Maintainer adds `codex:auto` | `codex:running` appears and an accepted comment is posted |
+| 4 | Wait for the result | k13d creates or reuses one stable branch and one PR |
+| 5 | Open the Preview link from the issue or PR | Preview runs under `/previews/<branch-slug>/` or `/previews/pr-<number>/` |
+| 6 | Request changes with `k13d 수정해줘: ...` | The triggering comment gets a 🚀 reaction and the same PR continues |
+| 7 | Request review with `k13d 코드리뷰 해줘` | A Korean PR Review is posted when `review_command` is configured |
+| 8 | Confirm Preview and request merge | The merge checkbox or `k13d merge 해줘` merges the linked PR when allowed |
+| 9 | Finish | k13d closes the issue as completed after a successful issue-requested merge |
+
+Use the Issue page as the source of truth. Avoid opening a second issue for follow-up fixes unless the scope has clearly changed.
+
+### Copy-Paste Comment Examples
+
+```text
+k13d 수정해줘: Preview에서 모바일 카드 간격이 너무 좁아요.
+카드 간격을 조금 넓히고 Web UI E2E도 다시 확인해주세요.
+```
+
+```text
+k13d 코드리뷰 해줘
+```
+
+```text
+k13d merge 해줘
+```
+
 ## Trigger Steps
 
 1. Create an issue with the `Codex 개발 요청` form.
