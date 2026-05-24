@@ -117,6 +117,7 @@ func (m *Manager) QueueIssueEvent(event *IssueEvent) QueueResult {
 		IssueBody:     event.IssueBody,
 		IssueURL:      event.IssueURL,
 		IssueAuthor:   event.IssueAuthor,
+		RequestAuthor: event.IssueAuthor,
 		TriggerAction: event.Action,
 		TriggerLabel:  event.TriggeredLabel,
 		Status:        JobStatusQueued,
@@ -183,7 +184,13 @@ func (m *Manager) HandleIssueCommentEvent(event *IssueCommentEvent) QueueResult 
 	}
 	mergeRequested := isMergeCommentRequest(event)
 	if !mergeRequested {
-		return QueueResult{Ignored: true, Reason: "comment does not contain a k13d review command, merge command, or checked merge control"}
+		if event.Action == "created" && isDevelopmentCommand(event.CommentBody) {
+			if ok, reason := m.githubUserIsOrgMember(event.Repository, event.CommentAuthor, event.CommentAuthorAssociation); !ok {
+				return QueueResult{Ignored: true, Reason: reason}
+			}
+			return m.queueIssueCommentDevelopment(event)
+		}
+		return QueueResult{Ignored: true, Reason: "comment does not contain a k13d development command, review command, merge command, or checked merge control"}
 	}
 	if !m.cfg.AllowIssueMerge {
 		return QueueResult{Ignored: true, Reason: "issue merge command is disabled"}
@@ -197,6 +204,54 @@ func (m *Manager) HandleIssueCommentEvent(event *IssueCommentEvent) QueueResult 
 
 	go m.mergeIssuePullRequest(event)
 	return QueueResult{Accepted: true}
+}
+
+func (m *Manager) queueIssueCommentDevelopment(event *IssueCommentEvent) QueueResult {
+	if len(m.cfg.DevelopmentCommand) == 0 {
+		return QueueResult{Ignored: true, Reason: "development_command is not configured"}
+	}
+
+	key := issueKey(event.Repository, event.IssueNumber)
+	m.mu.Lock()
+	if existingID, ok := m.activeByIssue[key]; ok {
+		m.mu.Unlock()
+		return QueueResult{Ignored: true, Reason: "job already queued or running", JobID: existingID}
+	}
+	job := &Job{
+		ID:            uuid.NewString(),
+		Repository:    event.Repository,
+		IssueNumber:   event.IssueNumber,
+		IssueTitle:    event.IssueTitle,
+		IssueBody:     buildFollowUpIssueBody(event),
+		IssueURL:      event.IssueURL,
+		IssueAuthor:   event.IssueAuthor,
+		RequestAuthor: event.CommentAuthor,
+		TriggerAction: "comment:" + event.Action,
+		Status:        JobStatusQueued,
+		CreatedAt:     m.now(),
+	}
+	m.jobs[job.ID] = job
+	m.activeByIssue[key] = job.ID
+	m.mu.Unlock()
+
+	if m.ctx.Err() != nil {
+		m.releaseIssueLock(job)
+		return QueueResult{Ignored: true, Reason: "automation manager is shutting down"}
+	}
+	m.assignIssueAuthor(job)
+	m.markIssueInProgress(job)
+	m.postAcceptedIssueComment(job)
+
+	select {
+	case m.queue <- job:
+		return QueueResult{Accepted: true, JobID: job.ID}
+	case <-m.ctx.Done():
+		if err := m.clearIssueInProgress(job); err != nil {
+			job.Warnings = append(job.Warnings, "failed to clear in-progress issue label: "+err.Error())
+			m.persistJob(job)
+		}
+		return QueueResult{Ignored: true, Reason: "automation manager is shutting down"}
+	}
 }
 
 func (m *Manager) ListJobs() []*Job {
@@ -820,24 +875,40 @@ func effectiveBaseBranch(cfg config.GitHubAutomationConfig) string {
 func buildAcceptedIssueComment(job *Job, mentions []string, cfg config.GitHubAutomationConfig) string {
 	var b strings.Builder
 	if koreanReview(cfg) {
-		fmt.Fprintf(&b, "## k13d 이슈 자동화 접수\n\n")
+		if jobIsFollowUp(job) {
+			fmt.Fprintf(&b, "## k13d 후속 개발 요청 접수\n\n")
+		} else {
+			fmt.Fprintf(&b, "## k13d 이슈 자동화 접수\n\n")
+		}
 		if len(mentions) > 0 {
 			fmt.Fprintf(&b, "%s\n\n", strings.Join(mentions, " "))
 		}
 		fmt.Fprintf(&b, "- 이슈: #%d\n", job.IssueNumber)
 		fmt.Fprintf(&b, "- 작성자: @%s\n", job.IssueAuthor)
+		if jobIsFollowUp(job) && strings.TrimSpace(job.RequestAuthor) != "" {
+			fmt.Fprintf(&b, "- 추가 요청자: @%s\n", job.RequestAuthor)
+			b.WriteString("- 처리 방식: 같은 이슈 브랜치와 같은 open PR에 이어서 반영합니다.\n")
+		}
 		fmt.Fprintf(&b, "- 상태: 자동화 작업을 큐에 등록했습니다.\n")
 		b.WriteString("- 리뷰 언어: 이슈 검토와 코드 리뷰는 한국어로 진행합니다.\n")
 		b.WriteString("\n작업이 끝나면 PR, CI 결과, 배포 확인 링크가 포함된 완료 코멘트를 남깁니다.\n")
 		return b.String()
 	}
 
-	fmt.Fprintf(&b, "## k13d issue automation accepted\n\n")
+	if jobIsFollowUp(job) {
+		fmt.Fprintf(&b, "## k13d follow-up development accepted\n\n")
+	} else {
+		fmt.Fprintf(&b, "## k13d issue automation accepted\n\n")
+	}
 	if len(mentions) > 0 {
 		fmt.Fprintf(&b, "%s\n\n", strings.Join(mentions, " "))
 	}
 	fmt.Fprintf(&b, "- Issue: #%d\n", job.IssueNumber)
 	fmt.Fprintf(&b, "- Author: @%s\n", job.IssueAuthor)
+	if jobIsFollowUp(job) && strings.TrimSpace(job.RequestAuthor) != "" {
+		fmt.Fprintf(&b, "- Follow-up requested by: @%s\n", job.RequestAuthor)
+		b.WriteString("- Mode: continuing on the same issue branch and open PR.\n")
+	}
 	fmt.Fprintf(&b, "- Status: queued for automation\n")
 	b.WriteString("\nWhen the job finishes, k13d will comment with the PR, CI result, and preview deployment link.\n")
 	return b.String()
@@ -1181,8 +1252,10 @@ func buildIssueControlPanelComment(job *Job, cfg config.GitHubAutomationConfig) 
 		if cfg.AllowIssueMerge {
 			b.WriteString("\nPreview와 PR을 확인한 뒤 아래 체크박스를 클릭하면 k13d가 연결된 PR 병합을 요청합니다.\n\n")
 			b.WriteString("- [ ] Preview 확인 완료, PR 병합 요청 (`k13d merge 해줘`)\n")
+			b.WriteString("\n추가로 고칠 부분이 있으면 이슈에 `k13d 수정해줘: ...` 또는 `k13d 계속 개발해줘: ...`처럼 댓글을 남겨주세요. k13d가 같은 브랜치와 같은 PR에 이어서 반영하고 새 Preview 링크를 다시 남깁니다.\n")
 			b.WriteString("\n체크박스가 동작하지 않으면 이슈에 `k13d merge 해줘`라고 댓글로 남겨도 됩니다. GitHub branch protection, 필수 리뷰, CI 조건은 그대로 적용됩니다.\n")
 		} else {
+			b.WriteString("\n추가로 고칠 부분이 있으면 이슈에 `k13d 수정해줘: ...` 또는 `k13d 계속 개발해줘: ...`처럼 댓글을 남겨주세요. k13d가 같은 브랜치와 같은 PR에 이어서 반영하고 새 Preview 링크를 다시 남깁니다.\n")
 			b.WriteString("\n`allow_issue_merge`가 꺼져 있어 이슈에서 직접 병합할 수 없습니다. PR 화면에서 검토 후 수동으로 병합해주세요.\n")
 		}
 		return b.String()
@@ -1204,8 +1277,10 @@ func buildIssueControlPanelComment(job *Job, cfg config.GitHubAutomationConfig) 
 	if cfg.AllowIssueMerge {
 		b.WriteString("\nAfter verifying the preview and PR, click the checkbox below to ask k13d to merge the linked PR.\n\n")
 		b.WriteString("- [ ] Preview verified, request PR merge (`k13d merge`)\n")
+		b.WriteString("\nIf more changes are needed, comment `k13d fix: ...` or `k13d continue: ...` on this issue. k13d will continue on the same branch and PR, then post a fresh preview link.\n")
 		b.WriteString("\nIf the checkbox does not work, comment `k13d merge` on this issue. GitHub branch protection, required reviews, and CI rules still apply.\n")
 	} else {
+		b.WriteString("\nIf more changes are needed, comment `k13d fix: ...` or `k13d continue: ...` on this issue. k13d will continue on the same branch and PR, then post a fresh preview link.\n")
 		b.WriteString("\n`allow_issue_merge` is disabled, so issue-driven merging is unavailable. Review and merge manually from the PR.\n")
 	}
 	return b.String()
@@ -1277,6 +1352,27 @@ func buildReviewBody(job *Job, result *ExecutionResult, cfg config.GitHubAutomat
 	return b.String()
 }
 
+func buildFollowUpIssueBody(event *IssueCommentEvent) string {
+	var b strings.Builder
+	if strings.TrimSpace(event.IssueBody) != "" {
+		b.WriteString("## Original Issue\n\n")
+		b.WriteString(strings.TrimSpace(event.IssueBody))
+		b.WriteString("\n\n")
+	}
+	b.WriteString("## Follow-up Development Request\n\n")
+	if strings.TrimSpace(event.CommentAuthor) != "" {
+		fmt.Fprintf(&b, "Requested by @%s from an issue comment.\n\n", event.CommentAuthor)
+	}
+	b.WriteString(strings.TrimSpace(event.CommentBody))
+	b.WriteString("\n\n## Automation Instruction\n\n")
+	b.WriteString("Continue on the same issue branch and the existing open PR. Preserve previous work unless the follow-up explicitly asks to change it. Update code, tests, and docs as needed, then run the configured validation before finishing.")
+	return b.String()
+}
+
+func jobIsFollowUp(job *Job) bool {
+	return job != nil && strings.HasPrefix(strings.TrimSpace(job.TriggerAction), "comment:")
+}
+
 func koreanReview(cfg config.GitHubAutomationConfig) bool {
 	language := strings.ToLower(strings.TrimSpace(cfg.ReviewLanguage))
 	return language == "" || language == "ko" || strings.HasPrefix(language, "ko-") || strings.Contains(language, "korean")
@@ -1339,6 +1435,27 @@ func isCheckedMergeControl(body string) bool {
 	return false
 }
 
+func isDevelopmentCommand(body string) bool {
+	text := strings.ToLower(strings.TrimSpace(body))
+	if text == "" || !strings.Contains(text, "k13d") {
+		return false
+	}
+	for _, negative := range []string{"don't develop", "do not develop", "not develop", "수정하지", "개발하지", "반영하지"} {
+		if strings.Contains(text, negative) {
+			return false
+		}
+	}
+	for _, positive := range []string{
+		"fix", "change", "update", "improve", "continue", "iterate", "follow up", "adjust", "address",
+		"수정", "고쳐", "개선", "보완", "추가", "이어", "계속", "다시 개발", "개발해", "반영",
+	} {
+		if strings.Contains(text, positive) {
+			return true
+		}
+	}
+	return false
+}
+
 func isReviewCommand(body string) bool {
 	text := strings.ToLower(strings.TrimSpace(body))
 	if text == "" || !strings.Contains(text, "k13d") {
@@ -1349,8 +1466,21 @@ func isReviewCommand(body string) bool {
 			return false
 		}
 	}
-	for _, positive := range []string{"review", "code review", "리뷰", "코드리뷰", "검토"} {
-		if strings.Contains(text, positive) {
+	if strings.Contains(text, "code review") || containsASCIIWord(text, "review") {
+		return true
+	}
+	if strings.Contains(text, "코드리뷰") || strings.Contains(text, "검토") {
+		return true
+	}
+	reviewText := strings.ReplaceAll(text, "프리뷰", "")
+	return strings.Contains(reviewText, "리뷰")
+}
+
+func containsASCIIWord(text, word string) bool {
+	for _, token := range strings.FieldsFunc(text, func(r rune) bool {
+		return !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_')
+	}) {
+		if token == word {
 			return true
 		}
 	}

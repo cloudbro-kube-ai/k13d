@@ -23,6 +23,7 @@ type Job struct {
 	IssueBody         string    `json:"issue_body,omitempty"`
 	IssueURL          string    `json:"issue_url"`
 	IssueAuthor       string    `json:"issue_author,omitempty"`
+	RequestAuthor     string    `json:"request_author,omitempty"`
 	TriggerAction     string    `json:"trigger_action"`
 	TriggerLabel      string    `json:"trigger_label,omitempty"`
 	Status            JobStatus `json:"status"`

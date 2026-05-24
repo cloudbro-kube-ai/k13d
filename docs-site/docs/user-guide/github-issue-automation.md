@@ -11,7 +11,7 @@ GitHub repository settings still decide who can open an issue. k13d controls whe
 - The issue author must be a member of the GitHub organization that owns the repository.
 - The repository must match `github_automation.allowed_repositories`.
 - The issue must have the trigger label, usually `codex:auto`.
-- Review and merge commands are accepted from `issue_comment` webhooks only when the actor is an organization member.
+- Follow-up development, review, and merge commands are accepted from `issue_comment` webhooks only when the actor is an organization member.
 - Webhook signatures must pass `X-Hub-Signature-256` verification when a webhook secret is configured.
 
 For organization membership checks, k13d first trusts GitHub webhook `author_association` values of `OWNER` or `MEMBER`. If that value is absent or inconclusive, k13d verifies membership through the GitHub API. Use a token that can read organization membership, for example a fine-grained token with access to the repository and organization metadata, or a classic token with `repo` and `read:org` where appropriate.
@@ -76,9 +76,11 @@ If you use the `Codex 개발 요청` Issue Form, GitHub asks for the same inform
 4. Confirm k13d assigned the issue author and mentioned the organization reviewers.
 5. Wait for k13d to comment with a result.
 6. Review the linked PR, requested reviewers, CI result, and preview link before merging.
-7. If you want another automated pass, comment `k13d 코드리뷰 해줘` on the issue to run the configured Codex review command again.
-8. If `allow_issue_merge` is enabled, use the final issue control panel: open the Preview link, confirm the behavior, then check **Preview 확인 완료, PR 병합 요청**. k13d merges the linked PR and closes the issue as completed.
-9. If GitHub does not allow you to toggle the checkbox, comment `k13d merge 해줘` after approval to request the same merge flow.
+7. If the Preview needs more changes, comment a follow-up request such as `k13d 수정해줘: 버튼 문구를 더 자연스럽게 바꿔줘` or `k13d 계속 개발해줘: 모바일에서 카드 간격도 줄여줘`.
+8. k13d queues a new run on the same issue branch, reuses the same open PR, waits for CI/deploy again, and posts a fresh issue control panel.
+9. If you want another automated review pass, comment `k13d 코드리뷰 해줘` on the issue to run the configured Codex review command again.
+10. If `allow_issue_merge` is enabled, use the final issue control panel: open the Preview link, confirm the behavior, then check **Preview 확인 완료, PR 병합 요청**. k13d merges the linked PR and closes the issue as completed.
+11. If GitHub does not allow you to toggle the checkbox, comment `k13d merge 해줘` after approval to request the same merge flow.
 
 If you need to edit the request, remove `codex:auto`, update the issue, then re-apply the label. k13d uses a stable branch name such as `codex/issue-123`, so the next run continues on the same branch and reuses the existing open PR instead of creating another PR.
 
@@ -120,7 +122,16 @@ When a trusted issue is accepted, k13d assigns the issue author to the issue and
 
 When `review_command` is set, k13d runs it after development and posts the output as a PR Review. The repository includes `scripts/run-agent-review.sh`, which wraps `codex exec review` and asks Codex to write a Korean review focused on bugs, regressions, security, concurrency, and missing tests. Organization members can also re-run that review from the issue by commenting `k13d 코드리뷰 해줘`, `k13d 리뷰해줘`, or `k13d review`.
 
-When the job finishes, k13d posts a final issue control panel. It includes the linked PR, the Preview URL such as `https://fingerscore.net/previews/codex-issue-123/`, CI details when available, and a Markdown checkbox labeled `Preview 확인 완료, PR 병합 요청`. Checking that box edits the issue comment, which GitHub sends as an `issue_comment` `edited` webhook. k13d verifies the editor is an organization member before doing anything.
+When the job finishes, k13d posts a final issue control panel. It includes the linked PR, the Preview URL such as `https://fingerscore.net/previews/codex-issue-123/`, CI details when available, follow-up development examples, and a Markdown checkbox labeled `Preview 확인 완료, PR 병합 요청`. Checking that box edits the issue comment, which GitHub sends as an `issue_comment` `edited` webhook. k13d verifies the editor is an organization member before doing anything.
+
+If the Preview is not ready, keep working from the issue instead of opening a separate ticket. Comment with a clear command and acceptance detail, for example:
+
+```markdown
+k13d 수정해줘: Preview에서 모바일 카드가 너무 붙어 보여.
+카드 간격을 조금 넓히고, 완료 후 Web UI E2E도 다시 확인해줘.
+```
+
+k13d combines the original issue body with the follow-up comment, keeps the stable branch such as `codex/issue-123`, reuses the existing open PR, and posts another result/control-panel comment when the next run finishes. Plain comments without `k13d` development wording are ignored so discussion does not accidentally launch code.
 
 If `allow_issue_merge` is enabled, an organization member can complete the flow from the issue by checking that merge checkbox or by commenting a natural-language merge request such as `k13d merge 해줘`, `k13d main에 merge 해줘`, or `k13d 병합해줘`. k13d finds the stable issue branch PR, asks GitHub to merge it using `merge_method`, closes the issue as completed after a successful merge, and posts a Korean success or failure comment. Branch protection, required reviews, and CI rules still apply on GitHub.
 
@@ -139,6 +150,7 @@ When preview deployment is enabled, the deploy command should print `K13D_PREVIE
 | `codex:running` is missing or not removed | Confirm the token has issue label write permission; k13d records a warning if label updates fail |
 | No PR is created | Confirm `auto_push`, `auto_create_pr`, and `personal_access_token` are configured |
 | Multiple attempts create confusion | Confirm the issue still maps to the stable `codex/issue-<number>` branch and that any older manual PRs use that branch |
+| Follow-up development comment is ignored | Use an explicit command such as `k13d 수정해줘: ...`, `k13d 계속 개발해줘: ...`, or `k13d fix: ...`; plain discussion comments are intentionally ignored |
 | Review command is ignored | Confirm `review_command` is configured, the comment contains `k13d` and a review phrase, and the commenter is an organization member |
 | Review command fails | Confirm Codex CLI is installed/authenticated on the k13d host and that `scripts/run-agent-review.sh` can run inside the issue worktree |
 | Merge command is ignored | Confirm `allow_issue_merge: true`, the comment contains `k13d` and a merge phrase, and the commenter is an organization member |

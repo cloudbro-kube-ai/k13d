@@ -15,6 +15,7 @@ import (
 )
 
 type fakeExecutor struct {
+	mu           sync.Mutex
 	result       *ExecutionResult
 	deployResult *PreviewDeployment
 	reviewLog    string
@@ -22,9 +23,15 @@ type fakeExecutor struct {
 	deployErr    error
 	reviewErr    error
 	block        chan struct{}
+	jobs         []Job
 }
 
 func (f *fakeExecutor) Execute(ctx context.Context, job *Job) (*ExecutionResult, error) {
+	if job != nil {
+		f.mu.Lock()
+		f.jobs = append(f.jobs, *job)
+		f.mu.Unlock()
+	}
 	if f.block != nil {
 		<-f.block
 	}
@@ -37,6 +44,12 @@ func (f *fakeExecutor) Review(ctx context.Context, job *Job, branch string) (str
 
 func (f *fakeExecutor) DeployPreview(ctx context.Context, job *Job, result *ExecutionResult) (*PreviewDeployment, error) {
 	return f.deployResult, f.deployErr
+}
+
+func (f *fakeExecutor) executedJobs() []Job {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]Job(nil), f.jobs...)
 }
 
 type fakeReporter struct {
@@ -634,6 +647,127 @@ func TestManagerHandleIssueCommentEvent_IgnoresUncheckedIssueControl(t *testing.
 	merged, _, _, _ := reporter.mergeSnapshot()
 	if merged {
 		t.Fatal("unchecked merge control must not merge")
+	}
+}
+
+func TestManagerHandleIssueCommentEvent_QueuesFollowUpDevelopment(t *testing.T) {
+	cfg := config.NewDefaultConfig().GitHub
+	cfg.Enabled = true
+	cfg.AllowIssueMerge = true
+	cfg.AutoPush = true
+	cfg.AutoCreatePR = true
+	cfg.AllowedRepositories = []string{"cloudbro-kube-ai/k13d"}
+	cfg.DevelopmentCommand = []string{"./scripts/run-agent-dev.sh"}
+
+	manager, err := NewManager(cfg)
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	defer manager.Close()
+
+	executor := &fakeExecutor{
+		result: &ExecutionResult{
+			Branch:         "codex/issue-108",
+			WorktreePath:   "/tmp/worktree",
+			CommitSHA:      "followup-sha",
+			HasChanges:     true,
+			DevelopmentLog: "continued change",
+			DiffStat:       " app.go | 4 ++--",
+		},
+		deployResult: &PreviewDeployment{
+			Slug:      "codex-issue-108",
+			PublicURL: "https://fingerscore.net/previews/codex-issue-108/",
+			TargetURL: "http://127.0.0.1:18108",
+		},
+	}
+	reporter := &fakeReporter{
+		existingPR: &PullRequestInfo{Number: 90, URL: "https://github.com/example/repo/pull/90"},
+		orgMember:  true,
+	}
+	manager.executor = executor
+	manager.reporter = reporter
+
+	result := manager.HandleIssueCommentEvent(&IssueCommentEvent{
+		EventName:                "issue_comment",
+		Action:                   "created",
+		Repository:               "cloudbro-kube-ai/k13d",
+		DefaultBranch:            "main",
+		IssueNumber:              108,
+		IssueTitle:               "Preview polish",
+		IssueBody:                "Initial request body",
+		IssueURL:                 "https://github.com/cloudbro-kube-ai/k13d/issues/108",
+		IssueAuthor:              "alice",
+		IssueAuthorAssociation:   "MEMBER",
+		CommentBody:              "k13d 수정해줘: 프리뷰에서 버튼 문구를 더 자연스럽게 바꿔줘",
+		CommentAuthor:            "bob",
+		CommentAuthorAssociation: "MEMBER",
+		Labels:                   []string{"codex:auto"},
+	})
+	if !result.Accepted {
+		t.Fatalf("HandleIssueCommentEvent() = %#v, want accepted", result)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		job, ok := manager.GetJob(result.JobID)
+		if ok && (job.Status == JobStatusSucceeded || job.Status == JobStatusFailed) {
+			if job.Status != JobStatusSucceeded {
+				t.Fatalf("job status = %s, error = %s", job.Status, job.Error)
+			}
+			if job.PullRequestNumber != 90 || job.PullRequestURL != "https://github.com/example/repo/pull/90" {
+				t.Fatalf("job PR = #%d %q, want reused PR", job.PullRequestNumber, job.PullRequestURL)
+			}
+			jobs := executor.executedJobs()
+			if len(jobs) != 1 {
+				t.Fatalf("executed jobs = %d, want 1", len(jobs))
+			}
+			if jobs[0].RequestAuthor != "bob" {
+				t.Fatalf("RequestAuthor = %q, want follow-up commenter", jobs[0].RequestAuthor)
+			}
+			if !strings.Contains(jobs[0].IssueBody, "Follow-up Development Request") ||
+				!strings.Contains(jobs[0].IssueBody, "프리뷰에서 버튼 문구") ||
+				!strings.Contains(jobs[0].IssueBody, "Continue on the same issue branch") {
+				t.Fatalf("IssueBody = %q, want follow-up instructions", jobs[0].IssueBody)
+			}
+			issueComments, _ := reporter.completionComments()
+			if !containsString(issueComments, "후속 개발 요청 접수") {
+				t.Fatalf("issue comments = %#v, want follow-up acceptance comment", issueComments)
+			}
+			if !strings.Contains(issueComments[len(issueComments)-1], "계속 개발해줘") {
+				t.Fatalf("control panel = %q, want follow-up guidance", issueComments[len(issueComments)-1])
+			}
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("timed out waiting for follow-up development")
+}
+
+func TestManagerHandleIssueCommentEvent_IgnoresNonCommandIssueComment(t *testing.T) {
+	cfg := config.NewDefaultConfig().GitHub
+	cfg.Enabled = true
+	cfg.AllowedRepositories = []string{"cloudbro-kube-ai/k13d"}
+	cfg.DevelopmentCommand = []string{"./scripts/run-agent-dev.sh"}
+
+	manager, err := NewManager(cfg)
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	defer manager.Close()
+	manager.reporter = &fakeReporter{orgMember: true}
+
+	result := manager.HandleIssueCommentEvent(&IssueCommentEvent{
+		EventName:                "issue_comment",
+		Action:                   "created",
+		Repository:               "cloudbro-kube-ai/k13d",
+		IssueNumber:              109,
+		IssueTitle:               "Chat only",
+		CommentBody:              "Preview 확인했습니다. 잠시만요.",
+		CommentAuthor:            "alice",
+		CommentAuthorAssociation: "MEMBER",
+	})
+	if !result.Ignored {
+		t.Fatalf("HandleIssueCommentEvent() = %#v, want ignored", result)
 	}
 }
 
