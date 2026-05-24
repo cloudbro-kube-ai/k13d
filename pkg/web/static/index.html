@@ -1004,6 +1004,7 @@
                             </div>
                             <select id="setting-theme" onchange="applyTheme(this.value)">
                                 <option value="light">Light (Default)</option>
+                                <option value="ollama">Ollama (Minimalist White)</option>
                                 <option value="tokyo-night">Tokyo Night</option>
                                 <option value="production">Production (Red)</option>
                                 <option value="staging">Staging (Yellow)</option>
@@ -1325,6 +1326,14 @@
 
                 <!-- MCP Tab -->
                 <div id="settings-mcp" class="settings-content" style="display:none;">
+                    <div class="settings-section" style="margin-bottom:24px;">
+                        <h4>MCP Profiles</h4>
+                        <p class="settings-description" style="margin-bottom:12px;">Install pre-configured DevOps server bundles to quickly set up your AI environment.</p>
+                        <div id="mcp-profiles-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:16px; margin-top:16px;">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+
                     <div class="settings-section">
                         <h4>MCP Servers</h4>
                         <p class="settings-description" style="margin-bottom:12px;">Connect to Model Context Protocol

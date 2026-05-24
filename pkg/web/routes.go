@@ -74,6 +74,7 @@ func (s *Server) registerAIRoutes(mux *http.ServeMux) {
 	// MCP server management
 	mux.HandleFunc("/api/mcp/servers", auth(s.handleMCPServers))
 	mux.HandleFunc("/api/mcp/tools", auth(s.handleMCPTools))
+	mux.HandleFunc("/api/mcp/profiles", auth(s.handleMCPProfiles))
 
 	// AI troubleshooting
 	mux.HandleFunc("/api/troubleshoot", auth(s.handleTroubleshoot))

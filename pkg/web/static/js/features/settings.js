@@ -40,6 +40,7 @@ function switchSettingsTab(tab) {
         loadToolApprovalSettings();
         loadAgentSettings();
     } else if (tab === 'mcp') {
+        loadMCPProfiles();
         loadMCPServers();
         loadMCPTools();
     } else if (tab === 'admin') {
@@ -2339,3 +2340,88 @@ async function saveSettings() {
         alert('Failed to save settings');
     }
 }
+
+async function loadMCPProfiles() {
+    try {
+        const resp = await fetchWithAuth('/api/mcp/profiles');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const container = document.getElementById('mcp-profiles-list');
+        if (!container) return;
+
+        const profiles = data.profiles || [];
+        if (profiles.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-secondary);">No MCP profiles available.</p>';
+            return;
+        }
+
+        container.innerHTML = profiles.map(p => {
+            const tagsHtml = p.tags ? p.tags.map(t => `<span class="context-chip" style="font-size:10px;margin-right:4px;padding:2px 6px;border-radius:9999px;background:var(--bg-tertiary);color:var(--text-secondary);">${escapeHtml(t)}</span>`).join('') : '';
+            const btnClass = p.installed ? 'btn btn-secondary' : 'btn btn-primary';
+            const btnText = p.installed ? 'Uninstall' : 'Install';
+            const action = p.installed ? 'uninstall' : 'install';
+            const btnOnClick = `toggleMCPProfile('${escapeHtml(p.id)}', '${action}')`;
+
+            return `
+                <div class="overview-card" style="display:flex; flex-direction:column; justify-content:space-between; padding:16px; border:1px solid var(--border-color); border-radius:12px; background:var(--bg-secondary); min-height:160px; box-shadow:var(--shadow-sm);">
+                    <div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                            <span style="font-weight:600; font-size:15px; color:var(--text-primary);">${escapeHtml(p.name)}</span>
+                            <span style="font-size:11px; text-transform:uppercase; color:var(--accent-cyan); font-weight:500;">${escapeHtml(p.category)}</span>
+                        </div>
+                        <p style="font-size:12px; color:var(--text-secondary); line-height:1.4; margin:0 0 12px 0;">${escapeHtml(p.description)}</p>
+                    </div>
+                    <div>
+                        <div style="margin-bottom:12px; display:flex; flex-wrap:wrap; gap:4px;">
+                            ${tagsHtml}
+                        </div>
+                        <button class="${btnClass}" onclick="${btnOnClick}" style="width:100%; font-size:12px; padding:6px 12px; border-radius:9999px;">${btnText}</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('Failed to load MCP profiles:', e);
+    }
+}
+
+async function toggleMCPProfile(profileId, action) {
+    if (action === 'uninstall' && !confirm(`Are you sure you want to uninstall the "${profileId}" profile?`)) {
+        return;
+    }
+    
+    // Find the button and show loading state
+    const btn = event.currentTarget || event.target;
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = action === 'install' ? 'Installing...' : 'Uninstalling...';
+
+    try {
+        const resp = await fetchWithAuth('/api/mcp/profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile_id: profileId, action: action })
+        });
+        if (!resp.ok) {
+            const errData = await resp.json().catch(() => ({}));
+            showToast(errData.error || `Failed to ${action} profile`, 'error');
+            btn.disabled = false;
+            btn.textContent = originalText;
+            return;
+        }
+        
+        showToast(`Successfully ${action === 'install' ? 'installed' : 'uninstalled'} profile: ${profileId}`, 'success');
+        
+        // Reload all MCP components
+        await Promise.all([
+            loadMCPProfiles(),
+            loadMCPServers(),
+            loadMCPTools()
+        ]);
+    } catch (e) {
+        showToast(`Failed to ${action} profile: ` + e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+}
+

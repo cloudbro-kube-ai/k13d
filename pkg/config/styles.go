@@ -374,6 +374,7 @@ func BuiltInContextSkins() map[string]*StyleConfig {
 		"production":  productionSkin(),
 		"staging":     stagingSkin(),
 		"development": developmentSkin(),
+		"ollama":      ollamaSkin(),
 	}
 }
 
@@ -402,6 +403,76 @@ func developmentSkin() *StyleConfig {
 	s.K13s.Frame.TitleColor = "#50fa7b"
 	s.K13s.StatusBar.BgColor = "#50fa7b"
 	return s
+}
+
+func ollamaSkin() *StyleConfig {
+	// Ollama design system: paper-white canvas with pure black accents
+	// Following ollama-design.md specification for minimalist, documentation-style UI
+	return &StyleConfig{
+		K13s: K13sStyles{
+			Body: BodyStyle{
+				FgColor: "#000000", // colors.ink - pure black for primary text
+				BgColor: "#ffffff", // colors.canvas - paper white background
+			},
+			Frame: FrameStyle{
+				BorderColor:      "#e5e5e5", // colors.hairline - 1px subtle borders
+				FocusBorderColor: "#000000", // colors.primary - pure black for focus
+				TitleColor:       "#737373", // colors.body - default body text
+				FocusTitleColor:  "#000000", // colors.ink - pure black for focused titles
+			},
+			Views: ViewStyles{
+				Table: TableStyle{
+					Header: CellStyle{
+						FgColor: "#000000", // colors.ink - pure black headers
+						BgColor: "#ffffff", // colors.canvas
+						Bold:    true,
+					},
+					RowOdd: CellStyle{
+						FgColor: "#737373", // colors.body - default body text
+						BgColor: "#ffffff", // colors.canvas
+					},
+					RowEven: CellStyle{
+						FgColor: "#737373", // colors.body
+						BgColor: "#fafafa", // colors.surface-soft - alternating row
+					},
+					RowSelected: CellStyle{
+						FgColor: "#ffffff", // colors.on-dark - white text on dark
+						BgColor: "#000000", // colors.primary - pure black selection (inverted)
+					},
+					RowHover: CellStyle{
+						FgColor: "#000000", // colors.ink - darker on hover
+						BgColor: "#f5f5f5", // slightly darker than surface-soft
+					},
+				},
+				Log: LogStyle{
+					FgColor:      "#737373", // colors.body - default log text
+					BgColor:      "#ffffff", // colors.canvas
+					ErrorColor:   "#ff5f56", // colors.terminal-red - macOS traffic light red
+					WarningColor: "#ffbd2e", // colors.terminal-yellow - macOS traffic light yellow
+					InfoColor:    "#737373", // colors.body - muted info
+				},
+				Charts: ChartStyle{
+					Default: "#000000", // colors.primary - pure black
+					CPU:     "#171717", // colors.surface-dark - dark gray
+					Memory:  "#525252", // colors.charcoal - medium gray
+					Network: "#737373", // colors.body - body gray
+				},
+			},
+			Dialog: DialogStyle{
+				FgColor:       "#000000", // colors.ink - pure black text
+				BgColor:       "#fafafa", // colors.surface-soft - soft background
+				ButtonFgColor: "#737373", // colors.body - muted button text
+				ButtonBgColor: "#e5e5e5", // colors.hairline - subtle button background
+				ButtonFocusFg: "#ffffff", // colors.on-dark - white on dark
+				ButtonFocusBg: "#000000", // colors.primary - pure black focus (pill style)
+			},
+			StatusBar: StatusBarStyle{
+				FgColor:    "#ffffff", // colors.on-dark - white text
+				BgColor:    "#000000", // colors.primary - pure black status bar
+				ErrorColor: "#ff5f56", // colors.terminal-red - error indicator
+			},
+		},
+	}
 }
 
 // LoadStylesForContext loads the appropriate skin for a Kubernetes context.

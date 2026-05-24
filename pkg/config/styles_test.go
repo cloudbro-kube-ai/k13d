@@ -213,12 +213,12 @@ func TestLoadContextSkins_MalformedYAML(t *testing.T) {
 func TestBuiltInContextSkins(t *testing.T) {
 	skins := BuiltInContextSkins()
 
-	// Should have exactly 3 built-in skins
-	if len(skins) != 3 {
-		t.Fatalf("len(BuiltInContextSkins()) = %d, want 3", len(skins))
+	// Should have exactly 4 built-in skins
+	if len(skins) != 4 {
+		t.Fatalf("len(BuiltInContextSkins()) = %d, want 4", len(skins))
 	}
 
-	for _, name := range []string{"production", "staging", "development"} {
+	for _, name := range []string{"production", "staging", "development", "ollama"} {
 		skin, ok := skins[name]
 		if !ok {
 			t.Errorf("BuiltInContextSkins() missing %q", name)
@@ -261,6 +261,9 @@ func TestBuiltInContextSkins_PreserveDefaults(t *testing.T) {
 
 	// Built-in skins should preserve non-overridden values from DefaultStyles
 	for name, skin := range skins {
+		if name == "ollama" {
+			continue // ollama skin deliberately overrides body and table styles for minimalist paper white theme
+		}
 		// Body should remain default
 		if skin.K13s.Body != defaults.K13s.Body {
 			t.Errorf("%s skin Body = %+v, want default %+v", name, skin.K13s.Body, defaults.K13s.Body)
@@ -269,6 +272,98 @@ func TestBuiltInContextSkins_PreserveDefaults(t *testing.T) {
 		if skin.K13s.Views.Table != defaults.K13s.Views.Table {
 			t.Errorf("%s skin Table styles differ from defaults", name)
 		}
+	}
+}
+
+func TestOllamaSkin_Colors(t *testing.T) {
+	skins := BuiltInContextSkins()
+	ollama := skins["ollama"]
+
+	if ollama == nil {
+		t.Fatal("ollama skin not found in BuiltInContextSkins()")
+	}
+
+	// Test paper-white canvas (colors.canvas)
+	if ollama.K13s.Body.BgColor != "#ffffff" {
+		t.Errorf("ollama Body.BgColor = %q, want #ffffff (colors.canvas)", ollama.K13s.Body.BgColor)
+	}
+
+	// Test pure black ink (colors.ink / colors.primary)
+	if ollama.K13s.Body.FgColor != "#000000" {
+		t.Errorf("ollama Body.FgColor = %q, want #000000 (colors.ink)", ollama.K13s.Body.FgColor)
+	}
+
+	// Test hairline borders (colors.hairline)
+	if ollama.K13s.Frame.BorderColor != "#e5e5e5" {
+		t.Errorf("ollama Frame.BorderColor = %q, want #e5e5e5 (colors.hairline)", ollama.K13s.Frame.BorderColor)
+	}
+
+	// Test pure black focus (colors.primary)
+	if ollama.K13s.Frame.FocusBorderColor != "#000000" {
+		t.Errorf("ollama Frame.FocusBorderColor = %q, want #000000 (colors.primary)", ollama.K13s.Frame.FocusBorderColor)
+	}
+
+	// Test body text (colors.body)
+	if ollama.K13s.Frame.TitleColor != "#737373" {
+		t.Errorf("ollama Frame.TitleColor = %q, want #737373 (colors.body)", ollama.K13s.Frame.TitleColor)
+	}
+
+	// Test soft surface (colors.surface-soft)
+	if ollama.K13s.Views.Table.RowEven.BgColor != "#fafafa" {
+		t.Errorf("ollama Table.RowEven.BgColor = %q, want #fafafa (colors.surface-soft)", ollama.K13s.Views.Table.RowEven.BgColor)
+	}
+
+	// Test inverted selection (colors.primary with colors.on-dark)
+	if ollama.K13s.Views.Table.RowSelected.BgColor != "#000000" {
+		t.Errorf("ollama Table.RowSelected.BgColor = %q, want #000000 (colors.primary)", ollama.K13s.Views.Table.RowSelected.BgColor)
+	}
+	if ollama.K13s.Views.Table.RowSelected.FgColor != "#ffffff" {
+		t.Errorf("ollama Table.RowSelected.FgColor = %q, want #ffffff (colors.on-dark)", ollama.K13s.Views.Table.RowSelected.FgColor)
+	}
+
+	// Test terminal traffic light colors
+	if ollama.K13s.Views.Log.ErrorColor != "#ff5f56" {
+		t.Errorf("ollama Log.ErrorColor = %q, want #ff5f56 (colors.terminal-red)", ollama.K13s.Views.Log.ErrorColor)
+	}
+	if ollama.K13s.Views.Log.WarningColor != "#ffbd2e" {
+		t.Errorf("ollama Log.WarningColor = %q, want #ffbd2e (colors.terminal-yellow)", ollama.K13s.Views.Log.WarningColor)
+	}
+
+	// Test pure black status bar (colors.primary)
+	if ollama.K13s.StatusBar.BgColor != "#000000" {
+		t.Errorf("ollama StatusBar.BgColor = %q, want #000000 (colors.primary)", ollama.K13s.StatusBar.BgColor)
+	}
+	if ollama.K13s.StatusBar.FgColor != "#ffffff" {
+		t.Errorf("ollama StatusBar.FgColor = %q, want #ffffff (colors.on-dark)", ollama.K13s.StatusBar.FgColor)
+	}
+
+	// Test button pill style (inverted on focus)
+	if ollama.K13s.Dialog.ButtonFocusBg != "#000000" {
+		t.Errorf("ollama Dialog.ButtonFocusBg = %q, want #000000 (colors.primary)", ollama.K13s.Dialog.ButtonFocusBg)
+	}
+	if ollama.K13s.Dialog.ButtonFocusFg != "#ffffff" {
+		t.Errorf("ollama Dialog.ButtonFocusFg = %q, want #ffffff (colors.on-dark)", ollama.K13s.Dialog.ButtonFocusFg)
+	}
+}
+
+func TestOllamaSkin_MinimalistDesign(t *testing.T) {
+	skins := BuiltInContextSkins()
+	ollama := skins["ollama"]
+	defaults := DefaultStyles()
+
+	// Ollama should be completely different from Dracula defaults
+	if ollama.K13s.Body.BgColor == defaults.K13s.Body.BgColor {
+		t.Error("ollama skin should have different background from Dracula default")
+	}
+
+	// Ollama uses paper-white, not dark theme
+	if ollama.K13s.Body.BgColor != "#ffffff" {
+		t.Error("ollama skin must use paper-white background (#ffffff)")
+	}
+
+	// Ollama uses pure black, not purple/cyan accents
+	if ollama.K13s.Frame.FocusBorderColor == defaults.K13s.Frame.FocusBorderColor {
+		t.Error("ollama skin should use pure black focus, not Dracula purple")
 	}
 }
 

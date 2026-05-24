@@ -95,13 +95,13 @@ Run the Web UI as a background process, then launch the TUI in the foreground. B
 
 #### Authentication Modes
 
-| Mode | Flag | Status / Use Case |
-|------|------|-------------------|
-| **Local** | `--auth-mode local` | Supported. Recommended for local desktop Web UI use |
-| **Token** | `--auth-mode token` | Preview only. Deployment-oriented path is not officially supported yet |
-| **LDAP** | `--auth-mode ldap` | Preview only. Provider wiring is still incomplete |
-| **OIDC** | `--auth-mode oidc` | Preview only. Provider wiring is still incomplete |
-| **No Auth** | `--no-auth` | Development/testing only (not recommended) |
+| Mode        | Flag                | Status / Use Case                                                      |
+| ----------- | ------------------- | ---------------------------------------------------------------------- |
+| **Local**   | `--auth-mode local` | Supported. Recommended for local desktop Web UI use                    |
+| **Token**   | `--auth-mode token` | Preview only. Deployment-oriented path is not officially supported yet |
+| **LDAP**    | `--auth-mode ldap`  | Preview only. Provider wiring is still incomplete                      |
+| **OIDC**    | `--auth-mode oidc`  | Preview only. Provider wiring is still incomplete                      |
+| **No Auth** | `--no-auth`         | Development/testing only (not recommended)                             |
 
 `--auth-mode ldap` and `--auth-mode oidc` select those login paths, but the current stock binary does not yet expose every provider-specific LDAP/OIDC field as dedicated CLI flags. The Web UI auth settings page currently shows runtime status rather than persisting provider config.
 
@@ -113,24 +113,24 @@ If you're evaluating k13d today, focus on:
 
 #### Flags
 
-| Flag | Description |
-|------|-------------|
-| `--web` | Start Web UI server (default port 8080) |
-| `--tui` | Start TUI mode explicitly (default when `--web` is not specified) |
-| `--mcp` | Start MCP server mode (stdio transport) |
-| `--port <N>` | Custom port for Web UI |
-| `--config <path>` | Use a non-default `config.yaml` path |
-| `--auth-mode <mode>` | Auth mode: `local`, `token`, `ldap`, `oidc` |
-| `--admin-user <name>` | Admin username for local auth (env: `K13D_USERNAME`) |
-| `--admin-password <pw>` | Admin password for local auth (env: `K13D_PASSWORD`) |
-| `--no-auth` | Disable auth (dev only) |
-| `-n <namespace>` | Start in a specific namespace |
-| `-A` | Start with all namespaces |
-| `--version` | Show version information |
-| `--completion <shell>` | Generate shell completion (bash, zsh, fish) |
-| `--storage-info` | Show storage configuration and data locations |
-| `--db-path <path>` | Custom SQLite database path |
-| `--no-db` | Disable database persistence entirely |
+| Flag                    | Description                                                       |
+| ----------------------- | ----------------------------------------------------------------- |
+| `--web`                 | Start Web UI server (default port 8080)                           |
+| `--tui`                 | Start TUI mode explicitly (default when `--web` is not specified) |
+| `--mcp`                 | Start MCP server mode (stdio transport)                           |
+| `--port <N>`            | Custom port for Web UI                                            |
+| `--config <path>`       | Use a non-default `config.yaml` path                              |
+| `--auth-mode <mode>`    | Auth mode: `local`, `token`, `ldap`, `oidc`                       |
+| `--admin-user <name>`   | Admin username for local auth (env: `K13D_USERNAME`)              |
+| `--admin-password <pw>` | Admin password for local auth (env: `K13D_PASSWORD`)              |
+| `--no-auth`             | Disable auth (dev only)                                           |
+| `-n <namespace>`        | Start in a specific namespace                                     |
+| `-A`                    | Start with all namespaces                                         |
+| `--version`             | Show version information                                          |
+| `--completion <shell>`  | Generate shell completion (bash, zsh, fish)                       |
+| `--storage-info`        | Show storage configuration and data locations                     |
+| `--db-path <path>`      | Custom SQLite database path                                       |
+| `--no-db`               | Disable database persistence entirely                             |
 
 That's it. Your kubeconfig is auto-detected.
 
@@ -138,11 +138,11 @@ That's it. Your kubeconfig is auto-detected.
 
 k13d stores `config.yaml` in the platform config directory by default and creates it on the first successful save from Web UI, TUI, or any internal `Save()` path.
 
-| Platform | Default config path |
-|----------|---------------------|
-| Linux | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
-| macOS | `~/.config/k13d/config.yaml` |
-| Windows | `%AppData%\\k13d\\config.yaml` |
+| Platform | Default config path                              |
+| -------- | ------------------------------------------------ |
+| Linux    | `${XDG_CONFIG_HOME:-~/.config}/k13d/config.yaml` |
+| macOS    | `~/.config/k13d/config.yaml`                     |
+| Windows  | `%AppData%\\k13d\\config.yaml`                   |
 
 For configuration details, model profiles, storage paths, and example `config.yaml` files, use the official docs:
 
@@ -188,7 +188,12 @@ For configuration details, model profiles, storage paths, and example `config.ya
 - **Notifications** — Slack, Discord, Teams, Email (SMTP) alerts for cluster events
 - **Applications View** — App-centric grouping by Helm and K8s labels
 - **Validate View** — Cross-resource validation with severity levels
-- **5 Themes** — Tokyo Night (default), Production, Staging, Development, Light
+- **Context-aware Themes** — 5 built-in themes with auto-switching per Kubernetes context
+  - **Default (Dracula)** — Dark theme for long sessions
+  - **Ollama** — Minimalist paper-white theme (Ollama design system)
+  - **Production** — Red alert theme for production safety
+  - **Staging** — Orange caution theme
+  - **Development** — Green safe theme
 
 ### TUI — k9s on steroids
 
@@ -241,15 +246,15 @@ Model profiles, provider-specific examples, and config ownership are documented 
 
 ### Supported AI Providers
 
-| Provider | Models | Notes |
-|----------|--------|-------|
-| **OpenAI** | GPT-4o, GPT-4, o3-mini | Best tool calling support |
-| **Anthropic** | Claude Sonnet 4.6, Opus 4.6, Haiku 4.5 | Native Messages API, strong reasoning |
-| **Google Gemini** | Gemini 2.5, 2.0 | Multimodal capable |
-| **Upstage Solar** | Solar Pro2, Solar Pro | Good balance of quality/cost |
-| **Azure OpenAI** | GPT-4, GPT-3.5 | Enterprise Azure deployments |
-| **AWS Bedrock** | Claude, Llama, Mistral | AWS-hosted models |
-| **Ollama** | GPT-OSS, Qwen, Llama, Mistral | Local, free, no API key, choose a tools-capable model |
+| Provider          | Models                                 | Notes                                                 |
+| ----------------- | -------------------------------------- | ----------------------------------------------------- |
+| **OpenAI**        | GPT-4o, GPT-4, o3-mini                 | Best tool calling support                             |
+| **Anthropic**     | Claude Sonnet 4.6, Opus 4.6, Haiku 4.5 | Native Messages API, strong reasoning                 |
+| **Google Gemini** | Gemini 2.5, 2.0                        | Multimodal capable                                    |
+| **Upstage Solar** | Solar Pro2, Solar Pro                  | Good balance of quality/cost                          |
+| **Azure OpenAI**  | GPT-4, GPT-3.5                         | Enterprise Azure deployments                          |
+| **AWS Bedrock**   | Claude, Llama, Mistral                 | AWS-hosted models                                     |
+| **Ollama**        | GPT-OSS, Qwen, Llama, Mistral          | Local, free, no API key, choose a tools-capable model |
 
 The AI assistant can:
 
