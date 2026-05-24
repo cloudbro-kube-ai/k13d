@@ -1,0 +1,118 @@
+# Context-based Skin Configuration for k13d
+# This file maps Kubernetes contexts to visual themes for safety and clarity.
+#
+# Location: ~/.config/k13d/context-skins.yaml
+#
+# Purpose:
+# - Prevent accidental operations on production clusters (red theme)
+# - Provide visual cues for different environments
+# - Support clean, minimalist themes for local development
+#
+# Matching Priority:
+# 1. Exact context name match
+# 2. Wildcard pattern match (using *)
+# 3. Default theme (if no match)
+
+mappings:
+  # Production Clusters - Red Alert Theme
+  # Use bright red borders and status bar to indicate danger zone
+  production: production
+  prod-cluster: production
+  prod-us-east-1: production
+  prod-eu-west-1: production
+  prod-*: production # Matches any context starting with "prod-"
+
+  # Staging Clusters - Orange Caution Theme
+  # Use orange/yellow to indicate caution
+  staging: staging
+  stg-cluster: staging
+  stg-*: staging # Matches any context starting with "stg-"
+
+  # Development Clusters - Green Safe Theme
+  # Use green to indicate safe environment
+  development: development
+  dev-cluster: development
+  dev-*: development # Matches any context starting with "dev-"
+
+  # Local Development - Ollama Minimalist Theme
+  # Clean, paper-white theme for focused local work
+  # Perfect for documentation-style workflows
+  docker-desktop: ollama
+  minikube: ollama
+  kind: ollama
+  kind-*: ollama # Matches kind-cluster-1, kind-test, etc.
+  local: ollama
+  localhost: ollama
+  colima: ollama
+  rancher-desktop: ollama
+
+  # Testing Environments - Development Theme
+  test-*: development
+  qa-*: staging
+
+  # Custom Examples
+  # You can create your own themes in ~/.config/k13d/skins/
+  # my-special-cluster: mytheme
+
+# Available Built-in Themes:
+# - default: Dracula-inspired dark theme (default if no mapping)
+# - ollama: Minimalist paper-white theme (Ollama design system)
+# - production: Red alert theme for production safety
+# - staging: Orange caution theme for staging
+# - development: Green safe theme for development
+#
+# Theme Features:
+#
+# Ollama Theme:
+# - Paper-white background (#ffffff) for maximum readability
+# - Pure black text (#000000) for crisp contrast
+# - Minimal decoration, documentation-style interface
+# - macOS terminal traffic light colors (red/yellow/green)
+# - Perfect for: Local development, documentation work, clean aesthetics
+#
+# Production Theme:
+# - Red borders and status bar (#ff5555)
+# - Visual warning to prevent mistakes
+# - Perfect for: Production clusters requiring extra caution
+#
+# Staging Theme:
+# - Orange/yellow borders (#ffb86c)
+# - Moderate caution indicator
+# - Perfect for: Pre-production testing environments
+#
+# Development Theme:
+# - Green borders and status bar (#50fa7b)
+# - Safe environment indicator
+# - Perfect for: Development and testing clusters
+
+# Pattern Matching Examples:
+#
+# prod-*        matches: prod-us-east, prod-eu-west, prod-anything
+# *-prod        matches: us-prod, eu-prod, anything-prod
+# prod-*-east   matches: prod-us-east, prod-eu-east
+# *-prod-*      matches: us-prod-east, eu-prod-west
+# *             matches: everything (use as fallback)
+
+# Best Practices:
+#
+# 1. Always use production theme for production clusters
+# 2. Use exact matches for critical clusters
+# 3. Use wildcards for cluster families (prod-*, dev-*)
+# 4. Test your patterns with: kubectl config current-context
+# 5. Use ollama theme for local development for clean UI
+# 6. Document your custom themes in comments
+
+# Troubleshooting:
+#
+# Theme not applying?
+# - Check file location: ~/.config/k13d/context-skins.yaml
+# - Verify YAML syntax (proper indentation)
+# - Check context name: kubectl config current-context
+# - Ensure theme exists in ~/.config/k13d/skins/ (for custom themes)
+#
+# Wrong theme applied?
+# - Exact matches take precedence over wildcards
+# - Check for conflicting patterns
+# - Verify pattern syntax (use * for wildcards)
+
+# Made with Bob

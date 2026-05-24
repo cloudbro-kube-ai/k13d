@@ -1,0 +1,127 @@
+# k13d MCP Server Configuration Example
+# File: ~/.config/k13d/config.yaml
+#
+# This example shows how to configure the Kubernetes MCP server for k13d
+# The mcp-server-kubernetes provides tools for Kubernetes resource management
+# and inspection within the AI agent loop
+
+mcp:
+  servers:
+    # Sequential Thinking MCP Server
+    # Provides step-by-step reasoning for complex problem solving
+    - name: sequential-thinking
+      command: npx
+      args:
+        - -y
+        - "@modelcontextprotocol/server-sequential-thinking"
+      description: "Decompose tasks into logical steps with sequential thinking"
+      enabled: false
+
+    # Kubernetes MCP Server (Main Example)
+    # Provides tools for Kubernetes resource management
+    - name: kubernetes
+      command: npx
+      args:
+        - -y
+        - "@anthropic/mcp-server-kubernetes"
+      env:
+        # Uses default kubeconfig location (~/.kube/config)
+        KUBECONFIG: ""
+        # Optional: Set specific context
+        # KUBECTL_CONTEXT: "docker-desktop"
+        # Optional: Set default namespace
+        # KUBECTL_NAMESPACE: "default"
+      description: "Kubernetes resource management and inspection tools"
+      enabled: true
+
+    # Example: Custom SQL Database Server
+    # Query Kubernetes cluster data using SQL queries
+    # Requires database setup with K8s cluster export
+    # - name: kubernetes-db
+    #   command: npx
+    #   args:
+    #     - -y
+    #     - "@modelcontextprotocol/server-postgres"
+    #   env:
+    #     DATABASE_URL: "postgresql://user:password@localhost:5432/k8s_db"
+    #   description: "SQL queries for Kubernetes cluster data"
+    #   enabled: false
+
+    # Example: GitHub MCP Server
+    # Requires GITHUB_TOKEN environment variable
+    # - name: github
+    #   command: npx
+    #   args:
+    #     - -y
+    #     - "@modelcontextprotocol/server-github"
+    #   env:
+    #     GITHUB_TOKEN: "${GITHUB_TOKEN}"  # Set via environment variable
+    #   description: "GitHub repository management and code search"
+    #   enabled: false
+
+    # Example: Filesystem MCP Server
+    # Provides read/write access to files in specified directory
+    # - name: filesystem
+    #   command: npx
+    #   args:
+    #     - -y
+    #     - "@modelcontextprotocol/server-filesystem"
+    #     - "/allowed/path"  # Only this path is accessible
+    #   description: "Safe file system operations"
+    #   enabled: false
+
+# Alternative: Docker-based MCP Servers
+# If you prefer running MCP servers in containers:
+#
+# mcp:
+#   servers:
+#     - name: kubernetes-docker
+#       command: docker
+#       args:
+#         - run
+#         - --rm
+#         - --interactive
+#         - -v
+#         - "${HOME}/.kube:/root/.kube:ro"
+#         - "@anthropic/mcp-server-kubernetes:latest"
+#       description: "Kubernetes MCP server (Docker)"
+#       enabled: false
+
+# Example Usage with k13d
+
+# 1. Start k13d with Web UI
+#    $ k13d -web -port 8080
+#
+# 2. Navigate to Settings > MCP Servers
+#    - View list of registered MCP servers
+#    - See connection status (connected/disconnected)
+#    - View available tools from each server
+#
+# 3. Enable MCP Server in Web UI
+#    - Toggle "enabled" for kubernetes server
+#    - Click "Save" to establish connection
+#    - Verify "Status" shows "connected"
+#
+# 4. Use in AI Chat
+#    In the AI assistant chat:
+#    - Ask: "List all pods in the default namespace"
+#      → Uses kubernetes MCP server's get_pods tool
+#    - Ask: "Show me the logs for the nginx pod"
+#      → Uses get_logs tool
+#    - Ask: "Apply this deployment manifest: ..."
+#      → Uses apply_manifest tool
+
+# Tools Available from mcp-server-kubernetes:
+# - get_pods(namespace) - List pods
+# - get_deployments(namespace) - List deployments
+# - get_statefulsets(namespace) - List StatefulSets
+# - get_daemonsets(namespace) - List DaemonSets
+# - get_jobs(namespace) - List Jobs
+# - describe_pod(namespace, name) - Get pod details
+# - describe_deployment(namespace, name) - Get deployment details
+# - get_logs(namespace, pod_name) - Get pod logs
+# - apply_manifest(yaml) - Apply YAML manifest
+# - delete_resource(kind, namespace, name) - Delete resource
+# - get_events(namespace) - Get cluster events
+# - port_forward(namespace, pod_name, port) - Forward ports
+# - get_resource_status(kind, namespace) - Get resource status
