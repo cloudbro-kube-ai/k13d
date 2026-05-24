@@ -257,7 +257,7 @@ If you expose the Web UI directly on HTTPS, GitHub can call it with a standard w
 https://your-domain.example/api/github/automation/webhook
 ```
 
-Enable both **Issues** and **Issue comments** in the GitHub webhook. `issues` events start development runs, while `issue_comment` events handle natural-language review and merge requests.
+Enable both **Issues** and **Issue comments** in the GitHub webhook. `issues` events start development runs, while `issue_comment` events handle natural-language review commands, merge commands, and merge-checkbox edits from the final issue control panel.
 
 Recommended config:
 
@@ -313,7 +313,7 @@ Behavior summary:
 - Workspace isolation: each issue gets one stable git worktree under `worktree_root`
 - PR/reporting: one issue maps to one stable branch and one open PR when `personal_access_token` is configured
 - Issue review: organization members can comment `k13d 코드리뷰 해줘` on the issue to re-run the configured review command on the linked PR
-- Issue merge: `allow_issue_merge: true` lets trusted organization members comment `k13d merge 해줘` on the issue to merge the linked PR and close the issue as completed
+- Issue merge: `allow_issue_merge: true` lets trusted organization members check the final issue control panel's merge checkbox or comment `k13d merge 해줘` to merge the linked PR and close the issue as completed
 - Token safety: GitHub token env vars are not forwarded to agent commands, and captured output is redacted
 - CI gate: `wait_for_ci` waits for GitHub check runs on the pushed commit before review/deploy
 - Preview deploy: `deploy_preview_command` can expose branch previews through the same k13d domain and post the verification link on the generated PR
@@ -388,7 +388,7 @@ Operational notes:
 - `scripts/run-agent-review.sh` is the provided Codex review wrapper. It runs `codex exec review`, includes uncommitted changes when reviewing pre-commit automation output, and writes the last Codex message to stdout for PR Review creation.
 - Review commands are handled from `issue_comment` webhooks when the comment includes `k13d` and a review phrase such as `k13d 코드리뷰 해줘`, `k13d 리뷰해줘`, or `k13d review`.
 - `allow_issue_merge` is disabled by default. Enable it only when the token is scoped for the target repository and branch protection still enforces the checks/reviews you want.
-- Merge commands are handled from `issue_comment` webhooks. Supported natural-language examples include `k13d merge 해줘`, `k13d main에 merge 해줘`, and `k13d 병합해줘`. After GitHub accepts the merge, k13d closes the issue with `state_reason: completed`.
+- Merge commands are handled from `issue_comment` webhooks. Supported natural-language examples include `k13d merge 해줘`, `k13d main에 merge 해줘`, and `k13d 병합해줘`. After a successful CI/CD and preview deployment, k13d also posts an issue control panel with the Preview link and a `Preview 확인 완료, PR 병합 요청` checkbox. Checking it produces an `issue_comment` `edited` webhook and triggers the same merge flow after the editor is verified as an organization member. After GitHub accepts the merge, k13d closes the issue with `state_reason: completed`.
 - k13d removes GitHub token-like env vars from `development_command`, `review_command`, and `deploy_preview_command` environments, then redacts GitHub token patterns from captured logs before storing or commenting them.
 - `review_language: ko` is passed to commands as `{review_language}` and `K13D_GHA_REVIEW_LANGUAGE`; include it in your agent prompt if the external review command should also write Korean.
 - `wait_for_ci` also requires `personal_access_token` because k13d reads GitHub check runs through the GitHub API.

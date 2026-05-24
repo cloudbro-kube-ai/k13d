@@ -356,3 +356,35 @@ func TestParseIssueCommentEvent(t *testing.T) {
 		t.Fatalf("event = %#v", event)
 	}
 }
+
+func TestParseIssueCommentEvent_UsesSenderForEditedComment(t *testing.T) {
+	body := []byte(`{
+		"action":"edited",
+		"repository":{"full_name":"cloudbro-kube-ai/k13d","default_branch":"main"},
+		"issue":{
+			"number":17,
+			"title":"Automate me",
+			"body":"Please fix this",
+			"html_url":"https://github.com/cloudbro-kube-ai/k13d/issues/17",
+			"author_association":"MEMBER",
+			"user":{"login":"alice"},
+			"labels":[{"name":"codex:auto"}]
+		},
+		"comment":{
+			"body":"- [x] Preview 확인 완료, PR 병합 요청 (k13d merge 해줘)",
+			"author_association":"OWNER",
+			"user":{"login":"k13d-bot"}
+		},
+		"sender":{"login":"carol"}
+	}`)
+	event, err := ParseIssueCommentEvent("issue_comment", body)
+	if err != nil {
+		t.Fatalf("ParseIssueCommentEvent() error = %v", err)
+	}
+	if event.CommentAuthor != "carol" {
+		t.Fatalf("CommentAuthor = %q, want sender", event.CommentAuthor)
+	}
+	if event.CommentAuthorAssociation != "" {
+		t.Fatalf("CommentAuthorAssociation = %q, want blank when sender differs from comment author", event.CommentAuthorAssociation)
+	}
+}

@@ -297,6 +297,7 @@ func TestManagerRunJob_CreatesPRAndReview(t *testing.T) {
 	cfg.AutoCreatePR = true
 	cfg.WaitForCI = true
 	cfg.AutoDeployPreview = true
+	cfg.AllowIssueMerge = true
 
 	manager, err := NewManager(cfg)
 	if err != nil {
@@ -377,8 +378,18 @@ func TestManagerRunJob_CreatesPRAndReview(t *testing.T) {
 			if !strings.Contains(issueComments[0], "@alice @bob") {
 				t.Fatalf("acceptance comment = %q, want org mentions", issueComments[0])
 			}
-			if !strings.Contains(issueComments[len(issueComments)-1], "배포 확인 링크") {
-				t.Fatalf("completion comment = %q, want Korean preview link", issueComments[len(issueComments)-1])
+			if !containsString(issueComments, "배포 확인 링크") {
+				t.Fatalf("issue comments = %#v, want Korean preview link", issueComments)
+			}
+			controlPanel := issueComments[len(issueComments)-1]
+			if !strings.Contains(controlPanel, "확인 및 병합 컨트롤") {
+				t.Fatalf("control panel = %q, want Korean control heading", controlPanel)
+			}
+			if !strings.Contains(controlPanel, "- [ ] Preview 확인 완료") {
+				t.Fatalf("control panel = %q, want unchecked merge control", controlPanel)
+			}
+			if !strings.Contains(controlPanel, "https://fingerscore.net/previews/codex-issue-101-automate/") {
+				t.Fatalf("control panel = %q, want preview URL", controlPanel)
 			}
 			if !strings.Contains(prComments[len(prComments)-1], "CI/CD 확인 경로") {
 				t.Fatalf("PR comment = %q, want Korean CI/CD verification heading", prComments[len(prComments)-1])
@@ -404,6 +415,15 @@ func TestManagerRunJob_CreatesPRAndReview(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("timed out waiting for automation job to finish")
+}
+
+func containsString(values []string, needle string) bool {
+	for _, value := range values {
+		if strings.Contains(value, needle) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestManagerRunJob_ReusesExistingPullRequestForIssueBranch(t *testing.T) {
@@ -528,6 +548,93 @@ func TestManagerHandleIssueCommentEvent_MergesExistingIssuePR(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("timed out waiting for merge command")
+}
+
+func TestManagerHandleIssueCommentEvent_MergesFromCheckedIssueControl(t *testing.T) {
+	cfg := config.NewDefaultConfig().GitHub
+	cfg.Enabled = true
+	cfg.AllowIssueMerge = true
+	cfg.AllowedRepositories = []string{"cloudbro-kube-ai/k13d"}
+
+	manager, err := NewManager(cfg)
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	defer manager.Close()
+
+	reporter := &fakeReporter{
+		existingPR: &PullRequestInfo{Number: 88, URL: "https://github.com/example/repo/pull/88"},
+		orgMember:  true,
+	}
+	manager.reporter = reporter
+
+	result := manager.HandleIssueCommentEvent(&IssueCommentEvent{
+		EventName:     "issue_comment",
+		Action:        "edited",
+		Repository:    "cloudbro-kube-ai/k13d",
+		DefaultBranch: "main",
+		IssueNumber:   105,
+		IssueTitle:    "Ship it",
+		IssueBody:     "ship the change",
+		IssueURL:      "https://github.com/cloudbro-kube-ai/k13d/issues/105",
+		IssueAuthor:   "alice",
+		CommentBody:   "## k13d 확인 및 병합 컨트롤\n\n- [x] Preview 확인 완료, PR 병합 요청 (`k13d merge 해줘`)\n",
+		CommentAuthor: "alice",
+		Labels:        []string{"codex:auto"},
+	})
+	if !result.Accepted {
+		t.Fatalf("HandleIssueCommentEvent() = %#v, want accepted", result)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		merged, issueClosed, _, comments := reporter.mergeSnapshot()
+		if merged && issueClosed && len(comments) >= 2 {
+			if !strings.Contains(comments[len(comments)-1], "병합 완료") {
+				t.Fatalf("completion comment = %q, want Korean merge success", comments[len(comments)-1])
+			}
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("timed out waiting for checked merge control")
+}
+
+func TestManagerHandleIssueCommentEvent_IgnoresUncheckedIssueControl(t *testing.T) {
+	cfg := config.NewDefaultConfig().GitHub
+	cfg.Enabled = true
+	cfg.AllowIssueMerge = true
+	cfg.AllowedRepositories = []string{"cloudbro-kube-ai/k13d"}
+
+	manager, err := NewManager(cfg)
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	defer manager.Close()
+
+	reporter := &fakeReporter{
+		existingPR: &PullRequestInfo{Number: 88, URL: "https://github.com/example/repo/pull/88"},
+		orgMember:  true,
+	}
+	manager.reporter = reporter
+
+	result := manager.HandleIssueCommentEvent(&IssueCommentEvent{
+		EventName:     "issue_comment",
+		Action:        "edited",
+		Repository:    "cloudbro-kube-ai/k13d",
+		IssueNumber:   105,
+		IssueTitle:    "Ship it",
+		IssueURL:      "https://github.com/cloudbro-kube-ai/k13d/issues/105",
+		CommentBody:   "## k13d 확인 및 병합 컨트롤\n\n- [ ] Preview 확인 완료, PR 병합 요청 (`k13d merge 해줘`)\n",
+		CommentAuthor: "alice",
+	})
+	if !result.Ignored {
+		t.Fatalf("HandleIssueCommentEvent() = %#v, want ignored unchecked control", result)
+	}
+	merged, _, _, _ := reporter.mergeSnapshot()
+	if merged {
+		t.Fatal("unchecked merge control must not merge")
+	}
 }
 
 func TestManagerHandleIssueCommentEvent_MergeSuccessReportsCloseFailure(t *testing.T) {

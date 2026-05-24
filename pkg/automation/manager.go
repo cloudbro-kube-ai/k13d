@@ -156,8 +156,8 @@ func (m *Manager) HandleIssueCommentEvent(event *IssueCommentEvent) QueueResult 
 	if event.EventName != "issue_comment" {
 		return QueueResult{Ignored: true, Reason: "only issue_comment webhook events are supported"}
 	}
-	if event.Action != "created" {
-		return QueueResult{Ignored: true, Reason: "only new issue comments are supported"}
+	if event.Action != "created" && event.Action != "edited" {
+		return QueueResult{Ignored: true, Reason: "only new or edited issue comments are supported"}
 	}
 	if event.Repository == "" {
 		return QueueResult{Ignored: true, Reason: "repository is missing from webhook payload"}
@@ -167,7 +167,7 @@ func (m *Manager) HandleIssueCommentEvent(event *IssueCommentEvent) QueueResult 
 			return QueueResult{Ignored: true, Reason: "repository is not in the allowed list"}
 		}
 	}
-	if isReviewCommand(event.CommentBody) {
+	if event.Action == "created" && isReviewCommand(event.CommentBody) {
 		if ok, reason := m.githubUserIsOrgMember(event.Repository, event.CommentAuthor, event.CommentAuthorAssociation); !ok {
 			return QueueResult{Ignored: true, Reason: reason}
 		}
@@ -181,8 +181,9 @@ func (m *Manager) HandleIssueCommentEvent(event *IssueCommentEvent) QueueResult 
 		go m.reviewIssuePullRequest(event)
 		return QueueResult{Accepted: true}
 	}
-	if !isMergeCommand(event.CommentBody) {
-		return QueueResult{Ignored: true, Reason: "comment does not contain a k13d review or merge command"}
+	mergeRequested := isMergeCommentRequest(event)
+	if !mergeRequested {
+		return QueueResult{Ignored: true, Reason: "comment does not contain a k13d review command, merge command, or checked merge control"}
 	}
 	if !m.cfg.AllowIssueMerge {
 		return QueueResult{Ignored: true, Reason: "issue merge command is disabled"}
@@ -314,6 +315,7 @@ func (m *Manager) runJob(job *Job) {
 	m.persistJob(job)
 	m.releaseIssueLock(job)
 	m.postCompletionComment(job, result, nil)
+	m.postIssueControlPanel(job)
 }
 
 func (m *Manager) waitForCI(job *Job, result *ExecutionResult) error {
@@ -459,6 +461,21 @@ func (m *Manager) postPullRequestVerificationComment(job *Job) error {
 		return nil
 	}
 	return m.reporter.PostPullRequestComment(m.ctx, job.Repository, job.PullRequestNumber, body)
+}
+
+func (m *Manager) postIssueControlPanel(job *Job) {
+	if m.reporter == nil || job == nil || job.PullRequestNumber <= 0 {
+		return
+	}
+	body := buildIssueControlPanelComment(job, m.cfg)
+	if strings.TrimSpace(body) == "" {
+		return
+	}
+	if err := m.reporter.PostIssueComment(m.ctx, job.Repository, job.IssueNumber, body); err != nil {
+		m.updateJob(job.ID, func(current *Job) {
+			current.Warnings = append(current.Warnings, "failed to post issue control panel comment: "+err.Error())
+		})
+	}
 }
 
 func (m *Manager) markIssueInProgress(job *Job) {
@@ -1140,6 +1157,60 @@ func buildPullRequestVerificationComment(job *Job, cfg config.GitHubAutomationCo
 	return b.String()
 }
 
+func buildIssueControlPanelComment(job *Job, cfg config.GitHubAutomationConfig) string {
+	if job == nil || job.PullRequestNumber <= 0 {
+		return ""
+	}
+	hasPreview := strings.TrimSpace(job.PreviewURL) != ""
+
+	var b strings.Builder
+	if koreanReview(cfg) {
+		b.WriteString("## k13d 확인 및 병합 컨트롤\n\n")
+		fmt.Fprintf(&b, "- 이슈: #%d\n", job.IssueNumber)
+		if strings.TrimSpace(job.PullRequestURL) != "" {
+			fmt.Fprintf(&b, "- Pull Request: %s\n", job.PullRequestURL)
+		}
+		if hasPreview {
+			fmt.Fprintf(&b, "- Preview 확인 링크: %s\n", job.PreviewURL)
+		}
+		if strings.TrimSpace(job.CIURL) != "" {
+			fmt.Fprintf(&b, "- CI 로그: %s\n", job.CIURL)
+		} else if strings.TrimSpace(job.CIConclusion) != "" {
+			fmt.Fprintf(&b, "- CI 결과: `%s`\n", job.CIConclusion)
+		}
+		if cfg.AllowIssueMerge {
+			b.WriteString("\nPreview와 PR을 확인한 뒤 아래 체크박스를 클릭하면 k13d가 연결된 PR 병합을 요청합니다.\n\n")
+			b.WriteString("- [ ] Preview 확인 완료, PR 병합 요청 (`k13d merge 해줘`)\n")
+			b.WriteString("\n체크박스가 동작하지 않으면 이슈에 `k13d merge 해줘`라고 댓글로 남겨도 됩니다. GitHub branch protection, 필수 리뷰, CI 조건은 그대로 적용됩니다.\n")
+		} else {
+			b.WriteString("\n`allow_issue_merge`가 꺼져 있어 이슈에서 직접 병합할 수 없습니다. PR 화면에서 검토 후 수동으로 병합해주세요.\n")
+		}
+		return b.String()
+	}
+
+	b.WriteString("## k13d verification and merge controls\n\n")
+	fmt.Fprintf(&b, "- Issue: #%d\n", job.IssueNumber)
+	if strings.TrimSpace(job.PullRequestURL) != "" {
+		fmt.Fprintf(&b, "- Pull request: %s\n", job.PullRequestURL)
+	}
+	if hasPreview {
+		fmt.Fprintf(&b, "- Preview URL: %s\n", job.PreviewURL)
+	}
+	if strings.TrimSpace(job.CIURL) != "" {
+		fmt.Fprintf(&b, "- CI logs: %s\n", job.CIURL)
+	} else if strings.TrimSpace(job.CIConclusion) != "" {
+		fmt.Fprintf(&b, "- CI result: `%s`\n", job.CIConclusion)
+	}
+	if cfg.AllowIssueMerge {
+		b.WriteString("\nAfter verifying the preview and PR, click the checkbox below to ask k13d to merge the linked PR.\n\n")
+		b.WriteString("- [ ] Preview verified, request PR merge (`k13d merge`)\n")
+		b.WriteString("\nIf the checkbox does not work, comment `k13d merge` on this issue. GitHub branch protection, required reviews, and CI rules still apply.\n")
+	} else {
+		b.WriteString("\n`allow_issue_merge` is disabled, so issue-driven merging is unavailable. Review and merge manually from the PR.\n")
+	}
+	return b.String()
+}
+
 func valueOrDefault(value, fallback string) string {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -1223,6 +1294,45 @@ func isMergeCommand(body string) bool {
 	}
 	for _, positive := range []string{"merge", "머지", "병합", "main에 반영", "main 반영"} {
 		if strings.Contains(text, positive) {
+			return true
+		}
+	}
+	return false
+}
+
+func isMergeCommentRequest(event *IssueCommentEvent) bool {
+	if event == nil {
+		return false
+	}
+	switch event.Action {
+	case "created":
+		return isMergeCommand(event.CommentBody)
+	case "edited":
+		return isCheckedMergeControl(event.CommentBody)
+	default:
+		return false
+	}
+}
+
+func isCheckedMergeControl(body string) bool {
+	text := strings.ToLower(strings.TrimSpace(body))
+	if text == "" || !strings.Contains(text, "k13d") {
+		return false
+	}
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if !(strings.HasPrefix(line, "- [x]") || strings.HasPrefix(line, "* [x]")) {
+			continue
+		}
+		if !strings.Contains(line, "k13d") {
+			continue
+		}
+		for _, marker := range []string{"pr 병합 요청", "병합 요청", "request pr merge", "request merge", "verified, request"} {
+			if strings.Contains(line, marker) {
+				return true
+			}
+		}
+		if isMergeCommand(line) {
 			return true
 		}
 	}

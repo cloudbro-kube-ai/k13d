@@ -647,12 +647,24 @@ func ParseIssueCommentEvent(eventName string, body []byte) (*IssueCommentEvent, 
 				Login string `json:"login"`
 			} `json:"user"`
 		} `json:"comment"`
+		Sender struct {
+			Login string `json:"login"`
+		} `json:"sender"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return nil, err
 	}
 	if payload.Issue.PullRequest != nil {
 		return nil, fmt.Errorf("issue_comment events on pull requests are not supported")
+	}
+
+	commentAuthor := payload.Comment.User.Login
+	commentAssociation := payload.Comment.AuthorAssociation
+	if sender := strings.TrimSpace(payload.Sender.Login); sender != "" {
+		commentAuthor = sender
+		if !strings.EqualFold(sender, payload.Comment.User.Login) {
+			commentAssociation = ""
+		}
 	}
 
 	event := &IssueCommentEvent{
@@ -667,8 +679,8 @@ func ParseIssueCommentEvent(eventName string, body []byte) (*IssueCommentEvent, 
 		IssueAuthor:              payload.Issue.User.Login,
 		IssueAuthorAssociation:   payload.Issue.AuthorAssociation,
 		CommentBody:              payload.Comment.Body,
-		CommentAuthor:            payload.Comment.User.Login,
-		CommentAuthorAssociation: payload.Comment.AuthorAssociation,
+		CommentAuthor:            commentAuthor,
+		CommentAuthorAssociation: commentAssociation,
 	}
 	for _, label := range payload.Issue.Labels {
 		event.Labels = append(event.Labels, label.Name)

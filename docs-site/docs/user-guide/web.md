@@ -256,7 +256,7 @@ There is not yet a dedicated GUI page for automation jobs. Today, the operationa
 
 ### Trigger Rules
 
-- GitHub `issues` webhooks start automation jobs, and `issue_comment` webhooks handle review/merge commands
+- GitHub `issues` webhooks start automation jobs, and `issue_comment` webhooks handle review commands, merge commands, and merge-checkbox edits
 - Default label gate: `codex:auto`
 - The `Codex 개발 요청` GitHub Issue Form collects goal, context, desired behavior, acceptance criteria, validation, and safety confirmation
 - Issue authors must be members of the repository owner organization when `require_author_org_member` is enabled
@@ -266,7 +266,7 @@ There is not yet a dedicated GUI page for automation jobs. Today, the operationa
 - Generated PRs request organization members as reviewers
 - One issue uses one stable branch, such as `codex/issue-123`, and reuses the existing open PR on later runs
 - If `review_command` is configured, organization members can comment `k13d 코드리뷰 해줘` on the issue to re-run Codex review and post a PR Review
-- If `allow_issue_merge` is enabled, organization members can comment `k13d merge 해줘` on the issue to merge the linked PR and close the issue as completed
+- If `allow_issue_merge` is enabled, organization members can check the final issue control panel's merge checkbox or comment `k13d merge 해줘` to merge the linked PR and close the issue as completed
 - GitHub token env vars are stripped from automation command environments and redacted from captured output
 - Built-in issue comments and PR review wrappers use Korean by default through `review_language: ko`
 - Supported issue actions: `opened`, `reopened`, `labeled`
@@ -281,7 +281,7 @@ There is not yet a dedicated GUI page for automation jobs. Today, the operationa
 4. Set the same webhook secret in GitHub and in `config.yaml`.
 5. Create a `Codex 개발 요청` issue, review it, then label it with `codex:auto`.
 
-When the job finishes, k13d can comment back on the issue and create a draft PR if a GitHub token is configured.
+When the job finishes, k13d can comment back on the issue, create a draft PR if a GitHub token is configured, and post an issue control panel with the Preview link and merge checkbox so the issue page can drive verification through merge.
 
 For author requirements and a recommended issue template, see the [GitHub Issue Automation Guide](github-issue-automation.md).
 
