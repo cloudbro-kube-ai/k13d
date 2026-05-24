@@ -40,12 +40,10 @@ func (a *App) refresh() {
 	resource := a.currentResource
 	a.mx.RUnlock()
 
-	// Show loading state
+	// Show loading state - only update title to avoid clearing table
+	// This prevents flicker when switching resources
 	a.queueUpdateDrawDirect(func() {
-		a.table.Clear()
 		a.table.SetTitle(fmt.Sprintf(" %s - Loading... ", resource))
-		a.table.SetCell(0, 0, tview.NewTableCell("Loading...").SetTextColor(tcell.ColorYellow))
-		a.requestSync()
 	})
 
 	// Fetch with exponential backoff
@@ -97,8 +95,12 @@ func (a *App) refresh() {
 	if currentFilter != "" {
 		a.applyFilterText(currentFilter)
 	} else {
+		// Atomic update: Clear and populate table in a single draw call
+		// This prevents visible flicker between clear and populate operations
 		a.queueUpdateDrawDirect(func() {
 			a.table.Clear()
+			
+			// Set headers
 			for i, h := range headers {
 				cell := tview.NewTableCell(h).
 					SetTextColor(tcell.ColorYellow).
@@ -107,6 +109,8 @@ func (a *App) refresh() {
 					SetExpansion(1)
 				a.table.SetCell(0, i, cell)
 			}
+			
+			// Set data rows
 			for r, row := range rows {
 				for c, text := range row {
 					color := tcell.ColorWhite
@@ -119,21 +123,23 @@ func (a *App) refresh() {
 					a.table.SetCell(r+1, c, cell)
 				}
 			}
+			
+			// Set title and selection
 			count := len(rows)
 			a.table.SetTitle(fmt.Sprintf(" %s (%d) ", resource, count))
 			if count > 0 {
 				a.table.Select(1, 0)
 			}
+			
+			// Apply decorations and chrome
 			a.refreshTableDecorations()
 			a.applyAIChrome()
+			a.updateStatusBar()
+			
+			// Single sync at the end
 			a.requestSync()
 		})
 	}
-
-	a.queueUpdateDrawDirect(func() {
-		a.updateStatusBar()
-		a.applyAIChrome()
-	})
 
 	if a.briefing != nil && a.briefing.IsVisible() {
 		a.safeGo("briefing-update", func() { _ = a.briefing.Update(ctx) })

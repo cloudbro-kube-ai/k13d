@@ -6,7 +6,9 @@ import (
 	"time"
 )
 
-const defaultRedrawBatchWindow = 16 * time.Millisecond
+// Increased from 16ms to 33ms (~30fps) to better coalesce rapid updates
+// and reduce visible flicker during resource switching and updates
+const defaultRedrawBatchWindow = 33 * time.Millisecond
 
 // redrawBroker coalesces many redraw requests into a single QueueUpdateDraw call.
 // This reduces visible flicker and avoids flooding tview with redraw requests from

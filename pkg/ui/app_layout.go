@@ -286,13 +286,12 @@ func (a *App) updateHeader() {
 	// Use QueueUpdateDraw only after Application.Run() has started (k9s pattern)
 	if atomic.LoadInt32(&a.running) == 1 {
 		a.QueueUpdateDraw(func() {
-			// Clear before setting new text to prevent ghosting artifacts
-			a.header.Clear()
+			// SetText directly - tview handles internal clearing efficiently
+			// Removing explicit Clear() prevents visible flicker
 			a.header.SetText(header)
 		})
 	} else {
 		// Direct update during initialization (before Run())
-		a.header.Clear()
 		a.header.SetText(header)
 	}
 }

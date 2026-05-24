@@ -395,7 +395,9 @@ func (a *App) Run() error {
 	})
 
 	go func() {
-		ticker := time.NewTicker(250 * time.Millisecond)
+		// Reduced from 250ms to 500ms to minimize unnecessary redraws
+		// and reduce flicker during loading states
+		ticker := time.NewTicker(500 * time.Millisecond)
 		defer ticker.Stop()
 		for {
 			if atomic.LoadInt32(&a.stopping) == 1 {
