@@ -44,10 +44,18 @@ Default config paths are:
 | `K13D_GITHUB_AUTOMATION_TOKEN` | GitHub token used for issue comments, PR creation, and PR reviews | none |
 | `K13D_GITHUB_AUTOMATION_REPO_PATH` | Local repository path used as the source worktree repo | none |
 | `K13D_GITHUB_AUTOMATION_TRIGGER_LABEL` | Label that allows an issue webhook to queue a job | `codex:auto` |
+| `K13D_GITHUB_AUTOMATION_REQUIRE_ORG_MEMBER` | Require issue authors to be members of the repository owner organization | `true` |
+| `K13D_GITHUB_AUTOMATION_MENTION_ORG_MEMBERS` | Mention organization members when a trusted issue is accepted | `true` |
+| `K13D_GITHUB_AUTOMATION_MENTION_MAX_MEMBERS` | Maximum organization members to mention in one issue comment | `20` |
+| `K13D_GITHUB_AUTOMATION_REVIEW_LANGUAGE` | Preferred language for built-in issue/PR review comments and command placeholders | `ko` |
+| `K13D_GITHUB_AUTOMATION_ALLOW_ISSUE_MERGE` | Allow trusted issue comments such as `k13d merge 해줘` to merge the linked PR | `false` |
+| `K13D_GITHUB_AUTOMATION_MERGE_METHOD` | GitHub merge method for issue merge commands: `merge`, `squash`, or `rebase` | `squash` |
 | `K13D_GITHUB_AUTOMATION_WAIT_FOR_CI` | Wait for GitHub check runs before review/deploy | `true` |
 | `K13D_GITHUB_AUTOMATION_AUTO_DEPLOY_PREVIEW` | Run the configured preview deployment command after CI succeeds | `false` |
 | `K13D_GITHUB_AUTOMATION_PREVIEW_URL_BASE` | Public base URL used when building preview links | none |
 | `K13D_GITHUB_AUTOMATION_PREVIEW_PATH_PREFIX` | Path prefix for branch previews on the main Web server | `/previews` |
+| `K13D_CODEX_BIN` | Codex executable used by `scripts/run-agent-review.sh` | `codex` |
+| `K13D_CODEX_REVIEW_MODEL` | Optional Codex model override used by `scripts/run-agent-review.sh` | none |
 
 ## Storage
 
@@ -145,6 +153,10 @@ export K13D_GITHUB_AUTOMATION_WEBHOOK_SECRET=replace-me
 export K13D_GITHUB_AUTOMATION_TOKEN=ghp_xxx
 export K13D_GITHUB_AUTOMATION_REPO_PATH=/absolute/path/to/repo
 export K13D_GITHUB_AUTOMATION_TRIGGER_LABEL=codex:auto
+export K13D_GITHUB_AUTOMATION_REQUIRE_ORG_MEMBER=true
+export K13D_GITHUB_AUTOMATION_MENTION_ORG_MEMBERS=true
+export K13D_GITHUB_AUTOMATION_MENTION_MAX_MEMBERS=20
+export K13D_GITHUB_AUTOMATION_REVIEW_LANGUAGE=ko
 export K13D_GITHUB_AUTOMATION_WAIT_FOR_CI=true
 export K13D_GITHUB_AUTOMATION_AUTO_DEPLOY_PREVIEW=true
 export K13D_GITHUB_AUTOMATION_PREVIEW_URL_BASE=https://fingerscore.net

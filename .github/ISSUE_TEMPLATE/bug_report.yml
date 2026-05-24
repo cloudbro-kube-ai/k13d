@@ -1,82 +1,88 @@
-name: Bug Report
-description: Report a bug in k13d
+name: 버그 제보
+description: k13d에서 이상하게 동작하는 부분을 알려주세요.
 labels: ["bug", "triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to report a bug!
-        Please fill out the sections below so we can reproduce and fix it.
+        제보해주셔서 감사합니다.
+        재현에 필요한 정보만 편하게 적어주세요. 비밀번호, 토큰, kubeconfig, API key 같은 비밀 정보는 넣지 말아주세요.
 
   - type: dropdown
     id: interface
     attributes:
-      label: Interface
-      description: Which interface were you using?
+      label: 어디에서 문제가 보였나요?
+      description: 가장 가까운 항목을 선택해주세요.
       options:
         - TUI (terminal)
         - Web UI
+        - AI Assistant
         - CLI flags / startup
+        - GitHub Issue Automation
+        - Documentation
+        - Other
     validations:
       required: true
 
   - type: textarea
     id: description
     attributes:
-      label: Bug Description
-      description: A clear description of what the bug is.
-      placeholder: When I press 'y' on a Pod, the YAML viewer shows an empty screen...
+      label: 어떤 문제가 있었나요?
+      description: 실제로 보인 현상이나 에러 메시지를 적어주세요.
+      placeholder: 예) TUI에서 Pod 로그를 보다가 Ctrl+C를 누르면 TUI 전체가 종료돼요.
     validations:
       required: true
 
   - type: textarea
     id: steps
     attributes:
-      label: Steps to Reproduce
-      description: Minimal steps to reproduce the behavior.
+      label: 다시 발생시키는 방법
+      description: 가능하면 최소 단계로 적어주세요. 잘 모르겠으면 기억나는 흐름만 적어도 됩니다.
       placeholder: |
-        1. Run `k13d -web -port 8080`
-        2. Navigate to Pods view
-        3. Select a pod and press 'y'
-        4. See empty YAML viewer
+        1. `k13d` 실행
+        2. Pods 화면에서 Pod 선택
+        3. `l` 키로 로그 진입
+        4. Ctrl+C 입력
+        5. TUI가 종료됨
     validations:
       required: true
 
   - type: textarea
     id: expected
     attributes:
-      label: Expected Behavior
-      description: What you expected to happen.
+      label: 기대했던 동작
+      description: 원래는 어떻게 동작해야 한다고 생각했나요?
+      placeholder: 예) 로그 화면만 닫히고 TUI 메인 화면으로 돌아와야 해요.
     validations:
       required: true
 
   - type: textarea
     id: logs
     attributes:
-      label: Logs / Screenshots
-      description: Paste any relevant logs (`k13d --debug`) or screenshots.
+      label: 로그 / 스크린샷
+      description: 관련 로그나 스크린샷이 있으면 붙여주세요. 민감 정보는 지워주세요.
       render: text
 
   - type: input
     id: version
     attributes:
-      label: k13d Version
-      description: Output of `k13d --version` or the Docker image tag.
-      placeholder: v0.9.7
+      label: k13d 버전
+      description: "`k13d --version` 출력이나 Docker image tag를 적어주세요."
+      placeholder: v0.9.9
     validations:
       required: true
 
   - type: input
     id: k8s-version
     attributes:
-      label: Kubernetes Version
-      description: Output of `kubectl version --short`.
+      label: Kubernetes 버전
+      description: 가능하면 `kubectl version --short` 출력을 적어주세요.
       placeholder: v1.31.0
 
   - type: dropdown
     id: os
     attributes:
-      label: OS
+      label: 실행 환경
       options:
         - macOS (arm64)
         - macOS (amd64)
@@ -91,8 +97,8 @@ body:
   - type: dropdown
     id: ai-provider
     attributes:
-      label: AI Provider (if relevant)
-      description: Select if the bug involves the AI assistant.
+      label: AI Provider (AI 관련 문제일 때)
+      description: AI Assistant와 관련된 문제라면 선택해주세요.
       options:
         - N/A
         - OpenAI
@@ -101,4 +107,4 @@ body:
         - Azure OpenAI
         - AWS Bedrock
         - Google Gemini
-        - Embedded LLM (removed)
+        - LiteLLM-compatible provider
