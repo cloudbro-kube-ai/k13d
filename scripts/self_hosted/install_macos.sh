@@ -14,6 +14,7 @@ LOG_DIR="$DEPLOY_ROOT/log"
 CONFIG_DIR="${K13D_CONFIG_DIR:-$HOME/.config/k13d}"
 ENV_FILE="${K13D_DEPLOY_ENV_FILE:-$CONFIG_DIR/deploy.env}"
 CADDYFILE="${K13D_CADDYFILE:-$DEPLOY_ROOT/Caddyfile}"
+CADDY_PREVIEW_SNIPPETS_DIR="${K13D_PREVIEW_CADDY_SNIPPETS_DIR:-$DEPLOY_ROOT/caddy/previews}"
 RUN_WRAPPER="$DEPLOY_ROOT/run-k13d.sh"
 DOMAIN="${K13D_DOMAIN:-fingerscore.net}"
 INTERNAL_PORT="${K13D_INTERNAL_PORT:-18080}"
@@ -21,7 +22,8 @@ K13D_LABEL="${K13D_LAUNCH_LABEL:-net.fingerscore.k13d.web}"
 CADDY_LABEL="${K13D_CADDY_LAUNCH_LABEL:-net.fingerscore.k13d.caddy}"
 UID_VALUE="$(id -u)"
 
-mkdir -p "$BIN_DIR" "$LOG_DIR" "$CONFIG_DIR"
+mkdir -p "$BIN_DIR" "$LOG_DIR" "$CONFIG_DIR" "$CADDY_PREVIEW_SNIPPETS_DIR"
+: >"$CADDY_PREVIEW_SNIPPETS_DIR/00-empty.caddy"
 
 if ! command -v brew >/dev/null 2>&1; then
   echo "Homebrew is required." >&2
@@ -96,6 +98,7 @@ chmod 0755 "$RUN_WRAPPER"
 cat >"$CADDYFILE" <<EOF
 $DOMAIN {
     encode zstd gzip
+    import "$CADDY_PREVIEW_SNIPPETS_DIR/*.caddy"
     reverse_proxy 127.0.0.1:$INTERNAL_PORT
 }
 EOF

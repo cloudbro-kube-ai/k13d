@@ -1,0 +1,4 @@
+self-hosted-runner:
+  labels:
+    - k13d-prod
+    - fingerscore

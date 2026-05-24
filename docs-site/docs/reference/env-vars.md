@@ -57,6 +57,24 @@ Default config paths are:
 | `K13D_CODEX_BIN` | Codex executable used by `scripts/run-agent-review.sh` | `codex` |
 | `K13D_CODEX_REVIEW_MODEL` | Optional Codex model override used by `scripts/run-agent-review.sh` | none |
 
+## Self-Hosted Preview CD Scripts
+
+These variables are consumed by the macOS self-hosted deployment scripts under `scripts/self_hosted/`.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `K13D_DEPLOY_ROOT` | Base directory for production and preview binaries, logs, Caddyfile, and preview metadata | `~/Library/Application Support/k13d-deploy` |
+| `K13D_DEPLOY_ENV_FILE` | Env file sourced by production and preview launchd services | `~/.config/k13d/deploy.env` |
+| `K13D_CADDYFILE` | Caddyfile managed by the self-hosted scripts | `$K13D_DEPLOY_ROOT/Caddyfile` |
+| `K13D_PREVIEW_SLUG` | Required preview slug for `deploy_preview_macos.sh`, for example `pr-109` | none |
+| `K13D_PREVIEW_URL_BASE` | Public origin for preview links | `https://fingerscore.net` |
+| `K13D_PREVIEW_PATH_PREFIX` | Public path prefix for previews | `/previews` |
+| `K13D_PREVIEW_PORT` | Explicit local preview port override | auto-selected |
+| `K13D_PREVIEW_PORT_BASE` | First port in the deterministic preview port pool | `18100` |
+| `K13D_PREVIEW_PORT_RANGE` | Size of the preview port pool | `2000` |
+| `K13D_PREVIEW_CADDY_SNIPPETS_DIR` | Directory containing generated Caddy route snippets for previews | `$K13D_DEPLOY_ROOT/caddy/previews` |
+| `K13D_RUNNER_LABELS` | Labels assigned by `install_runner_macos.sh` to the GitHub self-hosted runner | `k13d-prod,fingerscore` |
+
 ## Storage
 
 | Variable | Description | Default |

@@ -395,6 +395,7 @@ Operational notes:
 - `review_language: ko` is passed to commands as `{review_language}` and `K13D_GHA_REVIEW_LANGUAGE`; include it in your agent prompt if the external review command should also write Korean.
 - `wait_for_ci` also requires `personal_access_token` because k13d reads GitHub check runs through the GitHub API.
 - `deploy_preview_command` should start or update the branch preview and print `K13D_PREVIEW_TARGET=...` if you want k13d to reverse-proxy it. When deployment succeeds, the issue completion comment and generated PR comment include the human verification link such as `https://fingerscore.net/previews/<branch>/`.
+- The repository's Preview CD workflow is separate from issue automation. It runs on the self-hosted `fingerscore` runner for same-repository PRs, deploys `https://fingerscore.net/previews/pr-<number>/`, updates one sticky PR comment, and cleans up the preview route when the PR closes.
 - `cleanup_worktrees: false` is the safer starting point so you can inspect failed jobs.
 - Keep `max_concurrent_jobs` low unless your agent/runtime is known to be stable under parallel worktrees.
 

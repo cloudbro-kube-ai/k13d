@@ -302,6 +302,16 @@ K13D_PREVIEW_TARGET=http://127.0.0.1:18123
 
 k13d stores that target on the automation job and reverse-proxies `/previews/<branch-slug>/...` to it. The browser app also rewrites its own `/api/...` calls under the preview path, so the preview talks to the branch instance rather than the main server. After CI and preview deployment succeed, the issue completion comment and generated PR comment include the preview URL as a human verification link.
 
+### PR Preview CD
+
+The repository also includes a self-hosted **Preview CD** workflow for same-repository pull requests. On PR open, update, or ready-for-review, the `fingerscore` runner builds k13d, starts an isolated Web UI instance, and exposes it at:
+
+```text
+https://fingerscore.net/previews/pr-<number>/
+```
+
+The workflow updates a single PR comment with the preview link, branch, commit, and local target. When the PR closes, the workflow removes the launchd preview service and its Caddy route.
+
 ### User Management
 
 Settings → Admin → Users

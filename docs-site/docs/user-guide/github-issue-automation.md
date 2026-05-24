@@ -139,6 +139,8 @@ GitHub tokens are kept server-side. k13d does not pass `GITHUB_TOKEN`, `GH_TOKEN
 
 When preview deployment is enabled, the deploy command should print `K13D_PREVIEW_TARGET=http://127.0.0.1:<port>` after the branch build is running locally. k13d exposes that branch through `preview_url_base + preview_path_prefix`, for example `https://fingerscore.net/previews/codex-issue-123/`, and includes that human verification link in both the final issue comment and the generated PR comment after CI/CD finishes.
 
+The separate **Preview CD** GitHub Actions workflow handles normal same-repository PRs even when they did not originate from issue automation. It deploys them through the self-hosted `fingerscore` runner at `https://fingerscore.net/previews/pr-<number>/`, updates one sticky PR comment with the latest preview link, and removes the route when the PR closes.
+
 ## Troubleshooting
 
 | Symptom | What To Check |
