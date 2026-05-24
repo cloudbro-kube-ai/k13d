@@ -112,6 +112,34 @@ func TestGitHubClientPostPullRequestComment(t *testing.T) {
 	}
 }
 
+func TestGitHubClientAddIssueCommentReaction(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("method = %s, want POST", r.Method)
+		}
+		if r.URL.Path != "/repos/cloudbro-kube-ai/k13d/issues/comments/12345/reactions" {
+			t.Fatalf("unexpected path %q", r.URL.Path)
+		}
+		var payload struct {
+			Content string `json:"content"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		if payload.Content != "rocket" {
+			t.Fatalf("content = %q, want rocket", payload.Content)
+		}
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+
+	client := NewGitHubClient("token")
+	client.baseURL = server.URL
+	if err := client.AddIssueCommentReaction(context.Background(), "cloudbro-kube-ai/k13d", 12345, "rocket"); err != nil {
+		t.Fatalf("AddIssueCommentReaction() error = %v", err)
+	}
+}
+
 func TestGitHubClientIssueInProgressLabels(t *testing.T) {
 	var sawCreate bool
 	var sawAdd bool
@@ -343,6 +371,7 @@ func TestParseIssueCommentEvent(t *testing.T) {
 			"labels":[{"name":"codex:auto"}]
 		},
 		"comment":{
+			"id":12345,
 			"body":"k13d merge 해줘",
 			"author_association":"MEMBER",
 			"user":{"login":"bob"}
@@ -354,6 +383,9 @@ func TestParseIssueCommentEvent(t *testing.T) {
 	}
 	if event.CommentAuthor != "bob" || event.CommentBody != "k13d merge 해줘" {
 		t.Fatalf("event = %#v", event)
+	}
+	if event.CommentID != 12345 {
+		t.Fatalf("CommentID = %d, want 12345", event.CommentID)
 	}
 }
 

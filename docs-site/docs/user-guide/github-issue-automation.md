@@ -77,7 +77,7 @@ If you use the `Codex 개발 요청` Issue Form, GitHub asks for the same inform
 5. Wait for k13d to comment with a result.
 6. Review the linked PR, requested reviewers, CI result, and preview link before merging.
 7. If the Preview needs more changes, comment a follow-up request such as `k13d 수정해줘: 버튼 문구를 더 자연스럽게 바꿔줘` or `k13d 계속 개발해줘: 모바일에서 카드 간격도 줄여줘`.
-8. k13d queues a new run on the same issue branch, reuses the same open PR, waits for CI/deploy again, and posts a fresh issue control panel.
+8. k13d adds a 🚀 reaction to the follow-up comment, keeps `codex:running` on the issue while code is being written, reuses the same open PR, waits for CI/deploy again, and posts a fresh issue control panel.
 9. If you want another automated review pass, comment `k13d 코드리뷰 해줘` on the issue to run the configured Codex review command again.
 10. If `allow_issue_merge` is enabled, use the final issue control panel: open the Preview link, confirm the behavior, then check **Preview 확인 완료, PR 병합 요청**. k13d merges the linked PR and closes the issue as completed.
 11. If GitHub does not allow you to toggle the checkbox, comment `k13d merge 해줘` after approval to request the same merge flow.

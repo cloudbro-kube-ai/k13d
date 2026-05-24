@@ -276,6 +276,7 @@ k13d can also act as a lightweight GitHub issue autopilot. When GitHub sends an 
 - deploy a branch preview behind the same domain, for example `/previews/codex-issue-123/`
 - post an issue control panel with the preview link and merge checkbox when a GitHub token is configured
 - continue the same PR from follow-up issue comments such as `k13d 수정해줘: ...`
+- mark follow-up development as active with a 🚀 reaction on the triggering issue comment
 - run PR Preview CD on a self-hosted `fingerscore` runner, publishing PRs under `/previews/pr-<number>/`
 
 This is designed for local or self-hosted operation. If you run k13d directly on a public HTTPS endpoint, GitHub can reach it without extra relay infrastructure:

@@ -56,6 +56,7 @@ type fakeReporter struct {
 	mu            sync.Mutex
 	issueComments []string
 	prComments    []string
+	reactions     []commentReaction
 	assignees     []string
 	reviewers     []string
 	prBody        string
@@ -76,6 +77,11 @@ type fakeReporter struct {
 	orgMembersErr error
 }
 
+type commentReaction struct {
+	CommentID int64
+	Content   string
+}
+
 func (f *fakeReporter) PostIssueComment(ctx context.Context, repo string, issueNumber int, body string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -87,6 +93,13 @@ func (f *fakeReporter) PostPullRequestComment(ctx context.Context, repo string, 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.prComments = append(f.prComments, body)
+	return nil
+}
+
+func (f *fakeReporter) AddIssueCommentReaction(ctx context.Context, repo string, commentID int64, content string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reactions = append(f.reactions, commentReaction{CommentID: commentID, Content: content})
 	return nil
 }
 
@@ -208,6 +221,12 @@ func (f *fakeReporter) progressSnapshot() (bool, bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.issueMarked, f.issueCleared
+}
+
+func (f *fakeReporter) reactionSnapshot() []commentReaction {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]commentReaction(nil), f.reactions...)
 }
 
 func TestVerifyGitHubSignature(t *testing.T) {
@@ -698,6 +717,7 @@ func TestManagerHandleIssueCommentEvent_QueuesFollowUpDevelopment(t *testing.T) 
 		IssueURL:                 "https://github.com/cloudbro-kube-ai/k13d/issues/108",
 		IssueAuthor:              "alice",
 		IssueAuthorAssociation:   "MEMBER",
+		CommentID:                12345,
 		CommentBody:              "k13d 수정해줘: 프리뷰에서 버튼 문구를 더 자연스럽게 바꿔줘",
 		CommentAuthor:            "bob",
 		CommentAuthorAssociation: "MEMBER",
@@ -732,6 +752,10 @@ func TestManagerHandleIssueCommentEvent_QueuesFollowUpDevelopment(t *testing.T) 
 			issueComments, _ := reporter.completionComments()
 			if !containsString(issueComments, "후속 개발 요청 접수") {
 				t.Fatalf("issue comments = %#v, want follow-up acceptance comment", issueComments)
+			}
+			reactions := reporter.reactionSnapshot()
+			if len(reactions) != 1 || reactions[0].CommentID != 12345 || reactions[0].Content != "rocket" {
+				t.Fatalf("reactions = %#v, want rocket reaction on follow-up comment", reactions)
 			}
 			if !strings.Contains(issueComments[len(issueComments)-1], "계속 개발해줘") {
 				t.Fatalf("control panel = %q, want follow-up guidance", issueComments[len(issueComments)-1])

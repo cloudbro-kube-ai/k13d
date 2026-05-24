@@ -27,6 +27,7 @@ const (
 type GitHubReporter interface {
 	PostIssueComment(ctx context.Context, repo string, issueNumber int, body string) error
 	PostPullRequestComment(ctx context.Context, repo string, prNumber int, body string) error
+	AddIssueCommentReaction(ctx context.Context, repo string, commentID int64, content string) error
 	MarkIssueInProgress(ctx context.Context, repo string, issueNumber int) error
 	ClearIssueInProgress(ctx context.Context, repo string, issueNumber int) error
 	AssignIssue(ctx context.Context, repo string, issueNumber int, assignees []string) error
@@ -65,6 +66,15 @@ func (c *GitHubClient) PostIssueComment(ctx context.Context, repo string, issueN
 
 func (c *GitHubClient) PostPullRequestComment(ctx context.Context, repo string, prNumber int, body string) error {
 	return c.PostIssueComment(ctx, repo, prNumber, body)
+}
+
+func (c *GitHubClient) AddIssueCommentReaction(ctx context.Context, repo string, commentID int64, content string) error {
+	content = strings.TrimSpace(content)
+	if commentID <= 0 || content == "" {
+		return nil
+	}
+	payload := map[string]string{"content": content}
+	return c.post(ctx, fmt.Sprintf("/repos/%s/issues/comments/%d/reactions", repo, commentID), payload, nil)
 }
 
 func (c *GitHubClient) MarkIssueInProgress(ctx context.Context, repo string, issueNumber int) error {
@@ -641,6 +651,7 @@ func ParseIssueCommentEvent(eventName string, body []byte) (*IssueCommentEvent, 
 			PullRequest *struct{} `json:"pull_request"`
 		} `json:"issue"`
 		Comment struct {
+			ID                int64  `json:"id"`
 			Body              string `json:"body"`
 			AuthorAssociation string `json:"author_association"`
 			User              struct {
@@ -678,6 +689,7 @@ func ParseIssueCommentEvent(eventName string, body []byte) (*IssueCommentEvent, 
 		IssueURL:                 payload.Issue.HTMLURL,
 		IssueAuthor:              payload.Issue.User.Login,
 		IssueAuthorAssociation:   payload.Issue.AuthorAssociation,
+		CommentID:                payload.Comment.ID,
 		CommentBody:              payload.Comment.Body,
 		CommentAuthor:            commentAuthor,
 		CommentAuthorAssociation: commentAssociation,

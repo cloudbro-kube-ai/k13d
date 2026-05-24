@@ -77,6 +77,7 @@ type IssueCommentEvent struct {
 	IssueURL                 string
 	IssueAuthor              string
 	IssueAuthorAssociation   string
+	CommentID                int64
 	CommentBody              string
 	CommentAuthor            string
 	CommentAuthorAssociation string

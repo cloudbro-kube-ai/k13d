@@ -240,6 +240,7 @@ func (m *Manager) queueIssueCommentDevelopment(event *IssueCommentEvent) QueueRe
 	}
 	m.assignIssueAuthor(job)
 	m.markIssueInProgress(job)
+	m.markIssueCommentInProgress(event, job)
 	m.postAcceptedIssueComment(job)
 
 	select {
@@ -539,6 +540,16 @@ func (m *Manager) markIssueInProgress(job *Job) {
 	}
 	if err := m.reporter.MarkIssueInProgress(m.ctx, job.Repository, job.IssueNumber); err != nil {
 		job.Warnings = append(job.Warnings, "failed to mark issue in progress: "+err.Error())
+		m.persistJob(job)
+	}
+}
+
+func (m *Manager) markIssueCommentInProgress(event *IssueCommentEvent, job *Job) {
+	if m.reporter == nil || event == nil || job == nil || event.CommentID <= 0 {
+		return
+	}
+	if err := m.reporter.AddIssueCommentReaction(m.ctx, event.Repository, event.CommentID, "rocket"); err != nil {
+		job.Warnings = append(job.Warnings, "failed to add in-progress reaction to issue comment: "+err.Error())
 		m.persistJob(job)
 	}
 }
@@ -876,7 +887,7 @@ func buildAcceptedIssueComment(job *Job, mentions []string, cfg config.GitHubAut
 	var b strings.Builder
 	if koreanReview(cfg) {
 		if jobIsFollowUp(job) {
-			fmt.Fprintf(&b, "## k13d 후속 개발 요청 접수\n\n")
+			fmt.Fprintf(&b, "## k13d 후속 개발 요청 접수 🚀\n\n")
 		} else {
 			fmt.Fprintf(&b, "## k13d 이슈 자동화 접수\n\n")
 		}
@@ -889,14 +900,18 @@ func buildAcceptedIssueComment(job *Job, mentions []string, cfg config.GitHubAut
 			fmt.Fprintf(&b, "- 추가 요청자: @%s\n", job.RequestAuthor)
 			b.WriteString("- 처리 방식: 같은 이슈 브랜치와 같은 open PR에 이어서 반영합니다.\n")
 		}
-		fmt.Fprintf(&b, "- 상태: 자동화 작업을 큐에 등록했습니다.\n")
+		if jobIsFollowUp(job) {
+			fmt.Fprintf(&b, "- 상태: 코드 작성 중입니다. 요청 댓글에 🚀 reaction을 남겼습니다.\n")
+		} else {
+			fmt.Fprintf(&b, "- 상태: 자동화 작업을 큐에 등록했습니다.\n")
+		}
 		b.WriteString("- 리뷰 언어: 이슈 검토와 코드 리뷰는 한국어로 진행합니다.\n")
 		b.WriteString("\n작업이 끝나면 PR, CI 결과, 배포 확인 링크가 포함된 완료 코멘트를 남깁니다.\n")
 		return b.String()
 	}
 
 	if jobIsFollowUp(job) {
-		fmt.Fprintf(&b, "## k13d follow-up development accepted\n\n")
+		fmt.Fprintf(&b, "## k13d follow-up development accepted 🚀\n\n")
 	} else {
 		fmt.Fprintf(&b, "## k13d issue automation accepted\n\n")
 	}
@@ -909,7 +924,11 @@ func buildAcceptedIssueComment(job *Job, mentions []string, cfg config.GitHubAut
 		fmt.Fprintf(&b, "- Follow-up requested by: @%s\n", job.RequestAuthor)
 		b.WriteString("- Mode: continuing on the same issue branch and open PR.\n")
 	}
-	fmt.Fprintf(&b, "- Status: queued for automation\n")
+	if jobIsFollowUp(job) {
+		fmt.Fprintf(&b, "- Status: writing code now. Added a 🚀 reaction to the request comment.\n")
+	} else {
+		fmt.Fprintf(&b, "- Status: queued for automation\n")
+	}
 	b.WriteString("\nWhen the job finishes, k13d will comment with the PR, CI result, and preview deployment link.\n")
 	return b.String()
 }
