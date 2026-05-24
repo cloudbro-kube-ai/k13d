@@ -42,6 +42,7 @@ func (f *fakeExecutor) DeployPreview(ctx context.Context, job *Job, result *Exec
 type fakeReporter struct {
 	mu            sync.Mutex
 	issueComments []string
+	prComments    []string
 	assignees     []string
 	reviewers     []string
 	prBody        string
@@ -50,6 +51,8 @@ type fakeReporter struct {
 	reviewCreated bool
 	mergedPR      bool
 	issueClosed   bool
+	issueMarked   bool
+	issueCleared  bool
 	closeReason   string
 	closeErr      error
 	existingPR    *PullRequestInfo
@@ -64,6 +67,27 @@ func (f *fakeReporter) PostIssueComment(ctx context.Context, repo string, issueN
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.issueComments = append(f.issueComments, body)
+	return nil
+}
+
+func (f *fakeReporter) PostPullRequestComment(ctx context.Context, repo string, prNumber int, body string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.prComments = append(f.prComments, body)
+	return nil
+}
+
+func (f *fakeReporter) MarkIssueInProgress(ctx context.Context, repo string, issueNumber int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.issueMarked = true
+	return nil
+}
+
+func (f *fakeReporter) ClearIssueInProgress(ctx context.Context, repo string, issueNumber int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.issueCleared = true
 	return nil
 }
 
@@ -143,10 +167,10 @@ func (f *fakeReporter) ListOrganizationMembers(ctx context.Context, org string, 
 	return append([]string(nil), f.orgMembers...), nil
 }
 
-func (f *fakeReporter) snapshot() (bool, bool, bool, int) {
+func (f *fakeReporter) snapshot() (bool, bool, bool, int, int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.prCreated, f.reviewCreated, f.waitedForCI, len(f.issueComments)
+	return f.prCreated, f.reviewCreated, f.waitedForCI, len(f.issueComments), len(f.prComments)
 }
 
 func (f *fakeReporter) assignedAndReviewers() ([]string, []string) {
@@ -159,6 +183,18 @@ func (f *fakeReporter) mergeSnapshot() (bool, bool, string, []string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.mergedPR, f.issueClosed, f.closeReason, append([]string(nil), f.issueComments...)
+}
+
+func (f *fakeReporter) completionComments() ([]string, []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.issueComments...), append([]string(nil), f.prComments...)
+}
+
+func (f *fakeReporter) progressSnapshot() (bool, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.issueMarked, f.issueCleared
 }
 
 func TestVerifyGitHubSignature(t *testing.T) {
@@ -219,7 +255,8 @@ func TestManagerQueueIssueEvent_DedupesActiveIssue(t *testing.T) {
 	defer manager.Close()
 	block := make(chan struct{})
 	manager.executor = &fakeExecutor{result: &ExecutionResult{}, block: block}
-	manager.reporter = &fakeReporter{}
+	reporter := &fakeReporter{}
+	manager.reporter = reporter
 
 	event := &IssueEvent{
 		EventName:              "issues",
@@ -236,6 +273,13 @@ func TestManagerQueueIssueEvent_DedupesActiveIssue(t *testing.T) {
 	first := manager.QueueIssueEvent(event)
 	if !first.Accepted {
 		t.Fatalf("first queue result = %#v", first)
+	}
+	marked, cleared := reporter.progressSnapshot()
+	if !marked {
+		t.Fatal("expected issue to be marked in progress when automation is queued")
+	}
+	if cleared {
+		t.Fatal("did not expect in-progress marker to be cleared while job is still blocked")
 	}
 	second := manager.QueueIssueEvent(event)
 	if !second.Ignored || second.Reason == "" {
@@ -302,9 +346,13 @@ func TestManagerRunJob_CreatesPRAndReview(t *testing.T) {
 			if job.Status != JobStatusSucceeded {
 				t.Fatalf("job status = %s, error = %s", job.Status, job.Error)
 			}
-			prCreated, reviewCreated, waitedForCI, issueComments := reporter.snapshot()
+			prCreated, reviewCreated, waitedForCI, issueCommentCount, prCommentCount := reporter.snapshot()
 			if !prCreated {
 				t.Fatal("expected PR creation")
+			}
+			marked, cleared := reporter.progressSnapshot()
+			if !marked || !cleared {
+				t.Fatalf("issue progress labels marked=%v cleared=%v, want both true after completion", marked, cleared)
 			}
 			if !waitedForCI {
 				t.Fatal("expected CI wait")
@@ -312,8 +360,11 @@ func TestManagerRunJob_CreatesPRAndReview(t *testing.T) {
 			if !reviewCreated {
 				t.Fatal("expected PR review creation")
 			}
-			if issueComments == 0 {
+			if issueCommentCount == 0 {
 				t.Fatal("expected issue completion comment")
+			}
+			if prCommentCount == 0 {
+				t.Fatal("expected pull request verification comment")
 			}
 			assignees, reviewers := reporter.assignedAndReviewers()
 			if strings.Join(assignees, ",") != "alice" {
@@ -322,11 +373,18 @@ func TestManagerRunJob_CreatesPRAndReview(t *testing.T) {
 			if strings.Join(reviewers, ",") != "alice,bob" {
 				t.Fatalf("reviewers = %#v, want organization members", reviewers)
 			}
-			if !strings.Contains(reporter.issueComments[0], "@alice @bob") {
-				t.Fatalf("acceptance comment = %q, want org mentions", reporter.issueComments[0])
+			issueComments, prComments := reporter.completionComments()
+			if !strings.Contains(issueComments[0], "@alice @bob") {
+				t.Fatalf("acceptance comment = %q, want org mentions", issueComments[0])
 			}
-			if !strings.Contains(reporter.issueComments[len(reporter.issueComments)-1], "배포 확인 링크") {
-				t.Fatalf("completion comment = %q, want Korean preview link", reporter.issueComments[len(reporter.issueComments)-1])
+			if !strings.Contains(issueComments[len(issueComments)-1], "배포 확인 링크") {
+				t.Fatalf("completion comment = %q, want Korean preview link", issueComments[len(issueComments)-1])
+			}
+			if !strings.Contains(prComments[len(prComments)-1], "CI/CD 확인 경로") {
+				t.Fatalf("PR comment = %q, want Korean CI/CD verification heading", prComments[len(prComments)-1])
+			}
+			if !strings.Contains(prComments[len(prComments)-1], "https://fingerscore.net/previews/codex-issue-101-automate/") {
+				t.Fatalf("PR comment = %q, want preview URL", prComments[len(prComments)-1])
 			}
 			if !strings.Contains(reporter.prBody, "## 요약") {
 				t.Fatalf("PR body = %q, want Korean body", reporter.prBody)

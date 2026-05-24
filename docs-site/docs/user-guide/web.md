@@ -228,7 +228,7 @@ The Web server can also act as a GitHub webhook receiver for issue-driven automa
 - auto-commit / auto-push
 - draft PR creation and issue comment reporting
 - GitHub check-run waiting before review/deploy
-- branch preview routing through the same Web UI domain
+- branch preview routing through the same Web UI domain, with verification links posted back to the PR after CI/CD
 
 ### Webhook Endpoint
 
@@ -262,6 +262,7 @@ There is not yet a dedicated GUI page for automation jobs. Today, the operationa
 - Issue authors must be members of the repository owner organization when `require_author_org_member` is enabled
 - Trusted issues can mention organization members when `mention_org_members` is enabled
 - Trusted issues are assigned to the issue author
+- Trusted issues receive `codex:running` while automation is queued or running
 - Generated PRs request organization members as reviewers
 - One issue uses one stable branch, such as `codex/issue-123`, and reuses the existing open PR on later runs
 - If `review_command` is configured, organization members can comment `k13d 코드리뷰 해줘` on the issue to re-run Codex review and post a PR Review
@@ -298,7 +299,7 @@ The preview deploy command can start each branch on a different local port and p
 K13D_PREVIEW_TARGET=http://127.0.0.1:18123
 ```
 
-k13d stores that target on the automation job and reverse-proxies `/previews/<branch-slug>/...` to it. The browser app also rewrites its own `/api/...` calls under the preview path, so the preview talks to the branch instance rather than the main server. After CI and preview deployment succeed, the issue completion comment includes the preview URL as a human verification link.
+k13d stores that target on the automation job and reverse-proxies `/previews/<branch-slug>/...` to it. The browser app also rewrites its own `/api/...` calls under the preview path, so the preview talks to the branch instance rather than the main server. After CI and preview deployment succeed, the issue completion comment and generated PR comment include the preview URL as a human verification link.
 
 ### User Management
 

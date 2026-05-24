@@ -84,6 +84,89 @@ func TestGitHubClientListOrganizationMembers(t *testing.T) {
 	}
 }
 
+func TestGitHubClientPostPullRequestComment(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("method = %s, want POST", r.Method)
+		}
+		if r.URL.Path != "/repos/cloudbro-kube-ai/k13d/issues/12/comments" {
+			t.Fatalf("unexpected path %q", r.URL.Path)
+		}
+		var payload struct {
+			Body string `json:"body"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		if payload.Body != "preview ready" {
+			t.Fatalf("body = %q, want preview ready", payload.Body)
+		}
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+
+	client := NewGitHubClient("token")
+	client.baseURL = server.URL
+	if err := client.PostPullRequestComment(context.Background(), "cloudbro-kube-ai/k13d", 12, "preview ready"); err != nil {
+		t.Fatalf("PostPullRequestComment() error = %v", err)
+	}
+}
+
+func TestGitHubClientIssueInProgressLabels(t *testing.T) {
+	var sawCreate bool
+	var sawAdd bool
+	var sawDelete bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/repos/cloudbro-kube-ai/k13d/labels":
+			sawCreate = true
+			var payload struct {
+				Name        string `json:"name"`
+				Color       string `json:"color"`
+				Description string `json:"description"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatal(err)
+			}
+			if payload.Name != "codex:running" || payload.Color == "" || payload.Description == "" {
+				t.Fatalf("label payload = %#v, want codex:running with metadata", payload)
+			}
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_, _ = w.Write([]byte(`{"message":"already_exists"}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/repos/cloudbro-kube-ai/k13d/issues/7/labels":
+			sawAdd = true
+			var payload struct {
+				Labels []string `json:"labels"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatal(err)
+			}
+			if len(payload.Labels) != 1 || payload.Labels[0] != "codex:running" {
+				t.Fatalf("labels = %#v, want codex:running", payload.Labels)
+			}
+			_, _ = w.Write([]byte(`[]`))
+		case r.Method == http.MethodDelete && r.URL.Path == "/repos/cloudbro-kube-ai/k13d/issues/7/labels/codex:running":
+			sawDelete = true
+			_, _ = w.Write([]byte(`{}`))
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	client := NewGitHubClient("token")
+	client.baseURL = server.URL
+	if err := client.MarkIssueInProgress(context.Background(), "cloudbro-kube-ai/k13d", 7); err != nil {
+		t.Fatalf("MarkIssueInProgress() error = %v", err)
+	}
+	if err := client.ClearIssueInProgress(context.Background(), "cloudbro-kube-ai/k13d", 7); err != nil {
+		t.Fatalf("ClearIssueInProgress() error = %v", err)
+	}
+	if !sawCreate || !sawAdd || !sawDelete {
+		t.Fatalf("requests create=%v add=%v delete=%v, want all true", sawCreate, sawAdd, sawDelete)
+	}
+}
+
 func TestGitHubClientAssignIssue(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

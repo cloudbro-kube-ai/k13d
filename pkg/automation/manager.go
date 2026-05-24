@@ -131,12 +131,17 @@ func (m *Manager) QueueIssueEvent(event *IssueEvent) QueueResult {
 		return QueueResult{Ignored: true, Reason: "automation manager is shutting down"}
 	}
 	m.assignIssueAuthor(job)
+	m.markIssueInProgress(job)
 	m.postAcceptedIssueComment(job)
 
 	select {
 	case m.queue <- job:
 		return QueueResult{Accepted: true, JobID: job.ID}
 	case <-m.ctx.Done():
+		if err := m.clearIssueInProgress(job); err != nil {
+			job.Warnings = append(job.Warnings, "failed to clear in-progress issue label: "+err.Error())
+			m.persistJob(job)
+		}
 		return QueueResult{Ignored: true, Reason: "automation manager is shutting down"}
 	}
 }
@@ -296,6 +301,13 @@ func (m *Manager) runJob(job *Job) {
 		return
 	}
 
+	if err := m.postPullRequestVerificationComment(job); err != nil {
+		job.Warnings = append(job.Warnings, "failed to post pull request verification comment: "+err.Error())
+	}
+	if err := m.clearIssueInProgress(job); err != nil {
+		job.Warnings = append(job.Warnings, "failed to clear in-progress issue label: "+err.Error())
+	}
+
 	job.Status = JobStatusSucceeded
 	job.StatusReason = "completed"
 	job.FinishedAt = m.now()
@@ -391,6 +403,9 @@ func (m *Manager) finishJob(job *Job, result *ExecutionResult, execErr error) {
 	job.StatusReason = execErr.Error()
 	job.Error = execErr.Error()
 	job.FinishedAt = m.now()
+	if err := m.clearIssueInProgress(job); err != nil {
+		job.Warnings = append(job.Warnings, "failed to clear in-progress issue label: "+err.Error())
+	}
 	m.persistJob(job)
 	m.releaseIssueLock(job)
 	m.postCompletionComment(job, result, execErr)
@@ -433,6 +448,34 @@ func (m *Manager) postCompletionComment(job *Job, result *ExecutionResult, execE
 			current.Warnings = append(current.Warnings, "failed to post issue comment: "+err.Error())
 		})
 	}
+}
+
+func (m *Manager) postPullRequestVerificationComment(job *Job) error {
+	if m.reporter == nil || job == nil || job.PullRequestNumber <= 0 {
+		return nil
+	}
+	body := buildPullRequestVerificationComment(job, m.cfg)
+	if strings.TrimSpace(body) == "" {
+		return nil
+	}
+	return m.reporter.PostPullRequestComment(m.ctx, job.Repository, job.PullRequestNumber, body)
+}
+
+func (m *Manager) markIssueInProgress(job *Job) {
+	if m.reporter == nil || job == nil {
+		return
+	}
+	if err := m.reporter.MarkIssueInProgress(m.ctx, job.Repository, job.IssueNumber); err != nil {
+		job.Warnings = append(job.Warnings, "failed to mark issue in progress: "+err.Error())
+		m.persistJob(job)
+	}
+}
+
+func (m *Manager) clearIssueInProgress(job *Job) error {
+	if m.reporter == nil || job == nil {
+		return nil
+	}
+	return m.reporter.ClearIssueInProgress(m.ctx, job.Repository, job.IssueNumber)
 }
 
 func (m *Manager) postAcceptedIssueComment(job *Job) {
@@ -1047,6 +1090,62 @@ func buildKoreanIssueComment(job *Job, result *ExecutionResult, execErr error) s
 		}
 	}
 	return b.String()
+}
+
+func buildPullRequestVerificationComment(job *Job, cfg config.GitHubAutomationConfig) string {
+	if job == nil || job.PullRequestNumber <= 0 {
+		return ""
+	}
+	hasCI := strings.TrimSpace(job.CIStatus) != "" || strings.TrimSpace(job.CIConclusion) != "" || strings.TrimSpace(job.CIURL) != ""
+	hasPreview := strings.TrimSpace(job.PreviewURL) != ""
+	if !hasCI && !hasPreview {
+		return ""
+	}
+
+	var b strings.Builder
+	if koreanReview(cfg) {
+		b.WriteString("## k13d CI/CD 확인 경로\n\n")
+		fmt.Fprintf(&b, "- 이슈: #%d\n", job.IssueNumber)
+		if strings.TrimSpace(job.Branch) != "" {
+			fmt.Fprintf(&b, "- 브랜치: `%s`\n", job.Branch)
+		}
+		if hasCI {
+			fmt.Fprintf(&b, "- CI 상태: `%s/%s`\n", valueOrDefault(job.CIStatus, "completed"), valueOrDefault(job.CIConclusion, "success"))
+		}
+		if strings.TrimSpace(job.CIURL) != "" {
+			fmt.Fprintf(&b, "- CI 로그: %s\n", job.CIURL)
+		}
+		if hasPreview {
+			fmt.Fprintf(&b, "- 배포 확인 링크: %s\n", job.PreviewURL)
+		}
+		b.WriteString("\nCI/CD가 끝난 뒤 PR 화면에서 바로 검증할 수 있도록 자동으로 남긴 코멘트입니다.\n")
+		return b.String()
+	}
+
+	b.WriteString("## k13d CI/CD verification\n\n")
+	fmt.Fprintf(&b, "- Issue: #%d\n", job.IssueNumber)
+	if strings.TrimSpace(job.Branch) != "" {
+		fmt.Fprintf(&b, "- Branch: `%s`\n", job.Branch)
+	}
+	if hasCI {
+		fmt.Fprintf(&b, "- CI status: `%s/%s`\n", valueOrDefault(job.CIStatus, "completed"), valueOrDefault(job.CIConclusion, "success"))
+	}
+	if strings.TrimSpace(job.CIURL) != "" {
+		fmt.Fprintf(&b, "- CI logs: %s\n", job.CIURL)
+	}
+	if hasPreview {
+		fmt.Fprintf(&b, "- Preview URL: %s\n", job.PreviewURL)
+	}
+	b.WriteString("\nPosted automatically after CI/CD so reviewers can verify the PR from this page.\n")
+	return b.String()
+}
+
+func valueOrDefault(value, fallback string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fallback
+	}
+	return value
 }
 
 func buildPullRequestBody(job *Job, result *ExecutionResult, cfg config.GitHubAutomationConfig) string {

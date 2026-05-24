@@ -115,7 +115,7 @@ github_automation:
 
 `mention_org_members` needs a token that can list organization members. `mention_max_members` caps the number of `@mentions` in one comment so a large organization does not get noisy.
 
-When a trusted issue is accepted, k13d assigns the issue author to the issue. After a PR exists, k13d requests organization members as PR reviewers, capped by `mention_max_members`. This keeps responsibility clear: the author owns the issue, while the organization reviews the generated code.
+When a trusted issue is accepted, k13d assigns the issue author to the issue and adds a `codex:running` label while automation is queued or running. After the job succeeds or fails, k13d removes that progress label. After a PR exists, k13d requests organization members as PR reviewers, capped by `mention_max_members`. This keeps responsibility clear: the author owns the issue, while the organization reviews the generated code.
 
 When `review_command` is set, k13d runs it after development and posts the output as a PR Review. The repository includes `scripts/run-agent-review.sh`, which wraps `codex exec review` and asks Codex to write a Korean review focused on bugs, regressions, security, concurrency, and missing tests. Organization members can also re-run that review from the issue by commenting `k13d 코드리뷰 해줘`, `k13d 리뷰해줘`, or `k13d review`.
 
@@ -123,7 +123,7 @@ If `allow_issue_merge` is enabled, an organization member can complete the flow 
 
 GitHub tokens are kept server-side. k13d does not pass `GITHUB_TOKEN`, `GH_TOKEN`, `K13D_GITHUB_AUTOMATION_TOKEN`, or similar GitHub token env vars to development, review, or preview deployment commands. Captured command output and admin status payloads also redact configured GitHub token and webhook secret values.
 
-When preview deployment is enabled, the deploy command should print `K13D_PREVIEW_TARGET=http://127.0.0.1:<port>` after the branch build is running locally. k13d exposes that branch through `preview_url_base + preview_path_prefix`, for example `https://fingerscore.net/previews/codex-issue-123/`, and includes that human verification link in the final issue comment.
+When preview deployment is enabled, the deploy command should print `K13D_PREVIEW_TARGET=http://127.0.0.1:<port>` after the branch build is running locally. k13d exposes that branch through `preview_url_base + preview_path_prefix`, for example `https://fingerscore.net/previews/codex-issue-123/`, and includes that human verification link in both the final issue comment and the generated PR comment after CI/CD finishes.
 
 ## Troubleshooting
 
@@ -133,6 +133,7 @@ When preview deployment is enabled, the deploy command should print `K13D_PREVIE
 | Membership verification fails | Confirm `personal_access_token` can read organization membership |
 | Organization members are not mentioned | Confirm `mention_org_members` is enabled and the token can list org members |
 | Assignee or reviewer request fails | Confirm the token has issue write and pull request write permissions |
+| `codex:running` is missing or not removed | Confirm the token has issue label write permission; k13d records a warning if label updates fail |
 | No PR is created | Confirm `auto_push`, `auto_create_pr`, and `personal_access_token` are configured |
 | Multiple attempts create confusion | Confirm the issue still maps to the stable `codex/issue-<number>` branch and that any older manual PRs use that branch |
 | Review command is ignored | Confirm `review_command` is configured, the comment contains `k13d` and a review phrase, and the commenter is an organization member |
@@ -141,5 +142,6 @@ When preview deployment is enabled, the deploy command should print `K13D_PREVIE
 | Merge command fails | Check branch protection, required reviews, CI status, and whether the token has pull request write permissions |
 | PR merged but issue stayed open | Confirm the token has issue write permission; k13d reports this warning in the merge completion comment |
 | No preview link appears | Confirm `auto_deploy_preview` is enabled and `deploy_preview_command` prints `K13D_PREVIEW_TARGET=...` |
+| Preview link is missing from the PR | Confirm the token can comment on pull requests; k13d posts the same verification path on the PR after CI/CD completes |
 | CI never completes | Check GitHub Actions on the generated branch and `ci_wait_timeout_seconds` |
 | The request is too broad | Split the issue into smaller issues before applying `codex:auto` |

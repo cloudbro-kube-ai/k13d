@@ -306,6 +306,7 @@ Behavior summary:
 - Author gate: `require_author_org_member: true` only runs issues opened by members of the repository owner organization
 - Reviewer notification: `mention_org_members: true` mentions organization members when a trusted issue is accepted
 - Assignment: trusted issues are assigned to the issue author
+- Progress label: accepted issues receive `codex:running` while automation is queued or running, and the label is removed when the job finishes
 - Reviewers: organization members are requested as reviewers on the generated or reused PR
 - Review language: `review_language: ko` makes built-in issue comments and PR review wrappers Korean
 - Codex review: `review_command: ./scripts/run-agent-review.sh` runs `codex exec review` and posts the result as a PR Review
@@ -315,7 +316,7 @@ Behavior summary:
 - Issue merge: `allow_issue_merge: true` lets trusted organization members comment `k13d merge 해줘` on the issue to merge the linked PR and close the issue as completed
 - Token safety: GitHub token env vars are not forwarded to agent commands, and captured output is redacted
 - CI gate: `wait_for_ci` waits for GitHub check runs on the pushed commit before review/deploy
-- Preview deploy: `deploy_preview_command` can expose branch previews through the same k13d domain
+- Preview deploy: `deploy_preview_command` can expose branch previews through the same k13d domain and post the verification link on the generated PR
 
 ### Command Placeholders
 
@@ -391,7 +392,7 @@ Operational notes:
 - k13d removes GitHub token-like env vars from `development_command`, `review_command`, and `deploy_preview_command` environments, then redacts GitHub token patterns from captured logs before storing or commenting them.
 - `review_language: ko` is passed to commands as `{review_language}` and `K13D_GHA_REVIEW_LANGUAGE`; include it in your agent prompt if the external review command should also write Korean.
 - `wait_for_ci` also requires `personal_access_token` because k13d reads GitHub check runs through the GitHub API.
-- `deploy_preview_command` should start or update the branch preview and print `K13D_PREVIEW_TARGET=...` if you want k13d to reverse-proxy it. When deployment succeeds, the completion comment includes the human verification link such as `https://fingerscore.net/previews/<branch>/`.
+- `deploy_preview_command` should start or update the branch preview and print `K13D_PREVIEW_TARGET=...` if you want k13d to reverse-proxy it. When deployment succeeds, the issue completion comment and generated PR comment include the human verification link such as `https://fingerscore.net/previews/<branch>/`.
 - `cleanup_worktrees: false` is the safer starting point so you can inspect failed jobs.
 - Keep `max_concurrent_jobs` low unless your agent/runtime is known to be stable under parallel worktrees.
 
