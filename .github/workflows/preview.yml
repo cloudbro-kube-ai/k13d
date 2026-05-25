@@ -36,7 +36,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: '1.25.10'
-          cache: true
+          # The self-hosted preview runner keeps the deployed binary locally.
+          # Avoid post-job cache tarballs so preview success is not failed by low disk space.
+          cache: false
 
       - name: Build frontend bundle
         run: go run scripts/build-frontend.go
