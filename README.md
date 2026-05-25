@@ -265,6 +265,7 @@ The AI assistant can:
 k13d can also act as a lightweight GitHub issue autopilot. When GitHub sends an `issues` webhook to the Web server, k13d can:
 
 - gate execution by label, by default `codex:auto`
+- mark accepted work with a `codex:running` issue label while automation is active
 - guide humans through a friendly `Codex 개발 요청` Issue Form before automation starts
 - create or reuse one stable issue branch and worktree, for example `codex/issue-123`
 - run your configured development command
@@ -273,7 +274,24 @@ k13d can also act as a lightweight GitHub issue autopilot. When GitHub sends an 
 - auto-commit, auto-push, and create or reuse exactly one draft PR for that issue branch
 - assign the issue author and request organization members as PR reviewers
 - deploy a branch preview behind the same domain, for example `/previews/codex-issue-123/`
-- post an issue comment and PR review when a GitHub token is configured
+- post an issue control panel with the preview link and merge checkbox when a GitHub token is configured
+- continue the same PR from follow-up issue comments such as `k13d 수정해줘: ...`
+- mark follow-up development as active with a 🚀 reaction on the triggering issue comment
+- run PR Preview CD on a self-hosted `fingerscore` runner, publishing PRs under `/previews/pr-<number>/`
+
+### Issue-Driven Development Quick Start
+
+Use this flow when you want to drive development from GitHub Issues instead of local commands:
+
+1. Open a `Codex 개발 요청` issue and describe the goal, current context, requested behavior, acceptance criteria, validation, and safety notes.
+2. Do not include secrets such as tokens, kubeconfigs, passwords, or API keys.
+3. An organization member reviews the issue and adds `codex:auto` only when it is safe to start automation.
+4. k13d marks the issue with `codex:running`, creates or reuses `codex/issue-<number>`, and opens or reuses one PR for that issue.
+5. Review the PR comment or issue control panel for the CI result and Preview URL.
+6. If the Preview needs more work, comment on the issue with `k13d 수정해줘: ...`; k13d reacts to that comment with 🚀 and continues on the same PR.
+7. To request another automated review, use the Issue control panel review checkbox or comment `k13d 코드리뷰 해줘`.
+8. After human Preview verification, check the merge box in the issue control panel or comment `k13d merge 해줘` when issue merge is enabled.
+9. After a successful issue-requested merge, k13d closes the issue as completed.
 
 This is designed for local or self-hosted operation. If you run k13d directly on a public HTTPS endpoint, GitHub can reach it without extra relay infrastructure:
 
@@ -308,7 +326,7 @@ github_automation:
   preview_path_prefix: /previews
 ```
 
-The development, review, and preview deployment commands are fully configurable so you can wire in Codex, Claude Code, Gemini CLI, or your own wrapper scripts. The included `scripts/run-agent-review.sh` wrapper runs `codex exec review` and emits a Korean PR review summary. By default, k13d comments and PR reviews in Korean, mentions organization members when a trusted issue is accepted, assigns the issue author, requests organization members as PR reviewers, and includes the branch preview link after deployment succeeds. One issue maps to one stable branch and one open PR, so re-labeling or reopening the issue continues on the same branch. Organization members can comment `k13d 코드리뷰 해줘` on the issue to re-run the configured review command, and if `allow_issue_merge` is enabled they can comment `k13d merge 해줘` to merge the linked PR into the base branch after human preview verification. After a successful issue-requested merge, k13d closes the GitHub issue as completed. k13d never forwards GitHub token env vars to development/review/deploy commands and redacts GitHub token patterns from captured output. A local preview command can start the built branch on a localhost port and print `K13D_PREVIEW_TARGET=http://127.0.0.1:<port>`. k13d then exposes it through the main Web server as `https://fingerscore.net/previews/<branch-slug>/`, which keeps preview access on a single public URL.
+The development, review, and preview deployment commands are fully configurable so you can wire in Codex, Claude Code, Gemini CLI, or your own wrapper scripts. The included `scripts/run-agent-review.sh` wrapper runs `codex exec review` and emits a Korean PR review summary. By default, k13d comments and PR reviews in Korean, mentions organization members when a trusted issue is accepted, assigns the issue author, adds `codex:running` while automation is active, requests organization members as PR reviewers, and includes the branch preview link after deployment succeeds. One issue maps to one stable branch and one open PR, so re-labeling, reopening, or commenting `k13d 수정해줘: ...` continues on the same branch and reuses the same PR. Organization members can comment `k13d 코드리뷰 해줘` on the issue to re-run the configured review command. If `allow_issue_merge` is enabled, the final issue control panel includes a preview link plus a Markdown checkbox that acts like a merge button; checking it, or commenting `k13d merge 해줘`, merges the linked PR into the base branch after human preview verification. After a successful issue-requested merge, k13d closes the GitHub issue as completed. k13d never forwards GitHub token env vars to development/review/deploy commands and redacts GitHub token patterns from captured output. A local preview command can start the built branch on a localhost port and print `K13D_PREVIEW_TARGET=http://127.0.0.1:<port>`. k13d then exposes it through the main Web server as `https://fingerscore.net/previews/<branch-slug>/`, which keeps preview access on a single public URL. The PR Preview CD workflow also deploys same-repository PRs on the self-hosted `fingerscore` runner at `https://fingerscore.net/previews/pr-<number>/` and removes the preview when the PR closes. After CI/CD finishes, k13d also posts that verification path on the generated PR so reviewers do not have to jump back to the issue.
 
 For the full config reference, placeholders, environment variables, and webhook flow, see:
 
@@ -317,6 +335,7 @@ For the full config reference, placeholders, environment variables, and webhook 
 - [GitHub Issue Automation Guide](docs-site/docs/user-guide/github-issue-automation.md)
 - [Architecture](docs-site/docs/concepts/architecture.md)
 - [Environment Variables](docs-site/docs/reference/env-vars.md)
+
 - Scale deployments, restart rollouts
 - Analyze YAML, events, and logs in context
 - Use MCP tools for extended capabilities

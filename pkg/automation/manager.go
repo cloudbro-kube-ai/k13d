@@ -117,6 +117,7 @@ func (m *Manager) QueueIssueEvent(event *IssueEvent) QueueResult {
 		IssueBody:     event.IssueBody,
 		IssueURL:      event.IssueURL,
 		IssueAuthor:   event.IssueAuthor,
+		RequestAuthor: event.IssueAuthor,
 		TriggerAction: event.Action,
 		TriggerLabel:  event.TriggeredLabel,
 		Status:        JobStatusQueued,
@@ -131,12 +132,17 @@ func (m *Manager) QueueIssueEvent(event *IssueEvent) QueueResult {
 		return QueueResult{Ignored: true, Reason: "automation manager is shutting down"}
 	}
 	m.assignIssueAuthor(job)
+	m.markIssueInProgress(job)
 	m.postAcceptedIssueComment(job)
 
 	select {
 	case m.queue <- job:
 		return QueueResult{Accepted: true, JobID: job.ID}
 	case <-m.ctx.Done():
+		if err := m.clearIssueInProgress(job); err != nil {
+			job.Warnings = append(job.Warnings, "failed to clear in-progress issue label: "+err.Error())
+			m.persistJob(job)
+		}
 		return QueueResult{Ignored: true, Reason: "automation manager is shutting down"}
 	}
 }
@@ -151,8 +157,8 @@ func (m *Manager) HandleIssueCommentEvent(event *IssueCommentEvent) QueueResult 
 	if event.EventName != "issue_comment" {
 		return QueueResult{Ignored: true, Reason: "only issue_comment webhook events are supported"}
 	}
-	if event.Action != "created" {
-		return QueueResult{Ignored: true, Reason: "only new issue comments are supported"}
+	if event.Action != "created" && event.Action != "edited" {
+		return QueueResult{Ignored: true, Reason: "only new or edited issue comments are supported"}
 	}
 	if event.Repository == "" {
 		return QueueResult{Ignored: true, Reason: "repository is missing from webhook payload"}
@@ -162,7 +168,9 @@ func (m *Manager) HandleIssueCommentEvent(event *IssueCommentEvent) QueueResult 
 			return QueueResult{Ignored: true, Reason: "repository is not in the allowed list"}
 		}
 	}
-	if isReviewCommand(event.CommentBody) {
+	reviewRequested := isReviewCommentRequest(event)
+	mergeRequested := isMergeCommentRequest(event)
+	if reviewRequested && !mergeRequested {
 		if ok, reason := m.githubUserIsOrgMember(event.Repository, event.CommentAuthor, event.CommentAuthorAssociation); !ok {
 			return QueueResult{Ignored: true, Reason: reason}
 		}
@@ -176,8 +184,14 @@ func (m *Manager) HandleIssueCommentEvent(event *IssueCommentEvent) QueueResult 
 		go m.reviewIssuePullRequest(event)
 		return QueueResult{Accepted: true}
 	}
-	if !isMergeCommand(event.CommentBody) {
-		return QueueResult{Ignored: true, Reason: "comment does not contain a k13d review or merge command"}
+	if !mergeRequested {
+		if event.Action == "created" && isDevelopmentCommand(event.CommentBody) {
+			if ok, reason := m.githubUserIsOrgMember(event.Repository, event.CommentAuthor, event.CommentAuthorAssociation); !ok {
+				return QueueResult{Ignored: true, Reason: reason}
+			}
+			return m.queueIssueCommentDevelopment(event)
+		}
+		return QueueResult{Ignored: true, Reason: "comment does not contain a k13d development command, review command, merge command, or checked merge control"}
 	}
 	if !m.cfg.AllowIssueMerge {
 		return QueueResult{Ignored: true, Reason: "issue merge command is disabled"}
@@ -191,6 +205,55 @@ func (m *Manager) HandleIssueCommentEvent(event *IssueCommentEvent) QueueResult 
 
 	go m.mergeIssuePullRequest(event)
 	return QueueResult{Accepted: true}
+}
+
+func (m *Manager) queueIssueCommentDevelopment(event *IssueCommentEvent) QueueResult {
+	if len(m.cfg.DevelopmentCommand) == 0 {
+		return QueueResult{Ignored: true, Reason: "development_command is not configured"}
+	}
+
+	key := issueKey(event.Repository, event.IssueNumber)
+	m.mu.Lock()
+	if existingID, ok := m.activeByIssue[key]; ok {
+		m.mu.Unlock()
+		return QueueResult{Ignored: true, Reason: "job already queued or running", JobID: existingID}
+	}
+	job := &Job{
+		ID:            uuid.NewString(),
+		Repository:    event.Repository,
+		IssueNumber:   event.IssueNumber,
+		IssueTitle:    event.IssueTitle,
+		IssueBody:     buildFollowUpIssueBody(event),
+		IssueURL:      event.IssueURL,
+		IssueAuthor:   event.IssueAuthor,
+		RequestAuthor: event.CommentAuthor,
+		TriggerAction: "comment:" + event.Action,
+		Status:        JobStatusQueued,
+		CreatedAt:     m.now(),
+	}
+	m.jobs[job.ID] = job
+	m.activeByIssue[key] = job.ID
+	m.mu.Unlock()
+
+	if m.ctx.Err() != nil {
+		m.releaseIssueLock(job)
+		return QueueResult{Ignored: true, Reason: "automation manager is shutting down"}
+	}
+	m.assignIssueAuthor(job)
+	m.markIssueInProgress(job)
+	m.markIssueCommentInProgress(event, job)
+	m.postAcceptedIssueComment(job)
+
+	select {
+	case m.queue <- job:
+		return QueueResult{Accepted: true, JobID: job.ID}
+	case <-m.ctx.Done():
+		if err := m.clearIssueInProgress(job); err != nil {
+			job.Warnings = append(job.Warnings, "failed to clear in-progress issue label: "+err.Error())
+			m.persistJob(job)
+		}
+		return QueueResult{Ignored: true, Reason: "automation manager is shutting down"}
+	}
 }
 
 func (m *Manager) ListJobs() []*Job {
@@ -296,12 +359,20 @@ func (m *Manager) runJob(job *Job) {
 		return
 	}
 
+	if err := m.postPullRequestVerificationComment(job); err != nil {
+		job.Warnings = append(job.Warnings, "failed to post pull request verification comment: "+err.Error())
+	}
+	if err := m.clearIssueInProgress(job); err != nil {
+		job.Warnings = append(job.Warnings, "failed to clear in-progress issue label: "+err.Error())
+	}
+
 	job.Status = JobStatusSucceeded
 	job.StatusReason = "completed"
 	job.FinishedAt = m.now()
 	m.persistJob(job)
 	m.releaseIssueLock(job)
 	m.postCompletionComment(job, result, nil)
+	m.postIssueControlPanel(job)
 }
 
 func (m *Manager) waitForCI(job *Job, result *ExecutionResult) error {
@@ -391,6 +462,9 @@ func (m *Manager) finishJob(job *Job, result *ExecutionResult, execErr error) {
 	job.StatusReason = execErr.Error()
 	job.Error = execErr.Error()
 	job.FinishedAt = m.now()
+	if err := m.clearIssueInProgress(job); err != nil {
+		job.Warnings = append(job.Warnings, "failed to clear in-progress issue label: "+err.Error())
+	}
 	m.persistJob(job)
 	m.releaseIssueLock(job)
 	m.postCompletionComment(job, result, execErr)
@@ -433,6 +507,59 @@ func (m *Manager) postCompletionComment(job *Job, result *ExecutionResult, execE
 			current.Warnings = append(current.Warnings, "failed to post issue comment: "+err.Error())
 		})
 	}
+}
+
+func (m *Manager) postPullRequestVerificationComment(job *Job) error {
+	if m.reporter == nil || job == nil || job.PullRequestNumber <= 0 {
+		return nil
+	}
+	body := buildPullRequestVerificationComment(job, m.cfg)
+	if strings.TrimSpace(body) == "" {
+		return nil
+	}
+	return m.reporter.PostPullRequestComment(m.ctx, job.Repository, job.PullRequestNumber, body)
+}
+
+func (m *Manager) postIssueControlPanel(job *Job) {
+	if m.reporter == nil || job == nil || job.PullRequestNumber <= 0 {
+		return
+	}
+	body := buildIssueControlPanelComment(job, m.cfg)
+	if strings.TrimSpace(body) == "" {
+		return
+	}
+	if err := m.reporter.PostIssueComment(m.ctx, job.Repository, job.IssueNumber, body); err != nil {
+		m.updateJob(job.ID, func(current *Job) {
+			current.Warnings = append(current.Warnings, "failed to post issue control panel comment: "+err.Error())
+		})
+	}
+}
+
+func (m *Manager) markIssueInProgress(job *Job) {
+	if m.reporter == nil || job == nil {
+		return
+	}
+	if err := m.reporter.MarkIssueInProgress(m.ctx, job.Repository, job.IssueNumber); err != nil {
+		job.Warnings = append(job.Warnings, "failed to mark issue in progress: "+err.Error())
+		m.persistJob(job)
+	}
+}
+
+func (m *Manager) markIssueCommentInProgress(event *IssueCommentEvent, job *Job) {
+	if m.reporter == nil || event == nil || job == nil || event.CommentID <= 0 {
+		return
+	}
+	if err := m.reporter.AddIssueCommentReaction(m.ctx, event.Repository, event.CommentID, "rocket"); err != nil {
+		job.Warnings = append(job.Warnings, "failed to add in-progress reaction to issue comment: "+err.Error())
+		m.persistJob(job)
+	}
+}
+
+func (m *Manager) clearIssueInProgress(job *Job) error {
+	if m.reporter == nil || job == nil {
+		return nil
+	}
+	return m.reporter.ClearIssueInProgress(m.ctx, job.Repository, job.IssueNumber)
 }
 
 func (m *Manager) postAcceptedIssueComment(job *Job) {
@@ -684,6 +811,7 @@ func (m *Manager) mergeIssuePullRequest(event *IssueCommentEvent) {
 }
 
 func (m *Manager) reviewIssuePullRequest(event *IssueCommentEvent) {
+	m.markIssueCommentReviewRequested(event)
 	branch := buildBranchName(m.cfg.BranchPrefix, event.IssueNumber, event.IssueTitle)
 	accepted := buildReviewAcceptedComment(event, branch, m.cfg)
 	_ = m.reporter.PostIssueComment(m.ctx, event.Repository, event.IssueNumber, accepted)
@@ -717,6 +845,14 @@ func (m *Manager) reviewIssuePullRequest(event *IssueCommentEvent) {
 		}
 	}
 	m.postReviewCompletionComment(event, branch, pr, reviewLog, err)
+}
+
+func (m *Manager) markIssueCommentReviewRequested(event *IssueCommentEvent) {
+	if m.reporter == nil || event == nil || event.CommentID <= 0 {
+		return
+	}
+	// The eyes reaction makes review-only requests visible without implying code is being changed.
+	_ = m.reporter.AddIssueCommentReaction(m.ctx, event.Repository, event.CommentID, "eyes")
 }
 
 func (m *Manager) postMergeCompletionComment(event *IssueCommentEvent, branch string, pr *PullRequestInfo, merge *PullRequestMergeInfo, err, closeErr error) {
@@ -760,25 +896,49 @@ func effectiveBaseBranch(cfg config.GitHubAutomationConfig) string {
 func buildAcceptedIssueComment(job *Job, mentions []string, cfg config.GitHubAutomationConfig) string {
 	var b strings.Builder
 	if koreanReview(cfg) {
-		fmt.Fprintf(&b, "## k13d 이슈 자동화 접수\n\n")
+		if jobIsFollowUp(job) {
+			fmt.Fprintf(&b, "## k13d 후속 개발 요청 접수 🚀\n\n")
+		} else {
+			fmt.Fprintf(&b, "## k13d 이슈 자동화 접수\n\n")
+		}
 		if len(mentions) > 0 {
 			fmt.Fprintf(&b, "%s\n\n", strings.Join(mentions, " "))
 		}
 		fmt.Fprintf(&b, "- 이슈: #%d\n", job.IssueNumber)
 		fmt.Fprintf(&b, "- 작성자: @%s\n", job.IssueAuthor)
-		fmt.Fprintf(&b, "- 상태: 자동화 작업을 큐에 등록했습니다.\n")
+		if jobIsFollowUp(job) && strings.TrimSpace(job.RequestAuthor) != "" {
+			fmt.Fprintf(&b, "- 추가 요청자: @%s\n", job.RequestAuthor)
+			b.WriteString("- 처리 방식: 같은 이슈 브랜치와 같은 open PR에 이어서 반영합니다.\n")
+		}
+		if jobIsFollowUp(job) {
+			fmt.Fprintf(&b, "- 상태: 코드 작성 중입니다. 요청 댓글에 🚀 reaction을 남겼습니다.\n")
+		} else {
+			fmt.Fprintf(&b, "- 상태: 자동화 작업을 큐에 등록했습니다.\n")
+		}
 		b.WriteString("- 리뷰 언어: 이슈 검토와 코드 리뷰는 한국어로 진행합니다.\n")
 		b.WriteString("\n작업이 끝나면 PR, CI 결과, 배포 확인 링크가 포함된 완료 코멘트를 남깁니다.\n")
 		return b.String()
 	}
 
-	fmt.Fprintf(&b, "## k13d issue automation accepted\n\n")
+	if jobIsFollowUp(job) {
+		fmt.Fprintf(&b, "## k13d follow-up development accepted 🚀\n\n")
+	} else {
+		fmt.Fprintf(&b, "## k13d issue automation accepted\n\n")
+	}
 	if len(mentions) > 0 {
 		fmt.Fprintf(&b, "%s\n\n", strings.Join(mentions, " "))
 	}
 	fmt.Fprintf(&b, "- Issue: #%d\n", job.IssueNumber)
 	fmt.Fprintf(&b, "- Author: @%s\n", job.IssueAuthor)
-	fmt.Fprintf(&b, "- Status: queued for automation\n")
+	if jobIsFollowUp(job) && strings.TrimSpace(job.RequestAuthor) != "" {
+		fmt.Fprintf(&b, "- Follow-up requested by: @%s\n", job.RequestAuthor)
+		b.WriteString("- Mode: continuing on the same issue branch and open PR.\n")
+	}
+	if jobIsFollowUp(job) {
+		fmt.Fprintf(&b, "- Status: writing code now. Added a 🚀 reaction to the request comment.\n")
+	} else {
+		fmt.Fprintf(&b, "- Status: queued for automation\n")
+	}
 	b.WriteString("\nWhen the job finishes, k13d will comment with the PR, CI result, and preview deployment link.\n")
 	return b.String()
 }
@@ -1049,6 +1209,128 @@ func buildKoreanIssueComment(job *Job, result *ExecutionResult, execErr error) s
 	return b.String()
 }
 
+func buildPullRequestVerificationComment(job *Job, cfg config.GitHubAutomationConfig) string {
+	if job == nil || job.PullRequestNumber <= 0 {
+		return ""
+	}
+	hasCI := strings.TrimSpace(job.CIStatus) != "" || strings.TrimSpace(job.CIConclusion) != "" || strings.TrimSpace(job.CIURL) != ""
+	hasPreview := strings.TrimSpace(job.PreviewURL) != ""
+	if !hasCI && !hasPreview {
+		return ""
+	}
+
+	var b strings.Builder
+	if koreanReview(cfg) {
+		b.WriteString("## k13d CI/CD 확인 경로\n\n")
+		fmt.Fprintf(&b, "- 이슈: #%d\n", job.IssueNumber)
+		if strings.TrimSpace(job.Branch) != "" {
+			fmt.Fprintf(&b, "- 브랜치: `%s`\n", job.Branch)
+		}
+		if hasCI {
+			fmt.Fprintf(&b, "- CI 상태: `%s/%s`\n", valueOrDefault(job.CIStatus, "completed"), valueOrDefault(job.CIConclusion, "success"))
+		}
+		if strings.TrimSpace(job.CIURL) != "" {
+			fmt.Fprintf(&b, "- CI 로그: %s\n", job.CIURL)
+		}
+		if hasPreview {
+			fmt.Fprintf(&b, "- 배포 확인 링크: %s\n", job.PreviewURL)
+		}
+		b.WriteString("\nCI/CD가 끝난 뒤 PR 화면에서 바로 검증할 수 있도록 자동으로 남긴 코멘트입니다.\n")
+		return b.String()
+	}
+
+	b.WriteString("## k13d CI/CD verification\n\n")
+	fmt.Fprintf(&b, "- Issue: #%d\n", job.IssueNumber)
+	if strings.TrimSpace(job.Branch) != "" {
+		fmt.Fprintf(&b, "- Branch: `%s`\n", job.Branch)
+	}
+	if hasCI {
+		fmt.Fprintf(&b, "- CI status: `%s/%s`\n", valueOrDefault(job.CIStatus, "completed"), valueOrDefault(job.CIConclusion, "success"))
+	}
+	if strings.TrimSpace(job.CIURL) != "" {
+		fmt.Fprintf(&b, "- CI logs: %s\n", job.CIURL)
+	}
+	if hasPreview {
+		fmt.Fprintf(&b, "- Preview URL: %s\n", job.PreviewURL)
+	}
+	b.WriteString("\nPosted automatically after CI/CD so reviewers can verify the PR from this page.\n")
+	return b.String()
+}
+
+func buildIssueControlPanelComment(job *Job, cfg config.GitHubAutomationConfig) string {
+	if job == nil || job.PullRequestNumber <= 0 {
+		return ""
+	}
+	hasPreview := strings.TrimSpace(job.PreviewURL) != ""
+
+	var b strings.Builder
+	if koreanReview(cfg) {
+		b.WriteString("## k13d 확인 및 병합 컨트롤\n\n")
+		fmt.Fprintf(&b, "- 이슈: #%d\n", job.IssueNumber)
+		if strings.TrimSpace(job.PullRequestURL) != "" {
+			fmt.Fprintf(&b, "- Pull Request: %s\n", job.PullRequestURL)
+		}
+		if hasPreview {
+			fmt.Fprintf(&b, "- Preview 확인 링크: %s\n", job.PreviewURL)
+		}
+		if strings.TrimSpace(job.CIURL) != "" {
+			fmt.Fprintf(&b, "- CI 로그: %s\n", job.CIURL)
+		} else if strings.TrimSpace(job.CIConclusion) != "" {
+			fmt.Fprintf(&b, "- CI 결과: `%s`\n", job.CIConclusion)
+		}
+		if cfg.AllowIssueMerge {
+			b.WriteString("\nPR을 확인한 뒤 Codex 리뷰가 한 번 더 필요하면 아래 리뷰 요청 체크박스를 클릭하세요.\n\n")
+			b.WriteString("- [ ] Codex 코드 리뷰 요청 (`k13d 코드리뷰 해줘`)\n")
+			b.WriteString("\nPreview와 PR을 모두 확인한 뒤 아래 병합 체크박스를 클릭하면 k13d가 연결된 PR 병합을 요청합니다.\n\n")
+			b.WriteString("- [ ] Preview 확인 완료, PR 병합 요청 (`k13d merge 해줘`)\n")
+			b.WriteString("\n추가로 고칠 부분이 있으면 이슈에 `k13d 수정해줘: ...` 또는 `k13d 계속 개발해줘: ...`처럼 댓글을 남겨주세요. k13d가 같은 브랜치와 같은 PR에 이어서 반영하고 새 Preview 링크를 다시 남깁니다.\n")
+			b.WriteString("\n체크박스가 동작하지 않으면 이슈에 `k13d 코드리뷰 해줘` 또는 `k13d merge 해줘`라고 댓글로 남겨도 됩니다. GitHub branch protection, 필수 리뷰, CI 조건은 그대로 적용됩니다.\n")
+		} else {
+			b.WriteString("\nCodex 리뷰가 한 번 더 필요하면 아래 체크박스를 클릭하거나 이슈에 `k13d 코드리뷰 해줘`라고 댓글을 남겨주세요.\n\n")
+			b.WriteString("- [ ] Codex 코드 리뷰 요청 (`k13d 코드리뷰 해줘`)\n")
+			b.WriteString("\n추가로 고칠 부분이 있으면 이슈에 `k13d 수정해줘: ...` 또는 `k13d 계속 개발해줘: ...`처럼 댓글을 남겨주세요. k13d가 같은 브랜치와 같은 PR에 이어서 반영하고 새 Preview 링크를 다시 남깁니다.\n")
+			b.WriteString("\n`allow_issue_merge`가 꺼져 있어 이슈에서 직접 병합할 수 없습니다. PR 화면에서 검토 후 수동으로 병합해주세요.\n")
+		}
+		return b.String()
+	}
+
+	b.WriteString("## k13d verification and merge controls\n\n")
+	fmt.Fprintf(&b, "- Issue: #%d\n", job.IssueNumber)
+	if strings.TrimSpace(job.PullRequestURL) != "" {
+		fmt.Fprintf(&b, "- Pull request: %s\n", job.PullRequestURL)
+	}
+	if hasPreview {
+		fmt.Fprintf(&b, "- Preview URL: %s\n", job.PreviewURL)
+	}
+	if strings.TrimSpace(job.CIURL) != "" {
+		fmt.Fprintf(&b, "- CI logs: %s\n", job.CIURL)
+	} else if strings.TrimSpace(job.CIConclusion) != "" {
+		fmt.Fprintf(&b, "- CI result: `%s`\n", job.CIConclusion)
+	}
+	if cfg.AllowIssueMerge {
+		b.WriteString("\nIf you want another Codex review pass, click the review request checkbox below.\n\n")
+		b.WriteString("- [ ] Request Codex code review (`k13d review`)\n")
+		b.WriteString("\nAfter verifying the preview and PR, click the merge checkbox below to ask k13d to merge the linked PR.\n\n")
+		b.WriteString("- [ ] Preview verified, request PR merge (`k13d merge`)\n")
+		b.WriteString("\nIf more changes are needed, comment `k13d fix: ...` or `k13d continue: ...` on this issue. k13d will continue on the same branch and PR, then post a fresh preview link.\n")
+		b.WriteString("\nIf the checkbox does not work, comment `k13d review` or `k13d merge` on this issue. GitHub branch protection, required reviews, and CI rules still apply.\n")
+	} else {
+		b.WriteString("\nIf you want another Codex review pass, click the checkbox below or comment `k13d review` on this issue.\n\n")
+		b.WriteString("- [ ] Request Codex code review (`k13d review`)\n")
+		b.WriteString("\nIf more changes are needed, comment `k13d fix: ...` or `k13d continue: ...` on this issue. k13d will continue on the same branch and PR, then post a fresh preview link.\n")
+		b.WriteString("\n`allow_issue_merge` is disabled, so issue-driven merging is unavailable. Review and merge manually from the PR.\n")
+	}
+	return b.String()
+}
+
+func valueOrDefault(value, fallback string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fallback
+	}
+	return value
+}
+
 func buildPullRequestBody(job *Job, result *ExecutionResult, cfg config.GitHubAutomationConfig) string {
 	var b strings.Builder
 	if koreanReview(cfg) {
@@ -1107,6 +1389,27 @@ func buildReviewBody(job *Job, result *ExecutionResult, cfg config.GitHubAutomat
 	return b.String()
 }
 
+func buildFollowUpIssueBody(event *IssueCommentEvent) string {
+	var b strings.Builder
+	if strings.TrimSpace(event.IssueBody) != "" {
+		b.WriteString("## Original Issue\n\n")
+		b.WriteString(strings.TrimSpace(event.IssueBody))
+		b.WriteString("\n\n")
+	}
+	b.WriteString("## Follow-up Development Request\n\n")
+	if strings.TrimSpace(event.CommentAuthor) != "" {
+		fmt.Fprintf(&b, "Requested by @%s from an issue comment.\n\n", event.CommentAuthor)
+	}
+	b.WriteString(strings.TrimSpace(event.CommentBody))
+	b.WriteString("\n\n## Automation Instruction\n\n")
+	b.WriteString("Continue on the same issue branch and the existing open PR. Preserve previous work unless the follow-up explicitly asks to change it. Update code, tests, and docs as needed, then run the configured validation before finishing.")
+	return b.String()
+}
+
+func jobIsFollowUp(job *Job) bool {
+	return job != nil && strings.HasPrefix(strings.TrimSpace(job.TriggerAction), "comment:")
+}
+
 func koreanReview(cfg config.GitHubAutomationConfig) bool {
 	language := strings.ToLower(strings.TrimSpace(cfg.ReviewLanguage))
 	return language == "" || language == "ko" || strings.HasPrefix(language, "ko-") || strings.Contains(language, "korean")
@@ -1130,6 +1433,105 @@ func isMergeCommand(body string) bool {
 	return false
 }
 
+func isMergeCommentRequest(event *IssueCommentEvent) bool {
+	if event == nil {
+		return false
+	}
+	switch event.Action {
+	case "created":
+		return isMergeCommand(event.CommentBody)
+	case "edited":
+		return isCheckedMergeControl(event.CommentBody)
+	default:
+		return false
+	}
+}
+
+func isReviewCommentRequest(event *IssueCommentEvent) bool {
+	if event == nil {
+		return false
+	}
+	switch event.Action {
+	case "created":
+		return isReviewCommand(event.CommentBody)
+	case "edited":
+		return isCheckedReviewControl(event.CommentBody)
+	default:
+		return false
+	}
+}
+
+func isCheckedReviewControl(body string) bool {
+	text := strings.ToLower(strings.TrimSpace(body))
+	if text == "" || !strings.Contains(text, "k13d") {
+		return false
+	}
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if !(strings.HasPrefix(line, "- [x]") || strings.HasPrefix(line, "* [x]")) {
+			continue
+		}
+		if !strings.Contains(line, "k13d") {
+			continue
+		}
+		for _, marker := range []string{"코드 리뷰 요청", "리뷰 요청", "request codex code review", "request code review", "code review request", "request review"} {
+			if strings.Contains(line, marker) {
+				return true
+			}
+		}
+		if isReviewCommand(line) {
+			return true
+		}
+	}
+	return false
+}
+
+func isCheckedMergeControl(body string) bool {
+	text := strings.ToLower(strings.TrimSpace(body))
+	if text == "" || !strings.Contains(text, "k13d") {
+		return false
+	}
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if !(strings.HasPrefix(line, "- [x]") || strings.HasPrefix(line, "* [x]")) {
+			continue
+		}
+		if !strings.Contains(line, "k13d") {
+			continue
+		}
+		for _, marker := range []string{"pr 병합 요청", "병합 요청", "request pr merge", "request merge", "verified, request"} {
+			if strings.Contains(line, marker) {
+				return true
+			}
+		}
+		if isMergeCommand(line) {
+			return true
+		}
+	}
+	return false
+}
+
+func isDevelopmentCommand(body string) bool {
+	text := strings.ToLower(strings.TrimSpace(body))
+	if text == "" || !strings.Contains(text, "k13d") {
+		return false
+	}
+	for _, negative := range []string{"don't develop", "do not develop", "not develop", "수정하지", "개발하지", "반영하지"} {
+		if strings.Contains(text, negative) {
+			return false
+		}
+	}
+	for _, positive := range []string{
+		"fix", "change", "update", "improve", "continue", "iterate", "follow up", "adjust", "address",
+		"수정", "고쳐", "개선", "보완", "추가", "이어", "계속", "다시 개발", "개발해", "반영",
+	} {
+		if strings.Contains(text, positive) {
+			return true
+		}
+	}
+	return false
+}
+
 func isReviewCommand(body string) bool {
 	text := strings.ToLower(strings.TrimSpace(body))
 	if text == "" || !strings.Contains(text, "k13d") {
@@ -1140,8 +1542,21 @@ func isReviewCommand(body string) bool {
 			return false
 		}
 	}
-	for _, positive := range []string{"review", "code review", "리뷰", "코드리뷰", "검토"} {
-		if strings.Contains(text, positive) {
+	if strings.Contains(text, "code review") || containsASCIIWord(text, "review") {
+		return true
+	}
+	if strings.Contains(text, "코드리뷰") || strings.Contains(text, "검토") {
+		return true
+	}
+	reviewText := strings.ReplaceAll(text, "프리뷰", "")
+	return strings.Contains(reviewText, "리뷰")
+}
+
+func containsASCIIWord(text, word string) bool {
+	for _, token := range strings.FieldsFunc(text, func(r rune) bool {
+		return !((r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_')
+	}) {
+		if token == word {
 			return true
 		}
 	}

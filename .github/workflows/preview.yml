@@ -1,0 +1,175 @@
+name: Preview CD
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, closed]
+    branches: [main, dev]
+  workflow_dispatch:
+    inputs:
+      preview_slug:
+        description: Preview slug, for example pr-109
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: preview-${{ github.event_name == 'pull_request' && github.event.pull_request.number || inputs.preview_slug }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    name: Deploy PR preview
+    if: >
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: [self-hosted, macos, k13d-prod, fingerscore]
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.10'
+          # The self-hosted preview runner keeps the deployed binary locally.
+          # Avoid post-job cache tarballs so preview success is not failed by low disk space.
+          cache: false
+
+      - name: Build frontend bundle
+        run: go run scripts/build-frontend.go
+
+      - name: Build preview binary
+        run: |
+          mkdir -p build
+          go build -ldflags="-w -s" -o build/k13d ./cmd/kube-ai-dashboard-cli/main.go
+
+      - name: Resolve preview slug
+        id: slug
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "slug=pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "slug=${{ inputs.preview_slug }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy preview on fingerscore.net
+        id: preview
+        env:
+          K13D_PREVIEW_SLUG: ${{ steps.slug.outputs.slug }}
+          K13D_PREVIEW_URL_BASE: https://fingerscore.net
+          K13D_PREVIEW_PATH_PREFIX: /previews
+        run: |
+          output="$(scripts/self_hosted/deploy_preview_macos.sh build/k13d)"
+          printf '%s\n' "$output"
+          preview_url="$(printf '%s\n' "$output" | awk -F= '/^K13D_PREVIEW_URL=/{print $2}' | tail -n1)"
+          target_url="$(printf '%s\n' "$output" | awk -F= '/^K13D_PREVIEW_TARGET=/{print $2}' | tail -n1)"
+          if [[ -z "$preview_url" ]]; then
+            echo "Preview URL was not reported by deploy script." >&2
+            exit 1
+          fi
+          echo "preview_url=$preview_url" >> "$GITHUB_OUTPUT"
+          echo "target_url=$target_url" >> "$GITHUB_OUTPUT"
+
+      - name: Comment preview link
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const marker = '<!-- k13d-pr-preview-cd -->';
+            const previewUrl = '${{ steps.preview.outputs.preview_url }}';
+            const targetUrl = '${{ steps.preview.outputs.target_url }}';
+            const body = [
+              marker,
+              '## k13d PR Preview CD',
+              '',
+              `- Preview: ${previewUrl}`,
+              `- Branch: \`${context.payload.pull_request.head.ref}\``,
+              `- Commit: \`${context.payload.pull_request.head.sha}\``,
+              targetUrl ? `- Local target: \`${targetUrl}\`` : '',
+              '',
+              'Preview 확인 후 추가 수정이 필요하면 연결된 Issue에 `k13d 수정해줘: ...` 댓글을 남겨주세요.',
+            ].filter(Boolean).join('\n');
+
+            const params = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100,
+            };
+            const { data: comments } = await github.rest.issues.listComments(params);
+            const previous = comments.find((comment) => (
+              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            ));
+            if (previous) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: previous.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }
+
+  cleanup-preview:
+    name: Cleanup PR preview
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macos, k13d-prod, fingerscore]
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Cleanup preview on fingerscore.net
+        env:
+          K13D_PREVIEW_SLUG: pr-${{ github.event.pull_request.number }}
+          K13D_PREVIEW_URL_BASE: https://fingerscore.net
+          K13D_PREVIEW_PATH_PREFIX: /previews
+        run: scripts/self_hosted/deploy_preview_macos.sh --cleanup
+
+      - name: Comment cleanup
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const marker = '<!-- k13d-pr-preview-cd -->';
+            const body = [
+              marker,
+              '## k13d PR Preview CD',
+              '',
+              'Preview 정리 완료: `/previews/pr-${{ github.event.pull_request.number }}/` 경로를 제거했습니다.',
+            ].join('\n');
+            const params = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100,
+            };
+            const { data: comments } = await github.rest.issues.listComments(params);
+            const previous = comments.find((comment) => (
+              comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            ));
+            if (previous) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: previous.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }

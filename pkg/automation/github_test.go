@@ -84,6 +84,117 @@ func TestGitHubClientListOrganizationMembers(t *testing.T) {
 	}
 }
 
+func TestGitHubClientPostPullRequestComment(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("method = %s, want POST", r.Method)
+		}
+		if r.URL.Path != "/repos/cloudbro-kube-ai/k13d/issues/12/comments" {
+			t.Fatalf("unexpected path %q", r.URL.Path)
+		}
+		var payload struct {
+			Body string `json:"body"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		if payload.Body != "preview ready" {
+			t.Fatalf("body = %q, want preview ready", payload.Body)
+		}
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+
+	client := NewGitHubClient("token")
+	client.baseURL = server.URL
+	if err := client.PostPullRequestComment(context.Background(), "cloudbro-kube-ai/k13d", 12, "preview ready"); err != nil {
+		t.Fatalf("PostPullRequestComment() error = %v", err)
+	}
+}
+
+func TestGitHubClientAddIssueCommentReaction(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("method = %s, want POST", r.Method)
+		}
+		if r.URL.Path != "/repos/cloudbro-kube-ai/k13d/issues/comments/12345/reactions" {
+			t.Fatalf("unexpected path %q", r.URL.Path)
+		}
+		var payload struct {
+			Content string `json:"content"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		if payload.Content != "rocket" {
+			t.Fatalf("content = %q, want rocket", payload.Content)
+		}
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+
+	client := NewGitHubClient("token")
+	client.baseURL = server.URL
+	if err := client.AddIssueCommentReaction(context.Background(), "cloudbro-kube-ai/k13d", 12345, "rocket"); err != nil {
+		t.Fatalf("AddIssueCommentReaction() error = %v", err)
+	}
+}
+
+func TestGitHubClientIssueInProgressLabels(t *testing.T) {
+	var sawCreate bool
+	var sawAdd bool
+	var sawDelete bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/repos/cloudbro-kube-ai/k13d/labels":
+			sawCreate = true
+			var payload struct {
+				Name        string `json:"name"`
+				Color       string `json:"color"`
+				Description string `json:"description"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatal(err)
+			}
+			if payload.Name != "codex:running" || payload.Color == "" || payload.Description == "" {
+				t.Fatalf("label payload = %#v, want codex:running with metadata", payload)
+			}
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_, _ = w.Write([]byte(`{"message":"already_exists"}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/repos/cloudbro-kube-ai/k13d/issues/7/labels":
+			sawAdd = true
+			var payload struct {
+				Labels []string `json:"labels"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatal(err)
+			}
+			if len(payload.Labels) != 1 || payload.Labels[0] != "codex:running" {
+				t.Fatalf("labels = %#v, want codex:running", payload.Labels)
+			}
+			_, _ = w.Write([]byte(`[]`))
+		case r.Method == http.MethodDelete && r.URL.Path == "/repos/cloudbro-kube-ai/k13d/issues/7/labels/codex:running":
+			sawDelete = true
+			_, _ = w.Write([]byte(`{}`))
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	client := NewGitHubClient("token")
+	client.baseURL = server.URL
+	if err := client.MarkIssueInProgress(context.Background(), "cloudbro-kube-ai/k13d", 7); err != nil {
+		t.Fatalf("MarkIssueInProgress() error = %v", err)
+	}
+	if err := client.ClearIssueInProgress(context.Background(), "cloudbro-kube-ai/k13d", 7); err != nil {
+		t.Fatalf("ClearIssueInProgress() error = %v", err)
+	}
+	if !sawCreate || !sawAdd || !sawDelete {
+		t.Fatalf("requests create=%v add=%v delete=%v, want all true", sawCreate, sawAdd, sawDelete)
+	}
+}
+
 func TestGitHubClientAssignIssue(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -260,6 +371,7 @@ func TestParseIssueCommentEvent(t *testing.T) {
 			"labels":[{"name":"codex:auto"}]
 		},
 		"comment":{
+			"id":12345,
 			"body":"k13d merge 해줘",
 			"author_association":"MEMBER",
 			"user":{"login":"bob"}
@@ -271,5 +383,40 @@ func TestParseIssueCommentEvent(t *testing.T) {
 	}
 	if event.CommentAuthor != "bob" || event.CommentBody != "k13d merge 해줘" {
 		t.Fatalf("event = %#v", event)
+	}
+	if event.CommentID != 12345 {
+		t.Fatalf("CommentID = %d, want 12345", event.CommentID)
+	}
+}
+
+func TestParseIssueCommentEvent_UsesSenderForEditedComment(t *testing.T) {
+	body := []byte(`{
+		"action":"edited",
+		"repository":{"full_name":"cloudbro-kube-ai/k13d","default_branch":"main"},
+		"issue":{
+			"number":17,
+			"title":"Automate me",
+			"body":"Please fix this",
+			"html_url":"https://github.com/cloudbro-kube-ai/k13d/issues/17",
+			"author_association":"MEMBER",
+			"user":{"login":"alice"},
+			"labels":[{"name":"codex:auto"}]
+		},
+		"comment":{
+			"body":"- [x] Preview 확인 완료, PR 병합 요청 (k13d merge 해줘)",
+			"author_association":"OWNER",
+			"user":{"login":"k13d-bot"}
+		},
+		"sender":{"login":"carol"}
+	}`)
+	event, err := ParseIssueCommentEvent("issue_comment", body)
+	if err != nil {
+		t.Fatalf("ParseIssueCommentEvent() error = %v", err)
+	}
+	if event.CommentAuthor != "carol" {
+		t.Fatalf("CommentAuthor = %q, want sender", event.CommentAuthor)
+	}
+	if event.CommentAuthorAssociation != "" {
+		t.Fatalf("CommentAuthorAssociation = %q, want blank when sender differs from comment author", event.CommentAuthorAssociation)
 	}
 }

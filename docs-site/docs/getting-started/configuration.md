@@ -257,7 +257,7 @@ If you expose the Web UI directly on HTTPS, GitHub can call it with a standard w
 https://your-domain.example/api/github/automation/webhook
 ```
 
-Enable both **Issues** and **Issue comments** in the GitHub webhook. `issues` events start development runs, while `issue_comment` events handle natural-language review and merge requests.
+Enable both **Issues** and **Issue comments** in the GitHub webhook. `issues` events start development runs, while `issue_comment` events handle follow-up development commands, natural-language review commands, merge commands, and merge-checkbox edits from the final issue control panel.
 
 Recommended config:
 
@@ -306,16 +306,18 @@ Behavior summary:
 - Author gate: `require_author_org_member: true` only runs issues opened by members of the repository owner organization
 - Reviewer notification: `mention_org_members: true` mentions organization members when a trusted issue is accepted
 - Assignment: trusted issues are assigned to the issue author
+- Progress label: accepted issues receive `codex:running` while automation is queued or running, and the label is removed when the job finishes
 - Reviewers: organization members are requested as reviewers on the generated or reused PR
 - Review language: `review_language: ko` makes built-in issue comments and PR review wrappers Korean
 - Codex review: `review_command: ./scripts/run-agent-review.sh` runs `codex exec review` and posts the result as a PR Review
 - Workspace isolation: each issue gets one stable git worktree under `worktree_root`
 - PR/reporting: one issue maps to one stable branch and one open PR when `personal_access_token` is configured
+- Follow-up development: organization members can comment `k13d 수정해줘: ...` or `k13d 계속 개발해줘: ...` to continue on the same branch and PR
 - Issue review: organization members can comment `k13d 코드리뷰 해줘` on the issue to re-run the configured review command on the linked PR
-- Issue merge: `allow_issue_merge: true` lets trusted organization members comment `k13d merge 해줘` on the issue to merge the linked PR and close the issue as completed
+- Issue merge: `allow_issue_merge: true` lets trusted organization members check the final issue control panel's merge checkbox or comment `k13d merge 해줘` to merge the linked PR and close the issue as completed
 - Token safety: GitHub token env vars are not forwarded to agent commands, and captured output is redacted
 - CI gate: `wait_for_ci` waits for GitHub check runs on the pushed commit before review/deploy
-- Preview deploy: `deploy_preview_command` can expose branch previews through the same k13d domain
+- Preview deploy: `deploy_preview_command` can expose branch previews through the same k13d domain and post the verification link on the generated PR
 
 ### Command Placeholders
 
@@ -385,13 +387,15 @@ Operational notes:
 - k13d assigns the issue author to the accepted issue and requests organization members as PR reviewers after the PR is created or reused.
 - Branch names are stable per issue number, for example `codex/issue-123`, so re-running automation for the same issue continues on the same branch and reuses the existing open PR.
 - `scripts/run-agent-review.sh` is the provided Codex review wrapper. It runs `codex exec review`, includes uncommitted changes when reviewing pre-commit automation output, and writes the last Codex message to stdout for PR Review creation.
+- Follow-up development commands are handled from `issue_comment` webhooks when the comment includes `k13d` and a development phrase such as `k13d 수정해줘: ...`, `k13d 계속 개발해줘: ...`, `k13d fix: ...`, or `k13d improve: ...`. k13d adds a 🚀 reaction to the triggering comment, combines the original issue body with that comment, then runs `development_command` again on the stable issue branch and reuses the existing open PR.
 - Review commands are handled from `issue_comment` webhooks when the comment includes `k13d` and a review phrase such as `k13d 코드리뷰 해줘`, `k13d 리뷰해줘`, or `k13d review`.
 - `allow_issue_merge` is disabled by default. Enable it only when the token is scoped for the target repository and branch protection still enforces the checks/reviews you want.
-- Merge commands are handled from `issue_comment` webhooks. Supported natural-language examples include `k13d merge 해줘`, `k13d main에 merge 해줘`, and `k13d 병합해줘`. After GitHub accepts the merge, k13d closes the issue with `state_reason: completed`.
+- Merge commands are handled from `issue_comment` webhooks. Supported natural-language examples include `k13d merge 해줘`, `k13d main에 merge 해줘`, and `k13d 병합해줘`. After a successful CI/CD and preview deployment, k13d also posts an issue control panel with the Preview link and a `Preview 확인 완료, PR 병합 요청` checkbox. Checking it produces an `issue_comment` `edited` webhook and triggers the same merge flow after the editor is verified as an organization member. After GitHub accepts the merge, k13d closes the issue with `state_reason: completed`.
 - k13d removes GitHub token-like env vars from `development_command`, `review_command`, and `deploy_preview_command` environments, then redacts GitHub token patterns from captured logs before storing or commenting them.
 - `review_language: ko` is passed to commands as `{review_language}` and `K13D_GHA_REVIEW_LANGUAGE`; include it in your agent prompt if the external review command should also write Korean.
 - `wait_for_ci` also requires `personal_access_token` because k13d reads GitHub check runs through the GitHub API.
-- `deploy_preview_command` should start or update the branch preview and print `K13D_PREVIEW_TARGET=...` if you want k13d to reverse-proxy it. When deployment succeeds, the completion comment includes the human verification link such as `https://fingerscore.net/previews/<branch>/`.
+- `deploy_preview_command` should start or update the branch preview and print `K13D_PREVIEW_TARGET=...` if you want k13d to reverse-proxy it. When deployment succeeds, the issue completion comment and generated PR comment include the human verification link such as `https://fingerscore.net/previews/<branch>/`.
+- The repository's Preview CD workflow is separate from issue automation. It runs on the self-hosted `fingerscore` runner for same-repository PRs, deploys `https://fingerscore.net/previews/pr-<number>/`, updates one sticky PR comment, and cleans up the preview route when the PR closes.
 - `cleanup_worktrees: false` is the safer starting point so you can inspect failed jobs.
 - Keep `max_concurrent_jobs` low unless your agent/runtime is known to be stable under parallel worktrees.
 
