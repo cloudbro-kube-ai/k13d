@@ -289,7 +289,7 @@ Use this flow when you want to drive development from GitHub Issues instead of l
 4. k13d marks the issue with `codex:running`, creates or reuses `codex/issue-<number>`, and opens or reuses one PR for that issue.
 5. Review the PR comment or issue control panel for the CI result and Preview URL.
 6. If the Preview needs more work, comment on the issue with `k13d 수정해줘: ...`; k13d reacts to that comment with 🚀 and continues on the same PR.
-7. To request another automated review, comment `k13d 코드리뷰 해줘`.
+7. To request another automated review, use the Issue control panel review checkbox or comment `k13d 코드리뷰 해줘`.
 8. After human Preview verification, check the merge box in the issue control panel or comment `k13d merge 해줘` when issue merge is enabled.
 9. After a successful issue-requested merge, k13d closes the issue as completed.
 

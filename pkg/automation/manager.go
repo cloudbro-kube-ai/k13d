@@ -168,7 +168,9 @@ func (m *Manager) HandleIssueCommentEvent(event *IssueCommentEvent) QueueResult 
 			return QueueResult{Ignored: true, Reason: "repository is not in the allowed list"}
 		}
 	}
-	if event.Action == "created" && isReviewCommand(event.CommentBody) {
+	reviewRequested := isReviewCommentRequest(event)
+	mergeRequested := isMergeCommentRequest(event)
+	if reviewRequested && !mergeRequested {
 		if ok, reason := m.githubUserIsOrgMember(event.Repository, event.CommentAuthor, event.CommentAuthorAssociation); !ok {
 			return QueueResult{Ignored: true, Reason: reason}
 		}
@@ -182,7 +184,6 @@ func (m *Manager) HandleIssueCommentEvent(event *IssueCommentEvent) QueueResult 
 		go m.reviewIssuePullRequest(event)
 		return QueueResult{Accepted: true}
 	}
-	mergeRequested := isMergeCommentRequest(event)
 	if !mergeRequested {
 		if event.Action == "created" && isDevelopmentCommand(event.CommentBody) {
 			if ok, reason := m.githubUserIsOrgMember(event.Repository, event.CommentAuthor, event.CommentAuthorAssociation); !ok {
@@ -810,6 +811,7 @@ func (m *Manager) mergeIssuePullRequest(event *IssueCommentEvent) {
 }
 
 func (m *Manager) reviewIssuePullRequest(event *IssueCommentEvent) {
+	m.markIssueCommentReviewRequested(event)
 	branch := buildBranchName(m.cfg.BranchPrefix, event.IssueNumber, event.IssueTitle)
 	accepted := buildReviewAcceptedComment(event, branch, m.cfg)
 	_ = m.reporter.PostIssueComment(m.ctx, event.Repository, event.IssueNumber, accepted)
@@ -843,6 +845,14 @@ func (m *Manager) reviewIssuePullRequest(event *IssueCommentEvent) {
 		}
 	}
 	m.postReviewCompletionComment(event, branch, pr, reviewLog, err)
+}
+
+func (m *Manager) markIssueCommentReviewRequested(event *IssueCommentEvent) {
+	if m.reporter == nil || event == nil || event.CommentID <= 0 {
+		return
+	}
+	// The eyes reaction makes review-only requests visible without implying code is being changed.
+	_ = m.reporter.AddIssueCommentReaction(m.ctx, event.Repository, event.CommentID, "eyes")
 }
 
 func (m *Manager) postMergeCompletionComment(event *IssueCommentEvent, branch string, pr *PullRequestInfo, merge *PullRequestMergeInfo, err, closeErr error) {
@@ -1269,11 +1279,15 @@ func buildIssueControlPanelComment(job *Job, cfg config.GitHubAutomationConfig) 
 			fmt.Fprintf(&b, "- CI 결과: `%s`\n", job.CIConclusion)
 		}
 		if cfg.AllowIssueMerge {
-			b.WriteString("\nPreview와 PR을 확인한 뒤 아래 체크박스를 클릭하면 k13d가 연결된 PR 병합을 요청합니다.\n\n")
+			b.WriteString("\nPR을 확인한 뒤 Codex 리뷰가 한 번 더 필요하면 아래 리뷰 요청 체크박스를 클릭하세요.\n\n")
+			b.WriteString("- [ ] Codex 코드 리뷰 요청 (`k13d 코드리뷰 해줘`)\n")
+			b.WriteString("\nPreview와 PR을 모두 확인한 뒤 아래 병합 체크박스를 클릭하면 k13d가 연결된 PR 병합을 요청합니다.\n\n")
 			b.WriteString("- [ ] Preview 확인 완료, PR 병합 요청 (`k13d merge 해줘`)\n")
 			b.WriteString("\n추가로 고칠 부분이 있으면 이슈에 `k13d 수정해줘: ...` 또는 `k13d 계속 개발해줘: ...`처럼 댓글을 남겨주세요. k13d가 같은 브랜치와 같은 PR에 이어서 반영하고 새 Preview 링크를 다시 남깁니다.\n")
-			b.WriteString("\n체크박스가 동작하지 않으면 이슈에 `k13d merge 해줘`라고 댓글로 남겨도 됩니다. GitHub branch protection, 필수 리뷰, CI 조건은 그대로 적용됩니다.\n")
+			b.WriteString("\n체크박스가 동작하지 않으면 이슈에 `k13d 코드리뷰 해줘` 또는 `k13d merge 해줘`라고 댓글로 남겨도 됩니다. GitHub branch protection, 필수 리뷰, CI 조건은 그대로 적용됩니다.\n")
 		} else {
+			b.WriteString("\nCodex 리뷰가 한 번 더 필요하면 아래 체크박스를 클릭하거나 이슈에 `k13d 코드리뷰 해줘`라고 댓글을 남겨주세요.\n\n")
+			b.WriteString("- [ ] Codex 코드 리뷰 요청 (`k13d 코드리뷰 해줘`)\n")
 			b.WriteString("\n추가로 고칠 부분이 있으면 이슈에 `k13d 수정해줘: ...` 또는 `k13d 계속 개발해줘: ...`처럼 댓글을 남겨주세요. k13d가 같은 브랜치와 같은 PR에 이어서 반영하고 새 Preview 링크를 다시 남깁니다.\n")
 			b.WriteString("\n`allow_issue_merge`가 꺼져 있어 이슈에서 직접 병합할 수 없습니다. PR 화면에서 검토 후 수동으로 병합해주세요.\n")
 		}
@@ -1294,11 +1308,15 @@ func buildIssueControlPanelComment(job *Job, cfg config.GitHubAutomationConfig) 
 		fmt.Fprintf(&b, "- CI result: `%s`\n", job.CIConclusion)
 	}
 	if cfg.AllowIssueMerge {
-		b.WriteString("\nAfter verifying the preview and PR, click the checkbox below to ask k13d to merge the linked PR.\n\n")
+		b.WriteString("\nIf you want another Codex review pass, click the review request checkbox below.\n\n")
+		b.WriteString("- [ ] Request Codex code review (`k13d review`)\n")
+		b.WriteString("\nAfter verifying the preview and PR, click the merge checkbox below to ask k13d to merge the linked PR.\n\n")
 		b.WriteString("- [ ] Preview verified, request PR merge (`k13d merge`)\n")
 		b.WriteString("\nIf more changes are needed, comment `k13d fix: ...` or `k13d continue: ...` on this issue. k13d will continue on the same branch and PR, then post a fresh preview link.\n")
-		b.WriteString("\nIf the checkbox does not work, comment `k13d merge` on this issue. GitHub branch protection, required reviews, and CI rules still apply.\n")
+		b.WriteString("\nIf the checkbox does not work, comment `k13d review` or `k13d merge` on this issue. GitHub branch protection, required reviews, and CI rules still apply.\n")
 	} else {
+		b.WriteString("\nIf you want another Codex review pass, click the checkbox below or comment `k13d review` on this issue.\n\n")
+		b.WriteString("- [ ] Request Codex code review (`k13d review`)\n")
 		b.WriteString("\nIf more changes are needed, comment `k13d fix: ...` or `k13d continue: ...` on this issue. k13d will continue on the same branch and PR, then post a fresh preview link.\n")
 		b.WriteString("\n`allow_issue_merge` is disabled, so issue-driven merging is unavailable. Review and merge manually from the PR.\n")
 	}
@@ -1427,6 +1445,45 @@ func isMergeCommentRequest(event *IssueCommentEvent) bool {
 	default:
 		return false
 	}
+}
+
+func isReviewCommentRequest(event *IssueCommentEvent) bool {
+	if event == nil {
+		return false
+	}
+	switch event.Action {
+	case "created":
+		return isReviewCommand(event.CommentBody)
+	case "edited":
+		return isCheckedReviewControl(event.CommentBody)
+	default:
+		return false
+	}
+}
+
+func isCheckedReviewControl(body string) bool {
+	text := strings.ToLower(strings.TrimSpace(body))
+	if text == "" || !strings.Contains(text, "k13d") {
+		return false
+	}
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if !(strings.HasPrefix(line, "- [x]") || strings.HasPrefix(line, "* [x]")) {
+			continue
+		}
+		if !strings.Contains(line, "k13d") {
+			continue
+		}
+		for _, marker := range []string{"코드 리뷰 요청", "리뷰 요청", "request codex code review", "request code review", "code review request", "request review"} {
+			if strings.Contains(line, marker) {
+				return true
+			}
+		}
+		if isReviewCommand(line) {
+			return true
+		}
+	}
+	return false
 }
 
 func isCheckedMergeControl(body string) bool {

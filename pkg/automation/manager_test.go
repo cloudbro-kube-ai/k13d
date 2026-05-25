@@ -417,6 +417,9 @@ func TestManagerRunJob_CreatesPRAndReview(t *testing.T) {
 			if !strings.Contains(controlPanel, "확인 및 병합 컨트롤") {
 				t.Fatalf("control panel = %q, want Korean control heading", controlPanel)
 			}
+			if !strings.Contains(controlPanel, "- [ ] Codex 코드 리뷰 요청") {
+				t.Fatalf("control panel = %q, want unchecked review request control", controlPanel)
+			}
 			if !strings.Contains(controlPanel, "- [ ] Preview 확인 완료") {
 				t.Fatalf("control panel = %q, want unchecked merge control", controlPanel)
 			}
@@ -894,6 +897,7 @@ func TestManagerHandleIssueCommentEvent_RunsCodexReview(t *testing.T) {
 		IssueNumber:              107,
 		IssueTitle:               "Review it",
 		IssueURL:                 "https://github.com/cloudbro-kube-ai/k13d/issues/107",
+		CommentID:                98765,
 		CommentBody:              "k13d 코드리뷰 해줘",
 		CommentAuthor:            "alice",
 		CommentAuthorAssociation: "MEMBER",
@@ -908,6 +912,7 @@ func TestManagerHandleIssueCommentEvent_RunsCodexReview(t *testing.T) {
 		reviewCreated := reporter.reviewCreated
 		reviewBody := reporter.reviewBody
 		comments := append([]string(nil), reporter.issueComments...)
+		reactions := append([]commentReaction(nil), reporter.reactions...)
 		reporter.mu.Unlock()
 		if reviewCreated && len(comments) >= 2 {
 			if !strings.Contains(comments[0], "코드 리뷰 요청 접수") {
@@ -919,11 +924,72 @@ func TestManagerHandleIssueCommentEvent_RunsCodexReview(t *testing.T) {
 			if !strings.Contains(reviewBody, "## 자동 코드 리뷰") || !strings.Contains(reviewBody, "발견사항 없음") {
 				t.Fatalf("review body = %q, want Codex review body", reviewBody)
 			}
+			if len(reactions) != 1 || reactions[0].CommentID != 98765 || reactions[0].Content != "eyes" {
+				t.Fatalf("reactions = %#v, want eyes reaction on review request comment", reactions)
+			}
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("timed out waiting for review command")
+}
+
+func TestManagerHandleIssueCommentEvent_RunsCodexReviewFromCheckedControl(t *testing.T) {
+	cfg := config.NewDefaultConfig().GitHub
+	cfg.Enabled = true
+	cfg.AllowedRepositories = []string{"cloudbro-kube-ai/k13d"}
+	cfg.ReviewCommand = []string{"./scripts/run-agent-review.sh"}
+
+	manager, err := NewManager(cfg)
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	defer manager.Close()
+
+	reporter := &fakeReporter{
+		existingPR: &PullRequestInfo{Number: 90, URL: "https://github.com/example/repo/pull/90"},
+	}
+	manager.executor = &fakeExecutor{reviewLog: "보안/동시성 관점에서 추가 발견사항은 없습니다."}
+	manager.reporter = reporter
+
+	result := manager.HandleIssueCommentEvent(&IssueCommentEvent{
+		EventName:                "issue_comment",
+		Action:                   "edited",
+		Repository:               "cloudbro-kube-ai/k13d",
+		IssueNumber:              108,
+		IssueTitle:               "Review from control",
+		IssueURL:                 "https://github.com/cloudbro-kube-ai/k13d/issues/108",
+		CommentID:                56789,
+		CommentBody:              "## k13d 확인 및 병합 컨트롤\n\n- [x] Codex 코드 리뷰 요청 (`k13d 코드리뷰 해줘`)\n- [ ] Preview 확인 완료, PR 병합 요청 (`k13d merge 해줘`)\n",
+		CommentAuthor:            "alice",
+		CommentAuthorAssociation: "MEMBER",
+	})
+	if !result.Accepted {
+		t.Fatalf("HandleIssueCommentEvent() = %#v, want accepted", result)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		reporter.mu.Lock()
+		reviewCreated := reporter.reviewCreated
+		comments := append([]string(nil), reporter.issueComments...)
+		reactions := append([]commentReaction(nil), reporter.reactions...)
+		reporter.mu.Unlock()
+		if reviewCreated && len(comments) >= 2 {
+			if !strings.Contains(comments[0], "코드 리뷰 요청 접수") {
+				t.Fatalf("accepted comment = %q, want Korean review accepted", comments[0])
+			}
+			if !strings.Contains(comments[len(comments)-1], "코드 리뷰 완료") {
+				t.Fatalf("completion comment = %q, want Korean review success", comments[len(comments)-1])
+			}
+			if len(reactions) != 1 || reactions[0].CommentID != 56789 || reactions[0].Content != "eyes" {
+				t.Fatalf("reactions = %#v, want eyes reaction on review control comment", reactions)
+			}
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("timed out waiting for checked review control")
 }
 
 func TestManagerQueueIssueEvent_RequiresOrgMember(t *testing.T) {

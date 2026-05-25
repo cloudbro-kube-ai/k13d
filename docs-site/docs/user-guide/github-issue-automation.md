@@ -80,7 +80,7 @@ The intended user experience is that a human can stay on the GitHub Issue page f
 | 4 | Wait for the result | k13d creates or reuses one stable branch and one PR |
 | 5 | Open the Preview link from the issue or PR | Preview runs under `/previews/<branch-slug>/` or `/previews/pr-<number>/` |
 | 6 | Request changes with `k13d 수정해줘: ...` | The triggering comment gets a 🚀 reaction and the same PR continues |
-| 7 | Request review with `k13d 코드리뷰 해줘` | A Korean PR Review is posted when `review_command` is configured |
+| 7 | Request review with the review checkbox or `k13d 코드리뷰 해줘` | A Korean PR Review is posted when `review_command` is configured |
 | 8 | Confirm Preview and request merge | The merge checkbox or `k13d merge 해줘` merges the linked PR when allowed |
 | 9 | Finish | k13d closes the issue as completed after a successful issue-requested merge |
 
@@ -111,7 +111,7 @@ k13d merge 해줘
 6. Review the linked PR, requested reviewers, CI result, and preview link before merging.
 7. If the Preview needs more changes, comment a follow-up request such as `k13d 수정해줘: 버튼 문구를 더 자연스럽게 바꿔줘` or `k13d 계속 개발해줘: 모바일에서 카드 간격도 줄여줘`.
 8. k13d adds a 🚀 reaction to the follow-up comment, keeps `codex:running` on the issue while code is being written, reuses the same open PR, waits for CI/deploy again, and posts a fresh issue control panel.
-9. If you want another automated review pass, comment `k13d 코드리뷰 해줘` on the issue to run the configured Codex review command again.
+9. If you want another automated review pass, use the issue control panel review checkbox or comment `k13d 코드리뷰 해줘` on the issue to run the configured Codex review command again.
 10. If `allow_issue_merge` is enabled, use the final issue control panel: open the Preview link, confirm the behavior, then check **Preview 확인 완료, PR 병합 요청**. k13d merges the linked PR and closes the issue as completed.
 11. If GitHub does not allow you to toggle the checkbox, comment `k13d merge 해줘` after approval to request the same merge flow.
 
@@ -155,7 +155,7 @@ When a trusted issue is accepted, k13d assigns the issue author to the issue and
 
 When `review_command` is set, k13d runs it after development and posts the output as a PR Review. The repository includes `scripts/run-agent-review.sh`, which wraps `codex exec review` and asks Codex to write a Korean review focused on bugs, regressions, security, concurrency, and missing tests. Organization members can also re-run that review from the issue by commenting `k13d 코드리뷰 해줘`, `k13d 리뷰해줘`, or `k13d review`.
 
-When the job finishes, k13d posts a final issue control panel. It includes the linked PR, the Preview URL such as `https://fingerscore.net/previews/codex-issue-123/`, CI details when available, follow-up development examples, and a Markdown checkbox labeled `Preview 확인 완료, PR 병합 요청`. Checking that box edits the issue comment, which GitHub sends as an `issue_comment` `edited` webhook. k13d verifies the editor is an organization member before doing anything.
+When the job finishes, k13d posts a final issue control panel. It includes the linked PR, the Preview URL such as `https://fingerscore.net/previews/codex-issue-123/`, CI details when available, follow-up development examples, a Markdown checkbox labeled `Codex 코드 리뷰 요청`, and a merge checkbox labeled `Preview 확인 완료, PR 병합 요청`. Checking either box edits the issue comment, which GitHub sends as an `issue_comment` `edited` webhook. k13d verifies the editor is an organization member before doing anything. Review-request checkboxes receive an 👀 reaction and then post the review result as a PR Review.
 
 If the Preview is not ready, keep working from the issue instead of opening a separate ticket. Comment with a clear command and acceptance detail, for example:
 
