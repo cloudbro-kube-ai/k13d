@@ -1,21 +1,23 @@
-name: Feature Request
-description: Suggest a new feature or improvement
+name: 기능 제안
+description: k13d에 있으면 좋을 기능이나 개선 아이디어를 알려주세요.
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Have an idea to make k13d better? We'd love to hear it!
+        아이디어 환영합니다. 완벽한 설계가 아니어도 괜찮아요.
+        사용자가 어떤 상황에서 무엇을 더 쉽게 하고 싶은지만 적어주셔도 충분합니다.
 
   - type: dropdown
     id: area
     attributes:
-      label: Area
-      description: Which part of k13d does this relate to?
+      label: 어느 영역의 개선인가요?
+      description: 가장 가까운 항목을 선택해주세요.
       options:
         - TUI dashboard
         - Web UI
         - AI assistant
+        - GitHub Issue Automation
         - MCP integration
         - Kubernetes operations
         - Configuration / setup
@@ -28,28 +30,33 @@ body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem or Motivation
-      description: What problem does this solve, or what use case does it enable?
-      placeholder: I often need to compare two deployments side-by-side, but currently...
+      label: 불편한 점 또는 배경
+      description: 지금 어떤 점이 아쉽거나 시간이 오래 걸리나요?
+      placeholder: 예) 이슈에 자연어로 요청하면 개발, 리뷰, 배포 확인까지 이어지는 흐름을 더 쉽게 쓰고 싶어요.
     validations:
       required: true
 
   - type: textarea
     id: solution
     attributes:
-      label: Proposed Solution
-      description: Describe what you'd like to see.
+      label: 원하는 모습
+      description: 어떤 UI, 동작, 명령, 문서가 생기면 좋을지 적어주세요.
+      placeholder: |
+        예)
+        - GitHub Issue 작성 폼이 질문 중심으로 안내해준다.
+        - 완료 기준과 확인 방법을 쉽게 적을 수 있다.
+        - 자동 개발 시작 방법을 이슈 안에서 알려준다.
     validations:
       required: true
 
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives Considered
-      description: Any other approaches you thought of.
+      label: 생각해본 다른 방법
+      description: 다른 해결 방법이 있다면 적어주세요. 없어도 괜찮습니다.
 
   - type: textarea
     id: context
     attributes:
-      label: Additional Context
-      description: Screenshots, mockups, links, or anything else that helps explain.
+      label: 추가 자료
+      description: 스크린샷, 목업, 링크, 예시 명령 등 설명에 도움이 되는 자료를 붙여주세요.

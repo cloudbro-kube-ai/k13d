@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Security Vulnerability
+  - name: 보안 취약점 제보
     url: https://github.com/cloudbro-kube-ai/k13d/security/advisories/new
-    about: Report security vulnerabilities privately via GitHub Security Advisories.
-  - name: Questions & Discussions
+    about: 공개 이슈에 올리면 안 되는 보안 취약점은 GitHub Security Advisory로 비공개 제보해주세요.
+  - name: 질문 / 토론
     url: https://github.com/cloudbro-kube-ai/k13d/discussions
-    about: Ask questions or start a discussion (not a bug or feature request).
+    about: 버그나 기능 요청이 아닌 질문, 사용법, 아이디어 토론은 Discussions를 이용해주세요.

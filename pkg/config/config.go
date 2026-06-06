@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/adrg/xdg"
@@ -68,31 +69,37 @@ type NotificationsConfig struct {
 // GitHubAutomationConfig controls webhook-triggered issue automation that runs
 // local coding and review commands, then reports results back to GitHub.
 type GitHubAutomationConfig struct {
-	Enabled               bool     `yaml:"enabled" json:"enabled"`
-	WebhookSecret         string   `yaml:"webhook_secret" json:"-"`
-	PersonalAccessToken   string   `yaml:"personal_access_token" json:"-"`
-	AllowedRepositories   []string `yaml:"allowed_repositories" json:"allowed_repositories"`
-	TriggerLabel          string   `yaml:"trigger_label" json:"trigger_label"`
-	BaseBranch            string   `yaml:"base_branch" json:"base_branch"`
-	Remote                string   `yaml:"remote" json:"remote"`
-	RepoPath              string   `yaml:"repo_path" json:"repo_path"`
-	WorktreeRoot          string   `yaml:"worktree_root" json:"worktree_root"`
-	BranchPrefix          string   `yaml:"branch_prefix" json:"branch_prefix"`
-	DevelopmentCommand    []string `yaml:"development_command" json:"development_command"`
-	ReviewCommand         []string `yaml:"review_command" json:"review_command"`
-	DeployPreviewCommand  []string `yaml:"deploy_preview_command" json:"deploy_preview_command"`
-	AutoCommit            bool     `yaml:"auto_commit" json:"auto_commit"`
-	AutoPush              bool     `yaml:"auto_push" json:"auto_push"`
-	AutoCreatePR          bool     `yaml:"auto_create_pr" json:"auto_create_pr"`
-	WaitForCI             bool     `yaml:"wait_for_ci" json:"wait_for_ci"`
-	CIWaitTimeoutSeconds  int      `yaml:"ci_wait_timeout_seconds" json:"ci_wait_timeout_seconds"`
-	CIPollIntervalSeconds int      `yaml:"ci_poll_interval_seconds" json:"ci_poll_interval_seconds"`
-	AutoDeployPreview     bool     `yaml:"auto_deploy_preview" json:"auto_deploy_preview"`
-	PreviewURLBase        string   `yaml:"preview_url_base" json:"preview_url_base"`
-	PreviewPathPrefix     string   `yaml:"preview_path_prefix" json:"preview_path_prefix"`
-	PullRequestDraft      bool     `yaml:"pull_request_draft" json:"pull_request_draft"`
-	CleanupWorktrees      bool     `yaml:"cleanup_worktrees" json:"cleanup_worktrees"`
-	MaxConcurrentJobs     int      `yaml:"max_concurrent_jobs" json:"max_concurrent_jobs"`
+	Enabled                bool     `yaml:"enabled" json:"enabled"`
+	WebhookSecret          string   `yaml:"webhook_secret" json:"-"`
+	PersonalAccessToken    string   `yaml:"personal_access_token" json:"-"`
+	AllowedRepositories    []string `yaml:"allowed_repositories" json:"allowed_repositories"`
+	RequireAuthorOrgMember bool     `yaml:"require_author_org_member" json:"require_author_org_member"`
+	MentionOrgMembers      bool     `yaml:"mention_org_members" json:"mention_org_members"`
+	MentionMaxMembers      int      `yaml:"mention_max_members" json:"mention_max_members"`
+	ReviewLanguage         string   `yaml:"review_language" json:"review_language"`
+	TriggerLabel           string   `yaml:"trigger_label" json:"trigger_label"`
+	BaseBranch             string   `yaml:"base_branch" json:"base_branch"`
+	Remote                 string   `yaml:"remote" json:"remote"`
+	RepoPath               string   `yaml:"repo_path" json:"repo_path"`
+	WorktreeRoot           string   `yaml:"worktree_root" json:"worktree_root"`
+	BranchPrefix           string   `yaml:"branch_prefix" json:"branch_prefix"`
+	DevelopmentCommand     []string `yaml:"development_command" json:"development_command"`
+	ReviewCommand          []string `yaml:"review_command" json:"review_command"`
+	DeployPreviewCommand   []string `yaml:"deploy_preview_command" json:"deploy_preview_command"`
+	AutoCommit             bool     `yaml:"auto_commit" json:"auto_commit"`
+	AutoPush               bool     `yaml:"auto_push" json:"auto_push"`
+	AutoCreatePR           bool     `yaml:"auto_create_pr" json:"auto_create_pr"`
+	AllowIssueMerge        bool     `yaml:"allow_issue_merge" json:"allow_issue_merge"`
+	MergeMethod            string   `yaml:"merge_method" json:"merge_method"`
+	WaitForCI              bool     `yaml:"wait_for_ci" json:"wait_for_ci"`
+	CIWaitTimeoutSeconds   int      `yaml:"ci_wait_timeout_seconds" json:"ci_wait_timeout_seconds"`
+	CIPollIntervalSeconds  int      `yaml:"ci_poll_interval_seconds" json:"ci_poll_interval_seconds"`
+	AutoDeployPreview      bool     `yaml:"auto_deploy_preview" json:"auto_deploy_preview"`
+	PreviewURLBase         string   `yaml:"preview_url_base" json:"preview_url_base"`
+	PreviewPathPrefix      string   `yaml:"preview_path_prefix" json:"preview_path_prefix"`
+	PullRequestDraft       bool     `yaml:"pull_request_draft" json:"pull_request_draft"`
+	CleanupWorktrees       bool     `yaml:"cleanup_worktrees" json:"cleanup_worktrees"`
+	MaxConcurrentJobs      int      `yaml:"max_concurrent_jobs" json:"max_concurrent_jobs"`
 }
 
 // SMTPConfig holds email notification settings
@@ -382,6 +389,12 @@ func GetRuntimeSourceInfo() RuntimeSourceInfo {
 	for _, key := range []string{
 		"K13D_JWT_SECRET",
 		"K13D_DEFAULT_ROLE",
+		"K13D_GITHUB_AUTOMATION_REQUIRE_ORG_MEMBER",
+		"K13D_GITHUB_AUTOMATION_MENTION_ORG_MEMBERS",
+		"K13D_GITHUB_AUTOMATION_MENTION_MAX_MEMBERS",
+		"K13D_GITHUB_AUTOMATION_REVIEW_LANGUAGE",
+		"K13D_GITHUB_AUTOMATION_ALLOW_ISSUE_MERGE",
+		"K13D_GITHUB_AUTOMATION_MERGE_METHOD",
 	} {
 		if strings.TrimSpace(os.Getenv(key)) != "" {
 			info.EnvOverrides = append(info.EnvOverrides, key)
@@ -519,23 +532,29 @@ func NewDefaultConfig() *Config {
 			Servers: []MCPServer{},
 		},
 		GitHub: GitHubAutomationConfig{
-			Enabled:               false,
-			TriggerLabel:          "codex:auto",
-			BaseBranch:            "main",
-			Remote:                "origin",
-			WorktreeRoot:          DefaultGitHubAutomationWorktreeRoot(),
-			BranchPrefix:          "codex/issue-",
-			AutoCommit:            true,
-			AutoPush:              true,
-			AutoCreatePR:          true,
-			WaitForCI:             true,
-			CIWaitTimeoutSeconds:  600,
-			CIPollIntervalSeconds: 10,
-			AutoDeployPreview:     false,
-			PreviewPathPrefix:     "/previews",
-			PullRequestDraft:      true,
-			CleanupWorktrees:      false,
-			MaxConcurrentJobs:     1,
+			Enabled:                false,
+			TriggerLabel:           "codex:auto",
+			BaseBranch:             "main",
+			Remote:                 "origin",
+			WorktreeRoot:           DefaultGitHubAutomationWorktreeRoot(),
+			BranchPrefix:           "codex/issue-",
+			RequireAuthorOrgMember: true,
+			MentionOrgMembers:      true,
+			MentionMaxMembers:      20,
+			ReviewLanguage:         "ko",
+			AutoCommit:             true,
+			AutoPush:               true,
+			AutoCreatePR:           true,
+			AllowIssueMerge:        false,
+			MergeMethod:            "squash",
+			WaitForCI:              true,
+			CIWaitTimeoutSeconds:   600,
+			CIPollIntervalSeconds:  10,
+			AutoDeployPreview:      false,
+			PreviewPathPrefix:      "/previews",
+			PullRequestDraft:       true,
+			CleanupWorktrees:       false,
+			MaxConcurrentJobs:      1,
 		},
 		Prometheus: PrometheusConfig{
 			ExposeMetrics:      false,
@@ -840,6 +859,26 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := os.Getenv("K13D_GITHUB_AUTOMATION_TRIGGER_LABEL"); v != "" {
 		cfg.GitHub.TriggerLabel = v
+	}
+	if v := os.Getenv("K13D_GITHUB_AUTOMATION_REQUIRE_ORG_MEMBER"); v != "" {
+		cfg.GitHub.RequireAuthorOrgMember = strings.EqualFold(v, "true") || v == "1" || strings.EqualFold(v, "yes")
+	}
+	if v := os.Getenv("K13D_GITHUB_AUTOMATION_MENTION_ORG_MEMBERS"); v != "" {
+		cfg.GitHub.MentionOrgMembers = strings.EqualFold(v, "true") || v == "1" || strings.EqualFold(v, "yes")
+	}
+	if v := os.Getenv("K13D_GITHUB_AUTOMATION_MENTION_MAX_MEMBERS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.GitHub.MentionMaxMembers = n
+		}
+	}
+	if v := os.Getenv("K13D_GITHUB_AUTOMATION_REVIEW_LANGUAGE"); v != "" {
+		cfg.GitHub.ReviewLanguage = v
+	}
+	if v := os.Getenv("K13D_GITHUB_AUTOMATION_ALLOW_ISSUE_MERGE"); v != "" {
+		cfg.GitHub.AllowIssueMerge = strings.EqualFold(v, "true") || v == "1" || strings.EqualFold(v, "yes")
+	}
+	if v := os.Getenv("K13D_GITHUB_AUTOMATION_MERGE_METHOD"); v != "" {
+		cfg.GitHub.MergeMethod = v
 	}
 	if v := os.Getenv("K13D_GITHUB_AUTOMATION_WAIT_FOR_CI"); v != "" {
 		cfg.GitHub.WaitForCI = strings.EqualFold(v, "true") || v == "1" || strings.EqualFold(v, "yes")

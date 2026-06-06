@@ -51,17 +51,35 @@ type Job struct {
 }
 
 type IssueEvent struct {
-	EventName      string
-	Action         string
-	Repository     string
-	DefaultBranch  string
-	IssueNumber    int
-	IssueTitle     string
-	IssueBody      string
-	IssueURL       string
-	IssueAuthor    string
-	Labels         []string
-	TriggeredLabel string
+	EventName              string
+	Action                 string
+	Repository             string
+	DefaultBranch          string
+	IssueNumber            int
+	IssueTitle             string
+	IssueBody              string
+	IssueURL               string
+	IssueAuthor            string
+	IssueAuthorAssociation string
+	Labels                 []string
+	TriggeredLabel         string
+}
+
+type IssueCommentEvent struct {
+	EventName                string
+	Action                   string
+	Repository               string
+	DefaultBranch            string
+	IssueNumber              int
+	IssueTitle               string
+	IssueBody                string
+	IssueURL                 string
+	IssueAuthor              string
+	IssueAuthorAssociation   string
+	CommentBody              string
+	CommentAuthor            string
+	CommentAuthorAssociation string
+	Labels                   []string
 }
 
 type QueueResult struct {
@@ -98,4 +116,10 @@ type PreviewDeployment struct {
 type PullRequestInfo struct {
 	Number int
 	URL    string
+}
+
+type PullRequestMergeInfo struct {
+	SHA     string
+	Merged  bool
+	Message string
 }

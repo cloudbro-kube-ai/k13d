@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/cloudbro-kube-ai/k13d/pkg/automation"
+	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 )
 
 func (s *Server) handleGitHubAutomationWebhook(w http.ResponseWriter, r *http.Request) {
@@ -29,13 +30,27 @@ func (s *Server) handleGitHubAutomationWebhook(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	event, err := automation.ParseIssueEvent(r.Header.Get("X-GitHub-Event"), payload)
-	if err != nil {
-		WriteError(w, NewAPIError(ErrCodeBadRequest, err.Error()))
+	eventName := r.Header.Get("X-GitHub-Event")
+	var result automation.QueueResult
+	switch eventName {
+	case "issues":
+		event, err := automation.ParseIssueEvent(eventName, payload)
+		if err != nil {
+			WriteError(w, NewAPIError(ErrCodeBadRequest, err.Error()))
+			return
+		}
+		result = s.automation.QueueIssueEvent(event)
+	case "issue_comment":
+		event, err := automation.ParseIssueCommentEvent(eventName, payload)
+		if err != nil {
+			WriteError(w, NewAPIError(ErrCodeBadRequest, err.Error()))
+			return
+		}
+		result = s.automation.HandleIssueCommentEvent(event)
+	default:
+		WriteError(w, NewAPIError(ErrCodeBadRequest, "unsupported github event: "+eventName))
 		return
 	}
-
-	result := s.automation.QueueIssueEvent(event)
 	w.Header().Set("Content-Type", "application/json")
 	status := http.StatusAccepted
 	if result.Ignored {
@@ -58,7 +73,7 @@ func (s *Server) handleGitHubAutomationStatus(w http.ResponseWriter, r *http.Req
 
 	resp := map[string]interface{}{
 		"enabled": false,
-		"config":  s.cfg.GitHub,
+		"config":  safeGitHubAutomationConfig(s.cfg.GitHub),
 		"jobs":    jobs,
 	}
 	if s.automation != nil {
@@ -94,4 +109,48 @@ func (s *Server) handleGitHubAutomationJob(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(job)
+}
+
+func safeGitHubAutomationConfig(cfg config.GitHubAutomationConfig) map[string]interface{} {
+	redactArgs := func(args []string) []string {
+		out := make([]string, 0, len(args))
+		for _, arg := range args {
+			out = append(out, automation.RedactGitHubSecrets(arg, cfg))
+		}
+		return out
+	}
+
+	return map[string]interface{}{
+		"enabled":                          cfg.Enabled,
+		"webhook_secret_configured":        strings.TrimSpace(cfg.WebhookSecret) != "",
+		"personal_access_token_configured": strings.TrimSpace(cfg.PersonalAccessToken) != "",
+		"allowed_repositories":             cfg.AllowedRepositories,
+		"require_author_org_member":        cfg.RequireAuthorOrgMember,
+		"mention_org_members":              cfg.MentionOrgMembers,
+		"mention_max_members":              cfg.MentionMaxMembers,
+		"review_language":                  cfg.ReviewLanguage,
+		"trigger_label":                    cfg.TriggerLabel,
+		"base_branch":                      cfg.BaseBranch,
+		"remote":                           cfg.Remote,
+		"repo_path":                        cfg.RepoPath,
+		"worktree_root":                    cfg.WorktreeRoot,
+		"branch_prefix":                    cfg.BranchPrefix,
+		"development_command":              redactArgs(cfg.DevelopmentCommand),
+		"review_command":                   redactArgs(cfg.ReviewCommand),
+		"deploy_preview_command":           redactArgs(cfg.DeployPreviewCommand),
+		"auto_commit":                      cfg.AutoCommit,
+		"auto_push":                        cfg.AutoPush,
+		"auto_create_pr":                   cfg.AutoCreatePR,
+		"allow_issue_merge":                cfg.AllowIssueMerge,
+		"merge_method":                     cfg.MergeMethod,
+		"wait_for_ci":                      cfg.WaitForCI,
+		"ci_wait_timeout_seconds":          cfg.CIWaitTimeoutSeconds,
+		"ci_poll_interval_seconds":         cfg.CIPollIntervalSeconds,
+		"auto_deploy_preview":              cfg.AutoDeployPreview,
+		"preview_url_base":                 cfg.PreviewURLBase,
+		"preview_path_prefix":              cfg.PreviewPathPrefix,
+		"pull_request_draft":               cfg.PullRequestDraft,
+		"cleanup_worktrees":                cfg.CleanupWorktrees,
+		"max_concurrent_jobs":              cfg.MaxConcurrentJobs,
+	}
 }

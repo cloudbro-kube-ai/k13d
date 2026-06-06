@@ -18,6 +18,7 @@ import (
 
 type Executor interface {
 	Execute(ctx context.Context, job *Job) (*ExecutionResult, error)
+	Review(ctx context.Context, job *Job, branch string) (string, error)
 	DeployPreview(ctx context.Context, job *Job, result *ExecutionResult) (*PreviewDeployment, error)
 }
 
@@ -53,9 +54,8 @@ func (e *DefaultExecutor) Execute(ctx context.Context, job *Job) (*ExecutionResu
 	}
 
 	branch := buildBranchName(e.cfg.BranchPrefix, job.IssueNumber, job.IssueTitle)
-	worktreePath := filepath.Join(worktreeRoot, fmt.Sprintf("issue-%d-%d", job.IssueNumber, e.now().Unix()))
-	baseRef := e.resolveBaseRef(ctx)
-	if _, err := e.runCommand(ctx, repoPath, []string{"git", "worktree", "add", "--force", "-B", branch, worktreePath, baseRef}, nil); err != nil {
+	worktreePath := filepath.Join(worktreeRoot, fmt.Sprintf("issue-%d", job.IssueNumber))
+	if err := e.prepareIssueWorktree(ctx, repoPath, worktreePath, branch); err != nil {
 		return nil, fmt.Errorf("create worktree: %w", err)
 	}
 
@@ -65,7 +65,7 @@ func (e *DefaultExecutor) Execute(ctx context.Context, job *Job) (*ExecutionResu
 		}
 	}
 
-	placeholders := jobPlaceholders(job, repoPath, worktreePath, branch, e.cfg.BaseBranch)
+	placeholders := jobPlaceholders(job, repoPath, worktreePath, branch, e.cfg.BaseBranch, e.cfg.ReviewLanguage)
 	devLog, err := e.runCommand(ctx, worktreePath, expandArgs(e.cfg.DevelopmentCommand, placeholders), placeholders)
 	if err != nil {
 		cleanup()
@@ -139,6 +139,49 @@ func (e *DefaultExecutor) Execute(ctx context.Context, job *Job) (*ExecutionResu
 	}, nil
 }
 
+func (e *DefaultExecutor) Review(ctx context.Context, job *Job, branch string) (string, error) {
+	if len(e.cfg.ReviewCommand) == 0 {
+		return "", fmt.Errorf("github automation review_command is not configured")
+	}
+	if job == nil {
+		return "", fmt.Errorf("github automation review requires an issue job")
+	}
+	repoPath := strings.TrimSpace(e.repoPath)
+	if repoPath == "" {
+		return "", fmt.Errorf("github automation repo_path is not configured")
+	}
+	worktreeRoot := strings.TrimSpace(e.cfg.WorktreeRoot)
+	if worktreeRoot == "" {
+		worktreeRoot = config.DefaultGitHubAutomationWorktreeRoot()
+	}
+	if err := os.MkdirAll(worktreeRoot, 0o750); err != nil {
+		return "", err
+	}
+
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		branch = buildBranchName(e.cfg.BranchPrefix, job.IssueNumber, job.IssueTitle)
+	}
+	worktreePath := filepath.Join(worktreeRoot, fmt.Sprintf("issue-%d", job.IssueNumber))
+	if err := e.prepareIssueWorktree(ctx, repoPath, worktreePath, branch); err != nil {
+		return "", fmt.Errorf("prepare review worktree: %w", err)
+	}
+
+	cleanup := func() {
+		if e.cfg.CleanupWorktrees {
+			_, _ = e.runCommand(context.Background(), repoPath, []string{"git", "worktree", "remove", "--force", worktreePath}, nil)
+		}
+	}
+
+	placeholders := jobPlaceholders(job, repoPath, worktreePath, branch, e.cfg.BaseBranch, e.cfg.ReviewLanguage)
+	reviewLog, err := e.runCommand(ctx, worktreePath, expandArgs(e.cfg.ReviewCommand, placeholders), placeholders)
+	cleanup()
+	if err != nil {
+		return reviewLog, fmt.Errorf("review command failed: %w", err)
+	}
+	return reviewLog, nil
+}
+
 func (e *DefaultExecutor) DeployPreview(ctx context.Context, job *Job, result *ExecutionResult) (*PreviewDeployment, error) {
 	if !e.cfg.AutoDeployPreview || len(e.cfg.DeployPreviewCommand) == 0 || result == nil {
 		return nil, nil
@@ -151,7 +194,7 @@ func (e *DefaultExecutor) DeployPreview(ctx context.Context, job *Job, result *E
 	slug := buildPreviewSlug(result.Branch)
 	previewPath := previewPathForSlug(e.cfg.PreviewPathPrefix, slug)
 	publicURL := previewPublicURL(e.cfg.PreviewURLBase, previewPath)
-	placeholders := jobPlaceholders(job, e.repoPath, worktreePath, result.Branch, e.cfg.BaseBranch)
+	placeholders := jobPlaceholders(job, e.repoPath, worktreePath, result.Branch, e.cfg.BaseBranch, e.cfg.ReviewLanguage)
 	placeholders["preview_slug"] = slug
 	placeholders["preview_path"] = previewPath
 	placeholders["preview_url"] = publicURL
@@ -196,20 +239,115 @@ func (e *DefaultExecutor) resolveBaseRef(ctx context.Context) string {
 	return "HEAD"
 }
 
+func (e *DefaultExecutor) prepareIssueWorktree(ctx context.Context, repoPath, worktreePath, branch string) error {
+	if isExistingPath(worktreePath) {
+		return e.prepareExistingIssueWorktree(ctx, worktreePath, branch)
+	}
+
+	remote := effectiveRemote(e.cfg.Remote)
+	_, _ = e.runCommand(ctx, repoPath, []string{"git", "fetch", remote, branch}, nil)
+	remoteRef := remote + "/" + branch
+
+	switch {
+	case gitRefExists(ctx, e, repoPath, branch):
+		if _, err := e.runCommand(ctx, repoPath, []string{"git", "worktree", "add", "--force", worktreePath, branch}, nil); err != nil {
+			return err
+		}
+		return e.prepareExistingIssueWorktree(ctx, worktreePath, branch)
+	case gitRefExists(ctx, e, repoPath, remoteRef):
+		if _, err := e.runCommand(ctx, repoPath, []string{"git", "worktree", "add", "--force", "-b", branch, worktreePath, remoteRef}, nil); err != nil {
+			return err
+		}
+		return e.prepareExistingIssueWorktree(ctx, worktreePath, branch)
+	default:
+		baseRef := e.resolveBaseRef(ctx)
+		if _, err := e.runCommand(ctx, repoPath, []string{"git", "worktree", "add", "--force", "-b", branch, worktreePath, baseRef}, nil); err != nil {
+			return err
+		}
+		return e.prepareExistingIssueWorktree(ctx, worktreePath, branch)
+	}
+}
+
+func (e *DefaultExecutor) prepareExistingIssueWorktree(ctx context.Context, worktreePath, branch string) error {
+	if !gitWorktreeExists(ctx, e, worktreePath) {
+		return fmt.Errorf("path %q already exists but is not a git worktree", worktreePath)
+	}
+	statusOut, err := e.runCommand(ctx, worktreePath, []string{"git", "status", "--porcelain"}, nil)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(statusOut) != "" {
+		return fmt.Errorf("issue worktree %q has uncommitted changes; commit, clean, or remove it before retrying", worktreePath)
+	}
+
+	remote := effectiveRemote(e.cfg.Remote)
+	_, _ = e.runCommand(ctx, worktreePath, []string{"git", "fetch", remote, branch}, nil)
+	remoteRef := remote + "/" + branch
+
+	switch {
+	case gitRefExists(ctx, e, worktreePath, branch):
+		if _, err := e.runCommand(ctx, worktreePath, []string{"git", "checkout", branch}, nil); err != nil {
+			return err
+		}
+	case gitRefExists(ctx, e, worktreePath, remoteRef):
+		if _, err := e.runCommand(ctx, worktreePath, []string{"git", "checkout", "-b", branch, remoteRef}, nil); err != nil {
+			return err
+		}
+	default:
+		baseRef := e.resolveBaseRef(ctx)
+		if _, err := e.runCommand(ctx, worktreePath, []string{"git", "checkout", "-b", branch, baseRef}, nil); err != nil {
+			return err
+		}
+	}
+
+	if gitRefExists(ctx, e, worktreePath, remoteRef) {
+		if _, err := e.runCommand(ctx, worktreePath, []string{"git", "pull", "--ff-only", remote, branch}, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func effectiveRemote(remote string) string {
+	remote = strings.TrimSpace(remote)
+	if remote == "" {
+		return "origin"
+	}
+	return remote
+}
+
+func isExistingPath(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func gitWorktreeExists(ctx context.Context, e *DefaultExecutor, dir string) bool {
+	_, err := e.runCommand(ctx, dir, []string{"git", "rev-parse", "--is-inside-work-tree"}, nil)
+	return err == nil
+}
+
+func gitRefExists(ctx context.Context, e *DefaultExecutor, dir, ref string) bool {
+	if strings.TrimSpace(ref) == "" {
+		return false
+	}
+	_, err := e.runCommand(ctx, dir, []string{"git", "rev-parse", "--verify", ref}, nil)
+	return err == nil
+}
+
 func (e *DefaultExecutor) runCommand(ctx context.Context, dir string, args []string, placeholders map[string]string) (string, error) {
 	if len(args) == 0 {
 		return "", fmt.Errorf("empty command")
 	}
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec G204 -- commands come from local admin-only github_automation config.
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), buildCommandEnv(placeholders)...)
+	cmd.Env = commandEnvironment(placeholders)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	output := strings.TrimSpace(stdout.String())
 	errOutput := strings.TrimSpace(stderr.String())
-	combined := strings.TrimSpace(strings.Join(compactStrings(output, errOutput), "\n"))
+	combined := RedactGitHubSecrets(strings.TrimSpace(strings.Join(compactStrings(output, errOutput), "\n")), e.cfg)
 	if err != nil {
 		if combined == "" {
 			combined = err.Error()
@@ -237,7 +375,7 @@ func buildCommandEnv(placeholders map[string]string) []string {
 	keys := []string{
 		"issue_number", "issue_title", "issue_body", "issue_url",
 		"issue_author", "repository", "branch", "worktree",
-		"repo_path", "base_branch", "preview_slug", "preview_path", "preview_url",
+		"repo_path", "base_branch", "review_language", "preview_slug", "preview_path", "preview_url",
 	}
 	env := make([]string, 0, len(keys))
 	for _, key := range keys {
@@ -263,18 +401,22 @@ func applyPlaceholders(text string, placeholders map[string]string) string {
 	return text
 }
 
-func jobPlaceholders(job *Job, repoPath, worktreePath, branch, baseBranch string) map[string]string {
+func jobPlaceholders(job *Job, repoPath, worktreePath, branch, baseBranch, reviewLanguage string) map[string]string {
+	if strings.TrimSpace(reviewLanguage) == "" {
+		reviewLanguage = "ko"
+	}
 	return map[string]string{
-		"issue_number": fmt.Sprintf("%d", job.IssueNumber),
-		"issue_title":  job.IssueTitle,
-		"issue_body":   job.IssueBody,
-		"issue_url":    job.IssueURL,
-		"issue_author": job.IssueAuthor,
-		"repository":   job.Repository,
-		"repo_path":    repoPath,
-		"worktree":     worktreePath,
-		"branch":       branch,
-		"base_branch":  baseBranch,
+		"issue_number":    fmt.Sprintf("%d", job.IssueNumber),
+		"issue_title":     job.IssueTitle,
+		"issue_body":      job.IssueBody,
+		"issue_url":       job.IssueURL,
+		"issue_author":    job.IssueAuthor,
+		"repository":      job.Repository,
+		"repo_path":       repoPath,
+		"worktree":        worktreePath,
+		"branch":          branch,
+		"base_branch":     baseBranch,
+		"review_language": reviewLanguage,
 	}
 }
 
@@ -290,16 +432,12 @@ func buildCommitMessage(job *Job) string {
 	return fmt.Sprintf("feat: issue #%d %s", job.IssueNumber, title)
 }
 
-func buildBranchName(prefix string, issueNumber int, title string) string {
+func buildBranchName(prefix string, issueNumber int, _ string) string {
 	prefix = strings.TrimSpace(prefix)
 	if prefix == "" {
 		prefix = "codex/issue-"
 	}
-	slug := sanitizeBranchToken(title)
-	if slug == "" {
-		slug = "work"
-	}
-	branch := fmt.Sprintf("%s%d-%s", prefix, issueNumber, slug)
+	branch := fmt.Sprintf("%s%d", prefix, issueNumber)
 	if len(branch) > 120 {
 		branch = branch[:120]
 	}
