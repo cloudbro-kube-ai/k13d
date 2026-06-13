@@ -379,9 +379,19 @@ func (a *App) updateStatusBar() {
 		shortcuts = ColoredSpinner(int(atomic.LoadUint32(&a.spinnerIdx)), "cyan") + " [white]Loading...[-] " + shortcuts
 	}
 
-	// Clear before setting to prevent ghosting
-	a.statusBar.Clear()
-	a.statusBar.SetText(shortcuts)
+	// Route the widget mutation through the redraw broker so this is safe to
+	// call from any goroutine (same pattern as updateHeader). Several callers
+	// run on background goroutines (navigateTo refresh, filter debounce).
+	if atomic.LoadInt32(&a.running) == 1 {
+		a.QueueUpdateDraw(func() {
+			// Clear before setting to prevent ghosting
+			a.statusBar.Clear()
+			a.statusBar.SetText(shortcuts)
+		})
+	} else {
+		a.statusBar.Clear()
+		a.statusBar.SetText(shortcuts)
+	}
 }
 
 // showNamespaceHint shows numbered namespace list in hint

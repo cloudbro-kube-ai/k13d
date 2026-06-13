@@ -47,39 +47,47 @@ func NewXRayView(app *App, resourceType, namespace string) *XRayView {
 	return xray
 }
 
-// Refresh fetches cluster data and populates the tree
+// Refresh fetches cluster data and populates the tree.
+// Safe to call from a background goroutine: data is fetched off the UI
+// thread, and all tview node mutations happen via QueueUpdateDraw.
 func (x *XRayView) Refresh(ctx context.Context, resourceType, namespace string) {
 	if x.app.k8s == nil {
-		x.root.ClearChildren()
-		x.root.AddChild(tview.NewTreeNode("[red]Kubernetes client not available[white]"))
+		x.app.QueueUpdateDraw(func() {
+			x.root.ClearChildren()
+			x.root.AddChild(tview.NewTreeNode("[red]Kubernetes client not available[white]"))
+		})
 		return
 	}
 
-	x.root.SetText(fmt.Sprintf("XRay: %s", resourceType))
-	x.root.ClearChildren()
-
-	k := x.app.k8s
-
-	// Build tree based on resource type
+	// Fetch data (blocking k8s API calls) off the UI thread
+	var nodes []*XRayNode
+	var err error
 	switch normalizeResourceType(resourceType) {
-	case "deployments":
-		x.buildDeploymentTree(ctx, k, namespace)
 	case "statefulsets":
-		x.buildStatefulSetTree(ctx, k, namespace)
+		nodes, err = x.fetchStatefulSetTree(ctx, namespace)
 	case "jobs":
-		x.buildJobTree(ctx, k, namespace)
+		nodes, err = x.fetchJobTree(ctx, namespace)
 	case "cronjobs":
-		x.buildCronJobTree(ctx, k, namespace)
+		nodes, err = x.fetchCronJobTree(ctx, namespace)
 	case "daemonsets":
-		x.buildDaemonSetTree(ctx, k, namespace)
-	default:
-		// Default to deployments
-		x.buildDeploymentTree(ctx, k, namespace)
+		nodes, err = x.fetchDaemonSetTree(ctx, namespace)
+	default: // deployments and aliases
+		nodes, err = x.fetchDeploymentTree(ctx, namespace)
 	}
 
-	if len(x.root.GetChildren()) == 0 {
-		x.root.AddChild(tview.NewTreeNode("[gray]No resources found[white]"))
-	}
+	// Mutate tview nodes on the UI thread only
+	x.app.QueueUpdateDraw(func() {
+		x.root.SetText(fmt.Sprintf("XRay: %s", resourceType))
+		x.root.ClearChildren()
+		if err != nil {
+			x.root.AddChild(tview.NewTreeNode(fmt.Sprintf("[red]Error: %v[white]", err)))
+			return
+		}
+		addXRayNodesToTree(x.root, nodes)
+		if len(x.root.GetChildren()) == 0 {
+			x.root.AddChild(tview.NewTreeNode("[gray]No resources found[white]"))
+		}
+	})
 }
 
 // normalizeResourceType maps aliases to canonical resource names
@@ -100,14 +108,13 @@ func normalizeResourceType(rt string) string {
 	}
 }
 
-// buildDeploymentTree creates: Deployment → ReplicaSet → Pod hierarchy
-func (x *XRayView) buildDeploymentTree(ctx context.Context, k interface{}, namespace string) {
+// fetchDeploymentTree fetches data for: Deployment → ReplicaSet → Pod hierarchy
+func (x *XRayView) fetchDeploymentTree(ctx context.Context, namespace string) ([]*XRayNode, error) {
 	client := x.app.k8s
 
 	deps, err := client.ListDeployments(ctx, namespace)
 	if err != nil {
-		x.root.AddChild(tview.NewTreeNode(fmt.Sprintf("[red]Error: %v[white]", err)))
-		return
+		return nil, err
 	}
 
 	rsList, err := client.ListReplicaSets(ctx, namespace)
@@ -120,18 +127,16 @@ func (x *XRayView) buildDeploymentTree(ctx context.Context, k interface{}, names
 		pods = nil
 	}
 
-	tree := BuildDeploymentTree(deps, rsList, pods)
-	addXRayNodesToTree(x.root, tree)
+	return BuildDeploymentTree(deps, rsList, pods), nil
 }
 
-// buildStatefulSetTree creates: StatefulSet → Pod hierarchy
-func (x *XRayView) buildStatefulSetTree(ctx context.Context, k interface{}, namespace string) {
+// fetchStatefulSetTree fetches data for: StatefulSet → Pod hierarchy
+func (x *XRayView) fetchStatefulSetTree(ctx context.Context, namespace string) ([]*XRayNode, error) {
 	client := x.app.k8s
 
 	stses, err := client.ListStatefulSets(ctx, namespace)
 	if err != nil {
-		x.root.AddChild(tview.NewTreeNode(fmt.Sprintf("[red]Error: %v[white]", err)))
-		return
+		return nil, err
 	}
 
 	pods, err := client.ListPods(ctx, namespace)
@@ -139,18 +144,16 @@ func (x *XRayView) buildStatefulSetTree(ctx context.Context, k interface{}, name
 		pods = nil
 	}
 
-	tree := BuildStatefulSetTree(stses, pods)
-	addXRayNodesToTree(x.root, tree)
+	return BuildStatefulSetTree(stses, pods), nil
 }
 
-// buildJobTree creates: Job → Pod hierarchy
-func (x *XRayView) buildJobTree(ctx context.Context, k interface{}, namespace string) {
+// fetchJobTree fetches data for: Job → Pod hierarchy
+func (x *XRayView) fetchJobTree(ctx context.Context, namespace string) ([]*XRayNode, error) {
 	client := x.app.k8s
 
 	jobs, err := client.ListJobs(ctx, namespace)
 	if err != nil {
-		x.root.AddChild(tview.NewTreeNode(fmt.Sprintf("[red]Error: %v[white]", err)))
-		return
+		return nil, err
 	}
 
 	pods, err := client.ListPods(ctx, namespace)
@@ -158,18 +161,16 @@ func (x *XRayView) buildJobTree(ctx context.Context, k interface{}, namespace st
 		pods = nil
 	}
 
-	tree := BuildJobTree(jobs, pods)
-	addXRayNodesToTree(x.root, tree)
+	return BuildJobTree(jobs, pods), nil
 }
 
-// buildCronJobTree creates: CronJob → Job → Pod hierarchy
-func (x *XRayView) buildCronJobTree(ctx context.Context, k interface{}, namespace string) {
+// fetchCronJobTree fetches data for: CronJob → Job → Pod hierarchy
+func (x *XRayView) fetchCronJobTree(ctx context.Context, namespace string) ([]*XRayNode, error) {
 	client := x.app.k8s
 
 	cjs, err := client.ListCronJobs(ctx, namespace)
 	if err != nil {
-		x.root.AddChild(tview.NewTreeNode(fmt.Sprintf("[red]Error: %v[white]", err)))
-		return
+		return nil, err
 	}
 
 	jobs, err := client.ListJobs(ctx, namespace)
@@ -182,18 +183,16 @@ func (x *XRayView) buildCronJobTree(ctx context.Context, k interface{}, namespac
 		pods = nil
 	}
 
-	tree := BuildCronJobTree(cjs, jobs, pods)
-	addXRayNodesToTree(x.root, tree)
+	return BuildCronJobTree(cjs, jobs, pods), nil
 }
 
-// buildDaemonSetTree creates: DaemonSet → Pod hierarchy
-func (x *XRayView) buildDaemonSetTree(ctx context.Context, k interface{}, namespace string) {
+// fetchDaemonSetTree fetches data for: DaemonSet → Pod hierarchy
+func (x *XRayView) fetchDaemonSetTree(ctx context.Context, namespace string) ([]*XRayNode, error) {
 	client := x.app.k8s
 
 	dss, err := client.ListDaemonSets(ctx, namespace)
 	if err != nil {
-		x.root.AddChild(tview.NewTreeNode(fmt.Sprintf("[red]Error: %v[white]", err)))
-		return
+		return nil, err
 	}
 
 	pods, err := client.ListPods(ctx, namespace)
@@ -201,8 +200,7 @@ func (x *XRayView) buildDaemonSetTree(ctx context.Context, k interface{}, namesp
 		pods = nil
 	}
 
-	tree := BuildDaemonSetTree(dss, pods)
-	addXRayNodesToTree(x.root, tree)
+	return BuildDaemonSetTree(dss, pods), nil
 }
 
 // --- Tree building functions (exported for testing) ---

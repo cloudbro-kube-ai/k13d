@@ -88,18 +88,26 @@ type PulseEvent struct {
 	Age     string
 }
 
-// Refresh fetches cluster data and renders the pulse dashboard
+// Refresh fetches cluster data and renders the pulse dashboard.
+// Safe to call from a background goroutine: widget mutations go through
+// QueueUpdateDraw, only the data fetch runs on the caller's goroutine.
 func (p *PulseView) Refresh(ctx context.Context) {
 	if p.app.k8s == nil {
-		p.SetText("[red]Kubernetes client not available[white]")
+		p.app.QueueUpdateDraw(func() {
+			p.SetText("[red]Kubernetes client not available[white]")
+		})
 		return
 	}
 
-	p.SetText("[yellow]Loading cluster data...[white]")
+	p.app.QueueUpdateDraw(func() {
+		p.SetText("[yellow]Loading cluster data...[white]")
+	})
 
 	data := p.fetchData(ctx)
 	content := RenderPulse(data)
-	p.SetText(content)
+	p.app.QueueUpdateDraw(func() {
+		p.SetText(content)
+	})
 }
 
 // fetchData gathers all cluster data for the pulse view
