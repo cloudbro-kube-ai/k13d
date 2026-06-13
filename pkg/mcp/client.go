@@ -35,9 +35,32 @@ type ServerConnection struct {
 	scanner   *bufio.Scanner
 	stderrBuf *bytes.Buffer // captures MCP server stderr for debugging crashes
 	reqID     atomic.Int64
-	mu        sync.Mutex
+	mu        sync.Mutex // protects stdin writes and lifecycle (Close)
 	tools     []Tool
 	ready     bool
+
+	// A single readLoop goroutine owns the scanner for the connection's
+	// lifetime and routes responses to per-request channels by ID. This
+	// avoids the per-request reader goroutines that raced on the scanner
+	// and consumed each other's responses after a timeout.
+	readOnce  sync.Once
+	pendingMu sync.Mutex
+	pending   map[int64]chan *JSONRPCResponse
+	readErr   error // set by readLoop when the connection dies
+}
+
+// ensureReader lazily starts the single readLoop goroutine for this
+// connection. Called on the first request so that directly-constructed
+// connections (e.g. in tests) work without extra wiring.
+func (conn *ServerConnection) ensureReader() {
+	conn.readOnce.Do(func() {
+		conn.pendingMu.Lock()
+		if conn.pending == nil {
+			conn.pending = make(map[int64]chan *JSONRPCResponse)
+		}
+		conn.pendingMu.Unlock()
+		go conn.readLoop()
+	})
 }
 
 // Tool represents an MCP tool definition
@@ -208,6 +231,7 @@ func (c *Client) startServer(ctx context.Context, serverCfg config.MCPServer) (*
 		scanner:   scanner,
 		stderrBuf: stderrBuf,
 		tools:     make([]Tool, 0),
+		pending:   make(map[int64]chan *JSONRPCResponse),
 	}
 
 	return conn, nil
@@ -260,6 +284,8 @@ func isConnectionError(err error) bool {
 	return strings.Contains(s, "broken pipe") ||
 		strings.Contains(s, "connection reset") ||
 		strings.Contains(s, "connection refused") ||
+		strings.Contains(s, "connection closed") || // readLoop's error when the server process exits
+		strings.Contains(s, "file already closed") || // write to closed stdin pipe
 		errors.Is(err, io.ErrClosedPipe)
 }
 
@@ -366,12 +392,79 @@ func (conn *ServerConnection) Close() error {
 	return nil
 }
 
-// sendRequest sends a JSON-RPC request and waits for response
-func (conn *ServerConnection) sendRequest(ctx context.Context, method string, params interface{}) (*JSONRPCResponse, error) {
-	conn.mu.Lock()
-	defer conn.mu.Unlock()
+// readLoop is the single owner of the connection's scanner. It runs for the
+// lifetime of the connection, skipping notifications (messages with "method"
+// but no "id" — e.g. tools/list_changed from kubernetes-mcp-server) and
+// dispatching responses to the pending request channels by ID. When the
+// connection dies it fails all pending requests so callers never hang.
+func (conn *ServerConnection) readLoop() {
+	var readErr error
 
-	// Ensure context has a timeout to prevent goroutine leaks
+	for conn.scanner.Scan() {
+		line := conn.scanner.Bytes()
+
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal(line, &raw); err != nil {
+			// Malformed line is a protocol violation — treat as fatal.
+			readErr = fmt.Errorf("failed to unmarshal: %w", err)
+			break
+		}
+		if _, hasMethod := raw["method"]; hasMethod {
+			if _, hasID := raw["id"]; !hasID {
+				continue // notification — skip
+			}
+		}
+
+		var resp JSONRPCResponse
+		if err := json.Unmarshal(line, &resp); err != nil {
+			readErr = fmt.Errorf("failed to unmarshal response: %w", err)
+			break
+		}
+
+		conn.pendingMu.Lock()
+		ch, ok := conn.pending[resp.ID]
+		if ok {
+			delete(conn.pending, resp.ID)
+		}
+		conn.pendingMu.Unlock()
+		if ok {
+			ch <- &resp // buffered, never blocks
+		}
+	}
+
+	// Connection closed or scanner error — fail all pending requests.
+	if readErr == nil && conn.scanner.Err() != nil {
+		readErr = fmt.Errorf("scanner error: %w", conn.scanner.Err())
+	}
+	if readErr == nil {
+		msg := "connection closed"
+		if conn.stderrBuf != nil && conn.stderrBuf.Len() > 0 {
+			stderr := strings.TrimSpace(conn.stderrBuf.String())
+			msg = fmt.Sprintf("connection closed (MCP server stderr: %s)", stderr)
+			// Always print to stderr so user sees it in terminal
+			fmt.Fprintf(os.Stderr, "[k13d] MCP server %s exited unexpectedly. stderr:\n%s\n", conn.config.Name, stderr)
+			log.Debugf("MCP server %s exited, stderr: %s", conn.config.Name, stderr)
+		} else {
+			fmt.Fprintf(os.Stderr, "[k13d] MCP server %s connection closed (no stderr output)\n", conn.config.Name)
+		}
+		readErr = fmt.Errorf("%s", msg)
+	}
+
+	conn.pendingMu.Lock()
+	conn.readErr = readErr
+	for id, ch := range conn.pending {
+		delete(conn.pending, id)
+		close(ch) // receiving from closed channel signals connection failure
+	}
+	conn.pendingMu.Unlock()
+}
+
+// sendRequest sends a JSON-RPC request and waits for the matching response
+// routed by readLoop. Safe for concurrent use.
+func (conn *ServerConnection) sendRequest(ctx context.Context, method string, params interface{}) (*JSONRPCResponse, error) {
+	conn.ensureReader()
+
+	// Ensure context has a timeout so callers never wait forever
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
@@ -391,72 +484,48 @@ func (conn *ServerConnection) sendRequest(ctx context.Context, method string, pa
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// Write request with newline delimiter
-	if _, err := conn.stdin.Write(append(reqBytes, '\n')); err != nil {
+	// Register the pending request before writing so the response can't be
+	// missed even if the server replies immediately.
+	respChan := make(chan *JSONRPCResponse, 1)
+	conn.pendingMu.Lock()
+	if conn.readErr != nil {
+		err := conn.readErr
+		conn.pendingMu.Unlock()
+		return nil, err
+	}
+	conn.pending[reqID] = respChan
+	conn.pendingMu.Unlock()
+
+	unregister := func() {
+		conn.pendingMu.Lock()
+		delete(conn.pending, reqID)
+		conn.pendingMu.Unlock()
+	}
+
+	// Write request with newline delimiter (serialize writes via conn.mu)
+	conn.mu.Lock()
+	_, err = conn.stdin.Write(append(reqBytes, '\n'))
+	conn.mu.Unlock()
+	if err != nil {
+		unregister()
 		return nil, fmt.Errorf("failed to write request: %w", err)
 	}
 
-	// Read response — skip notifications (messages with "method" but no "id") and
-	// only return the matching JSON-RPC response. Some MCP servers (e.g. kubernetes-mcp-server)
-	// send notifications like tools/list_changed which would otherwise be mistaken for responses.
-	responseChan := make(chan *JSONRPCResponse, 1)
-	errChan := make(chan error, 1)
-
-	go func() {
-		for {
-			if !conn.scanner.Scan() {
-				if err := conn.scanner.Err(); err != nil {
-					errChan <- fmt.Errorf("scanner error: %w", err)
-				} else {
-					msg := "connection closed"
-					if conn.stderrBuf != nil && conn.stderrBuf.Len() > 0 {
-						stderr := strings.TrimSpace(conn.stderrBuf.String())
-						msg = fmt.Sprintf("connection closed (MCP server stderr: %s)", stderr)
-						// Always print to stderr so user sees it in terminal
-						fmt.Fprintf(os.Stderr, "[k13d] MCP server %s exited unexpectedly. stderr:\n%s\n", conn.config.Name, stderr)
-						log.Debugf("MCP server %s exited, stderr: %s", conn.config.Name, stderr)
-					} else {
-						fmt.Fprintf(os.Stderr, "[k13d] MCP server %s connection closed (no stderr output)\n", conn.config.Name)
-					}
-					errChan <- fmt.Errorf("%s", msg)
-				}
-				return
-			}
-			line := conn.scanner.Bytes()
-
-			// Check if it's a notification (has "method" but no "id") — skip it
-			var raw map[string]json.RawMessage
-			if err := json.Unmarshal(line, &raw); err != nil {
-				errChan <- fmt.Errorf("failed to unmarshal: %w", err)
-				return
-			}
-			if _, hasMethod := raw["method"]; hasMethod {
-				if _, hasID := raw["id"]; !hasID {
-					continue // notification — skip and read next
-				}
-			}
-
-			// Parse as response and verify ID matches
-			var resp JSONRPCResponse
-			if err := json.Unmarshal(line, &resp); err != nil {
-				errChan <- fmt.Errorf("failed to unmarshal response: %w", err)
-				return
-			}
-			if resp.ID == reqID {
-				responseChan <- &resp
-				return
-			}
-			// ID mismatch — skip (could be stray message) and continue
-			continue
-		}
-	}()
-
 	select {
 	case <-ctx.Done():
+		unregister()
 		return nil, ctx.Err()
-	case err := <-errChan:
-		return nil, err
-	case resp := <-responseChan:
+	case resp, ok := <-respChan:
+		if !ok {
+			// readLoop closed the channel: connection died
+			conn.pendingMu.Lock()
+			err := conn.readErr
+			conn.pendingMu.Unlock()
+			if err == nil {
+				err = fmt.Errorf("connection closed")
+			}
+			return nil, err
+		}
 		if resp.Error != nil {
 			return nil, fmt.Errorf("RPC error %d: %s", resp.Error.Code, resp.Error.Message)
 		}
@@ -485,7 +554,7 @@ func (conn *ServerConnection) initialize(ctx context.Context) error {
 		return fmt.Errorf("failed to parse initialize result: %w", err)
 	}
 
-	// Send initialized notification (acquire lock since sendRequest released it)
+	// Send initialized notification (conn.mu serializes stdin writes)
 	conn.mu.Lock()
 	notif := JSONRPCNotification{
 		JSONRPC: "2.0",

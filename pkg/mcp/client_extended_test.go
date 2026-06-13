@@ -182,7 +182,7 @@ func newTestServerConnection(t *testing.T, tools []Tool) (*ServerConnection, *mo
 	scanner := bufio.NewScanner(clientReader)
 	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024)
 
-	conn := &ServerConnection{
+	conn := startTestConn(&ServerConnection{
 		config: config.MCPServer{
 			Name:    "test-server",
 			Command: "mock",
@@ -191,9 +191,16 @@ func newTestServerConnection(t *testing.T, tools []Tool) (*ServerConnection, *mo
 		stdout:  clientReader,
 		scanner: scanner,
 		tools:   make([]Tool, 0),
-	}
+	})
 
 	return conn, mock
+}
+
+// startTestConn wires up the pending-request map, mirroring what startServer
+// does in production. The readLoop itself starts lazily on first sendRequest.
+func startTestConn(conn *ServerConnection) *ServerConnection {
+	conn.pending = make(map[int64]chan *JSONRPCResponse)
+	return conn
 }
 
 // =============================================================================
@@ -660,12 +667,12 @@ func TestSendRequestTimeout(t *testing.T) {
 
 	scanner := bufio.NewScanner(clientReader)
 
-	conn := &ServerConnection{
+	conn := startTestConn(&ServerConnection{
 		config:  config.MCPServer{Name: "slow-server"},
 		stdin:   clientWriter,
 		stdout:  clientReader,
 		scanner: scanner,
-	}
+	})
 
 	// Use a very short timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -692,12 +699,12 @@ func TestSendRequestConnectionClosed(t *testing.T) {
 
 	scanner := bufio.NewScanner(clientReader)
 
-	conn := &ServerConnection{
+	conn := startTestConn(&ServerConnection{
 		config:  config.MCPServer{Name: "closing-server"},
 		stdin:   clientWriter,
 		stdout:  clientReader,
 		scanner: scanner,
-	}
+	})
 
 	// Close the server writer immediately to simulate connection drop
 	go func() {
@@ -727,12 +734,12 @@ func TestSendRequestInvalidJSON(t *testing.T) {
 
 	scanner := bufio.NewScanner(clientReader)
 
-	conn := &ServerConnection{
+	conn := startTestConn(&ServerConnection{
 		config:  config.MCPServer{Name: "bad-json-server"},
 		stdin:   clientWriter,
 		stdout:  clientReader,
 		scanner: scanner,
-	}
+	})
 
 	// Server reads request then writes invalid JSON
 	go func() {
@@ -800,12 +807,12 @@ func TestSendRequestDefaultTimeout(t *testing.T) {
 
 	scanner := bufio.NewScanner(clientReader)
 
-	conn := &ServerConnection{
+	conn := startTestConn(&ServerConnection{
 		config:  config.MCPServer{Name: "no-timeout-server"},
 		stdin:   clientWriter,
 		stdout:  clientReader,
 		scanner: scanner,
-	}
+	})
 
 	// Use context.Background() with NO deadline.
 	// Then cancel it externally after a short delay.
