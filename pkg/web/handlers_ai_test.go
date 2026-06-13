@@ -500,7 +500,7 @@ func TestToolApprove_ValidApproval(t *testing.T) {
 
 	// Create a pending approval with buffered channel
 	approvalID := "test-approval-1"
-	s.pendingApprovals[approvalID] = &PendingToolApproval{
+	approval := &PendingToolApproval{
 		ID:        approvalID,
 		ToolName:  "kubectl",
 		Command:   "kubectl delete pod test",
@@ -508,6 +508,7 @@ func TestToolApprove_ValidApproval(t *testing.T) {
 		Timestamp: time.Now(),
 		Response:  make(chan bool, 1),
 	}
+	s.pendingApprovals[approvalID] = approval
 
 	body := `{"id":"test-approval-1","approved":true}`
 	req := httptest.NewRequest(http.MethodPost, "/api/tool/approve", strings.NewReader(body))
@@ -528,9 +529,13 @@ func TestToolApprove_ValidApproval(t *testing.T) {
 		t.Errorf("Expected status=ok, got %v", resp["status"])
 	}
 
-	// Verify the approval was sent to the channel
+	// The handler claims and removes the entry to avoid TOCTOU races, so the
+	// approval is no longer in the map. Read from the captured pointer.
+	if _, stillPresent := s.pendingApprovals[approvalID]; stillPresent {
+		t.Error("Expected approval entry to be removed after handling")
+	}
 	select {
-	case approved := <-s.pendingApprovals[approvalID].Response:
+	case approved := <-approval.Response:
 		if !approved {
 			t.Error("Expected approval to be true")
 		}
@@ -543,10 +548,11 @@ func TestToolApprove_Rejection(t *testing.T) {
 	s := setupAITestServer(t, false)
 
 	approvalID := "test-approval-reject"
-	s.pendingApprovals[approvalID] = &PendingToolApproval{
+	approval := &PendingToolApproval{
 		ID:       approvalID,
 		Response: make(chan bool, 1),
 	}
+	s.pendingApprovals[approvalID] = approval
 
 	body := `{"id":"test-approval-reject","approved":false}`
 	req := httptest.NewRequest(http.MethodPost, "/api/tool/approve", strings.NewReader(body))
@@ -558,8 +564,9 @@ func TestToolApprove_Rejection(t *testing.T) {
 		t.Fatalf("Expected 200, got %d", w.Code)
 	}
 
+	// Entry is claimed and removed by the handler; read from captured pointer.
 	select {
-	case approved := <-s.pendingApprovals[approvalID].Response:
+	case approved := <-approval.Response:
 		if approved {
 			t.Error("Expected approval to be false (rejected)")
 		}

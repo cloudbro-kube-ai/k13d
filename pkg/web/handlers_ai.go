@@ -878,16 +878,24 @@ func (s *Server) handleToolApprove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.pendingApprovalMutex.RLock()
+	// Claim the entry under a write lock and delete it in the same critical
+	// section. This closes a TOCTOU window: with only an RLock, the waiting
+	// goroutine could time out and delete the entry between the lookup and the
+	// channel send, and two concurrent approvals could both pass the existence
+	// check and race on the buffered channel.
+	s.pendingApprovalMutex.Lock()
 	approval, exists := s.pendingApprovals[req.ID]
-	s.pendingApprovalMutex.RUnlock()
+	if exists {
+		delete(s.pendingApprovals, req.ID)
+	}
+	s.pendingApprovalMutex.Unlock()
 
 	if !exists {
 		WriteError(w, NewAPIError(ErrCodeNotFound, "Approval not found or expired"))
 		return
 	}
 
-	// Send response (non-blocking)
+	// Send response (non-blocking; channel is buffered size 1)
 	select {
 	case approval.Response <- req.Approved:
 		w.Header().Set("Content-Type", "application/json")
