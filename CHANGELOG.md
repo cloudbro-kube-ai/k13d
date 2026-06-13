@@ -5,6 +5,38 @@ All notable changes to k13d will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+- **API key exposure**: Stop returning the raw LLM API key from `GET /api/settings` and `/api/llm/status`; only `has_api_key` is sent
+- **XSS**: Escape untrusted content (user messages, AI/assistant output incl. code blocks, tool labels, approval fields, container names) before `innerHTML` in the web UI
+- **Timing-safe auth**: Use `subtle.ConstantTimeCompare` for the legacy SHA256 password fallback
+- **OIDC state**: Make `ValidateState` lookup+delete atomic so a state token is truly single-use (no replay)
+- **Session ID path traversal**: Restrict `FileSystemStore` session IDs to `[A-Za-z0-9_-]` so an ID like `../../etc/passwd` can't escape the sessions dir
+- **Predictable session tokens**: `generateSessionID` now fails loudly instead of falling back to a timestamp-derived (guessable) token
+- **Tar extraction**: `filepath.Base` guard against zip-slip in the trivy downloader
+- **Port-forward input**: Validate local/remote ports as integers (1–65535) to block flag-injection into the kubectl arg list
+- **Web bind address**: New `--host`/`K13D_HOST` flag to bind the web server to a specific interface (e.g. `127.0.0.1`)
+
+### Fixed
+- **MCP client hangs after any timeout**: Replace per-request scanner goroutines with a single persistent reader that routes responses by ID and fails pending requests on disconnect
+- **Data races**: `ValidateSession` map write under RLock; `HandleAuthStatus` unsynchronized map reads; `SwitchContext` vs. web/scanner direct `Clientset`/`Dynamic`/`Config` reads (added `Safe*` accessors); `Config.Models`/`MCP`/`ActiveModel` slice access (added internal mutex); scanner `trivyPath`; notification-manager `stopCh`
+- **AI providers**: OpenAI no longer discards a valid no-tool answer and re-runs via shim; Anthropic SSE `error` events are no longer swallowed; `retryProvider.Ask` won't re-emit duplicated streamed text on retry; Bedrock honors config `api_key` credentials
+- **kubectl tool arg mangling**: Respect shell quoting when splitting LLM-generated commands (e.g. `-l 'app in (foo, bar)'`)
+- **Config durability**: `Config.Save` writes atomically (temp + rename, 0600) so a crash mid-save can't corrupt `config.yaml`
+- **Memory/FD leaks**: Prune per-pod/node metric ring buffers on pod churn; close previous log files on re-`Init`; cap log viewer and trivy/kube-bench subprocess output
+- **Subprocess lifecycle**: `triggerCronJob`/`scale`/`rollout restart` use `CommandContext` with timeouts; background plugins are reaped to avoid zombies
+- **Pod security score**: `HostPID`/`HostNetwork` checks moved to pod level (were duplicated per container, skewing the score)
+- **trivy download**: Check GitHub HTTP status instead of decoding an error body into an empty release
+- **CLI env vars**: `K13D_NAMESPACE`/`K13D_ALL_NAMESPACES` are no longer overwritten by short-alias defaults; added `--debug`/`K13D_DEBUG`
+- **DB robustness**: Check `rows.Err()` in chat-history queries so a mid-iteration error isn't returned as a truncated success
+- **eval**: `formatMessage` interpolates args (was returning literal `%v`); guard empty-task division-by-zero in `RunSimpleBenchmark`
+
+### Changed
+- **TUI performance**: Reuse table cells on background refreshes (no full rebuild), preserve row selection, skip redundant 30s re-lists when a watch event fired recently, and derive nodes-view fallback metrics from a single pod list
+- **Shell completions**: Regenerated bash/zsh/fish completions with the full flag set
+- **Docs**: Fixed `CLAUDE.md` skills table and run examples; removed unreferenced docs images
+
 ## [0.9.8] - 2026-03-15
 
 ### Added
