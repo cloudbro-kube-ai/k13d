@@ -166,6 +166,12 @@ func (w *ResourceWatcher) watchLoop(ctx context.Context) error {
 	relistTicker := time.NewTicker(w.cfg.RelistInterval)
 	defer relistTicker.Stop()
 
+	// Tracks the last time a refresh was triggered, so the periodic re-list
+	// can be skipped when the Watch already refreshed recently. Each refresh
+	// does a full List + table rebuild, so redundant ticks are expensive on
+	// large clusters.
+	lastRefresh := time.Now()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -194,11 +200,18 @@ func (w *ResourceWatcher) watchLoop(ctx context.Context) error {
 
 		case <-debounceCh:
 			if !w.isStopped() && w.onChange != nil {
+				lastRefresh = time.Now()
 				w.onChange()
 			}
 
 		case <-relistTicker.C:
+			// Safety-net re-list for missed watch events; skip if a watch
+			// event already refreshed within the last interval.
+			if time.Since(lastRefresh) < w.cfg.RelistInterval {
+				continue
+			}
 			if !w.isStopped() && w.onChange != nil {
+				lastRefresh = time.Now()
 				w.onChange()
 			}
 		}

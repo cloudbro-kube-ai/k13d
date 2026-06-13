@@ -134,6 +134,7 @@ type App struct {
 	filterRegex         bool              // True if filter is regex (e.g., /pattern/)
 	tableHeaders        []string          // Original headers
 	tableRows           [][]string        // Original rows (unfiltered)
+	renderedResource    string            // Resource type currently rendered in the table (draw-goroutine only)
 	apiResources        []k8s.APIResource // Cached API resources from cluster
 	selectedRows        map[int]bool      // Multi-select: selected row indices (k9s Space key)
 	sortColumn          int               // Current sort column index (-1 = none)

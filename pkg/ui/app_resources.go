@@ -40,12 +40,17 @@ func (a *App) refresh() {
 	resource := a.currentResource
 	a.mx.RUnlock()
 
-	// Show loading state
+	// Show the loading placeholder only on first load or resource switch.
+	// Background refreshes (watch events, periodic re-list) keep the current
+	// rows on screen — clearing here made the whole table flicker to
+	// "Loading..." on every refresh and dropped the user's row selection.
 	a.queueUpdateDrawDirect(func() {
-		a.table.Clear()
-		a.table.SetTitle(fmt.Sprintf(" %s - Loading... ", resource))
-		a.table.SetCell(0, 0, tview.NewTableCell("Loading...").SetTextColor(tcell.ColorYellow))
-		a.requestSync()
+		if a.renderedResource != resource || a.table.GetRowCount() <= 1 {
+			a.table.Clear()
+			a.table.SetTitle(fmt.Sprintf(" %s - Loading... ", resource))
+			a.table.SetCell(0, 0, tview.NewTableCell("Loading...").SetTextColor(tcell.ColorYellow))
+			a.requestSync()
+		}
 	})
 
 	// Fetch with exponential backoff
@@ -98,14 +103,34 @@ func (a *App) refresh() {
 		a.applyFilterText(currentFilter)
 	} else {
 		a.queueUpdateDrawDirect(func() {
-			a.table.Clear()
+			// Reuse existing cells where possible: a full Clear + NewTableCell
+			// rebuild allocates rows*cols cells on every refresh (3000 cells
+			// for 500 pods) inside the draw goroutine. In-place SetText keeps
+			// allocations near zero for steady-state refreshes.
+			sameView := a.renderedResource == resource
+			a.renderedResource = resource
+			if !sameView {
+				a.table.Clear()
+			}
+			prevRows := a.table.GetRowCount()
+			prevCols := a.table.GetColumnCount()
+			selRow, _ := a.table.GetSelection()
+			// Reuse only when the previous render was a data render for the
+			// same view (>1 row). A leftover "Loading..."/error placeholder
+			// cell has the wrong attributes and must not be reused.
+			reuseOK := sameView && prevRows > 1
+
 			for i, h := range headers {
-				cell := tview.NewTableCell(h).
-					SetTextColor(tcell.ColorYellow).
-					SetAttributes(tcell.AttrBold).
-					SetSelectable(false).
-					SetExpansion(1)
-				a.table.SetCell(0, i, cell)
+				if reuseOK && i < prevCols {
+					a.table.GetCell(0, i).SetText(h)
+				} else {
+					cell := tview.NewTableCell(h).
+						SetTextColor(tcell.ColorYellow).
+						SetAttributes(tcell.AttrBold).
+						SetSelectable(false).
+						SetExpansion(1)
+					a.table.SetCell(0, i, cell)
+				}
 			}
 			for r, row := range rows {
 				for c, text := range row {
@@ -113,19 +138,36 @@ func (a *App) refresh() {
 					if a.isStatusColumn(c) {
 						color = a.statusColor(text)
 					}
-					cell := tview.NewTableCell(text).
-						SetTextColor(color).
-						SetExpansion(1)
-					a.table.SetCell(r+1, c, cell)
+					if reuseOK && r+1 < prevRows && c < prevCols {
+						a.table.GetCell(r+1, c).SetText(text).SetTextColor(color)
+					} else {
+						cell := tview.NewTableCell(text).
+							SetTextColor(color).
+							SetExpansion(1)
+						a.table.SetCell(r+1, c, cell)
+					}
 				}
 			}
+			// Drop rows beyond the new data (resource count shrank)
+			for r := a.table.GetRowCount() - 1; r > len(rows); r-- {
+				a.table.RemoveRow(r)
+			}
+
 			count := len(rows)
 			a.table.SetTitle(fmt.Sprintf(" %s (%d) ", resource, count))
 			if count > 0 {
-				a.table.Select(1, 0)
+				// Preserve the user's selection across background refreshes;
+				// jumping to the top on every watch event loses their place.
+				if sameView && selRow >= 1 {
+					if selRow > count {
+						selRow = count
+					}
+					a.table.Select(selRow, 0)
+				} else {
+					a.table.Select(1, 0)
+				}
 			}
 			a.refreshTableDecorations()
-			a.applyAIChrome()
 			a.requestSync()
 		})
 	}

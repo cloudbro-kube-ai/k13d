@@ -38,10 +38,19 @@ func loadNodeUsageSnapshots(ctx context.Context, client *k8s.Client, nodes []cor
 	metrics, err := client.GetNodeMetrics(ctx)
 	estimated := false
 	usageAvailable := err == nil && len(metrics) > 0
-	if !usageAvailable {
-		metrics, err = client.GetNodeMetricsFromPodRequests(ctx)
-		usageAvailable = err == nil
-		estimated = usageAvailable
+
+	// A single cluster-wide pod list provides both the GPU numbers and the
+	// CPU/memory fallback estimates. Previously the metrics-server-less path
+	// listed all pods twice (GetNodeMetricsFromPodRequests + this call).
+	requests, reqErr := client.GetNodeResourceRequests(ctx)
+
+	if !usageAvailable && reqErr == nil {
+		metrics = make(map[string][]int64, len(requests))
+		for nodeName, req := range requests {
+			metrics[nodeName] = []int64{req.CPUMilli, req.MemoryMB}
+		}
+		usageAvailable = true
+		estimated = true
 	}
 
 	if usageAvailable {
@@ -58,8 +67,7 @@ func loadNodeUsageSnapshots(ctx context.Context, client *k8s.Client, nodes []cor
 		}
 	}
 
-	requests, err := client.GetNodeResourceRequests(ctx)
-	if err == nil {
+	if reqErr == nil {
 		for _, node := range nodes {
 			snapshot := snapshots[node.Name]
 			snapshot.GPUAvailable = true
