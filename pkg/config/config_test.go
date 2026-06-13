@@ -1,8 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -1005,5 +1007,74 @@ func TestConfigSaveLoadRoundTrip(t *testing.T) {
 	}
 	if loaded.LLM.SkipTLSVerify {
 		t.Error("After switch to solar-pro2, SkipTLSVerify should be false")
+	}
+}
+
+// TestConfigConcurrentAccess exercises the profile/server accessors from many
+// goroutines so `go test -race` guards against regressing the mutex that
+// protects Models/MCP/ActiveModel.
+func TestConfigConcurrentAccess(t *testing.T) {
+	cfg := NewDefaultConfig()
+	cfg.Models = []ModelProfile{{Name: "m0", Provider: "openai", Model: "gpt-4"}}
+	cfg.ActiveModel = "m0"
+
+	var wg sync.WaitGroup
+	for i := 0; i < 25; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			cfg.AddModelProfile(ModelProfile{Name: fmt.Sprintf("m%d", i), Provider: "openai", Model: "gpt-4"})
+			_ = cfg.ListModels()
+			_ = cfg.GetActiveModelName()
+			_ = cfg.GetActiveModelProfile()
+			cfg.AddMCPServer(MCPServer{Name: fmt.Sprintf("s%d", i), Command: "x"})
+			_ = cfg.ListMCPServers()
+			_, _ = cfg.GetMCPServer(fmt.Sprintf("s%d", i))
+			cfg.ToggleMCPServer(fmt.Sprintf("s%d", i), true)
+			cfg.SetActiveModel("m0")
+		}(i)
+	}
+	wg.Wait()
+
+	if got := cfg.GetActiveModelName(); got != "m0" {
+		t.Errorf("ActiveModel = %q, want m0", got)
+	}
+}
+
+// TestConfigSaveIsAtomic verifies Save writes the file in full (temp+rename),
+// leaving no partial file and a parseable result.
+func TestConfigSaveIsAtomic(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("K13D_CONFIG", filepath.Join(dir, "config.yaml"))
+
+	cfg := NewDefaultConfig()
+	cfg.AddModelProfile(ModelProfile{Name: "p1", Provider: "openai", Model: "gpt-4", APIKey: "sk-secret"})
+	if err := cfg.Save(); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	path := GetConfigPath()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("config not written: %v", err)
+	}
+	if info.Size() == 0 {
+		t.Fatal("config file is empty after Save")
+	}
+	if perm := info.Mode().Perm(); perm != 0600 {
+		t.Errorf("config perm = %o, want 600", perm)
+	}
+	// No leftover temp files in the directory.
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		if filepath.Ext(e.Name()) == ".tmp" || (len(e.Name()) > 7 && e.Name()[:7] == ".config") {
+			t.Errorf("leftover temp file: %s", e.Name())
+		}
+	}
+	// Result parses back.
+	var loaded Config
+	data, _ := os.ReadFile(path)
+	if err := yaml.Unmarshal(data, &loaded); err != nil {
+		t.Fatalf("saved config does not parse: %v", err)
 	}
 }

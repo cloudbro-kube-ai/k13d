@@ -200,3 +200,45 @@ func TestSession_ClearMessages(t *testing.T) {
 		t.Errorf("ClearMessages() should empty messages, got %v", len(session.Messages))
 	}
 }
+
+// TestFileSystemStorePathTraversal guards the fix that restricts session IDs to
+// safe filename characters, preventing "../../etc/passwd"-style escapes.
+func TestFileSystemStorePathTraversal(t *testing.T) {
+	base := t.TempDir()
+	store, err := NewFileSystemStore(base)
+	if err != nil {
+		t.Fatalf("NewFileSystemStore() error = %v", err)
+	}
+
+	badIDs := []string{
+		"../../etc/passwd",
+		"../escape",
+		"a/b",
+		"foo/../bar",
+		"",
+		".",
+		"..",
+		"with space",
+	}
+	for _, id := range badIDs {
+		// Save must reject the ID rather than writing outside base.
+		if err := store.Save(&Session{ID: id}); err == nil {
+			t.Errorf("Save(id=%q) = nil error, want rejection", id)
+		}
+		if _, err := store.Load(id); err == nil {
+			t.Errorf("Load(id=%q) = nil error, want rejection", id)
+		}
+		if err := store.Delete(id); err == nil {
+			t.Errorf("Delete(id=%q) = nil error, want rejection", id)
+		}
+	}
+
+	// A valid ID still round-trips.
+	good := &Session{ID: "valid-session_123"}
+	if err := store.Save(good); err != nil {
+		t.Fatalf("Save(valid) error = %v", err)
+	}
+	if _, err := store.Load("valid-session_123"); err != nil {
+		t.Fatalf("Load(valid) error = %v", err)
+	}
+}
