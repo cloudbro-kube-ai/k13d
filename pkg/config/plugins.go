@@ -195,7 +195,13 @@ func (p *PluginConfig) Execute(ctx context.Context, pCtx *PluginContext) error {
 	cmd.Stderr = os.Stderr
 
 	if p.Background {
-		return cmd.Start()
+		if err := cmd.Start(); err != nil {
+			return err
+		}
+		// Reap the child so it doesn't become a zombie when it exits; without
+		// a Wait() the kernel keeps the exit status until k13d itself exits.
+		go func() { _ = cmd.Wait() }()
+		return nil
 	}
 	return cmd.Run()
 }

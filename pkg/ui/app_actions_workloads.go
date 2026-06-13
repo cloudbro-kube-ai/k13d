@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"time"
@@ -41,7 +42,9 @@ func (a *App) triggerCronJob() {
 					// Use kubectl to create job from cronjob
 					jobName := fmt.Sprintf("%s-manual-%d", name, time.Now().Unix())
 					resourcePath := fmt.Sprintf("%s/cronjob/%s", ns, name)
-					cmd := exec.Command("kubectl", "create", "job", jobName, "--from=cronjob/"+name, "-n", ns)
+					ctx, cancel := context.WithTimeout(a.getAppContext(), 30*time.Second)
+					defer cancel()
+					cmd := exec.CommandContext(ctx, "kubectl", "create", "job", jobName, "--from=cronjob/"+name, "-n", ns)
 					output, err := cmd.CombinedOutput()
 					if err != nil {
 						a.flashMsg(fmt.Sprintf("Trigger failed: %s", string(output)), true)
@@ -128,7 +131,9 @@ func (a *App) scaleResource() {
 			}
 
 			resourcePath := fmt.Sprintf("%s/%s/%s", ns, resourceType, name)
-			cmd := exec.Command("kubectl", "scale", resourceType, name, "-n", ns, "--replicas="+replicas)
+			ctx, cancel := context.WithTimeout(a.getAppContext(), 30*time.Second)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, "kubectl", "scale", resourceType, name, "-n", ns, "--replicas="+replicas)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				a.flashMsg(fmt.Sprintf("Scale failed: %s", string(output)), true)
@@ -200,7 +205,9 @@ func (a *App) restartResource() {
 					}
 
 					resourcePath := fmt.Sprintf("%s/%s/%s", ns, resourceType, name)
-					cmd := exec.Command("kubectl", "rollout", "restart", resourceType, name, "-n", ns)
+					ctx, cancel := context.WithTimeout(a.getAppContext(), 60*time.Second)
+					defer cancel()
+					cmd := exec.CommandContext(ctx, "kubectl", "rollout", "restart", resourceType, name, "-n", ns)
 					output, err := cmd.CombinedOutput()
 					if err != nil {
 						a.flashMsg(fmt.Sprintf("Restart failed: %s", string(output)), true)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -518,6 +519,16 @@ func (a *App) portForward() {
 
 		if localPort == "" || remotePort == "" {
 			a.flashMsg("Both ports are required", true)
+			return
+		}
+		// Validate as integers so a flag-like value (e.g. "--address=...")
+		// can't be smuggled into the kubectl argument list.
+		if p, err := strconv.Atoi(localPort); err != nil || p < 1 || p > 65535 {
+			a.flashMsg("Local port must be a number between 1 and 65535", true)
+			return
+		}
+		if p, err := strconv.Atoi(remotePort); err != nil || p < 1 || p > 65535 {
+			a.flashMsg("Remote port must be a number between 1 and 65535", true)
 			return
 		}
 
