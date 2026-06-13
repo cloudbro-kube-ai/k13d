@@ -2,9 +2,11 @@
 package security
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -356,10 +358,38 @@ func (s *Scanner) scanImages(ctx context.Context, namespace string) (*ImageVulnS
 	return summary, nil
 }
 
+// maxScanOutput caps how much subprocess stdout we buffer, so a pathologically
+// large trivy/kube-bench result can't drive the process OOM.
+const maxScanOutput = 64 << 20 // 64 MB
+
+// runScanCommandBounded runs cmd and returns up to maxScanOutput bytes of
+// stdout, draining the remainder so the child never blocks on a full pipe.
+func runScanCommandBounded(cmd *exec.Cmd) ([]byte, error) {
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	data, readErr := io.ReadAll(io.LimitReader(stdout, maxScanOutput))
+	// Drain anything beyond the cap so Wait() doesn't deadlock on a full pipe.
+	_, _ = io.Copy(io.Discard, stdout)
+	if waitErr := cmd.Wait(); waitErr != nil {
+		if msg := strings.TrimSpace(stderr.String()); msg != "" {
+			return data, fmt.Errorf("%w: %s", waitErr, msg)
+		}
+		return data, waitErr
+	}
+	return data, readErr
+}
+
 // scanImageWithTrivy scans a single image using trivy
 func (s *Scanner) scanImageWithTrivy(ctx context.Context, image string) ([]Vulnerability, error) {
 	cmd := exec.CommandContext(ctx, s.getTrivyPath(), "image", "--format", "json", "--severity", "CRITICAL,HIGH,MEDIUM,LOW", "--quiet", image)
-	output, err := cmd.Output()
+	output, err := runScanCommandBounded(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -679,7 +709,7 @@ func (s *Scanner) checkNetwork(ctx context.Context, namespace string) ([]Network
 // runCISBenchmark runs kube-bench for CIS benchmark
 func (s *Scanner) runCISBenchmark(ctx context.Context) (*CISBenchmarkResult, error) {
 	cmd := exec.CommandContext(ctx, "kube-bench", "--json")
-	output, err := cmd.Output()
+	output, err := runScanCommandBounded(cmd)
 	if err != nil {
 		return nil, err
 	}
