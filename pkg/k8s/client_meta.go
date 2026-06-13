@@ -80,7 +80,11 @@ func (c *Client) ListNamespaces(ctx context.Context) ([]corev1.Namespace, error)
 }
 
 func (c *Client) ListNodes(ctx context.Context) ([]corev1.Node, error) {
-	nodes, err := c.clientset().CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	// Per-call timeout, consistent with ListPods/ListNamespaces, so a slow
+	// API server can't consume the caller's whole budget (metrics hot path).
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	nodes, err := c.clientset().CoreV1().Nodes().List(ctxWithTimeout, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

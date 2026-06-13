@@ -86,11 +86,11 @@ func GetAllWebSettings() (map[string]string, error) {
 	for rows.Next() {
 		var key, value string
 		if err := rows.Scan(&key, &value); err != nil {
-			continue
+			return nil, err
 		}
 		settings[key] = value
 	}
-	return settings, nil
+	return settings, rows.Err()
 }
 
 // GetWebSettingsWithPrefix retrieves all settings with a given prefix
@@ -109,11 +109,11 @@ func GetWebSettingsWithPrefix(prefix string) (map[string]string, error) {
 	for rows.Next() {
 		var key, value string
 		if err := rows.Scan(&key, &value); err != nil {
-			continue
+			return nil, err
 		}
 		settings[key] = value
 	}
-	return settings, nil
+	return settings, rows.Err()
 }
 
 // DeleteWebSetting deletes a web setting by key

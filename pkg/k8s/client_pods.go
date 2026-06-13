@@ -118,8 +118,11 @@ func (c *Client) PortForward(ctx context.Context, namespace, podName string, loc
 
 // StartPortForward starts port forwarding to a pod
 func (c *Client) StartPortForward(namespace, podName string, localPort, remotePort int, stopChan chan struct{}) error {
-	// Get the pod to verify it exists
-	_, err := c.clientset().CoreV1().Pods(namespace).Get(context.Background(), podName, metav1.GetOptions{})
+	// Get the pod to verify it exists (bounded so a slow API server can't
+	// stall callers — e.g. web server shutdown draining sessions)
+	getCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_, err := c.clientset().CoreV1().Pods(namespace).Get(getCtx, podName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to get pod: %w", err)
 	}
@@ -140,7 +143,9 @@ func (c *Client) StartPortForward(namespace, podName string, localPort, remotePo
 
 	ports := []string{fmt.Sprintf("%d:%d", localPort, remotePort)}
 	readyChan := make(chan struct{})
-	errChan := make(chan error)
+	// Buffered: if we return early via stopChan, the ForwardPorts goroutine
+	// must still be able to send its result without leaking forever.
+	errChan := make(chan error, 1)
 
 	fw, err := portforward.New(dialer, ports, stopChan, readyChan, nil, nil)
 	if err != nil {

@@ -327,9 +327,10 @@ func (td *TrivyDownloader) extractTarGz(path string) error {
 			return err
 		}
 
-		// Only extract the trivy binary
+		// Only extract the trivy binary. filepath.Base guards against
+		// path traversal (zip-slip) if the name check is ever loosened.
 		if header.Name == "trivy" || header.Name == "trivy.exe" {
-			targetPath := filepath.Join(td.installDir, header.Name)
+			targetPath := filepath.Join(td.installDir, filepath.Base(header.Name))
 			outFile, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 			if err != nil {
 				return err
