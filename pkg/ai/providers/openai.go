@@ -357,7 +357,18 @@ func (p *OpenAIProvider) tryNativeToolCalling(ctx context.Context, endpoint, pro
 		// If no tool calls, check if model supports tool calling
 		if len(toolCalls) == 0 {
 			if i == 0 {
-				// First request with no tool calls - model doesn't support tool calling
+				// A text answer with finish_reason "stop" is a valid completion:
+				// the model supports tools but didn't need any. Returning false
+				// here would discard this answer and re-send the whole prompt
+				// via the ReAct shim — doubling latency and token cost for
+				// every question that needs no tools.
+				if finishReason == "stop" && content != "" {
+					if callback != nil {
+						callback(content)
+					}
+					return true
+				}
+				// Empty/odd response — server may have ignored the tools param
 				log.Debugf("No tool calls on first request. Model may not support tool calling.")
 				return false // Signal to use fallback
 			}

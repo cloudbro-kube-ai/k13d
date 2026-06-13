@@ -80,7 +80,13 @@ type anthropicStreamEvent struct {
 	ContentBlock *anthropicContentBlock `json:"content_block,omitempty"`
 	Delta        *anthropicStreamDelta  `json:"delta,omitempty"`
 	Message      *anthropicResponse     `json:"message,omitempty"`
-	Usage        *struct {
+	// Error is set on {"type":"error","error":{...}} events (e.g.
+	// overloaded_error). It is top-level, NOT nested under message.
+	Error *struct {
+		Type    string `json:"type"`
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
+	Usage *struct {
 		OutputTokens int `json:"output_tokens"`
 	} `json:"usage,omitempty"`
 }
@@ -382,9 +388,13 @@ func (p *AnthropicProvider) doStreamingRequest(ctx context.Context, reqBody anth
 		case "message_stop":
 			return nil
 		case "error":
+			if event.Error != nil {
+				return fmt.Errorf("stream error: %s - %s", event.Error.Type, event.Error.Message)
+			}
 			if event.Message != nil && event.Message.Error != nil {
 				return fmt.Errorf("stream error: %s - %s", event.Message.Error.Type, event.Message.Error.Message)
 			}
+			return fmt.Errorf("stream error (unrecognized error payload)")
 		}
 	}
 

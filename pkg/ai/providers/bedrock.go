@@ -373,8 +373,16 @@ func (p *BedrockProvider) signRequest(req *http.Request, body []byte) error {
 	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
 	sessionToken := os.Getenv("AWS_SESSION_TOKEN")
 
+	// IsReady() advertises config-based credentials via api_key, so honor
+	// them here: api_key in "ACCESS_KEY_ID:SECRET_ACCESS_KEY" form.
+	if (accessKey == "" || secretKey == "") && p.config.APIKey != "" {
+		if id, secret, ok := strings.Cut(p.config.APIKey, ":"); ok && id != "" && secret != "" {
+			accessKey, secretKey = id, secret
+		}
+	}
+
 	if accessKey == "" || secretKey == "" {
-		return fmt.Errorf("AWS credentials not configured (set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)")
+		return fmt.Errorf("AWS credentials not configured (set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, or api_key as ACCESS_KEY_ID:SECRET_ACCESS_KEY)")
 	}
 
 	// Create signing time

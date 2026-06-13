@@ -178,12 +178,23 @@ func (r *retryProvider) Ask(ctx context.Context, prompt string, callback func(st
 			}
 		}
 
-		err := r.provider.Ask(ctx, prompt, callback)
+		// Same guard as AskWithTools: once any chunk reached the caller,
+		// retrying would re-emit the stream from the start (duplicated text).
+		var streamStarted atomic.Bool
+		wrappedCallback := callback
+		if callback != nil {
+			wrappedCallback = func(chunk string) {
+				streamStarted.Store(true)
+				callback(chunk)
+			}
+		}
+
+		err := r.provider.Ask(ctx, prompt, wrappedCallback)
 		if err == nil {
 			return nil
 		}
 
-		if !isRetryableError(err) {
+		if streamStarted.Load() || !isRetryableError(err) {
 			return err
 		}
 
