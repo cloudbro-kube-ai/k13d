@@ -5,9 +5,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
+
+// validFileSessionID restricts session IDs to characters that are safe as a
+// filename component, preventing path traversal (e.g. "../../etc/passwd").
+var validFileSessionID = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
 // FileSystemStore implements Store using the filesystem
 type FileSystemStore struct {
@@ -44,7 +49,10 @@ func (s *FileSystemStore) Save(session *Session) error {
 		return fmt.Errorf("failed to marshal session: %w", err)
 	}
 
-	path := s.sessionPath(session.ID)
+	path, err := s.sessionPath(session.ID)
+	if err != nil {
+		return err
+	}
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		return fmt.Errorf("failed to write session file: %w", err)
 	}
@@ -54,7 +62,10 @@ func (s *FileSystemStore) Save(session *Session) error {
 
 // Load retrieves a session from disk
 func (s *FileSystemStore) Load(id string) (*Session, error) {
-	path := s.sessionPath(id)
+	path, err := s.sessionPath(id)
+	if err != nil {
+		return nil, err
+	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -74,7 +85,10 @@ func (s *FileSystemStore) Load(id string) (*Session, error) {
 
 // Delete removes a session from disk
 func (s *FileSystemStore) Delete(id string) error {
-	path := s.sessionPath(id)
+	path, err := s.sessionPath(id)
+	if err != nil {
+		return err
+	}
 
 	if err := os.Remove(path); err != nil {
 		if os.IsNotExist(err) {
@@ -144,6 +158,9 @@ func (s *FileSystemStore) Clear() error {
 	return nil
 }
 
-func (s *FileSystemStore) sessionPath(id string) string {
-	return filepath.Join(s.baseDir, id+".json")
+func (s *FileSystemStore) sessionPath(id string) (string, error) {
+	if !validFileSessionID.MatchString(id) {
+		return "", fmt.Errorf("invalid session id: %q", id)
+	}
+	return filepath.Join(s.baseDir, id+".json"), nil
 }

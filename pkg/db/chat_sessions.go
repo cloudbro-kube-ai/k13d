@@ -161,6 +161,9 @@ func ListChatSessions() ([]ChatSessionSummary, error) {
 		}
 		summaries = append(summaries, s)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	if summaries == nil {
 		summaries = []ChatSessionSummary{}
 	}
@@ -323,6 +326,9 @@ func GetChatMessages(sessionID string, limit, offset int) ([]ChatMessage, error)
 		}
 		messages = append(messages, m)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	if messages == nil {
 		messages = []ChatMessage{}
 	}
@@ -362,6 +368,9 @@ func GetRecentChatMessages(sessionID string, maxMessages int) ([]ChatMessage, er
 			continue
 		}
 		messages = append(messages, m)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	if messages == nil {
 		messages = []ChatMessage{}
