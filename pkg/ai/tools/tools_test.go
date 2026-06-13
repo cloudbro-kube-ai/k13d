@@ -70,3 +70,28 @@ func TestValidateBashToolCommandBlocksKubernetesBypass(t *testing.T) {
 		}
 	}
 }
+
+func TestSplitCommandWordsRespectsQuoting(t *testing.T) {
+	tests := []struct {
+		input string
+		want  []string
+	}{
+		{"get pods", []string{"get", "pods"}},
+		{"get pods -l 'app in (foo, bar)'", []string{"get", "pods", "-l", "app in (foo, bar)"}},
+		{`create configmap cm --from-literal=key="value with spaces"`, []string{"create", "configmap", "cm", "--from-literal=key=value with spaces"}},
+		{"", nil},
+		{"get pods -o jsonpath='{.items[*].metadata.name}'", []string{"get", "pods", "-o", "jsonpath={.items[*].metadata.name}"}},
+	}
+
+	for _, tt := range tests {
+		got := splitCommandWords(tt.input)
+		if len(got) != len(tt.want) {
+			t.Fatalf("splitCommandWords(%q) = %v, want %v", tt.input, got, tt.want)
+		}
+		for i := range got {
+			if got[i] != tt.want[i] {
+				t.Fatalf("splitCommandWords(%q)[%d] = %q, want %q", tt.input, i, got[i], tt.want[i])
+			}
+		}
+	}
+}

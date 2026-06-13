@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"mvdan.cc/sh/v3/shell"
 )
 
 // ToolNameInstruction is prepended when MCP tools are present.
@@ -366,7 +368,7 @@ func (e *Executor) executeKubectl(ctx context.Context, argsJSON string) (string,
 	}
 	cmdStr = strings.TrimSpace(cmdStr)
 
-	cmdArgs := strings.Fields(cmdStr)
+	cmdArgs := splitCommandWords(cmdStr)
 
 	// Add namespace if specified and not already in command
 	if args.Namespace != "" {
@@ -383,6 +385,21 @@ func (e *Executor) executeKubectl(ctx context.Context, argsJSON string) (string,
 	}
 
 	return e.runKubectlCommand(ctx, cmdArgs, e.timeout)
+}
+
+// splitCommandWords splits a command string into arguments respecting shell
+// quoting, so LLM-generated commands like
+//
+//	kubectl get pods -l 'app in (foo, bar)'
+//
+// keep quoted values as single arguments. strings.Fields would split them on
+// whitespace and silently pass mangled arguments to kubectl. Falls back to
+// strings.Fields if the string is not valid shell syntax.
+func splitCommandWords(s string) []string {
+	if fields, err := shell.Fields(s, nil); err == nil {
+		return fields
+	}
+	return strings.Fields(s)
 }
 
 // executeBash runs a bash command
