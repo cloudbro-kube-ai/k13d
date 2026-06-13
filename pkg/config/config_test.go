@@ -813,8 +813,8 @@ func TestModelProfileYAMLRoundTrip(t *testing.T) {
 		},
 	}
 
-	// Marshal to YAML
-	data, err := yaml.Marshal(original)
+	// Marshal to YAML (pointer: Config carries a sync.RWMutex, must not be copied)
+	data, err := yaml.Marshal(&original)
 	if err != nil {
 		t.Fatalf("yaml.Marshal() error = %v", err)
 	}

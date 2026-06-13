@@ -7,12 +7,19 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/adrg/xdg"
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
+	// mu guards the concurrently-mutated profile/server collections
+	// (Models, ActiveModel, MCP.Servers) so web handlers serving parallel
+	// requests don't race on the slices. LLM is separately guarded by the
+	// web server's aiMu. unexported, so yaml/json marshalling ignores it.
+	mu sync.RWMutex
+
 	LLM           LLMConfig           `yaml:"llm" json:"llm"`
 	Models        []ModelProfile      `yaml:"models" json:"models"`               // Multiple LLM model profiles
 	ActiveModel   string              `yaml:"active_model" json:"active_model"`   // Currently active model profile name
@@ -451,21 +458,29 @@ func NewDefaultConfig() *Config {
 }
 
 // GetActiveModelProfile returns the currently active model profile
+// GetActiveModelProfile returns a copy of the active model profile (or the
+// first profile as fallback). A copy is returned so callers can read it
+// without holding the lock; callers must not expect to mutate config through it.
 func (c *Config) GetActiveModelProfile() *ModelProfile {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	for i := range c.Models {
 		if c.Models[i].Name == c.ActiveModel {
-			return &c.Models[i]
+			cp := c.Models[i]
+			return &cp
 		}
 	}
 	// Return first model if active not found
 	if len(c.Models) > 0 {
-		return &c.Models[0]
+		cp := c.Models[0]
+		return &cp
 	}
 	return nil
 }
 
-// SetActiveModel switches to a different model profile and updates LLM config
-func (c *Config) SetActiveModel(name string) bool {
+// setActiveModelLocked is the lock-free core of SetActiveModel. Callers must
+// hold c.mu for writing.
+func (c *Config) setActiveModelLocked(name string) bool {
 	for _, m := range c.Models {
 		if m.Name == name {
 			c.ActiveModel = name
@@ -482,9 +497,18 @@ func (c *Config) SetActiveModel(name string) bool {
 	return false
 }
 
+// SetActiveModel switches to a different model profile and updates LLM config
+func (c *Config) SetActiveModel(name string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.setActiveModelLocked(name)
+}
+
 // SyncActiveModelProfileFromLLM persists the current LLM settings into the
 // explicitly selected active model profile.
 func (c *Config) SyncActiveModelProfileFromLLM() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for i := range c.Models {
 		if c.Models[i].Name != c.ActiveModel {
 			continue
@@ -503,9 +527,10 @@ func (c *Config) SyncActiveModelProfileFromLLM() bool {
 	return false
 }
 
-// AddModelProfile adds a new model profile
+// AddModelProfile adds a new model profile (or updates one with the same name)
 func (c *Config) AddModelProfile(profile ModelProfile) {
-	// Check if name already exists, update if so
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for i, m := range c.Models {
 		if m.Name == profile.Name {
 			c.Models[i] = profile
@@ -517,13 +542,15 @@ func (c *Config) AddModelProfile(profile ModelProfile) {
 
 // RemoveModelProfile removes a model profile by name
 func (c *Config) RemoveModelProfile(name string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for i, m := range c.Models {
 		if m.Name == name {
 			c.Models = append(c.Models[:i], c.Models[i+1:]...)
 			// If removed active model, switch to first available or clear
 			if c.ActiveModel == name {
 				if len(c.Models) > 0 {
-					c.SetActiveModel(c.Models[0].Name)
+					c.setActiveModelLocked(c.Models[0].Name)
 				} else {
 					c.ActiveModel = ""
 				}
@@ -534,8 +561,26 @@ func (c *Config) RemoveModelProfile(name string) bool {
 	return false
 }
 
+// ListModels returns a copy of the model profiles for safe concurrent reads.
+func (c *Config) ListModels() []ModelProfile {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	out := make([]ModelProfile, len(c.Models))
+	copy(out, c.Models)
+	return out
+}
+
+// GetActiveModelName returns the active model name under a read lock.
+func (c *Config) GetActiveModelName() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.ActiveModel
+}
+
 // GetEnabledMCPServers returns only enabled MCP servers
 func (c *Config) GetEnabledMCPServers() []MCPServer {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	var enabled []MCPServer
 	for _, s := range c.MCP.Servers {
 		if s.Enabled {
@@ -545,9 +590,31 @@ func (c *Config) GetEnabledMCPServers() []MCPServer {
 	return enabled
 }
 
-// AddMCPServer adds a new MCP server configuration
+// ListMCPServers returns a copy of all MCP server configs for safe reads.
+func (c *Config) ListMCPServers() []MCPServer {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	out := make([]MCPServer, len(c.MCP.Servers))
+	copy(out, c.MCP.Servers)
+	return out
+}
+
+// GetMCPServer returns a copy of the named MCP server and whether it was found.
+func (c *Config) GetMCPServer(name string) (MCPServer, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	for _, s := range c.MCP.Servers {
+		if s.Name == name {
+			return s, true
+		}
+	}
+	return MCPServer{}, false
+}
+
+// AddMCPServer adds a new MCP server configuration (or updates same-name)
 func (c *Config) AddMCPServer(server MCPServer) {
-	// Check if name already exists, update if so
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for i, s := range c.MCP.Servers {
 		if s.Name == server.Name {
 			c.MCP.Servers[i] = server
@@ -559,6 +626,8 @@ func (c *Config) AddMCPServer(server MCPServer) {
 
 // RemoveMCPServer removes an MCP server by name
 func (c *Config) RemoveMCPServer(name string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for i, s := range c.MCP.Servers {
 		if s.Name == name {
 			c.MCP.Servers = append(c.MCP.Servers[:i], c.MCP.Servers[i+1:]...)
@@ -570,6 +639,8 @@ func (c *Config) RemoveMCPServer(name string) bool {
 
 // UpdateMCPServer updates an existing MCP server configuration
 func (c *Config) UpdateMCPServer(oldName string, updated MCPServer) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for i, s := range c.MCP.Servers {
 		if s.Name == oldName {
 			c.MCP.Servers[i] = updated
@@ -581,6 +652,8 @@ func (c *Config) UpdateMCPServer(oldName string, updated MCPServer) bool {
 
 // ToggleMCPServer enables or disables an MCP server
 func (c *Config) ToggleMCPServer(name string, enabled bool) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	for i, s := range c.MCP.Servers {
 		if s.Name == name {
 			c.MCP.Servers[i].Enabled = enabled
@@ -709,7 +782,9 @@ func (c *Config) Save() error {
 		return err
 	}
 
+	c.mu.RLock()
 	data, err := yaml.Marshal(c)
+	c.mu.RUnlock()
 	if err != nil {
 		return err
 	}

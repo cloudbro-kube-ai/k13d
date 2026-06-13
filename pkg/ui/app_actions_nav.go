@@ -451,7 +451,15 @@ func (a *App) showModelSelector() {
 		return
 	}
 
-	if a.config == nil || len(a.config.Models) == 0 {
+	if a.config == nil {
+		a.flashMsg("No AI model profiles configured. Add model definitions to your config.yaml file under the 'models' section.", true)
+		return
+	}
+	// Snapshot under the config lock so the list and the index used by the
+	// select callback stay consistent even if profiles change concurrently.
+	profiles := a.config.ListModels()
+	activeModel := a.config.GetActiveModelName()
+	if len(profiles) == 0 {
 		a.flashMsg("No AI model profiles configured. Add model definitions to your config.yaml file under the 'models' section.", true)
 		return
 	}
@@ -461,9 +469,9 @@ func (a *App) showModelSelector() {
 		SetHighlightFullLine(true)
 	list.SetBorder(true).SetTitle(" Select AI Model (Enter to switch, Esc to cancel) ")
 
-	for _, m := range a.config.Models {
+	for _, m := range profiles {
 		prefix := "  "
-		if m.Name == a.config.ActiveModel {
+		if m.Name == activeModel {
 			prefix = "* "
 		}
 		mainText := prefix + m.Name
@@ -475,8 +483,8 @@ func (a *App) showModelSelector() {
 	}
 
 	list.SetSelectedFunc(func(index int, mainText, secondaryText string, shortcut rune) {
-		if index < len(a.config.Models) {
-			name := a.config.Models[index].Name
+		if index < len(profiles) {
+			name := profiles[index].Name
 			a.closeModal("model-selector")
 			a.SetFocus(a.table)
 			a.switchModel(name)
@@ -492,7 +500,7 @@ func (a *App) showModelSelector() {
 		return event
 	})
 
-	height := len(a.config.Models)*2 + 4
+	height := len(profiles)*2 + 4
 	if height > 20 {
 		height = 20
 	}

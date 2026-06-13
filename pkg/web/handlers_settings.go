@@ -177,9 +177,12 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		// Return all model profiles (mask API keys)
-		models := make([]map[string]interface{}, len(s.cfg.Models))
-		for i, m := range s.cfg.Models {
+		// Return all model profiles (mask API keys). Snapshot under the config
+		// lock via accessors to avoid racing with concurrent profile mutations.
+		profiles := s.cfg.ListModels()
+		activeModel := s.cfg.GetActiveModelName()
+		models := make([]map[string]interface{}, len(profiles))
+		for i, m := range profiles {
 			models[i] = map[string]interface{}{
 				"name":            m.Name,
 				"provider":        m.Provider,
@@ -187,7 +190,7 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 				"endpoint":        m.Endpoint,
 				"description":     m.Description,
 				"has_api_key":     m.APIKey != "",
-				"is_active":       m.Name == s.cfg.ActiveModel,
+				"is_active":       m.Name == activeModel,
 				"skip_tls_verify": m.SkipTLSVerify,
 			}
 			if warning := modelRegistrationWarning(m.Provider, m.Model); warning != "" {
@@ -196,7 +199,7 @@ func (s *Server) handleModels(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"models":       models,
-			"active_model": s.cfg.ActiveModel,
+			"active_model": activeModel,
 		})
 
 	case http.MethodPost:
@@ -369,9 +372,10 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		// Return all MCP server configurations with status
-		servers := make([]map[string]interface{}, len(s.cfg.MCP.Servers))
-		for i, srv := range s.cfg.MCP.Servers {
+		// Return all MCP server configurations with status (snapshot under lock)
+		srvList := s.cfg.ListMCPServers()
+		servers := make([]map[string]interface{}, len(srvList))
+		for i, srv := range srvList {
 			servers[i] = map[string]interface{}{
 				"name":        srv.Name,
 				"command":     srv.Command,
@@ -448,15 +452,9 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 
 		switch req.Action {
 		case "update":
-			// Find existing server
-			var existing *config.MCPServer
-			for i, srv := range s.cfg.MCP.Servers {
-				if srv.Name == req.Name {
-					existing = &s.cfg.MCP.Servers[i]
-					break
-				}
-			}
-			if existing == nil {
+			// Find existing server (copy, under the config lock)
+			existing, ok := s.cfg.GetMCPServer(req.Name)
+			if !ok {
 				WriteErrorSimple(w, http.StatusNotFound, "Server not found")
 				return
 			}
@@ -474,7 +472,7 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Update fields
-			updated := *existing
+			updated := existing
 			if req.NewName != "" {
 				updated.Name = req.NewName
 			}
@@ -511,23 +509,20 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 				WriteErrorSimple(w, http.StatusNotFound, "Server not found")
 				return
 			}
-			// Try to connect
-			for _, srv := range s.cfg.MCP.Servers {
-				if srv.Name == req.Name {
-					ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-					if err := s.mcpClient.Connect(ctx, srv); err != nil {
-						cancel()
-						_ = json.NewEncoder(w).Encode(map[string]interface{}{
-							"status":  "enabled",
-							"warning": fmt.Sprintf("Enabled but failed to connect: %v", err),
-						})
-						_ = s.cfg.Save()
-						return
-					}
+			// Try to connect (fetch the now-enabled server copy)
+			if srv, ok := s.cfg.GetMCPServer(req.Name); ok {
+				ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+				if err := s.mcpClient.Connect(ctx, srv); err != nil {
 					cancel()
-					s.registerMCPTools(srv.Name)
-					break
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
+						"status":  "enabled",
+						"warning": fmt.Sprintf("Enabled but failed to connect: %v", err),
+					})
+					_ = s.cfg.Save()
+					return
 				}
+				cancel()
+				s.registerMCPTools(srv.Name)
 			}
 
 		case "disable":
@@ -547,19 +542,16 @@ func (s *Server) handleMCPServers(w http.ResponseWriter, r *http.Request) {
 			if s.aiClient != nil {
 				s.aiClient.GetToolRegistry().UnregisterMCPTools(req.Name)
 			}
-			// Reconnect
-			for _, srv := range s.cfg.MCP.Servers {
-				if srv.Name == req.Name && srv.Enabled {
-					ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-					if err := s.mcpClient.Connect(ctx, srv); err != nil {
-						cancel()
-						WriteErrorSimple(w, http.StatusInternalServerError, fmt.Sprintf("Failed to reconnect: %v", err))
-						return
-					}
+			// Reconnect (fetch server copy under the config lock)
+			if srv, ok := s.cfg.GetMCPServer(req.Name); ok && srv.Enabled {
+				ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+				if err := s.mcpClient.Connect(ctx, srv); err != nil {
 					cancel()
-					s.registerMCPTools(srv.Name)
-					break
+					WriteErrorSimple(w, http.StatusInternalServerError, fmt.Sprintf("Failed to reconnect: %v", err))
+					return
 				}
+				cancel()
+				s.registerMCPTools(srv.Name)
 			}
 
 		default:
