@@ -48,6 +48,7 @@ type Server struct {
 	securityScanner  *security.Scanner
 	sessionStore     *session.Store // AI conversation session storage
 	port             int
+	bindHost         string // listen address; empty = all interfaces
 	server           *http.Server
 	versionInfo      *VersionInfo
 
@@ -682,7 +683,7 @@ func (s *Server) Start() error {
 	)
 
 	s.server = &http.Server{
-		Addr:              fmt.Sprintf(":%d", s.port),
+		Addr:              fmt.Sprintf("%s:%d", s.bindHost, s.port),
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 		// ReadTimeout and WriteTimeout are intentionally 0 (no limit) to support
@@ -691,8 +692,18 @@ func (s *Server) Start() error {
 		IdleTimeout: 120 * time.Second,
 	}
 
-	fmt.Printf("\n  Web server started at http://localhost:%d\n", s.port)
+	displayHost := s.bindHost
+	if displayHost == "" {
+		displayHost = "localhost"
+	}
+	fmt.Printf("\n  Web server started at http://%s:%d\n", displayHost, s.port)
 	return s.server.ListenAndServe()
+}
+
+// SetBindHost sets the listen address used by Start. Empty (the default)
+// binds all interfaces. Call before Start.
+func (s *Server) SetBindHost(host string) {
+	s.bindHost = host
 }
 
 func (s *Server) Stop() error {

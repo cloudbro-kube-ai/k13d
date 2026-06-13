@@ -193,8 +193,8 @@ make bench-build
 # Run Web UI mode
 ./k13d -web -port 8080
 
-# Run with embedded LLM (no API key needed)
-./k13d --embedded-llm -web -port 8080
+# Run Web UI bound to localhost only
+./k13d -web -host 127.0.0.1 -port 8080
 
 # Run with debug mode
 ./k13d --debug

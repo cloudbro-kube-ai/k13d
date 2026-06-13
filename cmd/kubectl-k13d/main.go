@@ -34,15 +34,19 @@ func main() {
 	tuiMode := flag.Bool("tui", false, "Start TUI mode (default when no mode specified)")
 	mcpMode := flag.Bool("mcp", false, "Start MCP server mode (stdio transport)")
 	webPort := flag.Int("port", cli.EnvIntDefault("K13D_PORT", 8080), "Web server port (used with --web)")
+	webHost := flag.String("host", cli.EnvDefault("K13D_HOST", ""), "Web server bind address, e.g. 127.0.0.1 (default: all interfaces)")
 	configPath := flag.String("config", cli.EnvDefault("K13D_CONFIG", ""), "Config file path (default: platform XDG config dir + /k13d/config.yaml)")
 
+	// Short aliases must repeat the env-var default — registering the same
+	// pointer with a zero default would overwrite the env-derived default.
 	namespace := flag.String("namespace", cli.EnvDefault("K13D_NAMESPACE", ""), "Initial namespace (use 'all' for all namespaces)")
-	flag.StringVar(namespace, "n", "", "Initial namespace (short for --namespace)")
+	flag.StringVar(namespace, "n", cli.EnvDefault("K13D_NAMESPACE", ""), "Initial namespace (short for --namespace)")
 	allNamespaces := flag.Bool("all-namespaces", cli.EnvBoolDefault("K13D_ALL_NAMESPACES", false), "Start with all namespaces")
-	flag.BoolVar(allNamespaces, "A", false, "Start with all namespaces (short for --all-namespaces)")
+	flag.BoolVar(allNamespaces, "A", cli.EnvBoolDefault("K13D_ALL_NAMESPACES", false), "Start with all namespaces (short for --all-namespaces)")
 
 	showVersion := flag.Bool("version", false, "Show version information")
 	genCompletion := flag.String("completion", "", "Generate shell completion (bash, zsh, fish)")
+	debugMode := flag.Bool("debug", cli.EnvBoolDefault("K13D_DEBUG", false), "Enable debug logging")
 
 	authMode := flag.String("auth-mode", cli.EnvDefault("K13D_AUTH_MODE", "token"), "Authentication mode: token (K8s RBAC), local (username/password), ldap, oidc")
 	authDisabled := flag.Bool("no-auth", cli.EnvBoolDefault("K13D_NO_AUTH", false), "Disable authentication (not recommended)")
@@ -90,6 +94,12 @@ func main() {
 		cfg = config.NewDefaultConfig()
 	}
 
+	// Apply log level from config (CLI --debug wins) — parity with k13d binary
+	if *debugMode {
+		cfg.LogLevel = "debug"
+	}
+	log.SetLevel(cfg.LogLevel)
+
 	if *dbPath != "" {
 		cfg.Storage.DBPath = *dbPath
 	}
@@ -109,7 +119,7 @@ func main() {
 			DefaultAdmin:    *adminUser,
 			DefaultPassword: *adminPass,
 		}
-		runWebServer(cfg, *webPort, authOpts)
+		runWebServer(cfg, *webHost, *webPort, authOpts)
 		return
 	}
 
@@ -143,7 +153,7 @@ func runMCPServer() {
 	}
 }
 
-func runWebServer(cfg *config.Config, port int, authOpts *web.AuthOptions) {
+func runWebServer(cfg *config.Config, host string, port int, authOpts *web.AuthOptions) {
 	defer cli.InitDB(cfg)()
 
 	versionInfo := &web.VersionInfo{
@@ -158,6 +168,7 @@ func runWebServer(cfg *config.Config, port int, authOpts *web.AuthOptions) {
 		log.Errorf("Failed to create web server: %v", err)
 		os.Exit(1)
 	}
+	server.SetBindHost(host)
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -226,7 +237,7 @@ _kubectl_k13d_completions() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    opts="-n --namespace -A --web --port --version --completion"
+    opts="-n --namespace -A --all-namespaces --tui --web --mcp --host --port --config --debug --version --completion --auth-mode --no-auth --admin-user --admin-password --db-path --no-db --storage-info"
 
     if [[ "${prev}" == "-n" ]] || [[ "${prev}" == "--namespace" ]]; then
         namespaces=$(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
@@ -254,8 +265,21 @@ _kubectl_k13d() {
         '-n[Initial namespace]:namespace:->namespaces'
         '--namespace[Initial namespace]:namespace:->namespaces'
         '-A[Start with all namespaces]'
+        '--all-namespaces[Start with all namespaces]'
+        '--tui[Start TUI mode]'
         '--web[Start web server mode]'
+        '--mcp[Start MCP server mode]'
+        '--host[Web server bind address]:host:'
         '--port[Web server port]:port:'
+        '--config[Config file path]:file:_files'
+        '--debug[Enable debug logging]'
+        '--auth-mode[Authentication mode]:mode:(token local ldap oidc)'
+        '--no-auth[Disable authentication]'
+        '--admin-user[Default admin username]:user:'
+        '--admin-password[Default admin password]:password:'
+        '--db-path[SQLite database path]:file:_files'
+        '--no-db[Disable database persistence]'
+        '--storage-info[Show storage configuration]'
         '--version[Show version information]'
         '--completion[Generate shell completion]:shell:(bash zsh fish)'
     )
@@ -282,9 +306,21 @@ end
 
 complete -c kubectl-k13d -f
 complete -c kubectl-k13d -s n -l namespace -d 'Initial namespace' -xa '(__kubectl_k13d_get_namespaces)'
-complete -c kubectl-k13d -s A -d 'Start with all namespaces'
+complete -c kubectl-k13d -s A -l all-namespaces -d 'Start with all namespaces'
+complete -c kubectl-k13d -l tui -d 'Start TUI mode'
 complete -c kubectl-k13d -l web -d 'Start web server mode'
+complete -c kubectl-k13d -l mcp -d 'Start MCP server mode'
+complete -c kubectl-k13d -l host -d 'Web server bind address'
 complete -c kubectl-k13d -l port -d 'Web server port'
+complete -c kubectl-k13d -l config -d 'Config file path' -r
+complete -c kubectl-k13d -l debug -d 'Enable debug logging'
+complete -c kubectl-k13d -l auth-mode -d 'Authentication mode' -xa 'token local ldap oidc'
+complete -c kubectl-k13d -l no-auth -d 'Disable authentication'
+complete -c kubectl-k13d -l admin-user -d 'Default admin username'
+complete -c kubectl-k13d -l admin-password -d 'Default admin password'
+complete -c kubectl-k13d -l db-path -d 'SQLite database path' -r
+complete -c kubectl-k13d -l no-db -d 'Disable database persistence'
+complete -c kubectl-k13d -l storage-info -d 'Show storage configuration'
 complete -c kubectl-k13d -l version -d 'Show version information'
 complete -c kubectl-k13d -l completion -d 'Generate shell completion' -xa 'bash zsh fish'
 `
