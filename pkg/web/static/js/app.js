@@ -2389,6 +2389,22 @@ async function proceedWithMessage(message) {
 }
 
 // Format resource links in AI responses to make them clickable
+// renderAgentText safely renders assistant/AI text: code-block contents and
+// all surrounding prose are HTML-escaped (so model output or reflected tool
+// results can't inject markup), while fenced code blocks and newlines are
+// still rendered. This replaces the previous unescaped `innerHTML` paths.
+function renderAgentText(text) {
+    const blocks = [];
+    const NUL = String.fromCharCode(0); // sentinel: survives escapeHtml, absent from real text
+    let s = String(text == null ? '' : text).replace(/```(\w*)\n?([\s\S]*?)```/g, (m, lang, code) => {
+        blocks.push('<pre><code>' + escapeHtml(code) + '</code></pre>');
+        return NUL + (blocks.length - 1) + NUL;
+    });
+    s = escapeHtml(s).replace(/\n/g, '<br>');
+    s = s.replace(new RegExp(NUL + '(\\d+)' + NUL, 'g'), (m, i) => blocks[parseInt(i, 10)] || '');
+    return s;
+}
+
 function formatResourceLinks(text) {
     // Common Kubernetes resource patterns
     // Match patterns like: pod/nginx-xxx, deployment/my-app, service/my-svc
@@ -2582,10 +2598,7 @@ async function sendMessageAgentic(message) {
                     const text = data.replace(/\\n/g, '\n');
                     fullContent += text;
 
-                    let formatted = fullContent;
-                    formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-                    formatted = formatted.replace(/\n/g, '<br>');
-                    contentEl.innerHTML = formatted + '<span class="cursor">▊</span>';
+                    contentEl.innerHTML = renderAgentText(fullContent) + '<span class="cursor">▊</span>';
                     aiScrollToBottom();
 
                     currentEventType = null;
@@ -2596,11 +2609,7 @@ async function sendMessageAgentic(message) {
         // Finalize
         div.classList.remove('streaming');
         div.id = '';
-        let formatted = fullContent;
-        formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-        formatted = formatResourceLinks(formatted);
-        formatted = formatted.replace(/\n/g, '<br>');
-        contentEl.innerHTML = formatted;
+        contentEl.innerHTML = formatResourceLinks(renderAgentText(fullContent));
 
         // AI response is saved by backend in handleAgenticChat
         // Refresh chat history list to reflect updated title/message count
@@ -2679,7 +2688,7 @@ function showToolExecution(execInfo, messageDiv, contentEl) {
     execDiv.innerHTML = `
                 <div class="tool-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                     <span style="color: ${statusColor};">${statusIcon}</span>
-                    <span class="tool-name">${toolLabel}</span>
+                    <span class="tool-name">${escapeHtml(toolLabel)}</span>
                 </div>
                 <div class="tool-command" style="background: var(--bg-primary); padding: 8px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-bottom: 8px; word-break: break-all;">
                     $ ${escapeHtml(execInfo.command || 'N/A')}
@@ -2747,11 +2756,11 @@ function showApprovalModal(approval) {
                         <span class="approval-icon">${icon}</span>
                         <span class="approval-title">${title}</span>
                     </div>
-                    <div class="approval-category ${approval.category}">${approval.category}</div>
+                    <div class="approval-category ${escapeHtml(approval.category)}">${escapeHtml(approval.category)}</div>
                     <p>The AI wants to execute the following command:</p>
                     <div class="approval-command">${escapeHtml(approval.command)}</div>
                     <p style="font-size: 12px; color: var(--text-secondary);">
-                        Tool: <strong>${approval.tool_name}</strong>
+                        Tool: <strong>${escapeHtml(approval.tool_name)}</strong>
                     </p>
                     ${warningsHtml}
                     <div class="approval-buttons">
@@ -2852,10 +2861,11 @@ function addMessage(content, isUser = false) {
     const div = document.createElement('div');
     div.className = `message ${isUser ? 'user' : 'assistant'}`;
 
-    let formatted = content;
+    let formatted;
     if (!isUser) {
-        formatted = content.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-        formatted = formatted.replace(/\n/g, '<br>');
+        formatted = renderAgentText(content);
+    } else {
+        formatted = escapeHtml(content).replace(/\n/g, '<br>');
     }
 
     div.innerHTML = `<div class="message-content">${formatted}</div>`;
@@ -3476,9 +3486,11 @@ function addMessageToDOM(content, isUser, scroll = true) {
     const div = document.createElement('div');
     div.className = `message ${isUser ? 'user' : 'assistant'}`;
 
-    let formattedContent = content;
+    let formattedContent;
     if (!isUser) {
         formattedContent = formatResourceLinks(marked.parse(content));
+    } else {
+        formattedContent = escapeHtml(content).replace(/\n/g, '<br>');
     }
 
     div.innerHTML = `<div class="message-content">${formattedContent}</div>`;
@@ -5429,7 +5441,7 @@ async function openLogViewer(podName, namespace, containers = []) {
 
     const containerSelect = document.getElementById('log-container-select');
     if (validContainers.length > 0) {
-        containerSelect.innerHTML = validContainers.map((c, i) => `<option value="${c}" ${i === 0 ? 'selected' : ''}>${c}</option>`).join('');
+        containerSelect.innerHTML = validContainers.map((c, i) => `<option value="${escapeHtml(c)}" ${i === 0 ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
         currentLogContainer = validContainers[0];
         document.getElementById('log-container-name').textContent = currentLogContainer;
     } else {
@@ -5566,6 +5578,17 @@ function appendLogLine(line, podName = null) {
     div.appendChild(content);
 
     logContent.appendChild(div);
+
+    // Bound memory/DOM: a long-lived follow session can otherwise accumulate
+    // unbounded log lines and DOM nodes, degrading the whole page.
+    const MAX_LOG_LINES = 5000;
+    if (allLogs.length > MAX_LOG_LINES) {
+        allLogs.splice(0, allLogs.length - MAX_LOG_LINES);
+    }
+    while (logContent.childElementCount > MAX_LOG_LINES) {
+        logContent.removeChild(logContent.firstElementChild);
+    }
+
     if (logFollowMode) logContent.scrollTop = logContent.scrollHeight;
 }
 
@@ -5652,6 +5675,8 @@ function setMetricsTimeRange(hours) {
 }
 
 async function showMetrics() {
+    // Clear any prior auto-refresh interval so reopening doesn't orphan a timer
+    if (metricsInterval) { clearInterval(metricsInterval); metricsInterval = null; }
     document.getElementById('metrics-modal').classList.add('active');
     const metricsNsSelect = document.getElementById('metrics-namespace-select');
     metricsNsSelect.innerHTML = document.getElementById('namespace-select').innerHTML;
