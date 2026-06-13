@@ -20,7 +20,8 @@ const (
 
 var (
 	logger       *log.Logger
-	currentLevel Level = LevelInfo // Default level
+	currentLevel Level      = LevelInfo // Default level
+	openLogFiles []*os.File             // tracked so a repeat Init() can close them
 )
 
 func Init(appName string) error {
@@ -33,11 +34,19 @@ func Init(appName string) error {
 		return err
 	}
 
+	// Close any files opened by a previous Init() so re-initialization
+	// (e.g. in tests) doesn't leak file descriptors.
+	for _, f := range openLogFiles {
+		_ = f.Close()
+	}
+	openLogFiles = nil
+
 	// System-wide log
 	sysLogFile, err := os.OpenFile(filepath.Join(logDir, "k13d.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return err
 	}
+	openLogFiles = append(openLogFiles, sysLogFile)
 
 	// Local log (optional, but requested for easy dev access)
 	localLogFile, err := os.OpenFile("k13d.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
@@ -46,6 +55,7 @@ func Init(appName string) error {
 		logger = log.New(sysLogFile, "", log.LstdFlags|log.Lshortfile)
 		return nil
 	}
+	openLogFiles = append(openLogFiles, localLogFile)
 
 	multi := io.MultiWriter(sysLogFile, localLogFile)
 	logger = log.New(multi, "", log.LstdFlags|log.Lshortfile)
