@@ -356,6 +356,14 @@ func (am *AuthManager) HandleAuthStatus(w http.ResponseWriter, r *http.Request) 
 		kubeconfigUser = am.tokenValidator.GetKubeconfigUser()
 	}
 
+	// Snapshot map sizes under the lock: these maps are written concurrently by
+	// Authenticate/CreateUser/cleanupExpiredSessions, and /api/auth/status is
+	// reachable unauthenticated, so an unsynchronized read is a data race.
+	am.mu.RLock()
+	totalUsers := len(am.users)
+	activeSessions := len(am.sessions)
+	am.mu.RUnlock()
+
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"auth_enabled":     am.config.Enabled,
 		"auth_mode":        am.config.AuthMode,
@@ -363,8 +371,8 @@ func (am *AuthManager) HandleAuthStatus(w http.ResponseWriter, r *http.Request) 
 		"oidc_configured":  am.oidcProvider != nil,
 		"token_available":  am.tokenValidator != nil,
 		"session_duration": am.config.SessionDuration.String(),
-		"total_users":      len(am.users),
-		"active_sessions":  len(am.sessions),
+		"total_users":      totalUsers,
+		"active_sessions":  activeSessions,
 		"environment":      environment,
 		"kubeconfig_user":  kubeconfigUser,
 	})

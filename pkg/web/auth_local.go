@@ -3,6 +3,7 @@ package web
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -50,9 +51,11 @@ func checkPassword(password, hash string) bool {
 	if strings.HasPrefix(hash, "$2") {
 		return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 	}
-	// Legacy SHA256 fallback for existing users migrating from older versions
+	// Legacy SHA256 fallback for existing users migrating from older versions.
+	// Constant-time compare so the fallback path doesn't leak the hash via timing.
 	h := sha256.Sum256([]byte(password))
-	return hash == hex.EncodeToString(h[:])
+	computed := hex.EncodeToString(h[:])
+	return subtle.ConstantTimeCompare([]byte(computed), []byte(hash)) == 1
 }
 
 // generateSessionID creates a random session ID

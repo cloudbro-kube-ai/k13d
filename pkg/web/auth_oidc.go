@@ -182,29 +182,20 @@ func (p *OIDCProvider) GetAuthorizationURL(redirectURI string) (string, string, 
 	return authURL.String(), state, nil
 }
 
-// ValidateState validates the state parameter from callback
+// ValidateState validates the state parameter from callback.
+// Lookup and delete happen under one write lock so the state is truly
+// single-use: two concurrent callbacks with the same state (replay /
+// duplicate request) can't both observe it as valid.
 func (p *OIDCProvider) ValidateState(state string) bool {
-	p.mu.RLock()
-	exp, exists := p.states[state]
-	p.mu.RUnlock()
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
+	exp, exists := p.states[state]
 	if !exists {
 		return false
 	}
-
-	if time.Now().After(exp) {
-		p.mu.Lock()
-		delete(p.states, state)
-		p.mu.Unlock()
-		return false
-	}
-
-	// Remove state after validation (single use)
-	p.mu.Lock()
 	delete(p.states, state)
-	p.mu.Unlock()
-
-	return true
+	return !time.Now().After(exp)
 }
 
 // ExchangeCode exchanges authorization code for tokens
