@@ -59,12 +59,10 @@ func checkPassword(password, hash string) bool {
 func generateSessionID() string {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		// Fallback: use timestamp + smaller random read as best effort
-		fallback := make([]byte, 16)
-		for i := range fallback {
-			fallback[i] = byte(time.Now().UnixNano() >> (i * 4))
-		}
-		return base64.URLEncoding.EncodeToString(fallback)
+		// crypto/rand never fails on supported platforms. A predictable
+		// (timestamp-derived) fallback would make session tokens guessable,
+		// so fail loudly instead of issuing a weak token.
+		panic(fmt.Sprintf("crypto/rand failed, cannot issue secure session ID: %v", err))
 	}
 	return base64.URLEncoding.EncodeToString(b)
 }

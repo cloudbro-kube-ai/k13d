@@ -185,8 +185,10 @@ func (am *AuthManager) GetAuthMode() string {
 
 // ValidateSession checks if a session ID is valid and returns the session
 func (am *AuthManager) ValidateSession(sessionID string) (*Session, error) {
-	am.mu.RLock()
-	defer am.mu.RUnlock()
+	// Full write lock: expired sessions are deleted inline, and deleting
+	// from a map under RLock is a data race.
+	am.mu.Lock()
+	defer am.mu.Unlock()
 
 	session, ok := am.sessions[sessionID]
 	if !ok {

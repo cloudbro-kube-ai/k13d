@@ -107,6 +107,9 @@ func TestLLMStatus_ReturnsConfigWhenNoClient(t *testing.T) {
 	if body["has_api_key"] != true {
 		t.Errorf("Expected has_api_key=true, got %v", body["has_api_key"])
 	}
+	if _, hasKey := body["api_key"]; hasKey {
+		t.Error("Raw api_key must NOT be in /api/llm/status response")
+	}
 }
 
 func TestLLMStatus_DefaultEndpointHints(t *testing.T) {

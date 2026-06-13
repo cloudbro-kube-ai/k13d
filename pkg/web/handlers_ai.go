@@ -330,13 +330,13 @@ func (s *Server) handleLLMStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Never include the raw API key in responses; has_api_key is enough for the UI.
 	status := map[string]interface{}{
 		"configured":    s.aiClient != nil,
 		"provider":      s.cfg.LLM.Provider,
 		"model":         s.cfg.LLM.Model,
 		"endpoint":      s.cfg.LLM.Endpoint,
 		"has_api_key":   s.cfg.LLM.APIKey != "",
-		"api_key":       s.cfg.LLM.APIKey,
 		"use_json_mode": s.cfg.LLM.UseJSONMode,
 	}
 
@@ -466,8 +466,9 @@ func (s *Server) handleAgenticChat(w http.ResponseWriter, r *http.Request) {
 			return false
 		}
 
-		// Create pending approval
-		approvalID := fmt.Sprintf("approval_%d", time.Now().UnixNano())
+		// Create pending approval. Use a random ID: timestamp-based IDs can
+		// collide across concurrent chats, silently dropping an approval.
+		approvalID := "approval_" + generateSessionID()[:16]
 		approval := &PendingToolApproval{
 			ID:        approvalID,
 			ToolName:  toolName,

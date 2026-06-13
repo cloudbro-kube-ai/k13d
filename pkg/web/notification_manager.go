@@ -68,9 +68,12 @@ func (nm *NotificationManager) Start() {
 		return
 	}
 	nm.running = true
-	nm.stopCh = make(chan struct{})
-	go nm.runWatcher()
-	go nm.runCleanup()
+	// Pass the channel to the goroutines instead of letting them read the
+	// field: Restart() replaces nm.stopCh, which would be a data race.
+	stopCh := make(chan struct{})
+	nm.stopCh = stopCh
+	go nm.runWatcher(stopCh)
+	go nm.runCleanup(stopCh)
 }
 
 // Stop halts the event watching.
@@ -113,7 +116,7 @@ func (nm *NotificationManager) DedupCount() int {
 	return len(nm.sentEvents)
 }
 
-func (nm *NotificationManager) runWatcher() {
+func (nm *NotificationManager) runWatcher(stopCh <-chan struct{}) {
 	interval := time.Duration(nm.cfg.Notifications.PollInterval) * time.Second
 	if interval < 10*time.Second {
 		interval = 30 * time.Second
@@ -125,13 +128,13 @@ func (nm *NotificationManager) runWatcher() {
 		select {
 		case <-ticker.C:
 			nm.pollAndDispatch()
-		case <-nm.stopCh:
+		case <-stopCh:
 			return
 		}
 	}
 }
 
-func (nm *NotificationManager) runCleanup() {
+func (nm *NotificationManager) runCleanup(stopCh <-chan struct{}) {
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 
@@ -139,7 +142,7 @@ func (nm *NotificationManager) runCleanup() {
 		select {
 		case <-ticker.C:
 			nm.cleanupDedup()
-		case <-nm.stopCh:
+		case <-stopCh:
 			return
 		}
 	}
@@ -440,10 +443,14 @@ func (nm *NotificationManager) postJSON(webhookURL string, payload interface{}) 
 	}
 	resp, err := nm.httpClient.Post(webhookURL, "application/json", bytes.NewReader(data))
 	if err != nil {
-		// Context-aware retry: respects shutdown signal instead of blocking sleep
+		// Context-aware retry: respects shutdown signal instead of blocking sleep.
+		// Snapshot the channel under lock — Restart() replaces nm.stopCh.
+		nm.mu.RLock()
+		stopCh := nm.stopCh
+		nm.mu.RUnlock()
 		select {
 		case <-time.After(2 * time.Second):
-		case <-nm.stopCh:
+		case <-stopCh:
 			return fmt.Errorf("notification manager shutting down")
 		}
 		resp, err = nm.httpClient.Post(webhookURL, "application/json", bytes.NewReader(data))

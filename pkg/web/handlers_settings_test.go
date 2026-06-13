@@ -152,6 +152,9 @@ func TestSettings_GET(t *testing.T) {
 	if llm["model"] != "gpt-4" {
 		t.Errorf("llm.model = %v, want gpt-4", llm["model"])
 	}
+	if _, hasKey := llm["api_key"]; hasKey {
+		t.Error("Raw api_key must NOT be in GET /api/settings response")
+	}
 }
 
 func TestSettings_MethodNotAllowed(t *testing.T) {

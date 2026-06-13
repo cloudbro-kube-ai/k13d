@@ -1658,7 +1658,14 @@ async function loadSettings() {
 
             document.getElementById('setting-llm-model').value = data.llm.model || providerDefaults.model;
             document.getElementById('setting-llm-endpoint').value = data.llm.endpoint || providerDefaults.endpoint;
-            document.getElementById('setting-llm-apikey').value = data.llm.api_key || '';
+            // The server never returns the raw API key. Leave the field empty
+            // (saving with an empty key keeps the stored one) and hint that a
+            // key is already configured.
+            const apikeyInput = document.getElementById('setting-llm-apikey');
+            apikeyInput.value = '';
+            if (data.llm.has_api_key) {
+                apikeyInput.placeholder = '••••••••(saved — leave empty to keep)';
+            }
             currentLLMModel = data.llm.model || providerDefaults.model;
 
             // Load reasoning effort setting

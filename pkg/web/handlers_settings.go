@@ -79,8 +79,11 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		// Return current settings (without sensitive data)
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		// Return current settings (without sensitive data). The raw API key is
+		// never sent to the client; PUT /api/llm keeps the stored key when the
+		// api_key field is empty, so the UI doesn't need it back.
+		s.aiMu.RLock()
+		resp := map[string]interface{}{
 			"language":      s.cfg.Language,
 			"beginner_mode": s.cfg.BeginnerMode,
 			"enable_audit":  s.cfg.EnableAudit,
@@ -91,9 +94,11 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 				"model":            s.cfg.LLM.Model,
 				"endpoint":         s.cfg.LLM.Endpoint,
 				"reasoning_effort": s.cfg.LLM.ReasoningEffort,
-				"api_key":          s.cfg.LLM.APIKey,
+				"has_api_key":      s.cfg.LLM.APIKey != "",
 			},
-		})
+		}
+		s.aiMu.RUnlock()
+		_ = json.NewEncoder(w).Encode(resp)
 
 	case http.MethodPut:
 		var newSettings struct {
