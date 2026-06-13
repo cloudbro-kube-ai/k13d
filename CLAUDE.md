@@ -82,16 +82,16 @@ k8s.io/client-go v0.35.0                # Kubernetes client
 k8s.io/metrics v0.35.0                  # Metrics API
 ```
 
-### Skills (Pattern Reference Documents)
+### Skills
 
-| Skill | File | Key Patterns |
-|-------|------|--------------|
-| k9s Patterns | `skills/k9s-patterns.md` | MVC architecture, Action system, Plugin/HotKey, Skin, XDG config |
-| kubectl-ai Patterns | `skills/kubectl-ai-patterns.md` | Agent Loop, Tool System, LLM abstraction, MCP integration |
-| Headlamp Patterns | `skills/headlamp-patterns.md` | Plugin Registry, Multi-Cluster, Response Cache, OIDC, i18n |
-| K8s Dashboard Patterns | `skills/kubernetes-dashboard-patterns.md` | DataSelector, Multi-Module, Request-Scoped Client |
+| Skill | Location | Purpose |
+|-------|----------|---------|
+| k13d Living Docs | `skills/k13d/` | Docs drift detection (`/check-drift`), docs updater, changelog sync |
+| Anthropic skill pack | `skills/anthropic/` | Upstream Anthropic skills (docx, pptx, xlsx, canvas-design, …) |
+| Superpowers | `skills/superpowers/` | TDD, systematic debugging, subagent-driven development workflows |
+| Vercel | `skills/vercel/` | React/Next.js best practices |
 
-**Usage Guide**: `skills/README.md`
+**Usage Guide**: `skills/k13d/README.md`
 
 ---
 
