@@ -3,6 +3,7 @@
 package eval
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -234,5 +235,5 @@ func formatMessage(format string, args ...interface{}) string {
 	if len(args) == 0 {
 		return format
 	}
-	return format // Simple case, can be expanded with fmt.Sprintf
+	return fmt.Sprintf(format, args...)
 }

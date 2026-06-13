@@ -125,9 +125,12 @@ func RunSimpleBenchmark(ctx context.Context, cfg *config.Config, tasks []SimpleB
 		totalRespTime += result.ResponseTime
 	}
 
-	// Calculate metrics
-	benchmark.PassRate = float64(benchmark.PassedTasks) / float64(benchmark.TotalTasks) * 100
-	benchmark.AvgRespTime = totalRespTime / time.Duration(len(tasks))
+	// Calculate metrics (guard against an empty task list: integer division
+	// by zero on time.Duration panics)
+	if len(tasks) > 0 {
+		benchmark.PassRate = float64(benchmark.PassedTasks) / float64(benchmark.TotalTasks) * 100
+		benchmark.AvgRespTime = totalRespTime / time.Duration(len(tasks))
+	}
 
 	for cat, count := range categoryCount {
 		benchmark.ByCategory[cat] = float64(categoryPass[cat]) / float64(count) * 100
