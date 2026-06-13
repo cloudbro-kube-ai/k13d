@@ -714,7 +714,28 @@ func (c *Config) Save() error {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0600)
+	// Atomic write: a plain WriteFile truncates first, so a crash mid-write
+	// leaves a zero-byte/partial config.yaml that fails to parse on next start,
+	// silently dropping all API keys, model profiles, and MCP servers. Write to
+	// a temp file in the same dir, then rename (atomic on POSIX).
+	tmp, err := os.CreateTemp(dir, ".config-*.yaml.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName) // no-op once renamed; cleans up on any failure
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Chmod(0600); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, path)
 }
 
 func hasXDGConfigHomeOverride() bool {
