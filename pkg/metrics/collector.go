@@ -156,6 +156,9 @@ func (c *Collector) runCleanup() {
 				log.Errorf("Failed to cleanup old metrics: %v", err)
 			}
 			cancel()
+			// Also drop in-memory ring buffers for nodes/pods that have gone
+			// away, so the cache doesn't grow unbounded on pod churn.
+			c.cache.Prune(time.Now(), c.config.Retention)
 		case <-c.stopCh:
 			return
 		}

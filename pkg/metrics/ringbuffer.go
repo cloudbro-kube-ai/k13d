@@ -90,11 +90,13 @@ const DefaultRingCapacity = 1800
 
 // MetricsCache provides in-memory caching of recent metrics using ring buffers.
 type MetricsCache struct {
-	mu       sync.RWMutex
-	cluster  *RingBuffer[db.ClusterMetrics]
-	nodes    map[string]*RingBuffer[db.NodeMetrics] // keyed by nodeName
-	pods     map[string]*RingBuffer[db.PodMetrics]  // keyed by "namespace/podName"
-	capacity int
+	mu            sync.RWMutex
+	cluster       *RingBuffer[db.ClusterMetrics]
+	nodes         map[string]*RingBuffer[db.NodeMetrics] // keyed by nodeName
+	pods          map[string]*RingBuffer[db.PodMetrics]  // keyed by "namespace/podName"
+	nodesLastSeen map[string]time.Time
+	podsLastSeen  map[string]time.Time
+	capacity      int
 }
 
 // NewMetricsCache creates a new in-memory metrics cache.
@@ -103,10 +105,33 @@ func NewMetricsCache(capacity int) *MetricsCache {
 		capacity = DefaultRingCapacity
 	}
 	return &MetricsCache{
-		cluster:  NewRingBuffer[db.ClusterMetrics](capacity),
-		nodes:    make(map[string]*RingBuffer[db.NodeMetrics]),
-		pods:     make(map[string]*RingBuffer[db.PodMetrics]),
-		capacity: capacity,
+		cluster:       NewRingBuffer[db.ClusterMetrics](capacity),
+		nodes:         make(map[string]*RingBuffer[db.NodeMetrics]),
+		pods:          make(map[string]*RingBuffer[db.PodMetrics]),
+		nodesLastSeen: make(map[string]time.Time),
+		podsLastSeen:  make(map[string]time.Time),
+		capacity:      capacity,
+	}
+}
+
+// Prune drops per-key ring buffers that haven't received an update within
+// maxAge. Without this, every namespace/pod ever observed keeps a full-capacity
+// ring buffer forever — a memory leak on clusters with high pod churn (CI/batch
+// workloads). `now` is passed in so callers control the clock.
+func (mc *MetricsCache) Prune(now time.Time, maxAge time.Duration) {
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+	for key, seen := range mc.podsLastSeen {
+		if now.Sub(seen) > maxAge {
+			delete(mc.pods, key)
+			delete(mc.podsLastSeen, key)
+		}
+	}
+	for key, seen := range mc.nodesLastSeen {
+		if now.Sub(seen) > maxAge {
+			delete(mc.nodes, key)
+			delete(mc.nodesLastSeen, key)
+		}
 	}
 }
 
@@ -117,6 +142,7 @@ func (mc *MetricsCache) PushCluster(m db.ClusterMetrics) {
 
 // PushNodes adds a batch of node metrics entries.
 func (mc *MetricsCache) PushNodes(metrics []db.NodeMetrics) {
+	now := time.Now()
 	mc.mu.Lock()
 	for _, m := range metrics {
 		ring, ok := mc.nodes[m.NodeName]
@@ -125,12 +151,14 @@ func (mc *MetricsCache) PushNodes(metrics []db.NodeMetrics) {
 			mc.nodes[m.NodeName] = ring
 		}
 		ring.Push(m)
+		mc.nodesLastSeen[m.NodeName] = now
 	}
 	mc.mu.Unlock()
 }
 
 // PushPods adds a batch of pod metrics entries.
 func (mc *MetricsCache) PushPods(metrics []db.PodMetrics) {
+	now := time.Now()
 	mc.mu.Lock()
 	for _, m := range metrics {
 		key := m.Namespace + "/" + m.PodName
@@ -140,6 +168,7 @@ func (mc *MetricsCache) PushPods(metrics []db.PodMetrics) {
 			mc.pods[key] = ring
 		}
 		ring.Push(m)
+		mc.podsLastSeen[key] = now
 	}
 	mc.mu.Unlock()
 }
