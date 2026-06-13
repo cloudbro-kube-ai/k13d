@@ -256,6 +256,12 @@ func (td *TrivyDownloader) getLatestRelease(ctx context.Context) (*TrivyRelease,
 	}
 	defer resp.Body.Close()
 
+	// Without this check a 403 (rate-limited) / 404 / 5xx body decodes into an
+	// empty TrivyRelease, surfacing later as a misleading "no suitable binary".
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("github API returned status %d", resp.StatusCode)
+	}
+
 	var release TrivyRelease
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
 		return nil, err
