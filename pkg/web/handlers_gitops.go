@@ -46,9 +46,9 @@ func (s *Server) handleGitOpsStatus(w http.ResponseWriter, r *http.Request) {
 	var argoList interface{}
 	var argoErr error
 	if namespace != "" {
-		argoList, argoErr = s.k8sClient.Dynamic.Resource(argoGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
+		argoList, argoErr = s.k8sClient.SafeDynamic().Resource(argoGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
 	} else {
-		argoList, argoErr = s.k8sClient.Dynamic.Resource(argoGVR).List(ctx, metav1.ListOptions{})
+		argoList, argoErr = s.k8sClient.SafeDynamic().Resource(argoGVR).List(ctx, metav1.ListOptions{})
 	}
 
 	if argoErr == nil {
@@ -80,9 +80,9 @@ func (s *Server) handleGitOpsStatus(w http.ResponseWriter, r *http.Request) {
 	var fluxList interface{}
 	var fluxErr error
 	if namespace != "" {
-		fluxList, fluxErr = s.k8sClient.Dynamic.Resource(fluxGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
+		fluxList, fluxErr = s.k8sClient.SafeDynamic().Resource(fluxGVR).Namespace(namespace).List(ctx, metav1.ListOptions{})
 	} else {
-		fluxList, fluxErr = s.k8sClient.Dynamic.Resource(fluxGVR).List(ctx, metav1.ListOptions{})
+		fluxList, fluxErr = s.k8sClient.SafeDynamic().Resource(fluxGVR).List(ctx, metav1.ListOptions{})
 	}
 
 	if fluxErr == nil {

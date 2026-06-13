@@ -30,6 +30,7 @@ const (
 // Scanner provides security scanning capabilities
 type Scanner struct {
 	k8sClient          *k8s.Client
+	mu                 sync.RWMutex // guards trivyPath (written by SetTrivyPath from HTTP handlers)
 	trivyPath          string
 	kubeBenchAvailable bool
 }
@@ -271,9 +272,9 @@ func (s *Scanner) scanImages(ctx context.Context, namespace string) (*ImageVulnS
 	var err error
 
 	if namespace == "" {
-		pods, err = s.k8sClient.Clientset.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+		pods, err = s.k8sClient.SafeClientset().CoreV1().Pods("").List(ctx, metav1.ListOptions{})
 	} else {
-		pods, err = s.k8sClient.Clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+		pods, err = s.k8sClient.SafeClientset().CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	}
 	if err != nil {
 		return nil, err
@@ -293,7 +294,7 @@ func (s *Scanner) scanImages(ctx context.Context, namespace string) (*ImageVulnS
 	summary.TotalImages = len(imageMap)
 
 	// If trivy is available, scan images
-	if s.trivyPath != "" {
+	if s.getTrivyPath() != "" {
 		for image, locations := range imageMap {
 			select {
 			case <-ctx.Done():
@@ -357,7 +358,7 @@ func (s *Scanner) scanImages(ctx context.Context, namespace string) (*ImageVulnS
 
 // scanImageWithTrivy scans a single image using trivy
 func (s *Scanner) scanImageWithTrivy(ctx context.Context, image string) ([]Vulnerability, error) {
-	cmd := exec.CommandContext(ctx, s.trivyPath, "image", "--format", "json", "--severity", "CRITICAL,HIGH,MEDIUM,LOW", "--quiet", image)
+	cmd := exec.CommandContext(ctx, s.getTrivyPath(), "image", "--format", "json", "--severity", "CRITICAL,HIGH,MEDIUM,LOW", "--quiet", image)
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, err
@@ -405,9 +406,9 @@ func (s *Scanner) checkPodSecurity(ctx context.Context, namespace string) ([]Pod
 	var err error
 
 	if namespace == "" {
-		pods, err = s.k8sClient.Clientset.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+		pods, err = s.k8sClient.SafeClientset().CoreV1().Pods("").List(ctx, metav1.ListOptions{})
 	} else {
-		pods, err = s.k8sClient.Clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+		pods, err = s.k8sClient.SafeClientset().CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	}
 	if err != nil {
 		return nil, err
@@ -445,29 +446,6 @@ func (s *Scanner) checkPodSecurity(ctx context.Context, namespace string) ([]Pod
 							Remediation: "Set securityContext.runAsNonRoot to true or specify a non-root runAsUser",
 						})
 					}
-				}
-			}
-
-			// Check for host namespaces
-			if pod.Spec.HostPID {
-				issues = append(issues, PodSecurityIssue{
-					Namespace:   pod.Namespace,
-					Pod:         pod.Name,
-					Issue:       "Pod uses host PID namespace",
-					Severity:    "HIGH",
-					Remediation: "Set hostPID to false unless absolutely required",
-				})
-			}
-
-			if pod.Spec.HostNetwork {
-				if !isSystemNS {
-					issues = append(issues, PodSecurityIssue{
-						Namespace:   pod.Namespace,
-						Pod:         pod.Name,
-						Issue:       "Pod uses host network",
-						Severity:    "MEDIUM",
-						Remediation: "Set hostNetwork to false unless absolutely required",
-					})
 				}
 			}
 
@@ -513,6 +491,29 @@ func (s *Scanner) checkPodSecurity(ctx context.Context, namespace string) ([]Pod
 				})
 			}
 		}
+
+		// Pod-level checks (outside the container loop so they're reported once
+		// per pod, not once per container — duplicating them also skewed the
+		// security score, which deducts points per issue).
+		if pod.Spec.HostPID {
+			issues = append(issues, PodSecurityIssue{
+				Namespace:   pod.Namespace,
+				Pod:         pod.Name,
+				Issue:       "Pod uses host PID namespace",
+				Severity:    "HIGH",
+				Remediation: "Set hostPID to false unless absolutely required",
+			})
+		}
+
+		if pod.Spec.HostNetwork && !isSystemNS {
+			issues = append(issues, PodSecurityIssue{
+				Namespace:   pod.Namespace,
+				Pod:         pod.Name,
+				Issue:       "Pod uses host network",
+				Severity:    "MEDIUM",
+				Remediation: "Set hostNetwork to false unless absolutely required",
+			})
+		}
 	}
 
 	return issues, nil
@@ -523,7 +524,7 @@ func (s *Scanner) checkRBAC(ctx context.Context, namespace string) ([]RBACIssue,
 	var issues []RBACIssue
 
 	// Check ClusterRoleBindings for overly permissive bindings
-	crbs, err := s.k8sClient.Clientset.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
+	crbs, err := s.k8sClient.SafeClientset().RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -551,7 +552,7 @@ func (s *Scanner) checkRBAC(ctx context.Context, namespace string) ([]RBACIssue,
 	}
 
 	// Check ClusterRoles for dangerous permissions
-	crs, err := s.k8sClient.Clientset.RbacV1().ClusterRoles().List(ctx, metav1.ListOptions{})
+	crs, err := s.k8sClient.SafeClientset().RbacV1().ClusterRoles().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -609,7 +610,7 @@ func (s *Scanner) checkNetwork(ctx context.Context, namespace string) ([]Network
 	// Get all namespaces or specific namespace
 	var namespaces []string
 	if namespace == "" {
-		nsList, err := s.k8sClient.Clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+		nsList, err := s.k8sClient.SafeClientset().CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -624,14 +625,14 @@ func (s *Scanner) checkNetwork(ctx context.Context, namespace string) ([]Network
 
 	// Check for missing NetworkPolicies
 	for _, ns := range namespaces {
-		policies, err := s.k8sClient.Clientset.NetworkingV1().NetworkPolicies(ns).List(ctx, metav1.ListOptions{})
+		policies, err := s.k8sClient.SafeClientset().NetworkingV1().NetworkPolicies(ns).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			continue
 		}
 
 		if len(policies.Items) == 0 {
 			// Check if there are any pods in the namespace
-			pods, err := s.k8sClient.Clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{Limit: 1})
+			pods, err := s.k8sClient.SafeClientset().CoreV1().Pods(ns).List(ctx, metav1.ListOptions{Limit: 1})
 			if err == nil && len(pods.Items) > 0 {
 				issues = append(issues, NetworkIssue{
 					Namespace:   ns,
@@ -648,9 +649,9 @@ func (s *Scanner) checkNetwork(ctx context.Context, namespace string) ([]Network
 	var services *corev1.ServiceList
 	var err error
 	if namespace == "" {
-		services, err = s.k8sClient.Clientset.CoreV1().Services("").List(ctx, metav1.ListOptions{})
+		services, err = s.k8sClient.SafeClientset().CoreV1().Services("").List(ctx, metav1.ListOptions{})
 	} else {
-		services, err = s.k8sClient.Clientset.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+		services, err = s.k8sClient.SafeClientset().CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
 	}
 	if err != nil {
 		return issues, nil
@@ -768,7 +769,7 @@ func (s *Scanner) performBasicCISChecks(ctx context.Context, namespace string) (
 			id:          "5.1.1",
 			description: "Ensure that the cluster-admin role is only used where required",
 			check: func() bool {
-				crbs, err := s.k8sClient.Clientset.RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
+				crbs, err := s.k8sClient.SafeClientset().RbacV1().ClusterRoleBindings().List(ctx, metav1.ListOptions{})
 				if err != nil {
 					return false
 				}
@@ -786,7 +787,7 @@ func (s *Scanner) performBasicCISChecks(ctx context.Context, namespace string) (
 			id:          "5.2.1",
 			description: "Minimize the admission of privileged containers",
 			check: func() bool {
-				pods, err := s.k8sClient.Clientset.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+				pods, err := s.k8sClient.SafeClientset().CoreV1().Pods("").List(ctx, metav1.ListOptions{})
 				if err != nil {
 					return false
 				}
@@ -808,7 +809,7 @@ func (s *Scanner) performBasicCISChecks(ctx context.Context, namespace string) (
 			id:          "5.2.2",
 			description: "Minimize the admission of containers wishing to share the host PID namespace",
 			check: func() bool {
-				pods, err := s.k8sClient.Clientset.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+				pods, err := s.k8sClient.SafeClientset().CoreV1().Pods("").List(ctx, metav1.ListOptions{})
 				if err != nil {
 					return false
 				}
@@ -829,7 +830,7 @@ func (s *Scanner) performBasicCISChecks(ctx context.Context, namespace string) (
 			description: "Ensure that the CNI in use supports Network Policies",
 			check: func() bool {
 				// Check if any network policies exist
-				policies, err := s.k8sClient.Clientset.NetworkingV1().NetworkPolicies("").List(ctx, metav1.ListOptions{Limit: 1})
+				policies, err := s.k8sClient.SafeClientset().NetworkingV1().NetworkPolicies("").List(ctx, metav1.ListOptions{Limit: 1})
 				if err != nil {
 					return false
 				}
@@ -842,7 +843,7 @@ func (s *Scanner) performBasicCISChecks(ctx context.Context, namespace string) (
 			id:          "5.4.1",
 			description: "Prefer using secrets as files over secrets as environment variables",
 			check: func() bool {
-				pods, err := s.k8sClient.Clientset.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+				pods, err := s.k8sClient.SafeClientset().CoreV1().Pods("").List(ctx, metav1.ListOptions{})
 				if err != nil {
 					return false
 				}
@@ -1133,19 +1134,30 @@ func getSectionName(id string) string {
 	return "General Security"
 }
 
+// getTrivyPath returns the trivy path under a read lock. Used internally by
+// scan paths that may run concurrently with SetTrivyPath (called from the
+// install-trivy HTTP handler).
+func (s *Scanner) getTrivyPath() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.trivyPath
+}
+
 // TrivyAvailable returns whether trivy is available
 func (s *Scanner) TrivyAvailable() bool {
-	return s.trivyPath != ""
+	return s.getTrivyPath() != ""
 }
 
 // SetTrivyPath sets the path to trivy binary (used after download)
 func (s *Scanner) SetTrivyPath(path string) {
+	s.mu.Lock()
 	s.trivyPath = path
+	s.mu.Unlock()
 }
 
 // GetTrivyPath returns the current trivy path
 func (s *Scanner) GetTrivyPath() string {
-	return s.trivyPath
+	return s.getTrivyPath()
 }
 
 // KubeBenchAvailable returns whether kube-bench is available
@@ -1155,7 +1167,7 @@ func (s *Scanner) KubeBenchAvailable() bool {
 
 // ScanImage scans a single image (public API)
 func (s *Scanner) ScanImage(ctx context.Context, image string) ([]Vulnerability, error) {
-	if s.trivyPath == "" {
+	if s.getTrivyPath() == "" {
 		return nil, fmt.Errorf("trivy not available")
 	}
 	return s.scanImageWithTrivy(ctx, image)

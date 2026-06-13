@@ -52,7 +52,7 @@ func (s *Server) handleResourceDiff(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the current resource
-	obj, err := s.k8sClient.Dynamic.Resource(gvr).Namespace(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
+	obj, err := s.k8sClient.SafeDynamic().Resource(gvr).Namespace(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
 	if err != nil {
 		WriteError(w, NewAPIError(ErrCodeNotFound, "Failed to get resource: "+err.Error()))
 		return

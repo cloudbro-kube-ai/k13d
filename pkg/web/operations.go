@@ -21,7 +21,7 @@ import (
 // (after writing an error response) if it is not. Handlers should return
 // immediately when this returns false.
 func (s *Server) requireK8sClient(w http.ResponseWriter) bool {
-	if s.k8sClient == nil || s.k8sClient.Clientset == nil {
+	if s.k8sClient == nil || s.k8sClient.SafeClientset() == nil {
 		WriteError(w, NewAPIError(ErrCodeK8sError, "Kubernetes client not available"))
 		return false
 	}
@@ -74,7 +74,7 @@ func (s *Server) handleDeploymentScale(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// Get current deployment
 	deployment, err := clientset.AppsV1().Deployments(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
@@ -144,7 +144,7 @@ func (s *Server) handleDeploymentRestart(w http.ResponseWriter, r *http.Request)
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// Patch deployment to trigger rollout restart
 	patch := fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, time.Now().Format(time.RFC3339))
@@ -200,7 +200,7 @@ func (s *Server) handleDeploymentPause(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// Patch deployment to pause
 	patch := `{"spec":{"paused":true}}`
@@ -256,7 +256,7 @@ func (s *Server) handleDeploymentResume(w http.ResponseWriter, r *http.Request) 
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// Patch deployment to resume
 	patch := `{"spec":{"paused":false}}`
@@ -309,7 +309,7 @@ func (s *Server) handleDeploymentRollback(w http.ResponseWriter, r *http.Request
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// Get deployment
 	deployment, err := clientset.AppsV1().Deployments(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
@@ -437,7 +437,7 @@ func (s *Server) handleDeploymentHistory(w http.ResponseWriter, r *http.Request)
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// Get deployment
 	deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
@@ -529,7 +529,7 @@ func (s *Server) handleCronJobTrigger(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// Get the CronJob
 	cronJob, err := clientset.BatchV1().CronJobs(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
@@ -618,7 +618,7 @@ func (s *Server) handleCronJobSuspend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// Patch CronJob
 	patch := fmt.Sprintf(`{"spec":{"suspend":%t}}`, req.Suspend)
@@ -683,7 +683,7 @@ func (s *Server) handleNodeCordon(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// Get node
 	node, err := clientset.CoreV1().Nodes().Get(ctx, req.Name, metav1.GetOptions{})
@@ -755,7 +755,7 @@ func (s *Server) handleNodeDrain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// First cordon the node
 	node, err := clientset.CoreV1().Nodes().Get(ctx, req.Name, metav1.GetOptions{})
@@ -845,7 +845,7 @@ func (s *Server) handleNodePods(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// List pods on the node
 	podList, err := clientset.CoreV1().Pods("").List(ctx, metav1.ListOptions{
@@ -921,7 +921,7 @@ func (s *Server) handleStatefulSetScale(w http.ResponseWriter, r *http.Request) 
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// Get current StatefulSet
 	sts, err := clientset.AppsV1().StatefulSets(req.Namespace).Get(ctx, req.Name, metav1.GetOptions{})
@@ -991,7 +991,7 @@ func (s *Server) handleStatefulSetRestart(w http.ResponseWriter, r *http.Request
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// Patch StatefulSet to trigger rollout restart
 	patch := fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, time.Now().Format(time.RFC3339))
@@ -1051,7 +1051,7 @@ func (s *Server) handleDaemonSetRestart(w http.ResponseWriter, r *http.Request) 
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// Patch DaemonSet to trigger rollout restart
 	patch := fmt.Sprintf(`{"spec":{"template":{"metadata":{"annotations":{"kubectl.kubernetes.io/restartedAt":"%s"}}}}}`, time.Now().Format(time.RFC3339))

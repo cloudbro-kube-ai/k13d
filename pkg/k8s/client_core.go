@@ -134,6 +134,17 @@ func (c *Client) metricsClient() *metricsv1beta1.MetricsV1beta1Client {
 	return m
 }
 
+// SafeClientset is the exported, lock-protected accessor for the clientset.
+// External packages (web handlers, security scanner) must use this instead of
+// reading c.Clientset directly, which races with SwitchContext.
+func (c *Client) SafeClientset() kubernetes.Interface { return c.clientset() }
+
+// SafeDynamic is the exported, lock-protected accessor for the dynamic client.
+func (c *Client) SafeDynamic() dynamic.Interface { return c.dynamicClient() }
+
+// SafeConfig is the exported, lock-protected accessor for the REST config.
+func (c *Client) SafeConfig() *rest.Config { return c.restConfig() }
+
 // GetRestConfig returns the REST config for the client
 func (c *Client) GetRestConfig() (*rest.Config, error) {
 	if cfg := c.restConfig(); cfg != nil {

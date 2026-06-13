@@ -49,7 +49,7 @@ func (s *Server) handleVeleroBackups(w http.ResponseWriter, r *http.Request) {
 		Resource: "backups",
 	}
 
-	list, err := s.k8sClient.Dynamic.Resource(backupGVR).List(ctx, metav1.ListOptions{})
+	list, err := s.k8sClient.SafeDynamic().Resource(backupGVR).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(VeleroResponse{
@@ -104,7 +104,7 @@ func (s *Server) handleVeleroSchedules(w http.ResponseWriter, r *http.Request) {
 		Resource: "schedules",
 	}
 
-	list, err := s.k8sClient.Dynamic.Resource(scheduleGVR).List(ctx, metav1.ListOptions{})
+	list, err := s.k8sClient.SafeDynamic().Resource(scheduleGVR).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(VeleroResponse{

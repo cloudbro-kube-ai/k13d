@@ -235,7 +235,7 @@ func (h *TerminalHandler) HandleTerminal(w http.ResponseWriter, r *http.Request)
 
 	// Get pod to find default container if not specified
 	if container == "" {
-		pod, err := h.k8sClient.Clientset.CoreV1().Pods(namespace).Get(r.Context(), podName, metav1.GetOptions{})
+		pod, err := h.k8sClient.SafeClientset().CoreV1().Pods(namespace).Get(r.Context(), podName, metav1.GetOptions{})
 		if err != nil {
 			session.SendError(fmt.Errorf("failed to get pod: %v", err))
 			return
@@ -246,7 +246,7 @@ func (h *TerminalHandler) HandleTerminal(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Create exec request
-	req := h.k8sClient.Clientset.CoreV1().RESTClient().Post().
+	req := h.k8sClient.SafeClientset().CoreV1().RESTClient().Post().
 		Resource("pods").
 		Name(podName).
 		Namespace(namespace).
@@ -260,7 +260,7 @@ func (h *TerminalHandler) HandleTerminal(w http.ResponseWriter, r *http.Request)
 			TTY:       true,
 		}, scheme.ParameterCodec)
 
-	exec, err := remotecommand.NewSPDYExecutor(h.k8sClient.Config, "POST", req.URL())
+	exec, err := remotecommand.NewSPDYExecutor(h.k8sClient.SafeConfig(), "POST", req.URL())
 	if err != nil {
 		session.SendError(fmt.Errorf("failed to create executor: %v", err))
 		return

@@ -63,8 +63,8 @@ func (rg *ReportGenerator) GenerateReport(ctx context.Context, username string, 
 		IncludedSections: included,
 	}
 	report.ClusterInfo.Platform = "kubernetes"
-	if rg.server != nil && rg.server.k8sClient != nil && rg.server.k8sClient.Clientset != nil {
-		if version, err := rg.server.k8sClient.Clientset.Discovery().ServerVersion(); err == nil && version != nil {
+	if rg.server != nil && rg.server.k8sClient != nil && rg.server.k8sClient.SafeClientset() != nil {
+		if version, err := rg.server.k8sClient.SafeClientset().Discovery().ServerVersion(); err == nil && version != nil {
 			report.ClusterInfo.ServerVersion = version.GitVersion
 			if version.Platform != "" {
 				report.ClusterInfo.Platform = version.Platform

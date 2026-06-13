@@ -65,7 +65,7 @@ func (s *Server) handleK8sResource(w http.ResponseWriter, r *http.Request) {
 		var pods []corev1.Pod
 		if labelSelector != "" {
 			// Use label selector if provided
-			podList, e := s.k8sClient.Clientset.CoreV1().Pods(namespace).List(r.Context(), metav1.ListOptions{
+			podList, e := s.k8sClient.SafeClientset().CoreV1().Pods(namespace).List(r.Context(), metav1.ListOptions{
 				LabelSelector: labelSelector,
 			})
 			if e != nil {
@@ -795,7 +795,7 @@ func (s *Server) handlePodLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get logs from k8s client
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 	req := clientset.CoreV1().Pods(namespace).GetLogs(podName, opts)
 
 	if follow {
@@ -858,7 +858,7 @@ func (s *Server) handleWorkloadPods(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	clientset := s.k8sClient.Clientset
+	clientset := s.k8sClient.SafeClientset()
 
 	// Get the workload's selector
 	var selector *metav1.LabelSelector
