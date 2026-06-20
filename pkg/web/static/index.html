@@ -54,106 +54,140 @@
 <body>
     <!-- Login Page -->
     <div class="login-container" id="login-page">
-        <div class="login-box">
-            <!-- Team Branding -->
-            <div class="team-branding">
-                <span class="team-cloud">☁️ Cloud Bro</span>
-                <span class="team-divider">×</span>
-                <span class="team-kubeai">KubeAI Team</span>
-            </div>
-
-            <!-- ASCII Art Logo -->
-            <div class="login-ascii-logo">
+        <!-- Left Panel - Branding -->
+        <div class="login-left">
+            <div class="login-branding">
+                <!-- ASCII Art Logo -->
+                <div class="login-ascii-logo">
 ██╗ ██╗ ██╗██████╗ ██████╗
 ██║ ██╔╝███║╚════██╗██╔══██╗
 █████╔╝ ╚██║ █████╔╝██║ ██║
 ██╔═██╗ ██║ ╚═══██╗██║ ██║
 ██║ ██╗ ██║██████╔╝██████╔╝
 ╚═╝ ╚═╝ ╚═╝╚═════╝ ╚═════╝</div>
-            <h1>k13d</h1>
-            <div class="login-subtitle"><span>kube-ai-dashboard</span></div>
+                <h1 class="login-title">k13d</h1>
+                <div class="login-subtitle"><span>kube-ai-dashboard</span></div>
 
-            <!-- Auth Mode Indicator -->
-            <div id="auth-mode-indicator" class="auth-mode-indicator"></div>
-
-            <div class="login-error" id="login-error"></div>
-
-            <!-- Token Login Form (for token mode) -->
-            <div id="token-login-form" class="login-form">
-                <div class="token-hint" id="token-hint">
-                    <div style="margin-bottom: 12px;">🔐 <span data-i18n="login_token_hint">Sign in with your Kubernetes ServiceAccount token</span></div>
-                    <div class="token-help-box" id="token-help-box">
-                        <div class="token-help-toggle" onclick="toggleTokenHelp()" role="button" tabindex="0">
-                            <span class="token-help-toggle-text">📋 <span data-i18n="login_token_help_toggle">How to create a token</span></span>
-                            <span class="token-help-toggle-icon">▼</span>
+                <!-- Features -->
+                <div class="login-features">
+                    <div class="login-feature">
+                        <span class="feature-icon">🤖</span>
+                        <div>
+                            <strong>AI Assistant</strong>
+                            <p>Natural language cluster management</p>
                         </div>
-                        <div class="token-help-content">
-                            <div class="token-help-step">
-                                <span class="step-num">1</span>
-                                <div>
-                                    <div data-i18n="login_token_step1">Create ServiceAccount (optional):</div>
-                                    <code>kubectl create sa my-user -n default</code>
-                                </div>
-                            </div>
-                            <div class="token-help-step">
-                                <span class="step-num">2</span>
-                                <div>
-                                    <div data-i18n="login_token_step2">Grant permissions:</div>
-                                    <code>kubectl create clusterrolebinding my-user-binding \<br/>  --clusterrole=cluster-admin \<br/>  --serviceaccount=default:my-user</code>
-                                </div>
-                            </div>
-                            <div class="token-help-step">
-                                <span class="step-num">3</span>
-                                <div>
-                                    <div data-i18n="login_token_step3">Create token:</div>
-                                    <code>kubectl create token my-user -n default --duration=8760h</code>
-                                </div>
-                            </div>
-                            <div class="token-help-note">
-                                💡 <strong>Tip:</strong> <span data-i18n="login_token_tip">Paste the token below and press Enter!</span>
-                            </div>
+                    </div>
+                    <div class="login-feature">
+                        <span class="feature-icon">⚡</span>
+                        <div>
+                            <strong>Real-time Monitoring</strong>
+                            <p>Live resource status and metrics</p>
+                        </div>
+                    </div>
+                    <div class="login-feature">
+                        <span class="feature-icon">🔒</span>
+                        <div>
+                            <strong>Safety First</strong>
+                            <p>Guardrails for dangerous operations</p>
                         </div>
                     </div>
                 </div>
-                <label for="login-token" class="sr-only">Kubernetes Token</label>
-                <textarea id="login-token" class="token-input" placeholder="eyJhbGciOiJSUzI1NiIs..."
-                    aria-label="Kubernetes service account token" onkeydown="handleTokenKeydown(event)"></textarea>
-                <button class="login-btn" onclick="loginWithToken()">🚀 Sign In with Token</button>
-            </div>
 
-            <!-- Password Login Form (for local mode) -->
-            <div id="password-login-form" class="login-form">
-                <div class="local-login-hint">
-                    <div style="margin-bottom: 8px;">👤 <span data-i18n="login_local_hint">로컬 계정으로 로그인하세요</span></div>
-                    <div style="font-size: 11px; color: var(--text-muted);"><span data-i18n="login_local_sub_hint">Ask your administrator for credentials</span></div>
+                <!-- Team Branding -->
+                <div class="login-team">
+                    <span class="team-cloud">☁️ Cloud Bro</span>
+                    <span class="team-divider">×</span>
+                    <span class="team-kubeai">KubeAI Team</span>
                 </div>
-                <label for="login-username" class="sr-only">Username</label>
-                <input type="text" id="login-username" placeholder="Username" aria-label="Username"
-                    autocomplete="username" onkeydown="handlePasswordKeydown(event)">
-                <label for="login-password" class="sr-only">Password</label>
-                <input type="password" id="login-password" placeholder="Password" aria-label="Password"
-                    autocomplete="current-password" onkeydown="handlePasswordKeydown(event)">
-                <button class="login-btn" onclick="login()">🚀 Sign In</button>
             </div>
+        </div>
 
-            <!-- Footer with branding -->
-            <div class="login-footer">
-                <div class="login-k8s-badge">
-                    <svg viewBox="0 0 32 32" fill="currentColor">
-                        <path
-                            d="M16 0C7.2 0 0 7.2 0 16s7.2 16 16 16 16-7.2 16-16S24.8 0 16 0zm0 2c7.7 0 14 6.3 14 14s-6.3 14-14 14S2 23.7 2 16 8.3 2 16 2z" />
-                        <circle cx="16" cy="16" r="4" />
-                        <circle cx="16" cy="6" r="2" />
-                        <circle cx="24.5" cy="11" r="2" />
-                        <circle cx="24.5" cy="21" r="2" />
-                        <circle cx="16" cy="26" r="2" />
-                        <circle cx="7.5" cy="21" r="2" />
-                        <circle cx="7.5" cy="11" r="2" />
-                    </svg>
-                    Powered by Kubernetes
+        <!-- Right Panel - Login Form -->
+        <div class="login-right">
+            <div class="login-box">
+                <div class="login-form-header">
+                    <h2>Welcome</h2>
+                    <p>Sign in to your account</p>
                 </div>
-                <div class="login-version">
-                    Made with 💙 by <strong>Cloud Bro KubeAI Team</strong>
+
+                <!-- Auth Mode Indicator -->
+                <div id="auth-mode-indicator" class="auth-mode-indicator"></div>
+
+                <div class="login-error" id="login-error"></div>
+
+                <!-- Token Login Form (for token mode) -->
+                <div id="token-login-form" class="login-form">
+                    <div class="token-hint" id="token-hint">
+                        <div style="margin-bottom: 12px;">🔐 <span data-i18n="login_token_hint">Sign in with your Kubernetes ServiceAccount token</span></div>
+                        <div class="token-help-box" id="token-help-box">
+                            <div class="token-help-toggle" onclick="toggleTokenHelp()" role="button" tabindex="0">
+                                <span class="token-help-toggle-text">📋 <span data-i18n="login_token_help_toggle">How to create a token</span></span>
+                                <span class="token-help-toggle-icon">▼</span>
+                            </div>
+                            <div class="token-help-content">
+                                <div class="token-help-step">
+                                    <span class="step-num">1</span>
+                                    <div>
+                                        <div data-i18n="login_token_step1">Create ServiceAccount (optional):</div>
+                                        <code>kubectl create sa my-user -n default</code>
+                                    </div>
+                                </div>
+                                <div class="token-help-step">
+                                    <span class="step-num">2</span>
+                                    <div>
+                                        <div data-i18n="login_token_step2">Grant permissions:</div>
+                                        <code>kubectl create clusterrolebinding my-user-binding \<br/>  --clusterrole=cluster-admin \<br/>  --serviceaccount=default:my-user</code>
+                                    </div>
+                                </div>
+                                <div class="token-help-step">
+                                    <span class="step-num">3</span>
+                                    <div>
+                                        <div data-i18n="login_token_step3">Create token:</div>
+                                        <code>kubectl create token my-user -n default --duration=8760h</code>
+                                    </div>
+                                </div>
+                                <div class="token-help-note">
+                                    💡 <strong>Tip:</strong> <span data-i18n="login_token_tip">Paste the token below and press Enter!</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <label for="login-token" class="sr-only">Kubernetes Token</label>
+                    <textarea id="login-token" class="token-input" placeholder="eyJhbGciOiJSUzI1NiIs..."
+                        aria-label="Kubernetes service account token" onkeydown="handleTokenKeydown(event)"></textarea>
+                    <button class="login-btn" onclick="loginWithToken()">Sign In with Token</button>
+                </div>
+
+                <!-- Password Login Form (for local mode) -->
+                <div id="password-login-form" class="login-form">
+                    <div class="local-login-hint">
+                        <div style="margin-bottom: 8px;">👤 <span data-i18n="login_local_hint">로컬 계정으로 로그인하세요</span></div>
+                        <div style="font-size: 11px; color: var(--text-muted);"><span data-i18n="login_local_sub_hint">Ask your administrator for credentials</span></div>
+                    </div>
+                    <label for="login-username" class="sr-only">Username</label>
+                    <input type="text" id="login-username" placeholder="Username" aria-label="Username"
+                        autocomplete="username" onkeydown="handlePasswordKeydown(event)">
+                    <label for="login-password" class="sr-only">Password</label>
+                    <input type="password" id="login-password" placeholder="Password" aria-label="Password"
+                        autocomplete="current-password" onkeydown="handlePasswordKeydown(event)">
+                    <button class="login-btn" onclick="login()">Sign In</button>
+                </div>
+
+                <!-- Footer -->
+                <div class="login-footer">
+                    <div class="login-k8s-badge">
+                        <svg viewBox="0 0 32 32" fill="currentColor">
+                            <path d="M16 0C7.2 0 0 7.2 0 16s7.2 16 16 16 16-7.2 16-16S24.8 0 16 0zm0 2c7.7 0 14 6.3 14 14s-6.3 14-14 14S2 23.7 2 16 8.3 2 16 2z" />
+                            <circle cx="16" cy="16" r="4" />
+                            <circle cx="16" cy="6" r="2" />
+                            <circle cx="24.5" cy="11" r="2" />
+                            <circle cx="24.5" cy="21" r="2" />
+                            <circle cx="16" cy="26" r="2" />
+                            <circle cx="7.5" cy="21" r="2" />
+                            <circle cx="7.5" cy="11" r="2" />
+                        </svg>
+                        <span>Powered by Kubernetes</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -781,6 +815,28 @@
                     </div>
                 </div>
 
+                <!-- Audit Logs Container -->
+                <div class="custom-view-container" id="audit-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2 data-i18n="header_audit_logs">Audit Logs</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;">
+                                <input type="checkbox" id="audit-filter-llm-inline" onchange="toggleAuditFilter('onlyLLM')">
+                                <span>LLM Only</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;">
+                                <input type="checkbox" id="audit-filter-errors-inline" onchange="toggleAuditFilter('onlyErrors')">
+                                <span>Errors</span>
+                            </label>
+                            <span style="color:var(--text-secondary);font-size:12px;" id="audit-entry-count-inline"></span>
+                            <button onclick="loadAuditContainerData()">↻ Refresh</button>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="audit-body">
+                        <div class="loading-placeholder">Loading audit logs...</div>
+                    </div>
+                </div>
+
 
 
                 <!-- Resize Handle -->
@@ -921,7 +977,7 @@
                             <div>
                                 <div class="settings-label">Language</div>
                             </div>
-                            <select id="setting-language">
+                            <select id="setting-language" onchange="autoSaveGeneralSettings()">
                                 <option value="en">English</option>
                                 <option value="ko">한국어 (Korean)</option>
                                 <option value="zh">中文 (Chinese)</option>
@@ -932,7 +988,7 @@
                             <div>
                                 <div class="settings-label">Log Level</div>
                             </div>
-                            <select id="setting-log-level">
+                            <select id="setting-log-level" onchange="autoSaveGeneralSettings()">
                                 <option value="debug">Debug</option>
                                 <option value="info">Info</option>
                                 <option value="warn">Warning</option>
@@ -944,7 +1000,7 @@
                                 <div class="settings-label">Timezone</div>
                                 <div class="settings-description">Set the timezone for displaying dates and times</div>
                             </div>
-                            <select id="setting-timezone">
+                            <select id="setting-timezone" onchange="autoSaveGeneralSettings()">
                                 <option value="auto">Auto (Browser)</option>
                                 <option value="UTC">UTC</option>
                                 <option value="Asia/Seoul">Asia/Seoul (KST)</option>
@@ -1018,8 +1074,7 @@
                 <div id="settings-ai" class="settings-content" style="display:none;">
                     <!-- LLM Connection Status -->
                     <div class="settings-section" style="margin-bottom:16px;">
-                        <div
-                            style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg-primary);border-radius:8px;">
+                        <div style="padding:12px;background:var(--bg-primary);border-radius:8px;">
                             <div style="display:flex;align-items:center;gap:12px;">
                                 <div id="llm-status-indicator"
                                     style="width:16px;height:16px;border-radius:50%;background:#888;box-shadow:0 0 8px rgba(136,136,136,0.5);transition:all 0.3s;">
@@ -1027,13 +1082,17 @@
                                 <div>
                                     <div id="llm-status-text" style="font-weight:500;">Connection Status: Unknown</div>
                                     <div id="llm-status-detail" style="font-size:12px;color:var(--text-secondary);">
-                                        Click 'Test Connection' to verify</div>
+                                        Save to test connection</div>
                                 </div>
                             </div>
-                            <button class="btn btn-secondary" id="llm-test-btn" onclick="testLLMConnection()"
-                                style="min-width:130px;">
-                                <span id="llm-test-btn-text">Test Connection</span>
-                            </button>
+                            <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+                                <button id="llm-test-btn" onclick="testLLMConnection()"
+                                    style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid var(--accent-blue);background:transparent;color:var(--accent-blue);cursor:pointer;font-size:13px;transition:all 0.2s;"
+                                    onmouseover="this.style.background='var(--accent-blue)';this.style.color='#fff'"
+                                    onmouseout="this.style.background='transparent';this.style.color='var(--accent-blue)'">
+                                    <span id="llm-test-btn-text">Test Connection</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -1042,9 +1101,10 @@
                         <h4>LLM Configuration</h4>
                         <div class="form-group">
                             <label>Provider</label>
-                            <select id="setting-llm-provider" onchange="updateEndpointPlaceholder()">
+                            <select id="setting-llm-provider" onchange="updateEndpointPlaceholder(); autoSaveLLMSettings()">
                                 <option value="upstage">Upstage Solar</option>
                                 <option value="openai">OpenAI</option>
+                                <option value="openrouter">OpenRouter</option>
                                 <option value="litellm">LiteLLM Gateway</option>
                                 <option value="ollama">Ollama</option>
                                 <option value="gemini">Google Gemini</option>
@@ -1059,10 +1119,10 @@
                                     Models</button><span id="fetch-models-status"
                                     style="font-size:11px;color:var(--text-secondary);margin-left:6px;"></span></label>
                             <select id="setting-llm-model-select"
-                                onchange="document.getElementById('setting-llm-model').value=this.value; updateLLMToolSupportWarning()"
+                                onchange="document.getElementById('setting-llm-model').value=this.value; updateLLMToolSupportWarning(); autoSaveLLMSettings()"
                                 style="display:none;margin-bottom:4px;"></select>
                             <input type="text" id="setting-llm-model" placeholder="solar-pro2"
-                                oninput="updateLLMToolSupportWarning()">
+                                oninput="updateLLMToolSupportWarning()" onchange="autoSaveLLMSettings()">
                             <div id="llm-tool-support-warning"
                                 style="display:none;margin-top:8px;font-size:12px;line-height:1.5;color:var(--accent-yellow);">
                             </div>
@@ -1070,13 +1130,15 @@
                         <div class="form-group">
                             <label>Endpoint <span id="endpoint-hint"
                                     style="font-size:11px;color:var(--text-secondary);"></span></label>
-                            <input type="text" id="setting-llm-endpoint" placeholder="https://api.upstage.ai/v1">
+                            <input type="text" id="setting-llm-endpoint" placeholder="https://api.upstage.ai/v1"
+                                onchange="autoSaveLLMSettings()">
                         </div>
                         <div class="form-group">
                             <label>API Key <a href="https://console.upstage.ai/api-keys" target="_blank"
                                     style="font-size:11px;color:var(--accent-blue);margin-left:8px;">Get API Key
                                     →</a></label>
-                            <input type="password" id="setting-llm-apikey" placeholder="up_...">
+                            <input type="password" id="setting-llm-apikey" placeholder="up_..."
+                                onchange="autoSaveLLMSettings()">
                         </div>
                     </div>
 
@@ -1102,72 +1164,6 @@
                         </div>
                         <div style="margin-top:8px;font-size:12px;color:var(--text-secondary);">
                             <span id="reasoning-effort-status">Current: minimal (default)</span>
-                        </div>
-                    </div>
-
-                    <!-- Model Profiles -->
-                    <div class="settings-section" style="margin-top:20px;">
-                        <h4>Saved Model Profiles</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Manage multiple LLM configurations
-                            and switch between them easily.</p>
-
-                        <div id="models-list" style="margin-bottom:16px;">
-                            <!-- Populated by JavaScript -->
-                        </div>
-
-                        <button class="btn-add" onclick="showAddModelForm()" style="margin-top:8px;"><span
-                                class="plus-icon">+</span> Add Model Profile</button>
-                    </div>
-
-                    <div id="add-model-form" class="settings-section"
-                        style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
-                        <h4 id="add-model-header">Add New Model Profile</h4>
-                        <div class="form-group">
-                            <label>Profile Name</label>
-                            <input type="text" id="new-model-name" placeholder="e.g., gpt-4-turbo">
-                        </div>
-                        <div class="form-group">
-                            <label>Provider</label>
-                            <select id="new-model-provider" onchange="updateNewModelToolSupportWarning()">
-                                <option value="upstage">Upstage Solar</option>
-                                <option value="openai">OpenAI</option>
-                                <option value="litellm">LiteLLM Gateway</option>
-                                <option value="ollama">Ollama</option>
-                                <option value="gemini">Google Gemini</option>
-                                <option value="anthropic">Anthropic Claude</option>
-                                <option value="bedrock">AWS Bedrock</option>
-                                <option value="azopenai">Azure OpenAI</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Model</label>
-                            <input type="text" id="new-model-model" placeholder="e.g., solar-pro2"
-                                oninput="updateNewModelToolSupportWarning()">
-                            <div id="new-model-tool-support-warning"
-                                style="display:none;margin-top:8px;font-size:12px;line-height:1.5;color:var(--accent-yellow);">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Endpoint (optional)</label>
-                            <input type="text" id="new-model-endpoint" placeholder="https://api.openai.com/v1">
-                        </div>
-                        <div class="form-group">
-                            <label>API Key (optional)</label>
-                            <input type="password" id="new-model-apikey" placeholder="sk-...">
-                        </div>
-                        <div class="form-group">
-                            <label>Description (optional)</label>
-                            <input type="text" id="new-model-description" placeholder="Fast model for quick tasks">
-                        </div>
-                        <div class="form-group">
-                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                                <input type="checkbox" id="new-model-skip-tls">
-                                Skip TLS Verification (for self-signed certificates)
-                            </label>
-                        </div>
-                        <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button id="add-model-btn" class="btn btn-primary" onclick="addModelProfile()">Add Profile</button>
-                            <button class="btn btn-secondary" onclick="hideAddModelForm()">Cancel</button>
                         </div>
                     </div>
 
@@ -1274,15 +1270,13 @@
                         <div class="form-group" style="margin-top:12px;">
                             <label>Approval Timeout (seconds)</label>
                             <input type="number" id="ta-timeout" class="form-control" value="60" min="10" max="600"
-                                style="width:120px;">
+                                style="width:120px;" onchange="autoSaveToolApprovalSettings()">
                         </div>
                         <div class="form-group">
                             <label>Blocked Patterns (one regex per line)</label>
                             <textarea id="ta-blocked-patterns" class="form-control" rows="3"
-                                placeholder="rm -rf.*&#10;kubectl delete ns.*"></textarea>
+                                placeholder="rm -rf.*&#10;kubectl delete ns.*" onchange="autoSaveToolApprovalSettings()"></textarea>
                         </div>
-                        <button class="btn btn-primary" onclick="saveToolApprovalSettings()">Save Tool Approval
-                            Settings</button>
                     </div>
 
                     <!-- Agent Settings -->
@@ -1294,13 +1288,15 @@
                             <div style="display:flex;align-items:center;gap:8px;">
                                 <input type="range" id="agent-max-iterations" min="1" max="30" value="10"
                                     style="flex:1;"
-                                    oninput="document.getElementById('agent-max-iter-val').textContent=this.value">
+                                    oninput="document.getElementById('agent-max-iter-val').textContent=this.value"
+                                    onchange="autoSaveAgentSettings()">
                                 <span id="agent-max-iter-val" style="min-width:24px;">10</span>
                             </div>
                         </div>
                         <div class="form-group">
                             <label>Reasoning Effort</label>
-                            <select id="agent-reasoning-effort" class="form-control" style="width:200px;">
+                            <select id="agent-reasoning-effort" class="form-control" style="width:200px;"
+                                onchange="autoSaveAgentSettings()">
                                 <option value="low">Low (faster)</option>
                                 <option value="medium" selected>Medium (balanced)</option>
                                 <option value="high">High (deeper reasoning)</option>
@@ -1311,16 +1307,16 @@
                             <div style="display:flex;align-items:center;gap:8px;">
                                 <input type="range" id="agent-temperature" min="0" max="200" value="70" step="10"
                                     style="flex:1;"
-                                    oninput="document.getElementById('agent-temp-val').textContent=(this.value/100).toFixed(1)">
+                                    oninput="document.getElementById('agent-temp-val').textContent=(this.value/100).toFixed(1)"
+                                    onchange="autoSaveAgentSettings()">
                                 <span id="agent-temp-val" style="min-width:32px;">0.7</span>
                             </div>
                         </div>
                         <div class="form-group">
                             <label>Max Tokens (0 = provider default)</label>
                             <input type="number" id="agent-max-tokens" class="form-control" value="4096" min="0"
-                                max="128000" step="256" style="width:150px;">
+                                max="128000" step="256" style="width:150px;" onchange="autoSaveAgentSettings()">
                         </div>
-                        <button class="btn btn-primary" onclick="saveAgentSettings()">Save Agent Settings</button>
                     </div>
                 </div>
 
@@ -1482,7 +1478,7 @@
                                 <div class="settings-description">Allow Prometheus to scrape metrics from k13d</div>
                             </div>
                             <input type="checkbox" id="prometheus-expose-metrics"
-                                onchange="updatePrometheusExposeInfo()">
+                                onchange="updatePrometheusExposeInfo(); autoSavePrometheusSettings()">
                         </div>
 
                         <div id="prometheus-expose-info"
@@ -1509,17 +1505,20 @@
 
                         <div class="form-group">
                             <label>Prometheus URL</label>
-                            <input type="text" id="prometheus-external-url" placeholder="http://prometheus:9090">
+                            <input type="text" id="prometheus-external-url" placeholder="http://prometheus:9090"
+                                onchange="autoSavePrometheusSettings()">
                         </div>
 
                         <div class="form-group">
                             <label>Username (optional)</label>
-                            <input type="text" id="prometheus-username" placeholder="admin">
+                            <input type="text" id="prometheus-username" placeholder="admin"
+                                onchange="autoSavePrometheusSettings()">
                         </div>
 
                         <div class="form-group">
                             <label>Password (optional)</label>
-                            <input type="password" id="prometheus-password" placeholder="••••••••">
+                            <input type="password" id="prometheus-password" placeholder="••••••••"
+                                onchange="autoSavePrometheusSettings()">
                         </div>
 
                         <div style="display:flex;gap:8px;margin-top:12px;">
@@ -1539,7 +1538,7 @@
                                 <div class="settings-label">Enable K8s Metrics Collection</div>
                                 <div class="settings-description">Collect metrics from Kubernetes metrics-server</div>
                             </div>
-                            <input type="checkbox" id="prometheus-collect-k8s" checked>
+                            <input type="checkbox" id="prometheus-collect-k8s" checked onchange="autoSavePrometheusSettings()">
                         </div>
 
                         <div class="settings-row" style="margin-top:12px;">
@@ -1547,7 +1546,7 @@
                                 <div class="settings-label">Collection Interval</div>
                                 <div class="settings-description">How often to collect metrics</div>
                             </div>
-                            <select id="prometheus-collection-interval">
+                            <select id="prometheus-collection-interval" onchange="autoSavePrometheusSettings()">
                                 <option value="30">30 seconds</option>
                                 <option value="60" selected>1 minute</option>
                                 <option value="120">2 minutes</option>
@@ -1564,7 +1563,7 @@
                                 <div class="settings-label">Metrics Retention Period</div>
                                 <div class="settings-description">How long to keep historical metrics</div>
                             </div>
-                            <select id="prometheus-retention-days" onchange="updateMetricsStorageInfo()">
+                            <select id="prometheus-retention-days" onchange="updateMetricsStorageInfo(); autoSavePrometheusSettings()">
                                 <option value="7">7 days</option>
                                 <option value="14">14 days</option>
                                 <option value="30" selected>30 days</option>
@@ -1585,11 +1584,6 @@
                                     style="font-size:12px;padding:6px 12px;">Cleanup Now</button>
                             </div>
                         </div>
-                    </div>
-
-                    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-color);">
-                        <button class="btn btn-primary" onclick="savePrometheusSettings()">Save Prometheus
-                            Settings</button>
                     </div>
                 </div>
 
@@ -1690,7 +1684,7 @@
                         </div>
                         <div class="form-group" style="margin-top:12px;">
                             <label>Platform</label>
-                            <select id="notif-platform" onchange="updateNotifPlaceholder()">
+                            <select id="notif-platform" onchange="updateNotifPlaceholder(); saveNotificationSettings()">
                                 <option value="slack">Slack</option>
                                 <option value="discord">Discord</option>
                                 <option value="teams">Microsoft Teams</option>
@@ -1702,47 +1696,47 @@
                             <div class="form-group">
                                 <label>Webhook URL</label>
                                 <input type="text" id="notif-webhook-url"
-                                    placeholder="https://hooks.slack.com/services/...">
+                                    placeholder="https://hooks.slack.com/services/..." onchange="saveNotificationSettings()">
                             </div>
                             <div class="form-group">
                                 <label>Channel (optional)</label>
-                                <input type="text" id="notif-channel" placeholder="#k8s-alerts">
+                                <input type="text" id="notif-channel" placeholder="#k8s-alerts" onchange="saveNotificationSettings()">
                             </div>
                         </div>
                         <div id="notif-smtp-section" style="display:none;">
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                                 <div class="form-group">
                                     <label>SMTP Host</label>
-                                    <input type="text" id="notif-smtp-host" placeholder="smtp.gmail.com">
+                                    <input type="text" id="notif-smtp-host" placeholder="smtp.gmail.com" onchange="saveNotificationSettings()">
                                 </div>
                                 <div class="form-group">
                                     <label>Port</label>
-                                    <input type="number" id="notif-smtp-port" placeholder="587" value="587">
+                                    <input type="number" id="notif-smtp-port" placeholder="587" value="587" onchange="saveNotificationSettings()">
                                 </div>
                             </div>
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                                 <div class="form-group">
                                     <label>Username</label>
-                                    <input type="text" id="notif-smtp-username" placeholder="user@gmail.com">
+                                    <input type="text" id="notif-smtp-username" placeholder="user@gmail.com" onchange="saveNotificationSettings()">
                                 </div>
                                 <div class="form-group">
                                     <label>Password</label>
-                                    <input type="password" id="notif-smtp-password" placeholder="app password">
+                                    <input type="password" id="notif-smtp-password" placeholder="app password" onchange="saveNotificationSettings()">
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label>From Address</label>
-                                <input type="text" id="notif-smtp-from" placeholder="alerts@example.com">
+                                <input type="text" id="notif-smtp-from" placeholder="alerts@example.com" onchange="saveNotificationSettings()">
                             </div>
                             <div class="form-group">
                                 <label>To Addresses (comma-separated)</label>
-                                <input type="text" id="notif-smtp-to" placeholder="admin@example.com, team@example.com">
+                                <input type="text" id="notif-smtp-to" placeholder="admin@example.com, team@example.com" onchange="saveNotificationSettings()">
                             </div>
                             <div class="settings-row">
                                 <div>
                                     <div class="settings-label">Use TLS</div>
                                 </div>
-                                <input type="checkbox" id="notif-smtp-tls" checked>
+                                <input type="checkbox" id="notif-smtp-tls" checked onchange="saveNotificationSettings()">
                             </div>
                         </div>
                     </div>
@@ -1751,31 +1745,30 @@
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Pod CrashLoopBackOff</div>
-                            </div><input type="checkbox" id="notif-evt-crash" checked>
+                            </div><input type="checkbox" id="notif-evt-crash" checked onchange="saveNotificationSettings()">
                         </div>
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Pod OOMKilled</div>
-                            </div><input type="checkbox" id="notif-evt-oom" checked>
+                            </div><input type="checkbox" id="notif-evt-oom" checked onchange="saveNotificationSettings()">
                         </div>
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Node Not Ready</div>
-                            </div><input type="checkbox" id="notif-evt-node" checked>
+                            </div><input type="checkbox" id="notif-evt-node" checked onchange="saveNotificationSettings()">
                         </div>
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Deployment Failed</div>
-                            </div><input type="checkbox" id="notif-evt-deploy" checked>
+                            </div><input type="checkbox" id="notif-evt-deploy" checked onchange="saveNotificationSettings()">
                         </div>
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Image Pull Failed</div>
-                            </div><input type="checkbox" id="notif-evt-imagepull" checked>
+                            </div><input type="checkbox" id="notif-evt-imagepull" checked onchange="saveNotificationSettings()">
                         </div>
                     </div>
                     <div style="display:flex;gap:8px;margin-top:16px;">
-                        <button class="btn btn-primary" onclick="saveNotificationSettings()">Save</button>
                         <button class="btn btn-secondary" onclick="testNotification()">Send Test</button>
                     </div>
                     <div id="notif-test-result" style="margin-top:12px;padding:10px;border-radius:6px;display:none;">
@@ -1998,10 +1991,6 @@
                             </div>
                         </div>
                         <div style="margin-top:16px;">
-                            <button class="btn btn-primary" id="auth-save-btn" onclick="saveAuthSettings()" style="width:100%;"
-                                disabled title="Authentication provider settings are configured at startup in the current build.">
-                                Save Authentication Settings
-                            </button>
                         </div>
                     </div>
 
@@ -2014,9 +2003,7 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+            <div class="modal-footer" style="display:none;">
             </div>
         </div>
     </div>
@@ -2461,53 +2448,6 @@ spec:
                     <p style="color: var(--text-secondary); text-align: center; padding: 20px;">No active port forwards
                     </p>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Audit Logs Modal -->
-    <div class="modal-overlay" id="audit-modal" role="dialog" aria-modal="true">
-        <div class="modal audit-modal">
-            <div class="modal-header">
-                <h2>Audit Logs</h2>
-                <button class="modal-close" onclick="closeAuditModal()" aria-label="Close audit logs">&times;</button>
-            </div>
-            <div class="audit-filters"
-                style="padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px;">
-                    <input type="checkbox" id="audit-filter-llm" onchange="toggleAuditFilter('onlyLLM')">
-                    <span>LLM Actions Only</span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px;">
-                    <input type="checkbox" id="audit-filter-errors" onchange="toggleAuditFilter('onlyErrors')">
-                    <span>Errors Only</span>
-                </label>
-                <span style="color: var(--text-secondary); margin-left: auto; font-size: 12px;"
-                    id="audit-entry-count"></span>
-                <button class="btn btn-secondary" onclick="loadAuditModalData()"
-                    style="padding: 4px 12px; font-size: 12px;">Refresh</button>
-            </div>
-            <div class="modal-body" style="max-height: 65vh; overflow-y: auto; padding: 0;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                    <thead id="audit-modal-header"
-                        style="position: sticky; top: 0; background: var(--bg-secondary); z-index: 1;">
-                        <tr>
-                            <th style="padding: 10px 12px; text-align: left;">TIME</th>
-                            <th style="padding: 10px 12px; text-align: left;">USER</th>
-                            <th style="padding: 10px 12px; text-align: left;">K8S USER</th>
-                            <th style="padding: 10px 12px; text-align: left;">ACTION</th>
-                            <th style="padding: 10px 12px; text-align: left;">RESOURCE</th>
-                            <th style="padding: 10px 12px; text-align: left;">SOURCE</th>
-                            <th style="padding: 10px 12px; text-align: center;">STATUS</th>
-                            <th style="padding: 10px 12px; text-align: left;">DETAILS</th>
-                        </tr>
-                    </thead>
-                    <tbody id="audit-modal-body"></tbody>
-                </table>
-            </div>
-            <div class="modal-footer"
-                style="padding: 12px 24px; border-top: 1px solid var(--border-color); text-align: right;">
-                <button class="btn btn-secondary" onclick="closeAuditModal()">Close</button>
             </div>
         </div>
     </div>

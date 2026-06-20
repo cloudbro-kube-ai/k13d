@@ -914,7 +914,26 @@ function startRenameChat(chatId, event) {
 function toggleChatHistory() {
     const sidebar = document.getElementById('chat-history-sidebar');
     const panel = document.getElementById('ai-panel');
+    const isOpen = sidebar.classList.contains('open');
 
-    sidebar.classList.toggle('open');
-    panel.classList.toggle('history-open');
+    if (isOpen) {
+        sidebar.classList.remove('open');
+        panel.classList.remove('history-open');
+        document.removeEventListener('click', handleChatHistoryClickOutside);
+    } else {
+        sidebar.classList.add('open');
+        panel.classList.add('history-open');
+        setTimeout(() => {
+            document.addEventListener('click', handleChatHistoryClickOutside);
+        }, 0);
+    }
+}
+
+function handleChatHistoryClickOutside(e) {
+    const sidebar = document.getElementById('chat-history-sidebar');
+    const toggleBtn = document.getElementById('chat-history-toggle');
+
+    if (sidebar && !sidebar.contains(e.target) && e.target !== toggleBtn && !toggleBtn.contains(e.target)) {
+        toggleChatHistory();
+    }
 }

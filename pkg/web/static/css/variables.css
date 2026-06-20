@@ -283,7 +283,7 @@
     /* 4. Terminal Semantic Colors (Ollama traffic lights) */
     --accent-red: #ff5f56;
     --accent-yellow: #ffbd2e;
-    --accent-green: #27c93f;
+    --accent-green: #059669;
 
     /* 5. Utility & Borders */
     --border-color: #e5e5e5;
@@ -299,13 +299,13 @@
     --shadow-glow-green: none;
 
     /* 7. Border Radius Overrides */
-    --radius-sm: 9999px;
-    --radius-md: 9999px;
+    --radius-sm: 6px;
+    --radius-md: 8px;
     --radius-lg: 12px;
     --radius-xl: 12px;
 }
 
-/* Ollama layout overrides to achieve pill geometry and flat cards */
+/* Ollama layout overrides for flat cards */
 html[data-theme="ollama"] button,
 html[data-theme="ollama"] input,
 html[data-theme="ollama"] select,
@@ -314,7 +314,7 @@ html[data-theme="ollama"] .overview-action-btn,
 html[data-theme="ollama"] .ai-input,
 html[data-theme="ollama"] .context-chip,
 html[data-theme="ollama"] .tab {
-    border-radius: 9999px !important;
+    border-radius: 8px !important;
 }
 
 html[data-theme="ollama"] .modal,

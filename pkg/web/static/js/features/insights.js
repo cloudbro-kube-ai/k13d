@@ -1,21 +1,25 @@
 // Audit logs and reports
 let auditFilter = { onlyLLM: false, onlyErrors: false };
 
-async function showAuditLogs() {
-    document.getElementById('audit-modal').classList.add('active');
+function showAuditLogs() {
+    // Hide other custom views
+    document.querySelectorAll('.custom-view-container').forEach(el => el.style.display = 'none');
+    document.getElementById('main-panel').style.display = 'none';
+    document.getElementById('topology-container').style.display = 'none';
+
+    // Show audit container
+    document.getElementById('audit-container').style.display = 'flex';
+
     // Sync filter checkboxes
-    document.getElementById('audit-filter-llm').checked = auditFilter.onlyLLM;
-    document.getElementById('audit-filter-errors').checked = auditFilter.onlyErrors;
-    loadAuditModalData();
+    document.getElementById('audit-filter-llm-inline').checked = auditFilter.onlyLLM;
+    document.getElementById('audit-filter-errors-inline').checked = auditFilter.onlyErrors;
+
+    loadAuditContainerData();
 }
 
-function closeAuditModal() {
-    document.getElementById('audit-modal').classList.remove('active');
-}
-
-async function loadAuditModalData() {
-    const body = document.getElementById('audit-modal-body');
-    body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-secondary);">Loading audit logs...</td></tr>';
+async function loadAuditContainerData() {
+    const body = document.getElementById('audit-body');
+    body.innerHTML = '<div class="loading-placeholder">Loading audit logs...</div>';
 
     try {
         let params = new URLSearchParams();
@@ -29,70 +33,81 @@ async function loadAuditModalData() {
         }
         const data = await resp.json();
 
-        document.getElementById('audit-entry-count').textContent =
+        document.getElementById('audit-entry-count-inline').textContent =
             `Showing ${data.logs ? data.logs.length : 0} entries`;
 
         if (data.logs && data.logs.length > 0) {
-            body.innerHTML = data.logs.map(log => {
-                const isLLM = log.action_type === 'llm' || log.llm_tool;
-                const statusBadge = log.success
-                    ? '<span style="color: var(--accent-green);">✓</span>'
-                    : '<span style="color: var(--accent-red);">✗</span>';
-                const actionBadge = getActionBadge(log.action, log.action_type);
-                const llmDetails = isLLM && log.llm_tool
-                    ? `<div style="margin-top:5px;padding:5px;background:var(--bg-tertiary);border-radius:4px;font-size:11px;">
-                                <strong>LLM Tool:</strong> ${escapeHtml(log.llm_tool)}<br>
-                                <strong>Command:</strong> <code style="color:var(--accent-yellow);">${escapeHtml(log.llm_command || 'N/A')}</code><br>
-                                <strong>Approved:</strong> ${log.llm_approved ? 'Yes' : 'No'}
-                                ${log.llm_request ? `<br><strong>Question:</strong> ${escapeHtml(truncateText(log.llm_request, 100))}` : ''}
-                              </div>`
-                    : '';
-                const errorInfo = log.error_msg
-                    ? `<div style="color:var(--accent-red);margin-top:3px;font-size:11px;">Error: ${escapeHtml(log.error_msg)}</div>`
-                    : '';
-
-                return `
-                            <tr style="${!log.success ? 'background: rgba(239,68,68,0.1);' : (isLLM ? 'background: rgba(59,130,246,0.05);' : '')}">
-                                <td style="white-space:nowrap;padding:8px 12px;">${formatDateTime(log.timestamp)}</td>
-                                <td style="padding:8px 12px;">${escapeHtml(log.user || 'anonymous')}</td>
-                                <td style="padding:8px 12px;color:var(--accent-cyan);">${escapeHtml(log.k8s_user || '-')}</td>
-                                <td style="padding:8px 12px;">${actionBadge}</td>
-                                <td style="padding:8px 12px;">${escapeHtml(log.resource)}</td>
-                                <td style="padding:8px 12px;"><span style="padding:2px 6px;border-radius:3px;background:var(--bg-tertiary);font-size:11px;">${escapeHtml(log.source || 'unknown')}</span></td>
-                                <td style="text-align:center;padding:8px 12px;">${statusBadge}</td>
-                                <td style="padding:8px 12px;">
-                                    ${escapeHtml(log.details)}
-                                    ${llmDetails}
-                                    ${errorInfo}
-                                </td>
+            body.innerHTML = `
+                <div class="table-container" style="padding:0;">
+                    <table style="width:100%;border-collapse:separate;border-spacing:0;font-size:13px;">
+                        <thead style="position:sticky;top:0;background:var(--bg-secondary);z-index:1;">
+                            <tr>
+                                <th style="padding:10px 12px;text-align:left;border-bottom:1px solid var(--border-color);">TIME</th>
+                                <th style="padding:10px 12px;text-align:left;border-bottom:1px solid var(--border-color);">USER</th>
+                                <th style="padding:10px 12px;text-align:left;border-bottom:1px solid var(--border-color);">K8S USER</th>
+                                <th style="padding:10px 12px;text-align:left;border-bottom:1px solid var(--border-color);">ACTION</th>
+                                <th style="padding:10px 12px;text-align:left;border-bottom:1px solid var(--border-color);">RESOURCE</th>
+                                <th style="padding:10px 12px;text-align:left;border-bottom:1px solid var(--border-color);">SOURCE</th>
+                                <th style="padding:10px 12px;text-align:center;border-bottom:1px solid var(--border-color);">STATUS</th>
+                                <th style="padding:10px 12px;text-align:left;border-bottom:1px solid var(--border-color);">DETAILS</th>
                             </tr>
-                        `;
-            }).join('');
+                        </thead>
+                        <tbody>
+                            ${data.logs.map(log => {
+                                const isLLM = log.action_type === 'llm' || log.llm_tool;
+                                const statusBadge = log.success
+                                    ? '<span style="color:var(--accent-green);">✓</span>'
+                                    : '<span style="color:var(--accent-red);">✗</span>';
+                                const actionBadge = getActionBadge(log.action, log.action_type);
+                                const llmDetails = isLLM && log.llm_tool
+                                    ? `<div style="margin-top:5px;padding:5px;background:var(--bg-tertiary);border-radius:4px;font-size:11px;word-wrap:break-word;">
+                                                <strong>LLM Tool:</strong> ${escapeHtml(log.llm_tool)}<br>
+                                                <strong>Command:</strong> <code style="color:var(--accent-yellow);word-wrap:break-word;white-space:pre-wrap;display:inline-block;max-width:100%;">${escapeHtml(log.llm_command || 'N/A')}</code><br>
+                                                <strong>Approved:</strong> ${log.llm_approved ? 'Yes' : 'No'}
+                                                ${log.llm_request ? `<br><strong>Question:</strong> <span style="word-wrap:break-word;white-space:pre-wrap;">${escapeHtml(log.llm_request)}</span>` : ''}
+                                              </div>`
+                                    : '';
+                                const errorInfo = log.error_msg
+                                    ? `<div style="color:var(--accent-red);margin-top:3px;font-size:11px;">Error: ${escapeHtml(log.error_msg)}</div>`
+                                    : '';
+
+                                return `
+                                    <tr style="${!log.success ? 'background:rgba(239,68,68,0.1);' : (isLLM ? 'background:rgba(59,130,246,0.05);' : '')}">
+                                        <td style="white-space:nowrap;padding:8px 12px;border-bottom:1px solid var(--border-color);">${formatDateTime(log.timestamp)}</td>
+                                        <td style="padding:8px 12px;border-bottom:1px solid var(--border-color);">${escapeHtml(log.user || 'anonymous')}</td>
+                                        <td style="padding:8px 12px;color:var(--accent-cyan);border-bottom:1px solid var(--border-color);">${escapeHtml(log.k8s_user || '-')}</td>
+                                        <td style="padding:8px 12px;border-bottom:1px solid var(--border-color);">${actionBadge}</td>
+                                        <td style="padding:8px 12px;border-bottom:1px solid var(--border-color);">${escapeHtml(log.resource)}</td>
+                                        <td style="padding:8px 12px;border-bottom:1px solid var(--border-color);"><span style="padding:2px 6px;border-radius:3px;background:var(--bg-tertiary);font-size:11px;">${escapeHtml(log.source || 'unknown')}</span></td>
+                                        <td style="text-align:center;padding:8px 12px;border-bottom:1px solid var(--border-color);">${statusBadge}</td>
+                                        <td style="padding:8px 12px;max-width:400px;word-wrap:break-word;white-space:pre-wrap;border-bottom:1px solid var(--border-color);">
+                                            ${escapeHtml(log.details).replace(/\n/g, '<br>')}
+                                            ${llmDetails}
+                                            ${errorInfo}
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
         } else {
-            body.innerHTML =
-                '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-secondary);">No audit logs found</td></tr>';
+            body.innerHTML = '<div class="loading-placeholder">No audit logs found</div>';
         }
     } catch (e) {
         console.error('Failed to load audit logs:', e);
-        body.innerHTML =
-            '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--accent-red);">Failed to load audit logs</td></tr>';
+        body.innerHTML = '<div class="loading-placeholder" style="color:var(--accent-red);">Failed to load audit logs</div>';
     }
 }
 
 function toggleAuditFilter(filterName) {
     auditFilter[filterName] = !auditFilter[filterName];
-    loadAuditModalData();
+    loadAuditContainerData();
 }
 
 function getActionBadge(action, actionType) {
-    const colors = {
-        'llm': { bg: 'rgba(59,130,246,0.2)', color: 'var(--accent-blue)', icon: '🤖' },
-        'mutation': { bg: 'rgba(234,179,8,0.2)', color: 'var(--accent-yellow)', icon: '⚡' },
-        'auth': { bg: 'rgba(139,92,246,0.2)', color: 'var(--accent-purple)', icon: '🔐' },
-        'config': { bg: 'rgba(34,197,94,0.2)', color: 'var(--status-running)', icon: '⚙️' }
-    };
-    const style = colors[actionType] || colors['mutation'];
-    return `<span style="padding:2px 8px;border-radius:4px;background:${style.bg};color:${style.color};font-size:12px;">${style.icon} ${escapeHtml(action)}</span>`;
+    return `<span style="padding:2px 8px;border-radius:4px;font-size:12px;">${escapeHtml(action)}</span>`;
 }
 
 function truncateText(text, maxLen) {

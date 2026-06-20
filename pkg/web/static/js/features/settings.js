@@ -1,3 +1,135 @@
+// Auto-save debounce timers
+const autoSaveTimers = {};
+
+function debounceAutoSave(key, fn, delay = 500) {
+    if (autoSaveTimers[key]) {
+        clearTimeout(autoSaveTimers[key]);
+    }
+    autoSaveTimers[key] = setTimeout(fn, delay);
+}
+
+// Auto-save functions for immediate save on change
+async function autoSaveLLMSettings() {
+    debounceAutoSave('llm', async () => {
+        try {
+            const resp = await fetchWithAuth('/api/settings/llm', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    provider: document.getElementById('setting-llm-provider').value,
+                    model: document.getElementById('setting-llm-model').value,
+                    endpoint: document.getElementById('setting-llm-endpoint').value,
+                    api_key: document.getElementById('setting-llm-apikey').value,
+                    reasoning_effort: reasoningEffort
+                })
+            });
+            if (resp.ok) {
+                showToast('LLM settings saved', 'success');
+                await updateAIStatus();
+            }
+        } catch (e) {
+            console.error('Auto-save LLM settings failed:', e);
+        }
+    });
+}
+
+async function autoSaveAgentSettings() {
+    debounceAutoSave('agent', async () => {
+        try {
+            const resp = await fetchWithAuth('/api/settings/agent', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    max_iterations: parseInt(document.getElementById('agent-max-iterations').value),
+                    reasoning_effort: document.getElementById('agent-reasoning-effort').value,
+                    temperature: parseInt(document.getElementById('agent-temperature').value) / 100,
+                    max_tokens: parseInt(document.getElementById('agent-max-tokens').value)
+                })
+            });
+            if (resp.ok) {
+                showToast('Agent settings saved', 'success');
+            }
+        } catch (e) {
+            console.error('Auto-save agent settings failed:', e);
+        }
+    });
+}
+
+async function autoSaveToolApprovalSettings() {
+    debounceAutoSave('toolApproval', async () => {
+        try {
+            const resp = await fetchWithAuth('/api/settings/tool-approval', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    auto_approve_readonly: document.getElementById('ta-auto-approve-ro').classList.contains('active'),
+                    require_approval_write: document.getElementById('ta-require-write').classList.contains('active'),
+                    block_dangerous: document.getElementById('ta-block-dangerous').classList.contains('active'),
+                    require_approval_unknown: document.getElementById('ta-require-unknown').classList.contains('active'),
+                    timeout: parseInt(document.getElementById('ta-timeout').value),
+                    blocked_patterns: document.getElementById('ta-blocked-patterns').value.split('\n').filter(p => p.trim())
+                })
+            });
+            if (resp.ok) {
+                showToast('Tool approval settings saved', 'success');
+            }
+        } catch (e) {
+            console.error('Auto-save tool approval settings failed:', e);
+        }
+    });
+}
+
+async function autoSavePrometheusSettings() {
+    debounceAutoSave('prometheus', async () => {
+        try {
+            const resp = await fetchWithAuth('/api/settings/prometheus', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    expose_metrics: document.getElementById('prometheus-expose-metrics').checked,
+                    external_url: document.getElementById('prometheus-external-url').value,
+                    username: document.getElementById('prometheus-username').value,
+                    password: document.getElementById('prometheus-password').value,
+                    collect_k8s: document.getElementById('prometheus-collect-k8s').checked,
+                    collection_interval: parseInt(document.getElementById('prometheus-collection-interval').value),
+                    retention_days: parseInt(document.getElementById('prometheus-retention-days').value)
+                })
+            });
+            if (resp.ok) {
+                showToast('Prometheus settings saved', 'success');
+            }
+        } catch (e) {
+            console.error('Auto-save Prometheus settings failed:', e);
+        }
+    });
+}
+
+async function autoSaveGeneralSettings() {
+    debounceAutoSave('general', async () => {
+        try {
+            const newTimezone = document.getElementById('setting-timezone')?.value || 'auto';
+            const resp = await fetchWithAuth('/api/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    language: document.getElementById('setting-language').value,
+                    log_level: document.getElementById('setting-log-level').value,
+                    timezone: newTimezone
+                })
+            });
+            if (resp.ok) {
+                appTimezone = newTimezone;
+                localStorage.setItem('k13d_timezone', appTimezone);
+                currentLanguage = document.getElementById('setting-language').value;
+                updateUILanguage();
+                showToast('Settings saved', 'success');
+            }
+        } catch (e) {
+            console.error('Auto-save general settings failed:', e);
+        }
+    });
+}
+
 // Settings
 function showSettings() {
     document.getElementById('settings-modal').classList.add('active');
@@ -33,7 +165,6 @@ function switchSettingsTab(tab) {
 
     // Load data for specific tabs
     if (tab === 'ai') {
-        loadModelProfiles();
         updateEndpointPlaceholder();
         loadLLMStatus();
         onLLMTabOpened();
@@ -350,6 +481,20 @@ async function testLLMConnection() {
             statusText.textContent = 'Connection Successful';
             statusText.style.color = 'var(--accent-green)';
             statusDetail.textContent = `${status.provider} / ${status.model} - Response time: ${status.response_time_ms}ms`;
+
+            // Ask to save the configuration
+            const shouldSave = confirm(
+                `Connection Successful!\n\n` +
+                `Provider: ${testConfig.provider}\n` +
+                `Model: ${testConfig.model}\n` +
+                `Endpoint: ${testConfig.endpoint}\n\n` +
+                `Do you want to save these LLM settings?`
+            );
+
+            if (shouldSave) {
+                await saveSettings();
+                showToast('LLM settings saved successfully!', 'success');
+            }
         } else {
             // Failure - red light
             indicator.style.background = '#ef4444';
@@ -434,6 +579,7 @@ function updateEndpointPlaceholder(setDefaults = true) {
     const defaults = {
         'upstage': { placeholder: 'https://api.upstage.ai/v1', hint: '(Default: Upstage Solar API)', model: 'solar-pro2', apiKeyHint: 'up_...' },
         'openai': { placeholder: 'https://api.openai.com/v1', hint: '(Default: OpenAI API)', model: 'gpt-4o', apiKeyHint: 'sk-...' },
+        'openrouter': { placeholder: 'https://openrouter.ai/api/v1', hint: '(Default: OpenRouter API)', model: 'anthropic/claude-3.5-sonnet', apiKeyHint: 'sk-or-...' },
         'litellm': { placeholder: 'http://localhost:4000', hint: '(Default: LiteLLM proxy)', model: 'gpt-4o-mini', apiKeyHint: 'master key (optional)' },
         'ollama': { placeholder: 'http://localhost:11434', hint: '(Required for Ollama)', model: 'gpt-oss:20b', apiKeyHint: '' },
         'gemini': { placeholder: 'https://generativelanguage.googleapis.com/v1beta', hint: '(Default: Gemini API)', model: 'gemini-2.5-flash', apiKeyHint: 'AIza...' },
@@ -475,6 +621,7 @@ function updateEndpointPlaceholder(setDefaults = true) {
         const links = {
             'upstage': { url: 'https://console.upstage.ai/api-keys', text: 'Get API Key →' },
             'openai': { url: 'https://platform.openai.com/api-keys', text: 'Get API Key →' },
+            'openrouter': { url: 'https://openrouter.ai/keys', text: 'Get API Key →' },
             'anthropic': { url: 'https://console.anthropic.com/settings/keys', text: 'Get API Key →' },
             'gemini': { url: 'https://aistudio.google.com/app/apikey', text: 'Get API Key →' },
             'litellm': { url: 'https://docs.litellm.ai/docs/proxy/quick_start', text: 'Gateway Docs →' }
@@ -582,9 +729,10 @@ async function fetchAvailableModels() {
             return;
         }
 
-        // Populate select box with fetched models
+        // Populate select box with fetched models (sorted alphabetically)
         const currentModel = modelInput.value;
-        modelSelect.innerHTML = models.map(m => {
+        const sortedModels = [...models].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+        modelSelect.innerHTML = sortedModels.map(m => {
             const escaped = escapeHtml(m);
             const selected = m === currentModel ? ' selected' : '';
             return `<option value="${escaped}"${selected}>${escaped}</option>`;
@@ -606,241 +754,6 @@ async function fetchAvailableModels() {
         status.style.color = 'var(--accent-red)';
     } finally {
         btn.disabled = false;
-    }
-}
-
-// Model Management Functions
-let profilesCache = [];
-let editingModelName = null;
-
-async function loadModelProfiles() {
-    try {
-        const resp = await fetchWithAuth('/api/models');
-        const data = await resp.json();
-        const container = document.getElementById('models-list');
-        profilesCache = data.models || [];
-
-        if (profilesCache.length === 0) {
-            container.innerHTML = '<p style="color:var(--text-secondary);">No model profiles configured.</p>';
-            return;
-        }
-
-        container.innerHTML = profilesCache.map(m => `
-                    <div class="settings-row" style="background:var(--bg-primary);padding:12px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
-                        <div style="flex:1;">
-                            <div style="font-weight:bold;display:flex;align-items:center;gap:8px;">
-                                ${escapeHtml(m.name)}
-                                ${m.is_active ? '<span style="background:var(--accent-green);color:var(--bg-primary);padding:2px 8px;border-radius:4px;font-size:10px;">ACTIVE</span>' : ''}
-                                ${m.skip_tls_verify ? '<span style="background:var(--accent-yellow);color:var(--bg-primary);padding:2px 6px;border-radius:4px;font-size:10px;">TLS Skip</span>' : ''}
-                            </div>
-                            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
-                                ${escapeHtml(m.provider)} / ${escapeHtml(m.model)} ${m.description ? '- ' + escapeHtml(m.description) : ''}
-                            </div>
-                            ${m.warning ? `<div style="margin-top:8px;font-size:12px;color:var(--accent-yellow);line-height:1.5;">${escapeHtml(m.warning)}</div>` : ''}
-                        </div>
-                        <div style="display:flex;gap:4px;align-items:center;">
-                            ${!m.is_active ? `<button class="btn btn-secondary" onclick="switchModel(event, '${escapeHtml(m.name)}')" style="padding:4px 12px;font-size:12px;margin-right:4px;">Use</button>` : ''}
-                            <button class="btn btn-icon" onclick="editModelProfile('${escapeHtml(m.name)}')" title="Edit Profile" style="padding:6px;background:none;border:none;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                            </button>
-                            <button class="btn btn-icon" onclick="deleteModel('${escapeHtml(m.name)}')" title="Delete Profile" style="padding:6px;background:none;border:none;color:var(--accent-red);cursor:pointer;display:flex;align-items:center;justify-content:center;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-    } catch (e) {
-        console.error('Failed to load models:', e);
-    }
-}
-
-async function switchModel(event, name) {
-    const btn = event.currentTarget || event.target;
-    const originalText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Switching...';
-
-    try {
-        const resp = await fetchWithAuth('/api/models/active', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name })
-        });
-        if (!resp.ok) {
-            const errData = await resp.json().catch(() => ({}));
-            showToast(errData.error || 'Failed to switch model', 'error');
-            btn.disabled = false;
-            btn.textContent = originalText;
-            return;
-        }
-        const data = await resp.json().catch(() => ({}));
-        
-        // Reload settings and model profiles synchronously before showing success
-        await Promise.all([
-            loadModelProfiles(),
-            loadSettings()
-        ]);
-        
-        // AI status/badge update is already inside loadSettings(), but double-calling for robustness
-        if (typeof updateAIStatus === 'function') {
-            await updateAIStatus();
-        }
-
-        showToast('Switched to model: ' + name, 'success');
-        if (data.warning) {
-            showToast(data.warning, 'warning');
-        }
-    } catch (e) {
-        showToast('Failed to switch model: ' + e.message, 'error');
-        btn.disabled = false;
-        btn.textContent = originalText;
-    }
-}
-
-async function deleteModel(name) {
-    if (!confirm('Delete model profile "' + name + '"?')) return;
-    try {
-        const resp = await fetchWithAuth('/api/models?name=' + encodeURIComponent(name), {
-            method: 'DELETE'
-        });
-        if (!resp.ok) {
-            const errData = await resp.json().catch(() => ({}));
-            showToast(errData.error || 'Failed to delete model', 'error');
-            return;
-        }
-        // Reload profiles and settings (active model may have changed)
-        loadModelProfiles();
-        loadSettings();
-        showToast('Deleted model: ' + name, 'success');
-    } catch (e) {
-        showToast('Failed to delete model: ' + e.message, 'error');
-    }
-}
-
-function showAddModelForm() {
-    editingModelName = null;
-    const header = document.getElementById('add-model-header');
-    const btn = document.getElementById('add-model-btn');
-    if (header) header.textContent = 'Add New Model Profile';
-    if (btn) btn.textContent = 'Add Profile';
-
-    syncNewModelProviderOptions();
-
-    // Clear form before showing
-    document.getElementById('new-model-name').value = '';
-    document.getElementById('new-model-name').readOnly = false;
-    document.getElementById('new-model-provider').value = 'upstage'; // Default value
-    document.getElementById('new-model-model').value = '';
-    document.getElementById('new-model-endpoint').value = '';
-    document.getElementById('new-model-apikey').value = '';
-    document.getElementById('new-model-description').value = '';
-    document.getElementById('new-model-skip-tls').checked = false;
-
-    document.getElementById('add-model-form').style.display = 'block';
-    updateNewModelToolSupportWarning();
-}
-
-function editModelProfile(name) {
-    const profile = profilesCache.find(p => p.name === name);
-    if (!profile) return;
-
-    editingModelName = name;
-    
-    // UI Updates
-    const header = document.getElementById('add-model-header');
-    const btn = document.getElementById('add-model-btn');
-    if (header) header.textContent = 'Edit Model Profile';
-    if (btn) btn.textContent = 'Update Profile';
-
-    syncNewModelProviderOptions();
-
-    // Fill form
-    document.getElementById('new-model-name').value = profile.name;
-    document.getElementById('new-model-name').readOnly = false; // Allow rename, we handle it in addModelProfile
-    document.getElementById('new-model-provider').value = profile.provider;
-    document.getElementById('new-model-model').value = profile.model;
-    document.getElementById('new-model-endpoint').value = profile.endpoint || '';
-    document.getElementById('new-model-apikey').value = profile.api_key || '';
-    document.getElementById('new-model-description').value = profile.description || '';
-    document.getElementById('new-model-skip-tls').checked = !!profile.skip_tls_verify;
-
-    document.getElementById('add-model-form').style.display = 'block';
-    document.getElementById('add-model-form').scrollIntoView({ behavior: 'smooth' });
-    updateNewModelToolSupportWarning();
-}
-
-function hideAddModelForm() {
-    document.getElementById('add-model-form').style.display = 'none';
-    // Clear form
-    document.getElementById('new-model-name').value = '';
-    document.getElementById('new-model-model').value = '';
-    document.getElementById('new-model-endpoint').value = '';
-    document.getElementById('new-model-apikey').value = '';
-    document.getElementById('new-model-description').value = '';
-    document.getElementById('new-model-skip-tls').checked = false;
-    updateNewModelToolSupportWarning();
-}
-
-function syncNewModelProviderOptions() {
-    const currentProviderSelect = document.getElementById('setting-llm-provider');
-    const newProviderSelect = document.getElementById('new-model-provider');
-    if (!currentProviderSelect || !newProviderSelect) return;
-
-    newProviderSelect.innerHTML = currentProviderSelect.innerHTML;
-}
-
-
-async function addModelProfile() {
-    const profile = {
-        name: document.getElementById('new-model-name').value.trim(),
-        provider: document.getElementById('new-model-provider').value,
-        model: document.getElementById('new-model-model').value.trim(),
-        endpoint: document.getElementById('new-model-endpoint').value.trim(),
-        api_key: document.getElementById('new-model-apikey').value,
-        description: document.getElementById('new-model-description').value.trim(),
-        skip_tls_verify: document.getElementById('new-model-skip-tls').checked
-    };
-
-    if (!profile.name || !profile.model) {
-        showToast('Name and Model are required', 'error');
-        return;
-    }
-
-    // If we're editing and the name changed, we need to delete the old profile first
-    if (editingModelName && editingModelName !== profile.name) {
-        try {
-            const delResp = await fetchWithAuth(`/api/models?name=${encodeURIComponent(editingModelName)}`, {
-                method: 'DELETE'
-            });
-            if (!delResp.ok) {
-                showToast('Failed to update: old profile could not be renamed', 'error');
-                return;
-            }
-        } catch (e) {
-            console.error('Failed to delete old profile during rename:', e);
-        }
-    }
-
-    try {
-        const resp = await fetchWithAuth('/api/models', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(profile)
-        });
-        if (!resp.ok) {
-            const errData = await resp.json().catch(() => ({}));
-            showToast(errData.error || 'Failed to add model', 'error');
-            return;
-        }
-        const data = await resp.json().catch(() => ({}));
-        hideAddModelForm();
-        loadModelProfiles();
-        showToast('Added model: ' + profile.name, 'success');
-        if (data.warning) {
-            showToast(data.warning, 'warning');
-        }
-    } catch (e) {
-        showToast('Failed to add model: ' + e.message, 'error');
     }
 }
 
@@ -1323,6 +1236,7 @@ async function loadToolApprovalSettings() {
 
 function toggleToolApproval(el) {
     el.classList.toggle('active');
+    autoSaveToolApprovalSettings();
 }
 
 async function saveToolApprovalSettings() {
@@ -2331,11 +2245,37 @@ async function saveSettings() {
         currentLanguage = document.getElementById('setting-language').value;
         updateUILanguage();
 
-        closeSettings();
-        showToast(t('msg_settings_saved'));
-
         // Update AI status (model name and connection status)
-        updateAIStatus();
+        await updateAIStatus();
+
+        // Auto-test connection after save
+        showToast(t('msg_settings_saved'), 'success');
+        
+        // Test connection automatically
+        const statusIndicator = document.getElementById('llm-status-indicator');
+        const statusText = document.getElementById('llm-status-text');
+        const statusDetail = document.getElementById('llm-status-detail');
+        
+        if (statusIndicator) statusIndicator.style.background = '#f59e0b';
+        if (statusText) statusText.textContent = 'Connection Status: Testing...';
+        if (statusDetail) statusDetail.textContent = 'Verifying connection...';
+        
+        try {
+            const pingResp = await fetchWithAuth('/api/ai/ping');
+            if (pingResp.ok) {
+                if (statusIndicator) statusIndicator.style.background = '#22c55e';
+                if (statusText) statusText.textContent = 'Connection Status: Connected';
+                if (statusDetail) statusDetail.textContent = 'Successfully connected to LLM provider';
+            } else {
+                if (statusIndicator) statusIndicator.style.background = '#ef4444';
+                if (statusText) statusText.textContent = 'Connection Status: Failed';
+                if (statusDetail) statusDetail.textContent = 'Connection test failed - check your configuration';
+            }
+        } catch (e) {
+            if (statusIndicator) statusIndicator.style.background = '#ef4444';
+            if (statusText) statusText.textContent = 'Connection Status: Error';
+            if (statusDetail) statusDetail.textContent = 'Connection test error: ' + e.message;
+        }
     } catch (e) {
         alert('Failed to save settings');
     }

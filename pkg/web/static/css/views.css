@@ -9,21 +9,28 @@
  *       variables.css and base.css respectively.
  */
 
-        /* Login Page - Beautiful animated design */
+        /* Login Page - Split Layout Design */
         .login-container {
             display: flex;
-            justify-content: center;
-            align-items: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, var(--bg-deep) 0%, var(--bg-primary) 50%, var(--bg-deep) 100%);
+            background: var(--bg-primary);
             position: relative;
-            overflow-x: hidden;
-            overflow-y: auto;
-            padding: 24px 0;
+            overflow: hidden;
         }
 
-        /* Animated background particles */
-        .login-container::before {
+        /* Left Panel - Branding */
+        .login-left {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--bg-deep) 0%, var(--accent-blue) 50%, var(--accent-purple) 100%);
+            padding: 48px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-left::before {
             content: '';
             position: absolute;
             top: 0;
@@ -31,24 +38,16 @@
             right: 0;
             bottom: 0;
             background-image:
-                radial-gradient(circle at 20% 80%, rgba(122, 162, 247, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(187, 154, 247, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(125, 211, 252, 0.05) 0%, transparent 40%),
-                radial-gradient(circle at 60% 60%, rgba(52, 211, 153, 0.05) 0%, transparent 40%);
+                radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
             animation: loginBgPulse 8s ease-in-out infinite;
         }
 
-        @keyframes loginBgPulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.05); }
-        }
-
-        /* Floating Kubernetes icons */
-        .login-container::after {
+        .login-left::after {
             content: '⎈';
             position: absolute;
             font-size: 300px;
-            color: rgba(50, 108, 229, 0.03);
+            color: rgba(255, 255, 255, 0.05);
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
@@ -56,77 +55,160 @@
             pointer-events: none;
         }
 
+        @keyframes loginBgPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
         @keyframes floatIcon {
             0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
             50% { transform: translate(-50%, -50%) rotate(180deg); }
         }
 
-        .login-box {
-            background: var(--surface-primary);
-            backdrop-filter: blur(20px);
-            padding: 48px 40px;
-            border-radius: 20px;
-            border: 1px solid rgba(122, 162, 247, 0.2);
-            width: 100%;
-            max-width: 440px;
+        .login-branding {
             position: relative;
             z-index: 1;
-            box-shadow:
-                0 0 60px rgba(122, 162, 247, 0.1),
-                0 25px 50px rgba(0, 0, 0, 0.5),
-                inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            animation: loginBoxAppear 0.6s ease-out;
-        }
-
-        @keyframes loginBoxAppear {
-            from {
-                opacity: 0;
-                transform: translateY(20px) scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        /* ASCII Art Logo */
-        .login-ascii-logo {
-            font-family: var(--font-mono);
-            font-size: 10px;
-            line-height: 1.1;
-            color: var(--accent-blue);
             text-align: center;
-            margin-bottom: 8px;
+            color: #ffffff;
+            max-width: 400px;
+        }
+
+        .login-branding .login-ascii-logo {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.2;
+            color: #ffffff;
+            text-align: center;
+            margin-bottom: 16px;
             white-space: pre;
-            overflow: hidden;
-            text-shadow: 0 0 20px rgba(122, 162, 247, 0.5);
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
             animation: logoGlow 3s ease-in-out infinite;
         }
 
         @keyframes logoGlow {
-            0%, 100% { text-shadow: 0 0 20px rgba(122, 162, 247, 0.5); }
-            50% { text-shadow: 0 0 30px rgba(122, 162, 247, 0.8), 0 0 60px rgba(122, 162, 247, 0.3); }
+            0%, 100% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.5); }
+            50% { text-shadow: 0 0 40px rgba(255, 255, 255, 0.8), 0 0 60px rgba(255, 255, 255, 0.3); }
         }
 
-        .login-subtitle {
-            text-align: center;
-            margin-bottom: 32px;
-            color: var(--text-secondary);
-            font-size: 14px;
-            letter-spacing: 2px;
+        .login-branding .login-title {
+            font-size: 48px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            display: block;
+        }
+
+        .login-branding .login-subtitle {
+            margin-bottom: 40px;
+            font-size: 16px;
+            letter-spacing: 3px;
             text-transform: uppercase;
+            opacity: 0.9;
         }
 
-        .login-subtitle span {
-            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple), var(--accent-cyan));
+        .login-branding .login-subtitle span {
+            background: linear-gradient(90deg, #ffffff, rgba(255,255,255,0.8));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             font-weight: 600;
         }
 
+        .login-features {
+            text-align: left;
+            margin-bottom: 40px;
+        }
+
+        .login-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .login-feature .feature-icon {
+            font-size: 24px;
+        }
+
+        .login-feature strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .login-feature p {
+            margin: 0;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .login-team {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .login-team .team-divider {
+            opacity: 0.5;
+        }
+
+        /* Right Panel - Login Form */
+        .login-right {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 48px;
+            background: var(--bg-primary);
+        }
+
+        .login-box {
+            width: 100%;
+            max-width: 400px;
+            animation: loginBoxAppear 0.6s ease-out;
+        }
+
+        @keyframes loginBoxAppear {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-form-header {
+            margin-bottom: 32px;
+        }
+
+        .login-form-header h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 8px 0;
+        }
+
+        .login-form-header p {
+            color: var(--text-secondary);
+            margin: 0;
+            font-size: 14px;
+        }
+
+        /* ASCII Art Logo - Hidden in split layout */
+        .login-box .login-ascii-logo {
+            display: none;
+        }
+
         .login-box h1 {
-            display: none; /* Hidden, using ASCII art instead */
+            display: none;
         }
 
         .login-box input {
@@ -134,8 +216,8 @@
             padding: 14px 16px;
             margin-bottom: 16px;
             background: var(--surface-input);
-            border: 1px solid rgba(122, 162, 247, 0.2);
-            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
             color: var(--text-primary);
             font-family: inherit;
             font-size: 14px;
@@ -145,7 +227,7 @@
         .login-box input:focus {
             outline: none;
             border-color: var(--accent-blue);
-            box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.15), 0 0 20px rgba(122, 162, 247, 0.1);
+            box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.15);
             background: var(--surface-input-solid);
         }
 
@@ -159,35 +241,17 @@
             background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-purple) 100%);
             color: #ffffff;
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
             cursor: pointer;
             font-family: inherit;
             font-weight: 600;
             font-size: 14px;
-            letter-spacing: 0.5px;
             transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .login-box button.login-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s ease;
         }
 
         .login-box button.login-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 30px rgba(122, 162, 247, 0.3);
-        }
-
-        .login-box button.login-btn:hover::before {
-            left: 100%;
         }
 
         .login-box button.login-btn:focus {
@@ -1231,8 +1295,7 @@
 
         /* Expanded fullscreen overrides */
         .ai-panel.expanded .ai-input-container {
-            height: 30vh;
-            padding: 30px 40px;
+            padding: 18px 40px;
             display: flex;
             flex-direction: column;
             width: 100% !important;

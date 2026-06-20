@@ -274,6 +274,9 @@ let currentEventSource = null;
 
 // Reasoning effort setting (for Solar Pro2)
 let reasoningEffort = localStorage.getItem('k13d_reasoning_effort') || 'minimal'; // default minimal
+
+// Track last rendered items to prevent unnecessary re-renders
+const lastRenderedItems = {};
 const resourceCachePolicy = Object.freeze({
     ttlMs: 15 * 1000,
     maxStaleMs: 3 * 60 * 1000,
@@ -1171,7 +1174,21 @@ function applyResourcePayload(resource, data, meta, loadId) {
         return;
     }
 
-    renderTable(resource, data.items || []);
+    const items = data.items || [];
+    const prevItems = lastRenderedItems[resource];
+
+    if (prevItems && prevItems.length === items.length) {
+        const isSame = items.length === 0 ||
+            (items[0]?.metadata?.uid === prevItems[0]?.metadata?.uid &&
+             items[items.length - 1]?.metadata?.uid === prevItems[prevItems.length - 1]?.metadata?.uid);
+        if (isSame && !meta.revalidating) {
+            setDataFreshnessState(meta.cached ? 'cached' : 'live', meta.cached ? 'Cached' : 'Live');
+            return;
+        }
+    }
+
+    lastRenderedItems[resource] = items;
+    renderTable(resource, items);
 
     if (meta.error && meta.cached) {
         setDataFreshnessState('offline', 'Offline cache', 5000);
@@ -1206,6 +1223,7 @@ async function loadResourceSnapshot(resource, loadId, options = {}) {
         ...resourceCachePolicy,
         cacheKey: request.cacheKey,
         forceNetwork: !!options.forceNetwork,
+        useCachedWhileRefreshing: true,
     };
 
     const preview = K13D.SWR?.peekJSON(request.cacheKey, policy);
@@ -1226,6 +1244,9 @@ async function loadResourceSnapshot(resource, loadId, options = {}) {
 
         if (result.revalidatePromise) {
             result.revalidatePromise.then((revalidated) => {
+                if (!isDashboardLoadActive(loadId)) {
+                    return;
+                }
                 applyResourcePayload(resource, revalidated.data, {
                     cached: !!revalidated.cached,
                     stale: !!revalidated.stale,
@@ -1245,9 +1266,15 @@ async function loadResourceSnapshot(resource, loadId, options = {}) {
             return;
         }
         console.error(`Failed to load ${resource}:`, e);
-        clearResourceData(resource);
-        if (renderTarget) {
-            setDataFreshnessState('offline', 'Failed to refresh', 4500);
+        if (preview) {
+            if (renderTarget) {
+                setDataFreshnessState('offline', 'Refresh failed, showing cached', 5000);
+            }
+        } else {
+            clearResourceData(resource);
+            if (renderTarget) {
+                setDataFreshnessState('offline', 'Failed to refresh', 4500);
+            }
         }
     }
 }
@@ -2507,6 +2534,7 @@ async function sendMessageAgentic(message, context = '') {
         const decoder = new TextDecoder();
 
         let currentEventType = null;
+        let streamError = false;
 
         while (true) {
             const { done, value } = await reader.read();
@@ -2595,6 +2623,18 @@ async function sendMessageAgentic(message, context = '') {
                     const text = data.replace(/\\n/g, '\n');
                     fullContent += text;
 
+                    // Check if this is an error message from the server
+                    if (text.startsWith('[ERROR] ')) {
+                        // Display error message with red styling
+                        div.classList.remove('streaming');
+                        div.id = '';
+                        contentEl.innerHTML = `<span style="color: var(--accent-red)">${escapeHtml(text.substring(8))}</span>`;
+                        aiScrollToBottom();
+                        // Mark error and break out of both loops
+                        streamError = true;
+                        break;
+                    }
+
                     let formatted = fullContent;
                     formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
                     formatted = formatted.replace(/\n/g, '<br>');
@@ -2604,28 +2644,32 @@ async function sendMessageAgentic(message, context = '') {
                     currentEventType = null;
                 }
             }
+            // Break outer loop if stream error occurred
+            if (streamError) break;
         }
 
-        // Finalize
-        div.classList.remove('streaming');
-        div.id = '';
-        let formatted = fullContent;
-        formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-        formatted = formatResourceLinks(formatted);
-        formatted = formatted.replace(/\n/g, '<br>');
-        contentEl.innerHTML = formatted;
+        // Finalize (skip if stream error already handled)
+        if (!streamError) {
+            div.classList.remove('streaming');
+            div.id = '';
+            let formatted = fullContent;
+            formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+            formatted = formatResourceLinks(formatted);
+            formatted = formatted.replace(/\n/g, '<br>');
+            contentEl.innerHTML = formatted;
 
-        // AI response is saved by backend in handleAgenticChat
-        // Refresh chat history list to reflect updated title/message count
-        if (fullContent.trim()) {
-            loadChatHistory().catch(() => {});
+            // AI response is saved by backend in handleAgenticChat
+            // Refresh chat history list to reflect updated title/message count
+            if (fullContent.trim()) {
+                loadChatHistory().catch(() => {});
+            }
+
+            // Parse AI response for dashboard commands and execute them
+            await handleAIDashboardCommands(fullContent, message);
+
+            // Refresh resource list after potential changes
+            await loadData();
         }
-
-        // Parse AI response for dashboard commands and execute them
-        await handleAIDashboardCommands(fullContent, message);
-
-        // Refresh resource list after potential changes
-        await loadData();
 
     } catch (e) {
         if (e.name === 'AbortError') {
