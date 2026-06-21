@@ -459,6 +459,10 @@
                         tabindex="0">
                         <span data-i18n="nav_timeline">Event Timeline</span>
                     </div>
+                    <div class="nav-item" data-resource="cluster-viz" onclick="showClusterVisualizer()" role="button"
+                        tabindex="0">
+                        <span data-i18n="nav_cluster_visualizer">Cluster Visualizer</span>
+                    </div>
                 </div>
 
                 <div class="nav-section">
@@ -812,6 +816,13 @@
                     </div>
                     <div class="custom-view-body" id="timeline-body">
                         <div class="loading-placeholder">Loading events...</div>
+                    </div>
+                </div>
+
+                <!-- Cluster Visualizer Container -->
+                <div class="custom-view-container" id="cluster-viz-container" style="display:none;flex-direction:column;padding:0;overflow:hidden;">
+                    <div id="cv-canvas-body" style="flex:1;display:flex;flex-direction:column;overflow:auto;">
+                        <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-secondary);">Loading cluster data...</div>
                     </div>
                 </div>
 

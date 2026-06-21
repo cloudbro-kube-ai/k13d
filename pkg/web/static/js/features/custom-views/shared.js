@@ -7,6 +7,7 @@ const customViewIds = [
     'rbac-viz-container',
     'netpol-viz-container',
     'timeline-container',
+    'cluster-viz-container',
     'gitops-container',
     'audit-container'
 ];
