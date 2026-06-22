@@ -182,11 +182,11 @@ nav:
     - Security: features/security.md
   - Concepts:
     - Architecture: concepts/architecture.md
+    - CLI Mode: concepts/cli-mode.md
     - TUI Architecture: concepts/tui-architecture.md
     - AI Assistant: concepts/ai-assistant.md
     - MCP Integration: concepts/mcp-integration.md
     - Security & RBAC: concepts/security.md
-  - User Guide:
     - TUI Dashboard: user-guide/tui.md
     - Web Dashboard: user-guide/web.md
     - GitHub Issue Automation: user-guide/github-issue-automation.md

@@ -26,20 +26,21 @@ Default file paths are resolved from the platform config directory:
 
 | Mode | Example | Description |
 |------|---------|-------------|
-| TUI | `k13d` | Terminal dashboard (default) |
-| Web | `k13d --web` | Browser dashboard |
-| MCP | `k13d --mcp` | MCP server over stdio |
-
+|| TUI | `k13d` | Terminal dashboard (default) |
+|| Web | `k13d --web` | Browser dashboard |
+|| CLI | `k13d --cli` | Interactive CLI REPL |
+|| MCP | `k13d --mcp` | MCP server over stdio |
 ## Flags
 
 ### Startup & Scope
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--web` | `false` | Start Web UI mode |
-| `--tui` | `false` | Start TUI mode explicitly |
-| `--mcp` | `false` | Start MCP server mode |
-| `--port` | `8080` | Web server port |
+|| `--web` | `false` | Start Web UI mode |
+|| `--tui` | `false` | Start TUI mode explicitly |
+|| `--cli` | `false` | Start CLI REPL mode (requires K13D_CLI env) |
+|| `--mcp` | `false` | Start MCP server mode |
+|| `--port` | `8080` | Web server port |
 | `--config` | `~/.config/k13d/config.yaml` on macOS, `<XDG config home>/k13d/config.yaml` otherwise | Config file path |
 | `--namespace`, `-n` | current/default | Initial namespace |
 | `--all-namespaces`, `-A` | `false` | Start with all namespaces |

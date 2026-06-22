@@ -13,6 +13,7 @@ import (
 	_ "time/tzdata"
 
 	"github.com/cloudbro-kube-ai/k13d/internal/cli"
+	k13dcli "github.com/cloudbro-kube-ai/k13d/pkg/cli"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/log"
 	mcpserver "github.com/cloudbro-kube-ai/k13d/pkg/mcp/server"
@@ -33,7 +34,8 @@ func main() {
 	// Mode flags
 	webMode := flag.Bool("web", cli.EnvBoolDefault("K13D_WEB", false), "Start web server mode")
 	tuiMode := flag.Bool("tui", false, "Start TUI mode (default when no mode specified)")
-	mcpMode := flag.Bool("mcp", false, "Start MCP server mode (stdio transport)")
+	mcpMode := flag.Bool("mcp", cli.EnvBoolDefault("K13D_MCP", false), "Start MCP server mode (stdio transport)")
+	cliMode := flag.Bool("cli", cli.EnvBoolDefault("K13D_CLI", false), "Start CLI REPL mode")
 	webPort := flag.Int("port", cli.EnvIntDefault("K13D_PORT", 8080), "Web server port (used with --web)")
 	configPath := flag.String("config", cli.EnvDefault("K13D_CONFIG", ""), "Config file path (default: platform XDG config dir + /k13d/config.yaml)")
 
@@ -129,6 +131,11 @@ func main() {
 	// MCP server mode
 	if *mcpMode {
 		runMCPServer()
+		return
+	}
+	// CLI REPL mode
+	if *cliMode {
+		runCLI(cfg)
 		return
 	}
 
@@ -251,6 +258,23 @@ func runTUI(cfg *config.Config, initialNamespace string) {
 	log.Infof("k13d application exited cleanly.")
 }
 
+func runCLI(cfg *config.Config) {
+	defer cli.InitDB(cfg)()
+
+	ver := k13dcli.VersionInfo{
+		Version:   Version,
+		BuildTime: BuildTime,
+		GitCommit: GitCommit,
+	}
+
+	repl := k13dcli.New(cfg, ver)
+	if err := repl.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "CLI error: %v\n", err)
+		log.Errorf("CLI error: %v", err)
+		os.Exit(1)
+	}
+}
+
 // generateCompletion outputs shell completion script
 func generateCompletion(shell string) {
 	switch shell {
@@ -274,7 +298,7 @@ _k13d_completions() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # Main options
-    opts="-n --namespace -A --web --port --version --completion"
+    opts="-n --namespace -A --web --cli --port --version --completion"
 
     # Complete namespace after -n or --namespace
     if [[ "${prev}" == "-n" ]] || [[ "${prev}" == "--namespace" ]]; then
@@ -308,8 +332,10 @@ _k13d() {
         '-n[Initial namespace]:namespace:->namespaces'
         '--namespace[Initial namespace]:namespace:->namespaces'
         '-A[Start with all namespaces]'
-        '--web[Start web server mode]'
-        '--port[Web server port]:port:'
+		'--web[Start web server mode]'
+		'--cli[Start CLI REPL mode]'
+		'--mcp[Start MCP server mode]'
+		'--port[Web server port]:port:'
         '--version[Show version information]'
         '--completion[Generate shell completion]:shell:(bash zsh fish)'
     )
