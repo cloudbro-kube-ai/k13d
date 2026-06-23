@@ -6,16 +6,18 @@ import (
 	"io"
 	"os"
 
+	"github.com/mattn/go-runewidth"
 	"golang.org/x/term"
 )
+
 const (
 	keyEnter     = 0x0d
 	keyBackspace = 0x7f
-	keyCtrlC    = 0x03
-	keyCtrlD    = 0x04
-	keyCtrlL    = 0x0c
-	keyEscape   = 0x1b
-	keyDelete   = 0x08
+	keyCtrlC     = 0x03
+	keyCtrlD     = 0x04
+	keyCtrlL     = 0x0c
+	keyEscape    = 0x1b
+	keyDelete    = 0x08
 )
 
 // readLine reads a line of input with history navigation support.
@@ -51,8 +53,13 @@ func (c *CLI) readLine() (string, error) {
 
 			case keyBackspace, keyDelete:
 				if cursorPos > 0 && len(buf) > 0 {
-					buf = append(buf[:cursorPos-1], buf[cursorPos:]...)
-					cursorPos--
+					// Walk back to find the start of the UTF-8 character
+					start := cursorPos - 1
+					for start > 0 && buf[start]&0xC0 == 0x80 {
+						start--
+					}
+					buf = append(buf[:start], buf[cursorPos:]...)
+					cursorPos = start
 					refreshLine("", buf, cursorPos)
 				}
 
@@ -70,9 +77,24 @@ func (c *CLI) readLine() (string, error) {
 				refreshLine("", buf, cursorPos)
 
 			default:
-				if key[0] >= 0x20 && key[0] <= 0x7e {
-					buf = insertAt(buf, cursorPos, key[0])
-					cursorPos++
+				if key[0] >= 0x20 {
+					if key[0] <= 0x7e {
+						// ASCII printable
+						buf = insertAt(buf, cursorPos, key[0])
+						cursorPos++
+					} else {
+						// Multi-byte UTF-8: read continuation bytes
+						n := utf8SequenceLen(key[0])
+						seq := make([]byte, n)
+						seq[0] = key[0]
+						for i := 1; i < n; i++ {
+							var b [1]byte
+							os.Stdin.Read(b[:])
+							seq[i] = b[0]
+						}
+						buf = append(buf[:cursorPos], append(seq, buf[cursorPos:]...)...)
+						cursorPos += len(seq)
+					}
 					refreshLine("", buf, cursorPos)
 				}
 			}
@@ -135,10 +157,26 @@ func refreshLine(prompt string, buf []byte, cursorPos int) {
 	}
 	line := prompt + string(buf)
 	fmt.Print("\r\033[K" + line)
-	// Move cursor back to correct position
-	offset := len(prompt) + cursorPos
-	if move := len(line) - offset; move > 0 {
+	// Use visual width for cursor positioning (essential for CJK/UTF-8)
+	cursorVisual := runewidth.StringWidth(prompt) + runewidth.StringWidth(string(buf[:cursorPos]))
+	lineVisual := runewidth.StringWidth(line)
+	if move := lineVisual - cursorVisual; move > 0 {
 		fmt.Printf("\033[%dD", move)
+	}
+}
+
+// utf8SequenceLen returns the length (in bytes) of a UTF-8 sequence
+// given its first byte.
+func utf8SequenceLen(first byte) int {
+	switch {
+	case first >= 0xF0:
+		return 4
+	case first >= 0xE0:
+		return 3
+	case first >= 0xC0:
+		return 2
+	default:
+		return 1
 	}
 }
 
