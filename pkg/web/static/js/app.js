@@ -3494,37 +3494,39 @@ function toggleAIPanel() {
     const panel = document.getElementById('ai-panel');
     const handle = document.getElementById('resize-handle');
     const btn = document.getElementById('ai-toggle-btn');
+    const headerBtn = document.getElementById('ai-header-toggle-btn');
     const isMobile = window.innerWidth <= 768;
+    let isOpen;
 
     if (isMobile) {
-        // Mobile: use class toggle (CSS transform-based)
-        const isOpen = panel.classList.contains('mobile-open');
+        isOpen = panel.classList.contains('mobile-open');
         panel.classList.toggle('mobile-open', !isOpen);
-        if (btn) btn.classList.toggle('active', !isOpen);
-        localStorage.setItem('k13d_ai_panel', !isOpen ? 'open' : 'closed');
     } else {
-        // Desktop: use display toggle
-        const isHidden = panel.style.display === 'none';
-        panel.style.display = isHidden ? 'flex' : 'none';
-        handle.style.display = isHidden ? 'block' : 'none';
-        if (btn) btn.classList.toggle('active', isHidden);
-        localStorage.setItem('k13d_ai_panel', isHidden ? 'open' : 'closed');
+        isOpen = panel.style.display === 'none';
+        panel.style.display = isOpen ? 'flex' : 'none';
+        handle.style.display = isOpen ? 'block' : 'none';
     }
+
+    if (btn) btn.classList.toggle('active', isOpen);
+    if (headerBtn) headerBtn.classList.toggle('active', isOpen);
+    localStorage.setItem('k13d_ai_panel', isOpen ? 'open' : 'closed');
 }
 
 // Restore AI panel state on load
 (function initAIPanelState() {
     const saved = localStorage.getItem('k13d_ai_panel');
+    const btn = document.getElementById('ai-toggle-btn');
+    const headerBtn = document.getElementById('ai-header-toggle-btn');
     if (saved === 'closed') {
         const panel = document.getElementById('ai-panel');
         const handle = document.getElementById('resize-handle');
-        const btn = document.getElementById('ai-toggle-btn');
         if (panel) panel.style.display = 'none';
         if (handle) handle.style.display = 'none';
         if (btn) btn.classList.remove('active');
+        if (headerBtn) headerBtn.classList.remove('active');
     } else {
-        const btn = document.getElementById('ai-toggle-btn');
         if (btn) btn.classList.add('active');
+        if (headerBtn) headerBtn.classList.add('active');
     }
 })();
 

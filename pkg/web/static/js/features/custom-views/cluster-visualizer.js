@@ -58,7 +58,7 @@ function renderCvNsFilters() {
     if (!el) return;
     el.innerHTML = cvData.namespaces.map(ns => `
         <label class="cv-namespace-toggle">
-            <input type="checkbox" checked onchange="cvToggleNs('${escapeHtml(ns)}')">
+            <input type="checkbox" ${cvNsFilter.has(ns) ? 'checked' : ''} onchange="cvToggleNs('${escapeHtml(ns)}')">
             <span>${escapeHtml(ns)}</span>
         </label>
     `).join('');

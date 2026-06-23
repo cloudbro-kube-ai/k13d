@@ -107,6 +107,19 @@
     transform: translateY(-1px);
 }
 
+.ai-header-toggle {
+    border-color: rgba(187, 154, 247, 0.3);
+    color: var(--accent-purple);
+}
+.ai-header-toggle:hover {
+    background: rgba(187, 154, 247, 0.1);
+    border-color: var(--accent-purple);
+}
+.ai-header-toggle.active {
+    background: rgba(187, 154, 247, 0.2);
+    border-color: var(--accent-purple);
+}
+
 .refresh-btn {
     background: linear-gradient(135deg, rgba(122, 162, 247, 0.1) 0%, rgba(125, 207, 255, 0.1) 100%);
     border: 1px solid rgba(122, 162, 247, 0.2);
