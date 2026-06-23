@@ -1,24 +1,29 @@
 package cli
 
 import (
-	"fmt"
-	"strings"
+"fmt"
+"strings"
+"unicode/utf8"
 
-	"golang.org/x/term"
+"golang.org/x/term"
 )
 
 var logoLines = []string{
-	"                 ▄",
-	"█▀▀▄ ▐▌ █▀▀▄ █▀▀▀▄",
-	"█▄▄▀ ▐▌ █▄▄▀ █▄▄▄▀",
-	"▀  ▀  ▀ ▀▀▀  ▀  ▀▀",
+"██   ██   █████   ██████   ██████            ██████   ██       ██████  ",
+"██  ██      ██        ██   ██   ██           ██       ██         ██    ",
+"██ ██       ██    ██████   ██   ██           ██       ██         ██    ",
+"████        ██        ██   ██   ██           ██       ██         ██    ",
+"██ ██       ██        ██   ██   ██           ██       ██         ██    ",
+"██  ██      ██    ██████   ██████            ██████   ██████   ██████  ",
 }
 
 var logoColors = []string{
-	"\033[38;5;51m",
-	"\033[38;5;45m",
-	"\033[38;5;75m",
-	"\033[38;5;117m",
+"\033[38;5;51m",
+"\033[38;5;45m",
+"\033[38;5;39m",
+"\033[38;5;75m",
+"\033[38;5;68m",
+"\033[38;5;117m",
 }
 
 const colorReset = "\033[0m"
@@ -50,10 +55,10 @@ func RenderSplash(width, height int, version string) string {
 		versionDisplay = ""
 	}
 
-	maxLineWidth := len(logoLines[0])
+	maxLineWidth := utf8.RuneCountInString(logoLines[0])
 	for _, line := range logoLines {
-		if len(line) > maxLineWidth {
-			maxLineWidth = len(line)
+		if w := utf8.RuneCountInString(line); w > maxLineWidth {
+			maxLineWidth = w
 		}
 	}
 
@@ -87,7 +92,7 @@ func RenderSplash(width, height int, version string) string {
 
 	buf.WriteString("\n")
 
-	tagline := "k13d cli"
+	tagline := "kubernest AI Cli"
 	taglineOffset := horizPad + (maxLineWidth-len(tagline))/2
 	if taglineOffset < 0 {
 		taglineOffset = 0
@@ -99,7 +104,7 @@ func RenderSplash(width, height int, version string) string {
 	buf.WriteString("\n")
 
 	if versionDisplay != "" {
-		versionOffset := horizPad + maxLineWidth - len(versionDisplay)
+		versionOffset := horizPad + (maxLineWidth-len(versionDisplay))/2
 		if versionOffset > horizPad {
 			buf.WriteString(strings.Repeat(" ", versionOffset))
 			buf.WriteString(colorVersion)
@@ -117,20 +122,20 @@ func RenderSplash(width, height int, version string) string {
 }
 
 func RenderSplashMinimal(width int, version string) string {
-	title := "k13d CLI"
-	padding := (width - len(title)) / 2
+	tagline := "kubernest AI Cli"
+	padding := (width - len(tagline)) / 2
 	if padding < 0 {
 		padding = 0
 	}
 	line := fmt.Sprintf("%s%s%s%s",
 		colorTagline,
-		strings.Repeat(" ", padding)+title,
+		strings.Repeat(" ", padding)+tagline,
 		colorReset,
 		colorDim+" ["+version+"]"+colorReset,
 	)
 	return fmt.Sprintf("\n%s\n%s\n\n",
 		line,
-		strings.Repeat(" ", padding)+strings.Repeat("=", len(title)),
+		strings.Repeat(" ", padding)+strings.Repeat("=", len(tagline)),
 	)
 }
 
