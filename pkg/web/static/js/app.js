@@ -694,19 +694,20 @@ function onPageSizeChange() {
 
 // Theme toggle (dark/light)
 function initTheme() {
-    const saved = localStorage.getItem('k13d_theme') || 'light';
+    const saved = localStorage.getItem('k13d_theme') || 'ollama';
     document.documentElement.setAttribute('data-theme', saved);
     updateThemeIcon();
 }
 
 function toggleTheme() {
     const current = document.documentElement.getAttribute('data-theme');
-    if (!current || current === 'light') {
+    const isLight = !current || current === 'light' || current === 'ollama';
+    if (isLight) {
         // Switch to Tokyo Night
         applyTheme('tokyo-night');
     } else {
-        // Switch to Light
-        applyTheme('light');
+        // Switch to default light theme (Ollama)
+        applyTheme('ollama');
     }
 }
 
@@ -714,7 +715,7 @@ function updateThemeIcon() {
     const btn = document.getElementById('theme-toggle');
     if (!btn) return;
     const theme = document.documentElement.getAttribute('data-theme');
-    const isLight = !theme || theme === 'light';
+    const isLight = !theme || theme === 'light' || theme === 'ollama';
     btn.textContent = isLight ? '☀️' : '🌙';
     btn.title = isLight ? 'Switch to dark theme' : 'Switch to light theme';
 }

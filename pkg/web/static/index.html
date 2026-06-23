@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="ollama">
 
 <head>
     <meta charset="UTF-8">
@@ -95,9 +95,9 @@
 
                 <!-- Team Branding -->
                 <div class="login-team">
-                    <span class="team-cloud">☁️ Cloud Bro</span>
-                    <span class="team-divider">×</span>
-                    <span class="team-kubeai">KubeAI Team</span>
+                    <span class="team-badge team-cloud">Cloud Bro</span>
+                    <!-- <span class="team-badge team-kubeai">KubeAI Team</span> -->
+                    <span class="team-badge team-cloud">KubeAI Team</span>
                 </div>
             </div>
         </div>
@@ -1070,8 +1070,8 @@
                                 <div class="settings-description">Change the dashboard color scheme</div>
                             </div>
                             <select id="setting-theme" onchange="applyTheme(this.value)">
-                                <option value="light">Light (Default)</option>
-                                <option value="ollama">Ollama (Minimalist White)</option>
+                                <option value="light">Light</option>
+                                <option value="ollama">Ollama (Minimalist White, Default)</option>
                                 <option value="tokyo-night">Tokyo Night</option>
                                 <option value="production">Production (Red)</option>
                                 <option value="staging">Staging (Yellow)</option>

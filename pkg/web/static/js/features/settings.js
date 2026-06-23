@@ -188,7 +188,7 @@ function switchSettingsTab(tab) {
         loadNotificationSettings();
     } else if (tab === 'general') {
         // Load saved theme
-        const saved = localStorage.getItem('k13d_theme') || 'light';
+        const saved = localStorage.getItem('k13d_theme') || 'ollama';
         const sel = document.getElementById('setting-theme');
         if (sel) sel.value = saved;
     }
@@ -239,7 +239,7 @@ function applyTheme(theme) {
 
 // Apply saved theme on load
 (function initSettingsTheme() {
-    const saved = localStorage.getItem('k13d_theme') || 'light';
+    const saved = localStorage.getItem('k13d_theme') || 'ollama';
     applyTheme(saved);
 })();
 

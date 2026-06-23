@@ -21,6 +21,10 @@ func (h *CommandHistory) Add(cmd string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	if cmd == "" {
+		return
+	}
+
 	if len(h.entries) > 0 && h.entries[len(h.entries)-1] == cmd {
 		h.cursor = len(h.entries)
 		return
