@@ -138,6 +138,7 @@ type App struct {
 	selectedRows        map[int]bool      // Multi-select: selected row indices (k9s Space key)
 	sortColumn          int               // Current sort column index (-1 = none)
 	sortAscending       bool              // Sort direction (true = ascending, false = descending)
+	store               *ResourceStore    // Resource data store for diff rendering
 
 	// Command history
 	cmdHistory        []string
@@ -311,6 +312,7 @@ func NewAppWithNamespace(initialNamespace string) *App {
 		selectedRows:        make(map[int]bool),
 		sortColumn:          -1,
 		sortAscending:       true,
+		store:               NewResourceStore(),
 		cmdHistoryIdx:       -1,
 		aiInputHistoryIdx:   -1,
 		pendingToolApproval: make(chan bool, 1),

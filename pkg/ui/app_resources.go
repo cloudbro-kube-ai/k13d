@@ -92,51 +92,18 @@ func (a *App) refresh() {
 	currentFilter := a.filterText
 	a.mx.Unlock()
 
+	// Update the store for diff rendering
+	a.store.SetFull(headers, keyedRows(resource, rows))
+
 	if currentFilter != "" {
 		a.applyFilterText(currentFilter)
 	} else {
-		// Atomic update: Clear and populate table in a single draw call
-		// This prevents visible flicker between clear and populate operations
+		// Flicker-free incremental render: only changed cells are updated
 		a.queueUpdateDrawDirect(func() {
-			a.table.Clear()
-			
-			// Set headers
-			for i, h := range headers {
-				cell := tview.NewTableCell(h).
-					SetTextColor(tcell.ColorYellow).
-					SetAttributes(tcell.AttrBold).
-					SetSelectable(false).
-					SetExpansion(1)
-				a.table.SetCell(0, i, cell)
-			}
-			
-			// Set data rows
-			for r, row := range rows {
-				for c, text := range row {
-					color := tcell.ColorWhite
-					if a.isStatusColumn(c) {
-						color = a.statusColor(text)
-					}
-					cell := tview.NewTableCell(text).
-						SetTextColor(color).
-						SetExpansion(1)
-					a.table.SetCell(r+1, c, cell)
-				}
-			}
-			
-			// Set title and selection
-			count := len(rows)
-			a.table.SetTitle(fmt.Sprintf(" %s (%d) ", resource, count))
-			if count > 0 {
-				a.table.Select(1, 0)
-			}
-			
-			// Apply decorations and chrome
+			a.applyDiffRender()
 			a.refreshTableDecorations()
 			a.applyAIChrome()
 			a.updateStatusBar()
-			
-			// Single sync at the end
 			a.requestSync()
 		})
 	}
@@ -264,33 +231,15 @@ func (a *App) applyFilterText(filter string) {
 	filterLower := strings.ToLower(filterPattern)
 
 	a.QueueUpdateDraw(func() {
-		a.table.Clear()
-		for i, h := range headers {
-			displayHeader := h
-			headerColor := tcell.NewRGBColor(224, 175, 104)
-			if sortCol == i {
-				if sortAsc {
-					displayHeader = h + " ▲"
-				} else {
-					displayHeader = h + " ▼"
-				}
-				headerColor = tcell.NewRGBColor(125, 207, 255)
-			}
-			cell := tview.NewTableCell(displayHeader).
-				SetTextColor(headerColor).
-				SetAttributes(tcell.AttrBold).
-				SetSelectable(false).
-				SetExpansion(1).
-				SetBackgroundColor(tcell.NewRGBColor(36, 40, 59))
-			a.table.SetCell(0, i, cell)
-		}
-
+		// Build filtered keys and rows for diff rendering
 		renderRows := filteredRows
 		if mode == filterModeText {
 			renderRows = rows
 		}
 
-		rowIdx := 1
+		var filteredKeys []string
+		var filteredDisplayRows [][]string
+		rowIdx := 0
 		for _, row := range renderRows {
 			if mode == filterModeText && filterPattern != "" {
 				match := false
@@ -312,12 +261,12 @@ func (a *App) applyFilterText(filter string) {
 				}
 			}
 
+			key := rowKey(resource, row)
+			filteredKeys = append(filteredKeys, key)
+
 			nameCol := nameColumnIndex(resource)
+			displayRow := make([]string, len(row))
 			for c, text := range row {
-				color := tcell.ColorWhite
-				if a.isStatusColumn(c) {
-					color = a.statusColor(text)
-				}
 				displayText := text
 				switch mode {
 				case filterModeFuzzy:
@@ -334,13 +283,15 @@ func (a *App) applyFilterText(filter string) {
 						}
 					}
 				}
-				cell := tview.NewTableCell(displayText).
-					SetTextColor(color).
-					SetExpansion(1)
-				a.table.SetCell(rowIdx, c, cell)
+				displayRow[c] = displayText
 			}
+			filteredDisplayRows = append(filteredDisplayRows, displayRow)
 			rowIdx++
 		}
+
+		cfg := a.rendererConfig(resource, headers, sortCol, sortAsc)
+		syncHeaders(a.table, headers, cfg)
+		count := syncDataRows(a.table, filteredKeys, filteredDisplayRows, cfg)
 
 		filterInfo := ""
 		if filter != "" {
@@ -357,9 +308,9 @@ func (a *App) applyFilterText(filter string) {
 				}
 			}
 		}
-		a.table.SetTitle(fmt.Sprintf(" %s (%d/%d)%s ", resource, rowIdx-1, len(rows), filterInfo))
-		if rowIdx > 1 {
-			a.table.Select(1, 0)
+		a.table.SetTitle(fmt.Sprintf(" %s (%d/%d)%s ", resource, count, len(rows), filterInfo))
+		if count > 0 {
+			a.table.Select(dataRowOffset, 0)
 		}
 		a.refreshTableDecorations()
 		a.requestSync()
