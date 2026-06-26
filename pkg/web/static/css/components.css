@@ -764,6 +764,38 @@ tbody tr:hover {
 .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
 
 /* ==========================================
+ * Table Loading Overlay
+ * ========================================== */
+.table-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    opacity: 0.85;
+    z-index: 10;
+    border-radius: 8px;
+}
+
+.table-loading-overlay .loading-dots span {
+    width: 8px;
+    height: 8px;
+}
+
+.table-loading-overlay .loading-text {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* ==========================================
+ * Health Indicator
+ * ========================================== */
  * Health Indicator
  * ========================================== */
 

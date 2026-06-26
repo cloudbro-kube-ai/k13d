@@ -41,7 +41,7 @@ var KubernetesProfile = config.MCPProfile{
 		{
 			Name:        "kubernetes",
 			Command:     "npx",
-			Args:        []string{"-y", "@anthropic/mcp-server-kubernetes"},
+			Args:        []string{"-y", "mcp-server-kubernetes"},
 			Env:         map[string]string{"KUBECONFIG": ""},
 			Description: "Kubernetes resource management and inspection tools",
 			Enabled:     false,
@@ -183,7 +183,7 @@ var FullStackProfile = config.MCPProfile{
 		{
 			Name:        "kubernetes",
 			Command:     "npx",
-			Args:        []string{"-y", "@anthropic/mcp-server-kubernetes"},
+			Args:        []string{"-y", "mcp-server-kubernetes"},
 			Env:         map[string]string{"KUBECONFIG": ""},
 			Description: "Kubernetes resource management and inspection tools",
 			Enabled:     false,

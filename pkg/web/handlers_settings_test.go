@@ -60,7 +60,7 @@ func setupSettingsTestServer(t *testing.T) *Server {
 				{
 					Name:        "kubectl-server",
 					Command:     "npx",
-					Args:        []string{"@anthropic/mcp-server-kubernetes"},
+					Args:        []string{"mcp-server-kubernetes"},
 					Description: "Kubernetes MCP server",
 					Enabled:     true,
 				},

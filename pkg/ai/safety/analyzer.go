@@ -29,11 +29,12 @@ type Report struct {
 
 // Analyzer provides command safety analysis
 type Analyzer struct {
-	readOnlyVerbs    map[string]bool
-	writeVerbs       map[string]bool
-	dangerousFlags   []string
-	interactiveFlags []string
-	dangerousVerbs   []string
+	readOnlyVerbs             map[string]bool
+	writeVerbs                map[string]bool
+	dangerousFlags            []string
+	conditionalDangerousFlags []string // Only dangerous with write verbs (e.g., -A, --all-namespaces)
+	interactiveFlags          []string
+	dangerousVerbs            []string
 }
 
 // NewAnalyzer creates a new safety analyzer
@@ -78,12 +79,14 @@ func NewAnalyzer() *Analyzer {
 		dangerousFlags: []string{
 			"--all",
 			"-all",
-			"--all-namespaces",
-			"-A",
 			"--force",
 			"--grace-period=0",
 			"--cascade=orphan",
 			"--now",
+		},
+		conditionalDangerousFlags: []string{
+			"--all-namespaces",
+			"-A",
 		},
 		interactiveFlags: []string{
 			"-it",
@@ -245,6 +248,20 @@ func (a *Analyzer) checkDangerousPatterns(report *Report, parsed *ParsedCommand)
 			report.IsDangerous = true
 			report.RequiresApproval = true
 			report.Warnings = append(report.Warnings, "Dangerous flag: "+flag)
+		}
+	}
+
+	// Check conditional dangerous flags (only dangerous with write verbs)
+	// -A and --all-namespaces are safe for read-only operations like get, describe, logs
+	// Use report.IsReadOnly which is set by analyzeKubectl/analyzeHelm
+	if !report.IsReadOnly {
+		for _, flag := range a.conditionalDangerousFlags {
+			if parsed.HasFlag(flag) {
+				report.Type = TypeDangerous
+				report.IsDangerous = true
+				report.RequiresApproval = true
+				report.Warnings = append(report.Warnings, "Dangerous flag: "+flag)
+			}
 		}
 	}
 

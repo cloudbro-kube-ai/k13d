@@ -1069,6 +1069,13 @@ function buildResourceRequest(resource) {
 }
 
 function renderTableLoadingState(resource) {
+    // Remove loading overlay if present (replaced by inline loading state)
+    const tableContainer = document.querySelector('.table-container');
+    if (tableContainer) {
+        const overlay = tableContainer.querySelector('.table-loading-overlay');
+        if (overlay) overlay.remove();
+    }
+
     renderTableHeaders(resource);
     const columns = tableHeaders[resource] || ['NAME'];
     const body = document.getElementById('table-body');
@@ -1626,6 +1633,20 @@ function switchResource(resource) {
     // Update active column filters display
     updateActiveColumnFiltersDisplay();
 
+    // Show loading overlay on table container
+    const tableContainer = document.querySelector('.table-container');
+    if (tableContainer) {
+        // Remove any existing overlay
+        const existing = tableContainer.querySelector('.table-loading-overlay');
+        if (existing) existing.remove();
+        // Create and add loading overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'table-loading-overlay';
+        overlay.innerHTML = '<div class="loading-dots" style="justify-content:center;"><span></span><span></span><span></span></div><div class="loading-text">Loading ' + escapeHtml(resource) + '...</div>';
+        tableContainer.style.position = 'relative';
+        tableContainer.appendChild(overlay);
+    }
+
     loadData();
 }
 
@@ -1810,6 +1831,13 @@ function updateResourceSummary(resource, items) {
 }
 
 function renderTable(resource, items) {
+    // Remove loading overlay if present
+    const tableContainer = document.querySelector('.table-container');
+    if (tableContainer) {
+        const overlay = tableContainer.querySelector('.table-loading-overlay');
+        if (overlay) overlay.remove();
+    }
+
     // Standardize items and update state
     allItems = items || [];
     

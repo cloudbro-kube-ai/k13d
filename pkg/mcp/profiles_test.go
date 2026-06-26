@@ -57,7 +57,7 @@ func TestIsProfileInstalled(t *testing.T) {
 				{
 					Name:    "kubernetes",
 					Command: "npx",
-					Args:    []string{"-y", "@anthropic/mcp-server-kubernetes"},
+					Args:    []string{"-y", "mcp-server-kubernetes"},
 					Enabled: false,
 				},
 			},
@@ -158,7 +158,7 @@ func TestUninstallProfile(t *testing.T) {
 				{
 					Name:    "kubernetes",
 					Command: "npx",
-					Args:    []string{"-y", "@anthropic/mcp-server-kubernetes"},
+					Args:    []string{"-y", "mcp-server-kubernetes"},
 					Enabled: false,
 				},
 				{
