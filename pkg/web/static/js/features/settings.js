@@ -131,7 +131,7 @@ async function autoSaveGeneralSettings() {
 }
 
 // Settings
-function showSettings() {
+function showSettings(tab) {
     document.getElementById('settings-modal').classList.add('active');
     loadSettings();
     loadVersionInfo();
@@ -139,6 +139,10 @@ function showSettings() {
     const adminTab = document.getElementById('admin-tab');
     if (adminTab) {
         adminTab.style.display = (currentUser && currentUser.role === 'admin') ? 'block' : 'none';
+    }
+    // Switch to specified tab if provided
+    if (tab) {
+        switchSettingsTab(tab);
     }
 }
 

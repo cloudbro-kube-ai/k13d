@@ -630,18 +630,19 @@
             gap: 12px;
         }
 
-        .user-badge {
-            background: linear-gradient(135deg, rgba(122, 162, 247, 0.15) 0%, rgba(187, 154, 247, 0.15) 100%);
-            border: 1px solid rgba(122, 162, 247, 0.2);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: var(--font-weight-medium);
-            letter-spacing: 0.02em;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
+.user-badge {
+    background: linear-gradient(135deg, rgba(122, 162, 247, 0.15) 0%, rgba(187, 154, 247, 0.15) 100%);
+    border: 1px solid rgba(122, 162, 247, 0.2);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: var(--font-weight-medium);
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
 
         .user-badge::before {
             content: '👤';
