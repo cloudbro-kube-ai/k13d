@@ -671,6 +671,12 @@ async function createNewChat() {
 
             // Refresh list and show new chat
             await loadChatHistory();
+
+            // Close chat history sidebar after creating new session
+            const sidebar = document.getElementById('chat-history-sidebar');
+            if (sidebar && sidebar.classList.contains('open')) {
+                toggleChatHistory();
+            }
         }
     } catch (e) {
         console.error('Failed to create new chat:', e);
