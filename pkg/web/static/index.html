@@ -71,21 +71,21 @@
                 <!-- Features -->
                 <div class="login-features">
                     <div class="login-feature">
-                        <span class="feature-icon">🤖</span>
+                        <span class="feature-icon"><i data-lucide="bot" style="width:24px;height:24px"></i></span>
                         <div>
                             <strong>AI Assistant</strong>
                             <p>Natural language cluster management</p>
                         </div>
                     </div>
                     <div class="login-feature">
-                        <span class="feature-icon">⚡</span>
+                        <span class="feature-icon"><i data-lucide="zap" style="width:24px;height:24px"></i></span>
                         <div>
                             <strong>Real-time Monitoring</strong>
                             <p>Live resource status and metrics</p>
                         </div>
                     </div>
                     <div class="login-feature">
-                        <span class="feature-icon">🔒</span>
+                        <span class="feature-icon"><i data-lucide="shield" style="width:24px;height:24px"></i></span>
                         <div>
                             <strong>Safety First</strong>
                             <p>Guardrails for dangerous operations</p>
@@ -118,10 +118,10 @@
                 <!-- Token Login Form (for token mode) -->
                 <div id="token-login-form" class="login-form">
                     <div class="token-hint" id="token-hint">
-                        <div style="margin-bottom: 12px;">🔐 <span data-i18n="login_token_hint">Sign in with your Kubernetes ServiceAccount token</span></div>
+                        <div style="margin-bottom: 12px;"><i data-lucide="lock" style="width:16px;height:16px;vertical-align:middle"></i> <span data-i18n="login_token_hint">Sign in with your Kubernetes ServiceAccount token</span></div>
                         <div class="token-help-box" id="token-help-box">
                             <div class="token-help-toggle" onclick="toggleTokenHelp()" role="button" tabindex="0">
-                                <span class="token-help-toggle-text">📋 <span data-i18n="login_token_help_toggle">How to create a token</span></span>
+                                <span class="token-help-toggle-text"><i data-lucide="clipboard-list" style="width:14px;height:14px;vertical-align:middle"></i> <span data-i18n="login_token_help_toggle">How to create a token</span></span>
                                 <span class="token-help-toggle-icon">▼</span>
                             </div>
                             <div class="token-help-content">
@@ -147,7 +147,7 @@
                                     </div>
                                 </div>
                                 <div class="token-help-note">
-                                    💡 <strong>Tip:</strong> <span data-i18n="login_token_tip">Paste the token below and press Enter!</span>
+                                    <i data-lucide="lightbulb" style="width:14px;height:14px;vertical-align:middle"></i> <strong>Tip:</strong> <span data-i18n="login_token_tip">Paste the token below and press Enter!</span>
                                 </div>
                             </div>
                         </div>
@@ -161,7 +161,7 @@
                 <!-- Password Login Form (for local mode) -->
                 <div id="password-login-form" class="login-form">
                     <div class="local-login-hint">
-                        <div style="margin-bottom: 8px;">👤 <span data-i18n="login_local_hint">로컬 계정으로 로그인하세요</span></div>
+                        <div style="margin-bottom: 8px;"><i data-lucide="user" style="width:16px;height:16px;vertical-align:middle"></i> <span data-i18n="login_local_hint">로컬 계정으로 로그인하세요</span></div>
                         <div style="font-size: 11px; color: var(--text-muted);"><span data-i18n="login_local_sub_hint">Ask your administrator for credentials</span></div>
                     </div>
                     <label for="login-username" class="sr-only">Username</label>
@@ -208,7 +208,7 @@
                 <div class="logo">k13d</div>
             </div>
             <div class="search-container">
-                <span class="search-icon">🔍</span>
+                <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px"></i></span>
                 <input type="text" class="global-search" id="global-search" placeholder="Search all resources..."
                     oninput="handleGlobalSearchInput(event)" onkeydown="handleGlobalSearchKeydown(event)"
                     onfocus="showSearchResults()" autocomplete="off">
@@ -216,9 +216,9 @@
             </div>
             <div class="cluster-switcher" id="cluster-switcher">
                 <button class="cluster-switcher-btn" onclick="toggleClusterDropdown()" title="Switch Cluster Context">
-                    <span class="cluster-icon">⎈</span>
+                    <span class="cluster-icon"><i data-lucide="container" style="width:16px;height:16px"></i></span>
                     <span class="cluster-name" id="cluster-name">default</span>
-                    <span class="cluster-arrow">▾</span>
+                    <span class="cluster-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px"></i></span>
                 </button>
                 <div class="cluster-dropdown" id="cluster-dropdown">
                     <div class="cluster-dropdown-header">Kubernetes Contexts</div>
@@ -257,7 +257,7 @@
                 <span class="user-badge" id="user-badge" onclick="showSettings('admin')" title="Settings - Admin">admin</span>
                 <button class="logout-btn" onclick="showShortcuts()" aria-label="Keyboard shortcuts">?</button>
                 <button class="logout-btn" onclick="showSettings()">Settings</button>
-                <button class="logout-btn ai-header-toggle" id="ai-header-toggle-btn" onclick="toggleAIPanel()" title="Toggle AI Assistant (A key)">🤖 AI</button>
+                <button class="logout-btn ai-header-toggle" id="ai-header-toggle-btn" onclick="toggleAIPanel()" title="Toggle AI Assistant (A key)"><i data-lucide="bot" style="width:14px;height:14px;vertical-align:middle"></i> AI</button>
                 <button class="logout-btn" id="logout-btn" onclick="logout()">Logout</button>
             </div>
         </div>
@@ -493,7 +493,7 @@
                             </select>
                             <button class="refresh-btn" onclick="refreshData()">↻ Refresh</button>
                             <button class="ai-toggle-btn" id="ai-toggle-btn" onclick="toggleAIPanel()"
-                                title="Toggle AI Assistant (Ctrl+A)" aria-label="Toggle AI Assistant">🤖</button>
+                                title="Toggle AI Assistant (Ctrl+A)" aria-label="Toggle AI Assistant"><i data-lucide="bot" style="width:16px;height:16px"></i></button>
                         </div>
                     </div>
                     <div class="filter-bar">
@@ -854,7 +854,7 @@
                     <!-- Chat History Sidebar -->
                     <div class="chat-history-sidebar" id="chat-history-sidebar">
                         <div class="chat-history-header">
-                            <h4>💬 Chat History</h4>
+                            <h4><i data-lucide="message-square" style="width:16px;height:16px;vertical-align:middle"></i> Chat History</h4>
                             <div class="chat-history-actions">
                                 <button class="chat-history-btn primary" onclick="createNewChat()"
                                     title="New Chat">+</button>
@@ -871,17 +871,23 @@
                     </div>
 
                     <div class="ai-header">
-                        <button class="chat-history-toggle" id="chat-history-toggle" onclick="toggleChatHistory()"
-                            title="Chat History">📋</button>
-                        <span>AI Assistant</span>
+                        <span class="ai-header-title">AI Assistant</span>
                         <div class="ai-mode-selector" id="ai-mode-selector" style="display:none">
                             <button class="ai-mode-btn active" id="ai-btn-chat" onclick="setAIMode('chat')" title="Chat View">Chat</button>
                             <button class="ai-mode-btn" id="ai-btn-tui" onclick="setAIMode('tui')" title="Terminal View">TUI</button>
                         </div>
                         <span class="ai-status-dot" id="ai-status-dot" title="Checking connection...">●</span>
                         <span class="ai-badge" id="ai-model-badge" style="cursor:pointer;" onclick="openAIModelSettings()" title="Click to change model settings">Loading...</span>
-                        <button class="debug-toggle" id="debug-toggle" onclick="toggleDebugMode()"
-                            style="margin-left: auto;" title="Toggle Debug Mode">🐛 Debug</button>
+                        <div class="ai-header-actions">
+                            <button class="ai-header-btn" onclick="toggleChatHistory()"
+                                title="Chat History"><i data-lucide="clipboard-list" style="width:14px;height:14px"></i></button>
+                            <button class="ai-header-btn" onclick="toggleDebugMode()"
+                                title="Toggle Debug Mode"><i data-lucide="bug" style="width:14px;height:14px"></i></button>
+                            <button class="ai-header-btn" onclick="toggleAiExpand()"
+                                title="Expand Panel"><i data-lucide="maximize-2" style="width:14px;height:14px"></i></button>
+                            <button class="ai-header-btn" onclick="toggleAIPanel()"
+                                title="Close Panel"><i data-lucide="x" style="width:14px;height:14px"></i></button>
+                        </div>
                     </div>
                     <!-- Guardrails Status -->
                     <div class="guardrails-status" id="guardrails-status">
@@ -922,7 +928,7 @@
                     <!-- Debug panel for MCP Tool Calling -->
                     <div class="debug-panel" id="debug-panel">
                         <div class="debug-header">
-                            <span>🔧 MCP Tool Calling Debug</span>
+                            <span><i data-lucide="wrench" style="width:14px;height:14px;vertical-align:middle"></i> MCP Tool Calling Debug</span>
                             <button class="debug-toggle" onclick="clearDebugLogs()">Clear</button>
                         </div>
                         <div class="debug-content" id="debug-content">
@@ -932,15 +938,15 @@
                         </div>
                     </div>
                     <div class="ai-input-container" id="ai-input-container">
-                        <textarea class="ai-input" id="ai-input" placeholder="Ask me anything about Kubernetes..."
-                            rows="2"></textarea>
+                        <div class="ai-input-wrapper">
+                            <textarea class="ai-input" id="ai-input" placeholder="Ask me anything about Kubernetes..."
+                                rows="2"></textarea>
+                            <button class="ai-clear-btn" id="ai-clear-btn" onclick="clearAiInput()"
+                                title="Clear input" aria-label="Clear input">&#x2715;</button>
+                        </div>
                         <div class="ai-actions">
                             <span class="ai-hint" data-i18n="ai_hint">Enter send · Shift+Enter newline · ↑↓ history</span>
                             <div class="ai-actions-buttons">
-                                <button class="ai-clear-btn" id="ai-clear-btn" onclick="clearAiInput()"
-                                    title="Clear input" aria-label="Clear input">&#x2715;</button>
-                                <button class="ai-expand-btn" id="ai-expand-btn" onclick="toggleAiExpand()"
-                                    title="Expand input area" aria-label="Expand input area">&#x26F6;</button>
                                 <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
                                 <button class="ai-stop-btn" id="ai-stop-btn" onclick="stopGeneration()" title="Stop generation">
                                     <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg>
@@ -1596,7 +1602,7 @@
 
                 <div id="settings-about" class="settings-content" style="display:none;">
                     <div class="about-header">
-                        <div class="about-logo">⎈</div>
+                        <div class="about-logo"><i data-lucide="container" style="width:48px;height:48px"></i></div>
                         <div class="about-title">
                             <h2>k13d</h2>
                             <p class="about-tagline">AI-Powered Kubernetes Dashboard</p>
@@ -1626,21 +1632,21 @@
 
                     <div class="about-features">
                         <div class="about-feature">
-                            <span class="about-feature-icon">🤖</span>
+                            <span class="about-feature-icon"><i data-lucide="bot" style="width:24px;height:24px"></i></span>
                             <div>
                                 <strong>AI Assistant</strong>
                                 <p>Natural language cluster management</p>
                             </div>
                         </div>
                         <div class="about-feature">
-                            <span class="about-feature-icon">⚡</span>
+                            <span class="about-feature-icon"><i data-lucide="zap" style="width:24px;height:24px"></i></span>
                             <div>
                                 <strong>Real-time Monitoring</strong>
                                 <p>Live resource status and metrics</p>
                             </div>
                         </div>
                         <div class="about-feature">
-                            <span class="about-feature-icon">🔒</span>
+                            <span class="about-feature-icon"><i data-lucide="shield" style="width:24px;height:24px"></i></span>
                             <div>
                                 <strong>Safety First</strong>
                                 <p>Guardrails for dangerous operations</p>
@@ -1658,20 +1664,20 @@
                     <div class="about-links">
                         <a href="https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli" target="_blank"
                             class="about-link">
-                            <span>📦</span> GitHub Repository
+                            <span><i data-lucide="github" style="width:16px;height:16px;vertical-align:middle"></i></span> GitHub Repository
                         </a>
                         <a href="https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/issues" target="_blank"
                             class="about-link">
-                            <span>🐛</span> Report Issue
+                            <span><i data-lucide="bug" style="width:16px;height:16px;vertical-align:middle"></i></span> Report Issue
                         </a>
                         <a href="https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/blob/main/docs/USER_GUIDE.md"
                             target="_blank" class="about-link">
-                            <span>📖</span> Documentation
+                            <span><i data-lucide="book-open" style="width:16px;height:16px;vertical-align:middle"></i></span> Documentation
                         </a>
                     </div>
 
                     <div class="about-footer">
-                        <p>Made with ❤️ for the Kubernetes Community</p>
+                        <p>Made with <i data-lucide="heart" style="width:14px;height:14px;vertical-align:middle;color:var(--accent-red)"></i> for the Kubernetes Community</p>
                         <p class="about-license">MIT License</p>
                     </div>
                 </div>
@@ -2043,7 +2049,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeDetail()">Close</button>
-                <button class="btn btn-primary" onclick="analyzeWithAI()">🤖 Analyze with AI</button>
+                <button class="btn btn-primary" onclick="analyzeWithAI()"><i data-lucide="bot" style="width:16px;height:16px;vertical-align:middle"></i> Analyze with AI</button>
             </div>
         </div>
     </div>
@@ -2335,24 +2341,24 @@ spec:
             <!-- Summary Stats Grid -->
             <div class="metrics-dashboard-grid">
                 <div class="metrics-stat-card">
-                    <div class="stat-icon">⚡</div>
+                    <div class="stat-icon"><i data-lucide="cpu" style="width:24px;height:24px"></i></div>
                     <div class="stat-value" id="metrics-cpu-value">-</div>
                     <div class="stat-label">CPU Usage</div>
                     <div class="stat-trend" id="metrics-cpu-trend"></div>
                 </div>
                 <div class="metrics-stat-card">
-                    <div class="stat-icon">💾</div>
+                    <div class="stat-icon"><i data-lucide="memory-stick" style="width:24px;height:24px"></i></div>
                     <div class="stat-value" id="metrics-mem-value">-</div>
                     <div class="stat-label">Memory Usage</div>
                     <div class="stat-trend" id="metrics-mem-trend"></div>
                 </div>
                 <div class="metrics-stat-card">
-                    <div class="stat-icon">🖥️</div>
+                    <div class="stat-icon"><i data-lucide="server" style="width:24px;height:24px"></i></div>
                     <div class="stat-value" id="metrics-nodes-value">-/-</div>
                     <div class="stat-label">Nodes Ready</div>
                 </div>
                 <div class="metrics-stat-card">
-                    <div class="stat-icon">📦</div>
+                    <div class="stat-icon"><i data-lucide="box" style="width:24px;height:24px"></i></div>
                     <div class="stat-value" id="metrics-pods-value">-</div>
                     <div class="stat-label">Running Pods</div>
                     <div class="stat-trend" id="metrics-pods-trend"></div>

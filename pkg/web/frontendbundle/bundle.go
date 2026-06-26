@@ -31,6 +31,8 @@ var JSFiles = []string{
 	"js/modules/VirtualScroller.js",
 	"js/modules/api.js",
 	"js/modules/swr.js",
+	"js/lucide.js",
+	"js/icons.js",
 	"js/app.js",
 	"js/features/custom-views/shared.js",
 	"js/features/custom-views/metrics.js",

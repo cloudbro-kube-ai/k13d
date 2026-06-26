@@ -4816,22 +4816,7 @@
             opacity: 0.5;
         }
 
-        .chat-history-toggle {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            transition: all 0.2s ease;
-        }
 
-        .chat-history-toggle:hover {
-            background: var(--accent-blue);
-            color: white;
-            border-color: var(--accent-blue);
-        }
 
         /* Chat history item edit button */
         .chat-history-edit {

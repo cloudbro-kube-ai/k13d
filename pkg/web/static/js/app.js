@@ -725,6 +725,10 @@ initTheme();
 
 // Initialize
 async function init() {
+    // Initialize Lucide icons
+    if (typeof initLucideIcons === 'function') {
+        initLucideIcons();
+    }
     if (authToken) {
         try {
             const health = await fetch('/api/health').then(r => r.json());

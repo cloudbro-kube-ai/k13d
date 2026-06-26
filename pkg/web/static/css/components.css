@@ -220,7 +220,6 @@
     gap: 8px;
 }
 
-.ai-clear-btn,
 .ai-expand-btn {
     background: transparent;
     border: 1px solid var(--border-color);
@@ -236,7 +235,6 @@
     transition: all 0.2s ease;
 }
 
-.ai-clear-btn:hover,
 .ai-expand-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
