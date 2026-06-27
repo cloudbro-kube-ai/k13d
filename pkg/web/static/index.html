@@ -192,16 +192,10 @@
     <div class="app-container" id="app">
         <!-- Top Bar -->
         <div class="top-bar" role="banner">
-            <div class="top-bar-brand" style="display: flex; align-items: center;">
-                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Toggle Sidebar (B)"
-                    aria-label="Toggle navigation" aria-expanded="false">
-                    <span class="hamburger-line"></span>
-                    <span class="hamburger-line"></span>
-                    <span class="hamburger-line"></span>
-                    <span class="sidebar-toggle-icon" id="sidebar-toggle-icon">«</span>
-                </button>
-                <div class="logo">k13d</div>
-            </div>
+            <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar (B)"
+                aria-label="Toggle sidebar" aria-expanded="false">
+                <i data-lucide="menu" style="width:18px;height:18px"></i>
+            </button>
             <div class="search-container">
                 <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px"></i></span>
                 <input type="text" class="global-search" id="global-search" placeholder="Search all resources..."
@@ -270,204 +264,262 @@
                     <button class="sidebar-close-btn" onclick="toggleSidebar()" title="Close"
                         aria-label="Close sidebar">&times;</button>
                 </div>
-                <div class="nav-section">
-                    <div class="nav-item" data-resource="overview" onclick="showOverviewPanel()"
-                        style="font-weight: 600; margin-bottom: 8px;" role="button" tabindex="0">
-                        <span data-i18n="nav_overview">Overview</span>
-                    </div>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_workloads">Workloads</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item active" data-resource="pods" onclick="switchResource('pods')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_pods">Pods</span>
-                        <span class="count" id="pods-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="deployments" onclick="switchResource('deployments')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_deployments">Deployments</span>
-                        <span class="count" id="deployments-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="daemonsets" onclick="switchResource('daemonsets')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_daemonsets">DaemonSets</span>
-                        <span class="count" id="daemonsets-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="statefulsets" onclick="switchResource('statefulsets')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_statefulsets">StatefulSets</span>
-                        <span class="count" id="statefulsets-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="replicasets" onclick="switchResource('replicasets')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_replicasets">ReplicaSets</span>
-                        <span class="count" id="replicasets-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="jobs" onclick="switchResource('jobs')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_jobs">Jobs</span>
-                        <span class="count" id="jobs-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="cronjobs" onclick="switchResource('cronjobs')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_cronjobs">CronJobs</span>
-                        <span class="count" id="cronjobs-count">0</span>
-                    </div>
+
+                <!-- Sidebar Logo -->
+                <div class="sidebar-logo-container">
+                    <a href="#" class="sidebar-logo" onclick="showOverviewPanel(); return false;">
+                        <span class="sidebar-logo-icon">K</span>
+                        <span class="sidebar-logo-text">k13d</span>
+                    </a>
                 </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_network">Network</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="services" onclick="switchResource('services')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_services">Services</span>
-                        <span class="count" id="services-count">0</span>
+                <!-- Sidebar Navigation -->
+                <div class="sidebar-nav">
+                    <!-- WORKLOADS Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="box"></i></span>
+                            <span class="menu-group-title-text">WORKLOADS</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="pods" onclick="switchResource('pods')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="circle"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_pods">Pods</span>
+                                <span class="menu-item-count" id="pods-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="deployments" onclick="switchResource('deployments')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="rocket"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_deployments">Deployments</span>
+                                <span class="menu-item-count" id="deployments-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="daemonsets" onclick="switchResource('daemonsets')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="server"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_daemonsets">DaemonSets</span>
+                                <span class="menu-item-count" id="daemonsets-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="statefulsets" onclick="switchResource('statefulsets')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="database"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_statefulsets">StatefulSets</span>
+                                <span class="menu-item-count" id="statefulsets-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="replicasets" onclick="switchResource('replicasets')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="copy"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_replicasets">ReplicaSets</span>
+                                <span class="menu-item-count" id="replicasets-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="jobs" onclick="switchResource('jobs')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="briefcase"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_jobs">Jobs</span>
+                                <span class="menu-item-count" id="jobs-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="cronjobs" onclick="switchResource('cronjobs')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="clock"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_cronjobs">CronJobs</span>
+                                <span class="menu-item-count" id="cronjobs-count">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="nav-item" data-resource="ingresses" onclick="switchResource('ingresses')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_ingresses">Ingresses</span>
-                        <span class="count" id="ingresses-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="networkpolicies" onclick="switchResource('networkpolicies')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_networkpolicies">NetworkPolicies</span>
-                        <span class="count" id="networkpolicies-count">0</span>
-                    </div>
-                </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_config">Config</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="configmaps" onclick="switchResource('configmaps')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_configmaps">ConfigMaps</span>
-                        <span class="count" id="configmaps-count">0</span>
+                    <!-- NETWORK Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="network"></i></span>
+                            <span class="menu-group-title-text">NETWORK</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="services" onclick="switchResource('services')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="share-2"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_services">Services</span>
+                                <span class="menu-item-count" id="services-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="ingresses" onclick="switchResource('ingresses')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="globe"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_ingresses">Ingresses</span>
+                                <span class="menu-item-count" id="ingresses-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="networkpolicies" onclick="switchResource('networkpolicies')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="shield"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_networkpolicies">NetworkPolicies</span>
+                                <span class="menu-item-count" id="networkpolicies-count">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="nav-item" data-resource="secrets" onclick="switchResource('secrets')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_secrets">Secrets</span>
-                        <span class="count" id="secrets-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="serviceaccounts" onclick="switchResource('serviceaccounts')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_serviceaccounts">ServiceAccounts</span>
-                        <span class="count" id="serviceaccounts-count">0</span>
-                    </div>
-                </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_storage">Storage</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="persistentvolumes"
-                        onclick="switchResource('persistentvolumes')" role="button" tabindex="0">
-                        <span data-i18n="nav_pvs">PersistentVolumes</span>
-                        <span class="count" id="persistentvolumes-count">0</span>
+                    <!-- CONFIG Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="settings"></i></span>
+                            <span class="menu-group-title-text">CONFIG</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="configmaps" onclick="switchResource('configmaps')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="file-text"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_configmaps">ConfigMaps</span>
+                                <span class="menu-item-count" id="configmaps-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="secrets" onclick="switchResource('secrets')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="lock"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_secrets">Secrets</span>
+                                <span class="menu-item-count" id="secrets-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="serviceaccounts" onclick="switchResource('serviceaccounts')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="user"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_serviceaccounts">ServiceAccounts</span>
+                                <span class="menu-item-count" id="serviceaccounts-count">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="nav-item" data-resource="persistentvolumeclaims"
-                        onclick="switchResource('persistentvolumeclaims')" role="button" tabindex="0">
-                        <span data-i18n="nav_pvcs">PVCs</span>
-                        <span class="count" id="persistentvolumeclaims-count">0</span>
-                    </div>
-                </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_cluster">Cluster</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="nodes" onclick="switchResource('nodes')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_nodes">Nodes</span>
-                        <span class="count" id="nodes-count">0</span>
+                    <!-- STORAGE Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="hard-drive"></i></span>
+                            <span class="menu-group-title-text">STORAGE</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="persistentvolumes" onclick="switchResource('persistentvolumes')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="database"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_pvs">PersistentVolumes</span>
+                                <span class="menu-item-count" id="persistentvolumes-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="persistentvolumeclaims" onclick="switchResource('persistentvolumeclaims')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="file-plus"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_pvcs">PVCs</span>
+                                <span class="menu-item-count" id="persistentvolumeclaims-count">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="nav-item" data-resource="namespaces" onclick="switchResource('namespaces')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_namespaces">Namespaces</span>
-                        <span class="count" id="namespaces-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="events" onclick="switchResource('events')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_events">Events</span>
-                        <span class="count" id="events-count">0</span>
-                    </div>
-                </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_rbac">RBAC</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="roles" onclick="switchResource('roles')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_roles">Roles</span>
-                        <span class="count" id="roles-count">0</span>
+                    <!-- CLUSTER Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="server"></i></span>
+                            <span class="menu-group-title-text">CLUSTER</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="nodes" onclick="switchResource('nodes')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="cpu"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_nodes">Nodes</span>
+                                <span class="menu-item-count" id="nodes-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="namespaces" onclick="switchResource('namespaces')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="folder"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_namespaces">Namespaces</span>
+                                <span class="menu-item-count" id="namespaces-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="events" onclick="switchResource('events')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="activity"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_events">Events</span>
+                                <span class="menu-item-count" id="events-count">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="nav-item" data-resource="rolebindings" onclick="switchResource('rolebindings')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_rolebindings">RoleBindings</span>
-                        <span class="count" id="rolebindings-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="clusterroles" onclick="switchResource('clusterroles')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_clusterroles">ClusterRoles</span>
-                        <span class="count" id="clusterroles-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="clusterrolebindings"
-                        onclick="switchResource('clusterrolebindings')" role="button" tabindex="0">
-                        <span data-i18n="nav_clusterrolebindings">ClusterRoleBindings</span>
-                        <span class="count" id="clusterrolebindings-count">0</span>
-                    </div>
-                </div>
 
-                <div class="nav-section" id="crd-nav-section">
-                    <div class="nav-title" style="display: flex; justify-content: space-between; align-items: center;"
-                        onclick="toggleNavSection(this)" role="button" tabindex="0">
-                        Custom Resources
-                        <span class="count" id="crd-count" style="font-size: 10px;">0</span>
-                        <span class="nav-section-arrow">▾</span>
+                    <!-- RBAC Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="shield"></i></span>
+                            <span class="menu-group-title-text">RBAC</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="roles" onclick="switchResource('roles')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="shield-check"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_roles">Roles</span>
+                                <span class="menu-item-count" id="roles-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="rolebindings" onclick="switchResource('rolebindings')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="link"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_rolebindings">RoleBindings</span>
+                                <span class="menu-item-count" id="rolebindings-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="clusterroles" onclick="switchResource('clusterroles')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="shield-alert"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_clusterroles">ClusterRoles</span>
+                                <span class="menu-item-count" id="clusterroles-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="clusterrolebindings" onclick="switchResource('clusterrolebindings')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="unlink"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_clusterrolebindings">ClusterRoleBindings</span>
+                                <span class="menu-item-count" id="clusterrolebindings-count">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div id="crd-nav-items">
-                        <!-- CRD items will be dynamically loaded here -->
-                    </div>
-                </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">
-                        <span data-i18n="header_visualization">Visualization</span><span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="topology" onclick="showTopology()" role="button" tabindex="0">
-                        <span data-i18n="nav_topology">Topology</span>
+                    <!-- CRD Group -->
+                    <div class="menu-group" id="crd-nav-section">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="package"></i></span>
+                            <span class="menu-group-title-text">CUSTOM RESOURCES</span>
+                            <span class="menu-item-count" id="crd-count">0</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items" id="crd-nav-items">
+                            <!-- CRD items will be dynamically loaded here -->
+                        </div>
                     </div>
-                    <div class="nav-item" data-resource="applications" onclick="showApplicationsView()" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_applications">Applications</span>
-                    </div>
-                    <div class="nav-item" data-resource="rbac-viz" onclick="showRBACVizView()" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_rbac_viewer">RBAC Viewer</span>
-                    </div>
-                    <div class="nav-item" data-resource="netpol-viz" onclick="showNetPolVizView()" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_netpol_map">Net Policy Map</span>
-                    </div>
-                    <div class="nav-item" data-resource="timeline" onclick="showTimelineView()" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_timeline">Event Timeline</span>
-                    </div>
-                    <div class="nav-item" data-resource="cluster-viz" onclick="showClusterVisualizer()" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_cluster_visualizer">Cluster Visualizer</span>
-                    </div>
-                </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_monitoring">Monitoring</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="metrics" onclick="showMetricsDashboard()" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_metrics">Metrics</span>
+                    <!-- VISUALIZATION Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="eye"></i></span>
+                            <span class="menu-group-title-text">VISUALIZATION</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="topology" onclick="showTopology()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="git-branch"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_topology">Topology</span>
+                            </div>
+                            <div class="menu-item" data-resource="applications" onclick="showApplicationsView()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="layers"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_applications">Applications</span>
+                            </div>
+                            <div class="menu-item" data-resource="rbac-viz" onclick="showRBACVizView()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="users"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_rbac_viewer">RBAC Viewer</span>
+                            </div>
+                            <div class="menu-item" data-resource="netpol-viz" onclick="showNetPolVizView()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="share-2"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_netpol_map">Net Policy Map</span>
+                            </div>
+                            <div class="menu-item" data-resource="timeline" onclick="showTimelineView()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="calendar"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_timeline">Event Timeline</span>
+                            </div>
+                            <div class="menu-item" data-resource="cluster-viz" onclick="showClusterVisualizer()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="aperture"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_cluster_visualizer">Cluster Visualizer</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="nav-item" onclick="showAuditLogs()" role="button" tabindex="0">
-                        <span data-i18n="nav_audit_logs">Audit Logs</span>
-                    </div>
-                    <div class="nav-item" onclick="showReports()" role="button" tabindex="0">
-                        <span data-i18n="nav_reports">Reports</span>
+
+                    <!-- MONITORING Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="activity"></i></span>
+                            <span class="menu-group-title-text">MONITORING</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="metrics" onclick="showMetricsDashboard()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="bar-chart-2"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_metrics">Metrics</span>
+                            </div>
+                            <div class="menu-item" onclick="showAuditLogs()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="file-search"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_audit_logs">Audit Logs</span>
+                            </div>
+                            <div class="menu-item" onclick="showReports()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="clipboard"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_reports">Reports</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

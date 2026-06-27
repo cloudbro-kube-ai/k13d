@@ -191,8 +191,8 @@ function hideTopologyView() {
 
 function showTopology() {
     currentResource = 'topology';
-    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-    const topoNav = document.querySelector('.nav-item[data-resource="topology"]');
+    document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+    const topoNav = document.querySelector('.menu-item[data-resource="topology"]');
     if (topoNav) topoNav.classList.add('active');
 
     // Hide main panel, custom views and overview, show topology

@@ -892,7 +892,7 @@ function showApp() {
     }
     loadClusterContexts();
     loadNamespaces();
-    switchResource('pods');
+    showOverviewPanel();
     initMobileNavSections();
     setupResizeHandle();
     setupHealthCheck();
@@ -1418,7 +1418,7 @@ async function switchToCRD(crdName) {
     currentResource = `crd:${crdName}`;
 
     // Update active nav item
-    document.querySelectorAll('.nav-item').forEach(item => {
+    document.querySelectorAll('.menu-item').forEach(item => {
         item.classList.remove('active');
     });
     document.querySelector(`[data-crd="${crdName}"]`)?.classList.add('active');
@@ -1624,10 +1624,19 @@ function switchResource(resource) {
     sortColumn = null;
     sortDirection = 'asc';
 
-    document.querySelectorAll('.nav-item').forEach(item => {
+    document.querySelectorAll('.menu-item').forEach(item => {
         item.classList.toggle('active', item.dataset.resource === resource);
     });
     document.getElementById('panel-title').textContent = resource.charAt(0).toUpperCase() + resource.slice(1);
+
+    // Expand the parent menu group if collapsed
+    const activeItem = document.querySelector(`.menu-item[data-resource="${resource}"]`);
+    if (activeItem) {
+        const parentGroup = activeItem.closest('.menu-group');
+        if (parentGroup && parentGroup.classList.contains('collapsed')) {
+            parentGroup.classList.remove('collapsed');
+        }
+    }
 
     // Hide topology view, custom views and overview panel, show main panel
     hideTopologyView();
@@ -4893,41 +4902,30 @@ renderTable = function (resource, items) {
 // ==========================================
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
-    const hamburger = document.getElementById('hamburger-btn');
+    const toggleBtn = document.getElementById('sidebar-toggle-btn');
     const overlay = document.getElementById('sidebar-overlay');
-    const toggleIcon = document.getElementById('sidebar-toggle-icon');
     const isMobile = window.innerWidth <= 768;
 
     if (isMobile) {
         const isOpen = sidebar.classList.contains('mobile-open');
-        // Remove desktop collapsed class to prevent width:0/overflow:hidden conflict
         if (!isOpen && sidebar.classList.contains('collapsed')) {
             sidebar.classList.remove('collapsed');
         }
         sidebar.classList.toggle('mobile-open', !isOpen);
-        hamburger.classList.toggle('active', !isOpen);
-        hamburger.setAttribute('aria-expanded', String(!isOpen));
+        if (toggleBtn) toggleBtn.classList.toggle('active', !isOpen);
         if (overlay) overlay.classList.toggle('active', !isOpen);
-        // Auto-scroll to active nav item when opening
         if (!isOpen) {
             requestAnimationFrame(function () {
-                const activeItem = sidebar.querySelector('.nav-item.active');
+                const activeItem = sidebar.querySelector('.menu-item.active');
                 if (activeItem) {
                     activeItem.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                    // Expand the section containing the active item
-                    const section = activeItem.closest('.nav-section');
-                    if (section && section.classList.contains('collapsed')) {
-                        section.classList.remove('collapsed');
-                    }
                 }
             });
         }
     } else {
         sidebarCollapsed = !sidebarCollapsed;
         sidebar.classList.toggle('collapsed', sidebarCollapsed);
-        hamburger.classList.toggle('active', sidebarCollapsed);
-        hamburger.setAttribute('aria-expanded', String(!sidebarCollapsed));
-        if (toggleIcon) toggleIcon.textContent = sidebarCollapsed ? '»' : '«';
+        if (toggleBtn) toggleBtn.classList.toggle('active', sidebarCollapsed);
         localStorage.setItem('k13d_sidebar_collapsed', sidebarCollapsed);
     }
 }
@@ -4942,6 +4940,26 @@ function closeMobileSidebar() {
     }
 }
 
+// Toggle menu group expand/collapse
+function toggleMenuGroup(titleEl) {
+    const menuGroup = titleEl.closest('.menu-group');
+    if (menuGroup) {
+        menuGroup.classList.toggle('collapsed');
+        // Save state to localStorage
+        const groupTitle = titleEl.querySelector('.menu-group-title-text')?.textContent;
+        if (groupTitle) {
+            const collapsedGroups = JSON.parse(localStorage.getItem('k13d_collapsed_groups') || '[]');
+            const index = collapsedGroups.indexOf(groupTitle);
+            if (menuGroup.classList.contains('collapsed')) {
+                if (index === -1) collapsedGroups.push(groupTitle);
+            } else {
+                if (index > -1) collapsedGroups.splice(index, 1);
+            }
+            localStorage.setItem('k13d_collapsed_groups', JSON.stringify(collapsedGroups));
+        }
+    }
+}
+
 // Toggle nav section collapse (mobile only)
 function toggleNavSection(titleEl) {
     if (window.innerWidth > 768) return;
@@ -4949,22 +4967,38 @@ function toggleNavSection(titleEl) {
     if (section) section.classList.toggle('collapsed');
 }
 
+// Initialize menu groups state from localStorage
+function initMenuGroupsState() {
+    const collapsedGroups = JSON.parse(localStorage.getItem('k13d_collapsed_groups') || '[]');
+    collapsedGroups.forEach(groupTitle => {
+        const menuGroups = document.querySelectorAll('.menu-group');
+        menuGroups.forEach(group => {
+            const titleEl = group.querySelector('.menu-group-title-text');
+            if (titleEl && titleEl.textContent === groupTitle) {
+                group.classList.add('collapsed');
+            }
+        });
+    });
+}
+
 // Auto-collapse inactive nav sections on mobile load
 function initMobileNavSections() {
     if (window.innerWidth > 768) return;
     // Skip if no active item yet (will be called again after switchResource)
-    if (!document.querySelector('#sidebar .nav-item.active')) return;
-    document.querySelectorAll('#sidebar .nav-section').forEach(function (section) {
-        // Skip the overview section (no nav-title)
-        if (!section.querySelector('.nav-title')) return;
-        // Collapse sections that don't contain the active item
-        if (!section.querySelector('.nav-item.active')) {
-            section.classList.add('collapsed');
+    if (!document.querySelector('#sidebar .menu-item.active')) return;
+    document.querySelectorAll('#sidebar .menu-group').forEach(function (group) {
+        if (!group.querySelector('.menu-item.active')) {
+            group.classList.add('collapsed');
         }
     });
 }
 // Run on load and resize
-window.addEventListener('load', initMobileNavSections);
+window.addEventListener('load', function() {
+    initMenuGroupsState();
+    initMobileNavSections();
+    // Show overview panel on initial load
+    showOverviewPanel();
+});
 window.addEventListener('resize', function () {
     if (window.innerWidth > 768) {
         // Remove collapsed state when switching to desktop
@@ -6426,10 +6460,10 @@ setTimeout(() => {
     }
     if (monitoringSection && !document.querySelector('[onclick="showMetrics()"]')) {
         const metricsItem = document.createElement('div');
-        metricsItem.className = 'nav-item';
+        metricsItem.className = 'menu-item';
         metricsItem.onclick = showMetrics;
-        metricsItem.innerHTML = '<span>Metrics</span>';
-        const firstChild = monitoringSection.querySelector('.nav-item');
+        metricsItem.innerHTML = '<span class="menu-item-icon"><i data-lucide="bar-chart-2"></i></span><span class="menu-item-text">Metrics</span>';
+        const firstChild = monitoringSection.querySelector('.menu-item');
         if (firstChild) monitoringSection.insertBefore(metricsItem, firstChild);
     }
 }, 100);

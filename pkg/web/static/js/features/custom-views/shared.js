@@ -24,8 +24,8 @@ const customViewNamespaceSelectIds = [
 function showOverviewPanel() {
     closeMobileSidebar();
     currentResource = 'overview';
-    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-    const nav = document.querySelector('.nav-item[data-resource="overview"]');
+    document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+    const nav = document.querySelector('.menu-item[data-resource="overview"]');
     if (nav) nav.classList.add('active');
     hideTopologyView();
     hideAllCustomViews();
@@ -70,8 +70,8 @@ function hideAllCustomViews() {
 
 function showCustomView(containerId, resource) {
     currentResource = resource;
-    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-    const nav = document.querySelector(`.nav-item[data-resource="${resource}"]`);
+    document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+    const nav = document.querySelector(`.menu-item[data-resource="${resource}"]`);
     if (nav) nav.classList.add('active');
 
     hideOverviewPanel();
