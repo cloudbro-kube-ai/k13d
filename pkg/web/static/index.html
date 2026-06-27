@@ -73,22 +73,22 @@
                     <div class="login-feature">
                         <span class="feature-icon"><i data-lucide="bot" style="width:24px;height:24px"></i></span>
                         <div>
-                            <strong>AI Assistant</strong>
-                            <p>Natural language cluster management</p>
+                            <strong data-i18n="login_feature_ai">AI Assistant</strong>
+                            <p data-i18n="login_feature_ai_desc">Natural language cluster management</p>
                         </div>
                     </div>
                     <div class="login-feature">
                         <span class="feature-icon"><i data-lucide="zap" style="width:24px;height:24px"></i></span>
                         <div>
-                            <strong>Real-time Monitoring</strong>
-                            <p>Live resource status and metrics</p>
+                            <strong data-i18n="login_feature_monitoring">Real-time Monitoring</strong>
+                            <p data-i18n="login_feature_monitoring_desc">Live resource status and metrics</p>
                         </div>
                     </div>
                     <div class="login-feature">
                         <span class="feature-icon"><i data-lucide="shield" style="width:24px;height:24px"></i></span>
                         <div>
-                            <strong>Safety First</strong>
-                            <p>Guardrails for dangerous operations</p>
+                            <strong data-i18n="login_feature_safety">Safety First</strong>
+                            <p data-i18n="login_feature_safety_desc">Guardrails for dangerous operations</p>
                         </div>
                     </div>
                 </div>
@@ -101,8 +101,8 @@
         <div class="login-right">
             <div class="login-box">
                 <div class="login-form-header">
-                    <h2>Welcome</h2>
-                    <p>Sign in to your account</p>
+                    <h2 data-i18n="login_welcome">Welcome</h2>
+                    <p data-i18n="login_subtitle">Sign in to your account</p>
                 </div>
 
                 <!-- Auth Mode Indicator -->
@@ -192,19 +192,21 @@
     <div class="app-container" id="app">
         <!-- Top Bar -->
         <div class="top-bar" role="banner">
-            <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar (B)"
-                aria-label="Toggle sidebar" aria-expanded="false">
+                <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar (B)"
+                    data-i18n-title="title_toggle_sidebar" aria-label="Toggle sidebar" aria-expanded="false">
                 <i data-lucide="menu" style="width:18px;height:18px"></i>
             </button>
-            <div class="search-container">
-                <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px"></i></span>
-                <input type="text" class="global-search" id="global-search" placeholder="Search all resources..."
-                    oninput="handleGlobalSearchInput(event)" onkeydown="handleGlobalSearchKeydown(event)"
-                    onfocus="showSearchResults()" autocomplete="off">
-                <div class="search-results" id="search-results"></div>
-            </div>
+                <div class="search-container">
+                    <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px"></i></span>
+                    <input type="text" class="global-search" id="global-search" placeholder="Search all resources..."
+                        data-i18n-placeholder="title_search"
+                        oninput="handleGlobalSearchInput(event)" onkeydown="handleGlobalSearchKeydown(event)"
+                        onfocus="showSearchResults()" autocomplete="off">
+                    <div class="search-results" id="search-results"></div>
+                </div>
             <div class="cluster-switcher" id="cluster-switcher">
-                <button class="cluster-switcher-btn" onclick="toggleClusterDropdown()" title="Switch Cluster Context">
+                <button class="cluster-switcher-btn" onclick="toggleClusterDropdown()" title="Switch Cluster Context"
+                    data-i18n-title="title_switch_cluster">
                     <span class="cluster-icon"><i data-lucide="container" style="width:16px;height:16px"></i></span>
                     <span class="cluster-name" id="cluster-name">default</span>
                     <span class="cluster-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px"></i></span>
@@ -221,7 +223,7 @@
                 <span id="health-status">Connected</span>
             </div>
             <div class="auto-refresh-container">
-                <button class="refresh-btn" onclick="manualRefresh()" title="Refresh now" aria-label="Refresh now">
+                <button class="refresh-btn" onclick="manualRefresh()" title="Refresh now" data-i18n-title="title_refresh_now" aria-label="Refresh now">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         aria-hidden="true">
                         <path d="M23 4v6h-6M1 20v-6h6" />
@@ -244,10 +246,10 @@
             </div>
             <div class="user-info">
                 <span class="user-badge" id="user-badge" onclick="showSettings('admin')" title="Settings - Admin">admin</span>
-                <button class="logout-btn" onclick="showShortcuts()" aria-label="Keyboard shortcuts" title="Keyboard Shortcuts"><i data-lucide="keyboard" style="width:14px;height:14px"></i></button>
-                <button class="logout-btn" onclick="showSettings()" title="Settings"><i data-lucide="settings" style="width:14px;height:14px"></i></button>
-                <button class="logout-btn ai-header-toggle" id="ai-header-toggle-btn" onclick="toggleAIPanel()" title="Toggle AI Assistant (A key)"><i data-lucide="bot" style="width:14px;height:14px"></i></button>
-                <button class="logout-btn" id="logout-btn" onclick="logout()" title="Logout"><i data-lucide="log-out" style="width:14px;height:14px"></i></button>
+                <button class="logout-btn" onclick="showShortcuts()" aria-label="Keyboard shortcuts" title="Keyboard Shortcuts" data-i18n-title="title_shortcuts"><i data-lucide="keyboard" style="width:14px;height:14px"></i></button>
+                <button class="logout-btn" onclick="showSettings()" title="Settings" data-i18n-title="title_settings"><i data-lucide="settings" style="width:14px;height:14px"></i></button>
+                <button class="logout-btn ai-header-toggle" id="ai-header-toggle-btn" onclick="toggleAIPanel()" title="Toggle AI Assistant (A key)" data-i18n-title="title_toggle_ai"><i data-lucide="bot" style="width:14px;height:14px"></i></button>
+                <button class="logout-btn" id="logout-btn" onclick="logout()" title="Logout" data-i18n-title="title_logout"><i data-lucide="log-out" style="width:14px;height:14px"></i></button>
             </div>
         </div>
 
@@ -279,7 +281,7 @@
                     <div class="menu-group">
                         <div class="menu-group-title" onclick="toggleMenuGroup(this)">
                             <span class="menu-group-icon"><i data-lucide="box"></i></span>
-                            <span class="menu-group-title-text">WORKLOADS</span>
+                            <span class="menu-group-title-text" data-i18n="header_workloads">WORKLOADS</span>
                             <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
                         </div>
                         <div class="menu-group-items">
@@ -325,7 +327,7 @@
                     <div class="menu-group">
                         <div class="menu-group-title" onclick="toggleMenuGroup(this)">
                             <span class="menu-group-icon"><i data-lucide="network"></i></span>
-                            <span class="menu-group-title-text">NETWORK</span>
+                            <span class="menu-group-title-text" data-i18n="header_network">NETWORK</span>
                             <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
                         </div>
                         <div class="menu-group-items">
@@ -351,7 +353,7 @@
                     <div class="menu-group">
                         <div class="menu-group-title" onclick="toggleMenuGroup(this)">
                             <span class="menu-group-icon"><i data-lucide="settings"></i></span>
-                            <span class="menu-group-title-text">CONFIG</span>
+                            <span class="menu-group-title-text" data-i18n="header_config">CONFIG</span>
                             <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
                         </div>
                         <div class="menu-group-items">
@@ -377,7 +379,7 @@
                     <div class="menu-group">
                         <div class="menu-group-title" onclick="toggleMenuGroup(this)">
                             <span class="menu-group-icon"><i data-lucide="hard-drive"></i></span>
-                            <span class="menu-group-title-text">STORAGE</span>
+                            <span class="menu-group-title-text" data-i18n="header_storage">STORAGE</span>
                             <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
                         </div>
                         <div class="menu-group-items">
@@ -398,7 +400,7 @@
                     <div class="menu-group">
                         <div class="menu-group-title" onclick="toggleMenuGroup(this)">
                             <span class="menu-group-icon"><i data-lucide="server"></i></span>
-                            <span class="menu-group-title-text">CLUSTER</span>
+                            <span class="menu-group-title-text" data-i18n="header_cluster">CLUSTER</span>
                             <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
                         </div>
                         <div class="menu-group-items">
@@ -424,7 +426,7 @@
                     <div class="menu-group">
                         <div class="menu-group-title" onclick="toggleMenuGroup(this)">
                             <span class="menu-group-icon"><i data-lucide="shield"></i></span>
-                            <span class="menu-group-title-text">RBAC</span>
+                            <span class="menu-group-title-text" data-i18n="header_rbac">RBAC</span>
                             <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
                         </div>
                         <div class="menu-group-items">
@@ -455,7 +457,7 @@
                     <div class="menu-group" id="crd-nav-section">
                         <div class="menu-group-title" onclick="toggleMenuGroup(this)">
                             <span class="menu-group-icon"><i data-lucide="package"></i></span>
-                            <span class="menu-group-title-text">CUSTOM RESOURCES</span>
+                            <span class="menu-group-title-text" data-i18n="header_custom_resources">CUSTOM RESOURCES</span>
                             <span class="menu-item-count" id="crd-count">0</span>
                             <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
                         </div>
@@ -468,7 +470,7 @@
                     <div class="menu-group">
                         <div class="menu-group-title" onclick="toggleMenuGroup(this)">
                             <span class="menu-group-icon"><i data-lucide="eye"></i></span>
-                            <span class="menu-group-title-text">VISUALIZATION</span>
+                            <span class="menu-group-title-text" data-i18n="header_visualization">VISUALIZATION</span>
                             <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
                         </div>
                         <div class="menu-group-items">
@@ -503,7 +505,7 @@
                     <div class="menu-group">
                         <div class="menu-group-title" onclick="toggleMenuGroup(this)">
                             <span class="menu-group-icon"><i data-lucide="activity"></i></span>
-                            <span class="menu-group-title-text">MONITORING</span>
+                            <span class="menu-group-title-text" data-i18n="header_monitoring">MONITORING</span>
                             <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
                         </div>
                         <div class="menu-group-items">
@@ -899,15 +901,16 @@
                     <!-- Chat History Sidebar -->
                     <div class="chat-history-sidebar" id="chat-history-sidebar">
                         <div class="chat-history-header">
-                            <h4><i data-lucide="message-square" style="width:16px;height:16px;vertical-align:middle"></i> Chat History</h4>
+                            <h4><i data-lucide="message-square" style="width:16px;height:16px;vertical-align:middle"></i> <span data-i18n="ai_chat_history">Chat History</span></h4>
                             <div class="chat-history-actions">
                                 <button class="chat-history-btn primary" onclick="createNewChat()"
-                                    title="New Chat">+</button>
-                                <button class="chat-history-btn" onclick="toggleChatHistory()" title="Close">✕</button>
+                                    title="New Chat" data-i18n-title="title_new_chat">+</button>
+                                <button class="chat-history-btn" onclick="toggleChatHistory()" title="Close" data-i18n-title="title_close">✕</button>
                             </div>
                         </div>
                         <div class="chat-history-search">
                             <input type="text" id="chat-history-search" placeholder="Search chats..."
+                                data-i18n-placeholder="ai_search_chats"
                                 oninput="filterChatHistory(this.value)">
                         </div>
                         <div class="chat-history-list" id="chat-history-list">
@@ -916,36 +919,35 @@
                     </div>
 
                     <div class="ai-header">
-                        <span class="ai-header-title">AI Assistant</span>
+                        <span class="ai-header-title" data-i18n="header_ai_assistant">AI Assistant</span>
                         <div class="ai-mode-selector" id="ai-mode-selector" style="display:none">
-                            <button class="ai-mode-btn active" id="ai-btn-chat" onclick="setAIMode('chat')" title="Chat View">Chat</button>
-                            <button class="ai-mode-btn" id="ai-btn-tui" onclick="setAIMode('tui')" title="Terminal View">TUI</button>
+                            <button class="ai-mode-btn active" id="ai-btn-chat" onclick="setAIMode('chat')" title="Chat View" data-i18n-title="ai_chat_view">Chat</button>
+                            <button class="ai-mode-btn" id="ai-btn-tui" onclick="setAIMode('tui')" title="Terminal View" data-i18n-title="ai_terminal_view">TUI</button>
                         </div>
-                        <span class="ai-status-dot" id="ai-status-dot" title="Checking connection...">●</span>
-                        <span class="ai-badge" id="ai-model-badge" style="cursor:pointer;" onclick="openAIModelSettings()" title="Click to change model settings">Loading...</span>
+                        <span class="ai-status-dot" id="ai-status-dot" title="Checking connection..." data-i18n-title="ai_checking_connection">●</span>
+                        <span class="ai-badge" id="ai-model-badge" style="cursor:pointer;" onclick="openAIModelSettings()" title="Click to change model settings" data-i18n-title="ai_change_model">Loading...</span>
                         <div class="ai-header-actions">
                             <button class="ai-header-btn" onclick="toggleChatHistory()"
-                                title="Chat History"><i data-lucide="clipboard-list" style="width:14px;height:14px"></i></button>
+                                title="Chat History" data-i18n-title="title_chat_history"><i data-lucide="clipboard-list" style="width:14px;height:14px"></i></button>
                             <button class="ai-header-btn" onclick="toggleDebugMode()"
-                                title="Toggle Debug Mode"><i data-lucide="bug" style="width:14px;height:14px"></i></button>
+                                title="Toggle Debug Mode" data-i18n-title="title_debug_mode"><i data-lucide="bug" style="width:14px;height:14px"></i></button>
                             <button class="ai-header-btn" onclick="toggleAiExpand()"
-                                title="Expand Panel"><i data-lucide="maximize-2" style="width:14px;height:14px"></i></button>
+                                title="Expand Panel" data-i18n-title="title_expand_panel"><i data-lucide="maximize-2" style="width:14px;height:14px"></i></button>
                             <button class="ai-header-btn" onclick="toggleAIPanel()"
-                                title="Close Panel"><i data-lucide="x" style="width:14px;height:14px"></i></button>
+                                title="Close Panel" data-i18n-title="title_close_panel"><i data-lucide="x" style="width:14px;height:14px"></i></button>
                         </div>
                     </div>
                     <!-- Guardrails Status -->
                     <div class="guardrails-status" id="guardrails-status">
                         <div class="guardrails-indicator safe" id="guardrails-indicator">
                             <span class="dot"></span>
-                            <span>Safe Mode</span>
+                            <span data-i18n="ai_safe_mode">Safe Mode</span>
                         </div>
-                        <span class="guardrails-limit" id="guardrails-limit">Requests: 0/50</span>
+                        <span class="guardrails-limit" id="guardrails-limit"><span data-i18n="ai_requests">Requests</span>: 0/50</span>
                     </div>
                     <!-- Context chips for selected resources -->
                     <div class="context-chips" id="context-chips">
-                        <span style="font-size: 11px; color: var(--text-secondary);">Context: Click resources to
-                            add</span>
+                        <span style="font-size: 11px; color: var(--text-secondary);" data-i18n="ai_context_hint">Context: Click resources to add</span>
                     </div>
                     <div class="ai-messages" id="ai-messages" tabindex="-1">
                         <div class="message assistant">
@@ -1008,32 +1010,36 @@
     <div class="modal-overlay" id="settings-modal" role="dialog" aria-modal="true">
         <div class="modal">
             <div class="modal-header">
-                <h2>Settings</h2>
+                <h2 data-i18n="settings">Settings</h2>
                 <button class="modal-close" onclick="closeSettings()" aria-label="Close settings">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="tabs" role="tablist">
                     <div class="tab active" role="tab" aria-selected="true" onclick="switchSettingsTab('general')">
-                        General</div>
-                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('ai')">AI</div>
-                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('mcp')">MCP</div>
-                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('security')">Security
-                    </div>
-                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('metrics')">Metrics
-                    </div>
+                        <span data-i18n="settings_general">General</span></div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('ai')">
+                        <span data-i18n="settings_ai">AI</span></div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('mcp')">
+                        <span data-i18n="settings_mcp">MCP</span></div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('security')">
+                        <span data-i18n="settings_security">Security</span></div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('metrics')">
+                        <span data-i18n="settings_metrics">Metrics</span></div>
                     <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('notifications')">
-                        Notifications</div>
+                        <span data-i18n="settings_notifications">Notifications</span></div>
                     <div class="tab" role="tab" aria-selected="false" id="admin-tab"
-                        onclick="switchSettingsTab('admin')" style="display:none;">Admin</div>
-                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('about')">About</div>
+                        onclick="switchSettingsTab('admin')" style="display:none;">
+                        <span data-i18n="settings_admin">Admin</span></div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('about')">
+                        <span data-i18n="settings_about">About</span></div>
                 </div>
 
                 <div id="settings-general" class="settings-content">
                     <div class="settings-section">
-                        <h4>Display</h4>
+                        <h4 data-i18n="settings_display">Display</h4>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Language</div>
+                                <div class="settings-label" data-i18n="settings_language">Language</div>
                             </div>
                             <select id="setting-language" onchange="autoSaveGeneralSettings()">
                                 <option value="en">영어 (English)</option>
@@ -1042,22 +1048,22 @@
                         </div>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Log Level</div>
+                                <div class="settings-label" data-i18n="settings_log_level">Log Level</div>
                             </div>
                             <select id="setting-log-level" onchange="autoSaveGeneralSettings()">
-                                <option value="debug">Debug</option>
-                                <option value="info">Info</option>
-                                <option value="warn">Warning</option>
-                                <option value="error">Error</option>
+                                <option value="debug" data-i18n="settings_log_debug">Debug</option>
+                                <option value="info" data-i18n="settings_log_info">Info</option>
+                                <option value="warn" data-i18n="settings_log_warning">Warning</option>
+                                <option value="error" data-i18n="settings_log_error">Error</option>
                             </select>
                         </div>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Timezone</div>
-                                <div class="settings-description">Set the timezone for displaying dates and times</div>
+                                <div class="settings-label" data-i18n="settings_timezone">Timezone</div>
+                                <div class="settings-description" data-i18n="settings_timezone_desc">Set the timezone for displaying dates and times</div>
                             </div>
                             <select id="setting-timezone" onchange="autoSaveGeneralSettings()">
-                                <option value="auto">Auto (Browser)</option>
+                                <option value="auto" data-i18n="settings_timezone_auto">Auto (Browser)</option>
                                 <option value="UTC">UTC</option>
                                 <option value="Asia/Seoul">Asia/Seoul (KST)</option>
                                 <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
@@ -1073,49 +1079,49 @@
                         </div>
                     </div>
                     <div class="settings-section">
-                        <h4>AI Chat</h4>
+                        <h4 data-i18n="settings_ai_chat">AI Chat</h4>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Enable Streaming</div>
-                                <div class="settings-description">Show AI responses as they're generated</div>
+                                <div class="settings-label" data-i18n="settings_enable_streaming">Enable Streaming</div>
+                                <div class="settings-description" data-i18n="settings_enable_streaming_desc">Show AI responses as they're generated</div>
                             </div>
                             <div class="auto-refresh-toggle" id="setting-streaming" onclick="toggleStreamingSetting()">
                             </div>
                         </div>
                     </div>
                     <div class="settings-section">
-                        <h4>Auto Refresh</h4>
+                        <h4 data-i18n="settings_auto_refresh">Auto Refresh</h4>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Enable Auto Refresh</div>
-                                <div class="settings-description">Automatically refresh resource data</div>
+                                <div class="settings-label" data-i18n="settings_enable_auto_refresh">Enable Auto Refresh</div>
+                                <div class="settings-description" data-i18n="settings_enable_auto_refresh_desc">Automatically refresh resource data</div>
                             </div>
                             <div class="auto-refresh-toggle" id="setting-auto-refresh"
                                 onclick="toggleAutoRefreshSetting()"></div>
                         </div>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Refresh Interval</div>
-                                <div class="settings-description">How often to refresh data</div>
+                                <div class="settings-label" data-i18n="settings_refresh_interval">Refresh Interval</div>
+                                <div class="settings-description" data-i18n="settings_refresh_interval_desc">How often to refresh data</div>
                             </div>
                             <select id="setting-refresh-interval" onchange="setAutoRefreshIntervalSetting(this.value)">
-                                <option value="10">10 seconds</option>
-                                <option value="30">30 seconds</option>
-                                <option value="60">1 minute</option>
-                                <option value="120">2 minutes</option>
-                                <option value="300">5 minutes</option>
+                                <option value="10" data-i18n="settings_interval_10s">10 seconds</option>
+                                <option value="30" data-i18n="settings_interval_30s">30 seconds</option>
+                                <option value="60" data-i18n="settings_interval_1m">1 minute</option>
+                                <option value="120" data-i18n="settings_interval_2m">2 minutes</option>
+                                <option value="300" data-i18n="settings_interval_5m">5 minutes</option>
                             </select>
                         </div>
                     </div>
                     <div class="settings-section">
-                        <h4>Theme / Skin</h4>
+                        <h4 data-i18n="settings_theme">Theme / Skin</h4>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Color Theme</div>
-                                <div class="settings-description">Change the dashboard color scheme</div>
+                                <div class="settings-label" data-i18n="settings_color_theme">Color Theme</div>
+                                <div class="settings-description" data-i18n="settings_color_theme_desc">Change the dashboard color scheme</div>
                             </div>
                             <select id="setting-theme" onchange="applyTheme(this.value)">
-                                <option value="light">Light</option>
+                                <option value="light" data-i18n="settings_theme_light">Light</option>
                                 <option value="ollama">Ollama (Minimalist White, Default)</option>
                                 <option value="tokyo-night">Tokyo Night</option>
                                 <option value="production">Production (Red)</option>
@@ -1136,9 +1142,9 @@
                                     style="width:16px;height:16px;border-radius:50%;background:#888;box-shadow:0 0 8px rgba(136,136,136,0.5);transition:all 0.3s;">
                                 </div>
                                 <div>
-                                    <div id="llm-status-text" style="font-weight:500;">Connection Status: Unknown</div>
-                                    <div id="llm-status-detail" style="font-size:12px;color:var(--text-secondary);">
-                                        Save to test connection</div>
+                                    <div id="llm-status-text" style="font-weight:500;" data-i18n="settings_connection_status">Connection Status: Unknown</div>
+                                    <div id="llm-status-detail" style="font-size:12px;color:var(--text-secondary);"
+                                        data-i18n="settings_save_to_test">Save to test connection</div>
                                 </div>
                             </div>
                             <div style="display:flex;justify-content:flex-end;margin-top:8px;">
@@ -1146,7 +1152,7 @@
                                     style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid var(--accent-blue);background:transparent;color:var(--accent-blue);cursor:pointer;font-size:13px;transition:all 0.2s;"
                                     onmouseover="this.style.background='var(--accent-blue)';this.style.color='#fff'"
                                     onmouseout="this.style.background='transparent';this.style.color='var(--accent-blue)'">
-                                    <span id="llm-test-btn-text">Test Connection</span>
+                                    <span id="llm-test-btn-text" data-i18n="settings_test_connection">Test Connection</span>
                                 </button>
                             </div>
                         </div>
@@ -1154,9 +1160,9 @@
 
                     <!-- Current LLM Configuration -->
                     <div class="settings-section">
-                        <h4>LLM Configuration</h4>
+                        <h4 data-i18n="settings_llm_config">LLM Configuration</h4>
                         <div class="form-group">
-                            <label>Provider</label>
+                            <label data-i18n="settings_provider">Provider</label>
                             <select id="setting-llm-provider" onchange="updateEndpointPlaceholder(); autoSaveLLMSettings()">
                                 <option value="upstage">Upstage Solar</option>
                                 <option value="openai">OpenAI</option>
@@ -1170,9 +1176,8 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Model <button type="button" id="fetch-models-btn" onclick="fetchAvailableModels()"
-                                    style="font-size:11px;color:var(--accent-blue);background:none;border:1px solid var(--accent-blue);border-radius:4px;padding:1px 8px;margin-left:8px;cursor:pointer;display:none;">Fetch
-                                    Models</button><span id="fetch-models-status"
+                            <label data-i18n="settings_model">Model <button type="button" id="fetch-models-btn" onclick="fetchAvailableModels()"
+                                    style="font-size:11px;color:var(--accent-blue);background:none;border:1px solid var(--accent-blue);border-radius:4px;padding:1px 8px;margin-left:8px;cursor:pointer;display:none;"><span data-i18n="settings_fetch_models">Fetch Models</span></button><span id="fetch-models-status"
                                     style="font-size:11px;color:var(--text-secondary);margin-left:6px;"></span></label>
                             <select id="setting-llm-model-select"
                                 onchange="document.getElementById('setting-llm-model').value=this.value; updateLLMToolSupportWarning(); autoSaveLLMSettings()"
@@ -1184,14 +1189,14 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Endpoint <span id="endpoint-hint"
+                            <label data-i18n="settings_endpoint">Endpoint <span id="endpoint-hint"
                                     style="font-size:11px;color:var(--text-secondary);"></span></label>
                             <input type="text" id="setting-llm-endpoint" placeholder="https://api.upstage.ai/v1"
                                 onchange="autoSaveLLMSettings()">
                         </div>
                         <div class="form-group">
-                            <label>API Key <a href="https://console.upstage.ai/api-keys" target="_blank"
-                                    style="font-size:11px;color:var(--accent-blue);margin-left:8px;">Get API Key
+                            <label data-i18n="settings_api_key">API Key <a href="https://console.upstage.ai/api-keys" target="_blank"
+                                    style="font-size:11px;color:var(--accent-blue);margin-left:8px;"><span data-i18n="settings_get_api_key">Get API Key</span>
                                     →</a></label>
                             <input type="password" id="setting-llm-apikey" placeholder="up_..."
                                 onchange="autoSaveLLMSettings()">
@@ -1204,30 +1209,27 @@
                         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
                             <span style="font-size:20px;">🧠</span>
                             <div>
-                                <h4 style="margin:0;color:var(--accent-purple);">Reasoning Effort (Solar Pro2)</h4>
-                                <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0 0;">Control
-                                    reasoning depth for complex tasks</p>
+                                <h4 style="margin:0;color:var(--accent-purple);" data-i18n="settings_reasoning_effort">Reasoning Effort (Solar Pro2)</h4>
+                                <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0 0;" data-i18n="settings_reasoning_effort_desc">Control reasoning depth for complex tasks</p>
                             </div>
                         </div>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Enable High Reasoning</div>
-                                <div class="settings-description">Use deeper reasoning for complex tasks (may increase
-                                    token usage)</div>
+                                <div class="settings-label" data-i18n="settings_enable_high_reasoning">Enable High Reasoning</div>
+                                <div class="settings-description" data-i18n="settings_enable_high_reasoning_desc">Use deeper reasoning for complex tasks (may increase token usage)</div>
                             </div>
                             <div class="auto-refresh-toggle" id="reasoning-effort-toggle"
                                 onclick="toggleReasoningEffort()"></div>
                         </div>
                         <div style="margin-top:8px;font-size:12px;color:var(--text-secondary);">
-                            <span id="reasoning-effort-status">Current: minimal (default)</span>
+                            <span id="reasoning-effort-status"><span data-i18n="settings_current">Current</span>: minimal (default)</span>
                         </div>
                     </div>
 
                     <!-- K8s Safety Guardrails Configuration -->
                     <div class="settings-section" style="margin-top:20px;">
-                        <h4>🛡️ K8s Safety Guardrails</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Protect your cluster from dangerous
-                            AI-proposed operations</p>
+                        <h4 data-i18n="settings_k8s_safety">🛡️ K8s Safety Guardrails</h4>
+                        <p class="settings-description" style="margin-bottom:12px;" data-i18n="settings_k8s_safety_desc">Protect your cluster from dangerous AI-proposed operations</p>
 
                         <div class="settings-row">
                             <div>
@@ -1241,9 +1243,8 @@
 
                         <div class="settings-row" style="margin-top:12px;">
                             <div>
-                                <div class="settings-label">Strict Mode</div>
-                                <div class="settings-description">Block all dangerous/critical operations (not just
-                                    warn)</div>
+                                <div class="settings-label" data-i18n="settings_strict_mode">Strict Mode</div>
+                                <div class="settings-description" data-i18n="settings_strict_mode_desc">Block all dangerous/critical operations (not just warn)</div>
                             </div>
                             <div class="auto-refresh-toggle" id="guardrails-strict-toggle" onclick="toggleStrictMode()">
                             </div>
@@ -1251,9 +1252,8 @@
 
                         <div class="settings-row" style="margin-top:12px;">
                             <div>
-                                <div class="settings-label">Auto-Analyze AI Responses</div>
-                                <div class="settings-description">Automatically analyze kubectl commands in AI responses
-                                </div>
+                                <div class="settings-label" data-i18n="settings_auto_analyze">Auto-Analyze AI Responses</div>
+                                <div class="settings-description" data-i18n="settings_auto_analyze_desc">Automatically analyze kubectl commands in AI responses</div>
                             </div>
                             <div class="auto-refresh-toggle active" id="guardrails-auto-analyze"
                                 onclick="toggleAutoAnalyze()"></div>
@@ -1261,57 +1261,52 @@
 
                         <!-- Risk Level Descriptions -->
                         <div style="margin-top:16px; padding:12px; background:var(--bg-tertiary); border-radius:8px;">
-                            <div style="font-weight:600; margin-bottom:8px;">Risk Level Descriptions:</div>
+                            <div style="font-weight:600; margin-bottom:8px;" data-i18n="settings_risk_levels">Risk Level Descriptions:</div>
                             <div style="display:grid; gap:6px; font-size:13px;">
-                                <div><span style="color:var(--accent-green);">● Safe</span> - Read-only operations (get,
-                                    describe, logs)</div>
-                                <div><span style="color:var(--accent-yellow);">● Warning</span> - Modifications that
-                                    need review (apply, scale)</div>
-                                <div><span style="color:var(--accent-red);">● Dangerous</span> - Deletions and
-                                    destructive changes</div>
-                                <div><span style="color:#ff4757;">● Critical</span> - Cluster-wide impact (drain, delete
-                                    namespace)</div>
+                                <div><span style="color:var(--accent-green);">● <span data-i18n="settings_risk_safe">Safe</span></span> - <span data-i18n="settings_risk_safe_desc">Read-only operations (get, describe, logs)</span></div>
+                                <div><span style="color:var(--accent-yellow);">● <span data-i18n="settings_risk_warning">Warning</span></span> - <span data-i18n="settings_risk_warning_desc">Modifications that need review (apply, scale)</span></div>
+                                <div><span style="color:var(--accent-red);">● <span data-i18n="settings_risk_dangerous">Dangerous</span></span> - <span data-i18n="settings_risk_dangerous_desc">Deletions and destructive changes</span></div>
+                                <div><span style="color:#ff4757;">● <span data-i18n="settings_risk_critical">Critical</span></span> - <span data-i18n="settings_risk_critical_desc">Cluster-wide impact (drain, delete namespace)</span></div>
                             </div>
                         </div>
 
                         <!-- Recent Safety Analysis -->
                         <div style="margin-top:16px;">
-                            <div style="font-weight:600; margin-bottom:8px;">Recent Safety Checks:</div>
+                            <div style="font-weight:600; margin-bottom:8px;" data-i18n="settings_recent_checks">Recent Safety Checks:</div>
                             <div id="guardrails-history"
                                 style="max-height:150px; overflow-y:auto; background:var(--bg-primary); border-radius:8px; padding:8px;">
-                                <div style="color:var(--text-secondary); font-size:13px;">No recent checks</div>
+                                <div style="color:var(--text-secondary); font-size:13px;" data-i18n="settings_no_recent_checks">No recent checks</div>
                             </div>
                         </div>
 
                         <button class="btn btn-secondary" onclick="clearGuardrailsHistory()"
-                            style="margin-top:12px;">Clear History</button>
+                            style="margin-top:12px;" data-i18n="settings_clear_history">Clear History</button>
                     </div>
 
                     <!-- Tool Approval Policy -->
                     <div class="settings-section" style="margin-top:20px;">
-                        <h4>Tool Approval Policy</h4>
-                        <p class="settings-description">Control which AI tool commands require user approval</p>
+                        <h4 data-i18n="settings_tool_approval">Tool Approval Policy</h4>
+                        <p class="settings-description" data-i18n="settings_tool_approval_desc">Control which AI tool commands require user approval</p>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Auto-approve read-only commands</div>
-                                <div class="settings-description">kubectl get, describe, logs, etc. Disabled by default.</div>
+                                <div class="settings-label" data-i18n="settings_auto_approve_readonly">Auto-approve read-only commands</div>
+                                <div class="settings-description" data-i18n="settings_auto_approve_readonly_desc">kubectl get, describe, logs, etc. Disabled by default.</div>
                             </div>
                             <div class="auto-refresh-toggle" id="ta-auto-approve-ro"
                                 onclick="toggleToolApproval(this)"></div>
                         </div>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Require approval for write operations</div>
-                                <div class="settings-description">kubectl apply, scale, restart, etc.</div>
+                                <div class="settings-label" data-i18n="settings_require_approval_write">Require approval for write operations</div>
+                                <div class="settings-description" data-i18n="settings_require_approval_write_desc">kubectl apply, scale, restart, etc.</div>
                             </div>
                             <div class="auto-refresh-toggle active" id="ta-require-write"
                                 onclick="toggleToolApproval(this)"></div>
                         </div>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Block dangerous commands entirely</div>
-                                <div class="settings-description">Dangerous operations will be blocked, not just
-                                    requiring approval</div>
+                                <div class="settings-label" data-i18n="settings_block_dangerous">Block dangerous commands entirely</div>
+                                <div class="settings-description" data-i18n="settings_block_dangerous_desc">Dangerous operations will be blocked, not just requiring approval</div>
                             </div>
                             <div class="auto-refresh-toggle" id="ta-block-dangerous" onclick="toggleToolApproval(this)">
                             </div>
@@ -1379,60 +1374,59 @@
                 <!-- MCP Tab -->
                 <div id="settings-mcp" class="settings-content" style="display:none;">
                     <div class="settings-section" style="margin-bottom:24px;">
-                        <h4>MCP Profiles</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Install pre-configured DevOps server bundles to quickly set up your AI environment.</p>
+                        <h4 data-i18n="settings_mcp_profiles">MCP Profiles</h4>
+                        <p class="settings-description" style="margin-bottom:12px;" data-i18n="settings_mcp_profiles_desc">Install pre-configured DevOps server bundles to quickly set up your AI environment.</p>
                         <div id="mcp-profiles-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:16px; margin-top:16px;">
                             <!-- Populated by JavaScript -->
                         </div>
                     </div>
 
                     <div class="settings-section">
-                        <h4>MCP Servers</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Connect to Model Context Protocol
-                            servers to extend AI capabilities with additional tools.</p>
+                        <h4 data-i18n="settings_mcp_servers">MCP Servers</h4>
+                        <p class="settings-description" style="margin-bottom:12px;" data-i18n="settings_mcp_servers_desc">Connect to Model Context Protocol servers to extend AI capabilities with additional tools.</p>
 
                         <div id="mcp-servers-list" style="margin-bottom:16px;">
                             <!-- Populated by JavaScript -->
                         </div>
 
                         <button class="btn-add" onclick="showAddMCPForm()" style="margin-top:8px;"><span
-                                class="plus-icon">+</span> Add MCP Server</button>
+                                class="plus-icon">+</span> <span data-i18n="settings_add_mcp_server">Add MCP Server</span></button>
                     </div>
 
                     <div id="add-mcp-form" class="settings-section"
                         style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
-                        <h4 id="add-mcp-form-header">Add MCP Server</h4>
+                        <h4 id="add-mcp-form-header" data-i18n="settings_add_mcp_server">Add MCP Server</h4>
                         <div class="form-group">
-                            <label>Server Name</label>
+                            <label data-i18n="settings_server_name">Server Name</label>
                             <input type="text" id="new-mcp-name" placeholder="e.g., kubernetes-mcp">
                         </div>
                         <div class="form-group">
-                            <label>Command</label>
+                            <label data-i18n="settings_command">Command</label>
                             <input type="text" id="new-mcp-command" placeholder="e.g., npx, docker">
                         </div>
                         <div class="form-group">
-                            <label>Arguments (comma-separated)</label>
+                            <label data-i18n="settings_arguments">Arguments (comma-separated)</label>
                             <input type="text" id="new-mcp-args" placeholder="e.g., -y, @anthropic/mcp-server">
                         </div>
                         <div class="form-group">
-                            <label>Description (optional)</label>
+                            <label data-i18n="settings_description">Description (optional)</label>
                             <input type="text" id="new-mcp-description" placeholder="Kubernetes management tools">
                         </div>
                         <div class="settings-row" style="margin-top:8px;">
                             <div>
-                                <div class="settings-label">Enable on Add</div>
+                                <div class="settings-label" data-i18n="settings_enable_on_add">Enable on Add</div>
                             </div>
                             <input type="checkbox" id="new-mcp-enabled" checked>
                         </div>
                         <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button id="add-mcp-form-btn" class="btn btn-primary" onclick="addMCPServer()">Add Server</button>
-                            <button class="btn btn-secondary" onclick="hideAddMCPForm()">Cancel</button>
+                            <button id="add-mcp-form-btn" class="btn btn-primary" onclick="addMCPServer()"><span data-i18n="settings_add_server">Add Server</span></button>
+                            <button class="btn btn-secondary" onclick="hideAddMCPForm()"><span data-i18n="btn_cancel">Cancel</span></button>
                         </div>
                     </div>
 
 
                     <div class="settings-section" style="margin-top:16px;">
-                        <h4>Available Tools</h4>
+                        <h4 data-i18n="settings_available_tools">Available Tools</h4>
                         <div id="mcp-tools-list">
                             <!-- Populated by JavaScript -->
                         </div>
@@ -1443,10 +1437,8 @@
                 <!-- Security/Trivy Settings Tab -->
                 <div id="settings-security" class="settings-content" style="display:none;">
                     <div class="settings-section">
-                        <h4>Trivy CVE Scanner</h4>
-                        <p class="settings-description" style="margin-bottom:16px;">Trivy is used to scan container
-                            images for known vulnerabilities (CVEs). For air-gapped environments, you can download Trivy
-                            manually.</p>
+                        <h4 data-i18n="settings_trivy_scanner">Trivy CVE Scanner</h4>
+                        <p class="settings-description" style="margin-bottom:16px;" data-i18n="settings_trivy_desc">Trivy is used to scan container images for known vulnerabilities (CVEs). For air-gapped environments, you can download Trivy manually.</p>
 
                         <div id="trivy-status-card"
                             style="padding:16px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);margin-bottom:16px;">
@@ -1455,7 +1447,7 @@
                                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
                                         <span id="trivy-status-indicator"
                                             style="width:10px;height:10px;border-radius:50%;background:var(--text-secondary);"></span>
-                                        <span id="trivy-status-text" style="font-weight:600;">Checking...</span>
+                                        <span id="trivy-status-text" style="font-weight:600;" data-i18n="settings_checking">Checking...</span>
                                     </div>
                                     <div id="trivy-version" style="font-size:12px;color:var(--text-secondary);"></div>
                                     <div id="trivy-path"
@@ -1464,8 +1456,8 @@
                                 </div>
                                 <div id="trivy-actions">
                                     <button class="btn btn-primary" id="trivy-install-btn" onclick="installTrivy()"
-                                        style="display:none;">Install Trivy</button>
-                                    <button class="btn btn-secondary" onclick="checkTrivyStatus()">Refresh</button>
+                                        style="display:none;" data-i18n="settings_install_trivy">Install Trivy</button>
+                                    <button class="btn btn-secondary" onclick="checkTrivyStatus()" data-i18n="btn_refresh">Refresh</button>
                                 </div>
                             </div>
                             <div id="trivy-install-progress" style="display:none;margin-top:12px;">
@@ -1482,39 +1474,36 @@
 
                         <div id="trivy-instructions"
                             style="display:none;padding:16px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
-                            <h5 style="margin-bottom:12px;color:var(--text-primary);">Manual Installation (Air-gapped)
-                            </h5>
+                            <h5 style="margin-bottom:12px;color:var(--text-primary);" data-i18n="settings_manual_install">Manual Installation (Air-gapped)</h5>
                             <pre id="trivy-install-commands"
                                 style="padding:12px;background:var(--bg-tertiary);border-radius:6px;font-size:12px;overflow-x:auto;white-space:pre-wrap;"></pre>
-                            <p style="margin-top:12px;font-size:12px;color:var(--text-secondary);">
+                            <p style="margin-top:12px;font-size:12px;color:var(--text-secondary);" data-i18n="settings_manual_install_desc">
                                 After manual installation, click "Refresh" to detect Trivy.
                             </p>
                         </div>
                     </div>
 
                     <div class="settings-section" style="margin-top:20px;">
-                        <h4>Security Scanning</h4>
+                        <h4 data-i18n="settings_security_scanning">Security Scanning</h4>
 
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Enable Image Vulnerability Scanning</div>
-                                <div class="settings-description">Scan container images for CVEs during security reports
-                                    (requires Trivy)</div>
+                                <div class="settings-label" data-i18n="settings_enable_image_scanning">Enable Image Vulnerability Scanning</div>
+                                <div class="settings-description" data-i18n="settings_enable_image_scanning_desc">Scan container images for CVEs during security reports (requires Trivy)</div>
                             </div>
                             <input type="checkbox" id="security-scan-images" checked onchange="saveSecurityPreferences()">
                         </div>
 
                         <div class="settings-row" style="margin-top:12px;">
                             <div>
-                                <div class="settings-label">Minimum Severity</div>
-                                <div class="settings-description">Only report vulnerabilities at or above this level
-                                </div>
+                                <div class="settings-label" data-i18n="settings_min_severity">Minimum Severity</div>
+                                <div class="settings-description" data-i18n="settings_min_severity_desc">Only report vulnerabilities at or above this level</div>
                             </div>
                             <select id="security-min-severity" onchange="saveSecurityPreferences()">
-                                <option value="CRITICAL">Critical only</option>
-                                <option value="HIGH" selected>High and above</option>
-                                <option value="MEDIUM">Medium and above</option>
-                                <option value="LOW">All severities</option>
+                                <option value="CRITICAL" data-i18n="settings_severity_critical">Critical only</option>
+                                <option value="HIGH" selected data-i18n="settings_severity_high">High and above</option>
+                                <option value="MEDIUM" data-i18n="settings_severity_medium">Medium and above</option>
+                                <option value="LOW" data-i18n="settings_severity_low">All severities</option>
                             </select>
                         </div>
                     </div>
@@ -1524,14 +1513,13 @@
                 <!-- Metrics/Prometheus Settings Tab -->
                 <div id="settings-metrics" class="settings-content" style="display:none;">
                     <div class="settings-section">
-                        <h4>Prometheus Integration</h4>
-                        <p class="settings-description" style="margin-bottom:16px;">Expose metrics for Prometheus
-                            scraping and connect to external Prometheus servers.</p>
+                        <h4 data-i18n="settings_prometheus_integration">Prometheus Integration</h4>
+                        <p class="settings-description" style="margin-bottom:16px;" data-i18n="settings_prometheus_integration_desc">Expose metrics for Prometheus scraping and connect to external Prometheus servers.</p>
 
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Expose /metrics Endpoint</div>
-                                <div class="settings-description">Allow Prometheus to scrape metrics from k13d</div>
+                                <div class="settings-label" data-i18n="settings_expose_metrics">Expose /metrics Endpoint</div>
+                                <div class="settings-description" data-i18n="settings_expose_metrics_desc">Allow Prometheus to scrape metrics from k13d</div>
                             </div>
                             <input type="checkbox" id="prometheus-expose-metrics"
                                 onchange="updatePrometheusExposeInfo(); autoSavePrometheusSettings()">
@@ -1539,12 +1527,12 @@
 
                         <div id="prometheus-expose-info"
                             style="margin-top:12px;padding:12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);display:none;">
-                            <div style="font-size:12px;color:var(--text-secondary);">
+                            <div style="font-size:12px;color:var(--text-secondary);" data-i18n="settings_prometheus_scrape_info">
                                 Prometheus can scrape metrics at: <code
                                     style="background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;font-family:var(--font-mono);">http://&lt;host&gt;:&lt;port&gt;/metrics</code>
                             </div>
                             <div style="margin-top:12px;font-size:11px;color:var(--text-secondary);">
-                                <strong>Example prometheus.yml:</strong>
+                                <strong data-i18n="settings_example_config">Example prometheus.yml:</strong>
                                 <pre
                                     style="margin-top:6px;padding:10px;background:var(--bg-tertiary);border-radius:4px;font-size:11px;overflow-x:auto;font-family:var(--font-mono);">scrape_configs:
   - job_name: 'k13d'
@@ -1555,31 +1543,29 @@
                     </div>
 
                     <div class="settings-section" style="margin-top:20px;">
-                        <h4>External Prometheus Server</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Connect to an external Prometheus
-                            server for advanced queries.</p>
+                        <h4 data-i18n="settings_external_prometheus">External Prometheus Server</h4>
+                        <p class="settings-description" style="margin-bottom:12px;" data-i18n="settings_external_prometheus_desc">Connect to an external Prometheus server for advanced queries.</p>
 
                         <div class="form-group">
-                            <label>Prometheus URL</label>
+                            <label data-i18n="settings_prometheus_url">Prometheus URL</label>
                             <input type="text" id="prometheus-external-url" placeholder="http://prometheus:9090"
                                 onchange="autoSavePrometheusSettings()">
                         </div>
 
                         <div class="form-group">
-                            <label>Username (optional)</label>
+                            <label data-i18n="settings_username">Username (optional)</label>
                             <input type="text" id="prometheus-username" placeholder="admin"
                                 onchange="autoSavePrometheusSettings()">
                         </div>
 
                         <div class="form-group">
-                            <label>Password (optional)</label>
+                            <label data-i18n="settings_password">Password (optional)</label>
                             <input type="password" id="prometheus-password" placeholder="••••••••"
                                 onchange="autoSavePrometheusSettings()">
                         </div>
 
                         <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button class="btn btn-secondary" onclick="testPrometheusConnection()">Test
-                                Connection</button>
+                            <button class="btn btn-secondary" onclick="testPrometheusConnection()"><span data-i18n="settings_test_connection">Test Connection</span></button>
                         </div>
 
                         <div id="prometheus-test-result"
@@ -1648,27 +1634,27 @@
                         <div class="about-logo"><i data-lucide="container" style="width:48px;height:48px"></i></div>
                         <div class="about-title">
                             <h2>k13d</h2>
-                            <p class="about-tagline">AI-Powered Kubernetes Dashboard</p>
+                            <p class="about-tagline" data-i18n="about_tagline">AI-Powered Kubernetes Dashboard</p>
                         </div>
                     </div>
 
                     <div class="about-version-card">
                         <div class="about-version-row">
-                            <span class="about-label">Version</span>
+                            <span class="about-label" data-i18n="about_version">Version</span>
                             <span class="about-value" id="about-version">Loading...</span>
                         </div>
                         <div class="about-version-row">
-                            <span class="about-label">Build Time</span>
+                            <span class="about-label" data-i18n="about_build_time">Build Time</span>
                             <span class="about-value" id="about-build-time">-</span>
                         </div>
                         <div class="about-version-row">
-                            <span class="about-label">Git Commit</span>
+                            <span class="about-label" data-i18n="about_git_commit">Git Commit</span>
                             <span class="about-value about-mono" id="about-git-commit">-</span>
                         </div>
                     </div>
 
                     <div class="about-description">
-                        <p>A modern Kubernetes dashboard combining the power of <strong>k9s-style TUI</strong> with an
+                        <p data-i18n="about_description">A modern Kubernetes dashboard combining the power of <strong>k9s-style TUI</strong> with an
                             AI assistant. Manage clusters efficiently with natural language commands and intelligent
                             analysis.</p>
                     </div>
@@ -1677,21 +1663,21 @@
                         <div class="about-feature">
                             <span class="about-feature-icon"><i data-lucide="bot" style="width:24px;height:24px"></i></span>
                             <div>
-                                <strong>AI Assistant</strong>
-                                <p>Natural language cluster management</p>
+                                <strong data-i18n="about_feature_ai">AI Assistant</strong>
+                                <p data-i18n="about_feature_ai_desc">Natural language cluster management</p>
                             </div>
                         </div>
                         <div class="about-feature">
                             <span class="about-feature-icon"><i data-lucide="zap" style="width:24px;height:24px"></i></span>
                             <div>
-                                <strong>Real-time Monitoring</strong>
-                                <p>Live resource status and metrics</p>
+                                <strong data-i18n="about_feature_monitoring">Real-time Monitoring</strong>
+                                <p data-i18n="about_feature_monitoring_desc">Live resource status and metrics</p>
                             </div>
                         </div>
                         <div class="about-feature">
                             <span class="about-feature-icon"><i data-lucide="shield" style="width:24px;height:24px"></i></span>
                             <div>
-                                <strong>Safety First</strong>
+                                <strong data-i18n="about_feature_safety">Safety First</strong>
                                 <p>Guardrails for dangerous operations</p>
                             </div>
                         </div>
@@ -1728,64 +1714,63 @@
                 <!-- Notifications Tab -->
                 <div id="settings-notifications" class="settings-content" style="display:none;">
                     <div class="settings-section">
-                        <h4>Webhook Notifications</h4>
-                        <p class="settings-description" style="margin-bottom:16px;">Receive alerts for cluster events
-                            via Slack, Discord, Teams, Email, or custom webhook.</p>
+                        <h4 data-i18n="settings_webhook_notifications">Webhook Notifications</h4>
+                        <p class="settings-description" style="margin-bottom:16px;" data-i18n="settings_webhook_notifications_desc">Receive alerts for cluster events via Slack, Discord, Teams, Email, or custom webhook.</p>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Enable Notifications</div>
-                                <div class="settings-description">Send alerts when cluster events occur</div>
+                                <div class="settings-label" data-i18n="settings_enable_notifications">Enable Notifications</div>
+                                <div class="settings-description" data-i18n="settings_enable_notifications_desc">Send alerts when cluster events occur</div>
                             </div>
                             <input type="checkbox" id="notif-enabled" onchange="saveNotificationSettings()">
                         </div>
                         <div class="form-group" style="margin-top:12px;">
-                            <label>Platform</label>
+                            <label data-i18n="settings_platform">Platform</label>
                             <select id="notif-platform" onchange="updateNotifPlaceholder(); saveNotificationSettings()">
                                 <option value="slack">Slack</option>
                                 <option value="discord">Discord</option>
                                 <option value="teams">Microsoft Teams</option>
-                                <option value="email">Email (SMTP)</option>
-                                <option value="custom">Custom Webhook</option>
+                                <option value="email" data-i18n="settings_email_smtp">Email (SMTP)</option>
+                                <option value="custom" data-i18n="settings_custom_webhook">Custom Webhook</option>
                             </select>
                         </div>
                         <div id="notif-webhook-section">
                             <div class="form-group">
-                                <label>Webhook URL</label>
+                                <label data-i18n="settings_webhook_url">Webhook URL</label>
                                 <input type="text" id="notif-webhook-url"
                                     placeholder="https://hooks.slack.com/services/..." onchange="saveNotificationSettings()">
                             </div>
                             <div class="form-group">
-                                <label>Channel (optional)</label>
+                                <label data-i18n="settings_channel">Channel (optional)</label>
                                 <input type="text" id="notif-channel" placeholder="#k8s-alerts" onchange="saveNotificationSettings()">
                             </div>
                         </div>
                         <div id="notif-smtp-section" style="display:none;">
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                                 <div class="form-group">
-                                    <label>SMTP Host</label>
+                                    <label data-i18n="settings_smtp_host">SMTP Host</label>
                                     <input type="text" id="notif-smtp-host" placeholder="smtp.gmail.com" onchange="saveNotificationSettings()">
                                 </div>
                                 <div class="form-group">
-                                    <label>Port</label>
+                                    <label data-i18n="settings_port">Port</label>
                                     <input type="number" id="notif-smtp-port" placeholder="587" value="587" onchange="saveNotificationSettings()">
                                 </div>
                             </div>
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                                 <div class="form-group">
-                                    <label>Username</label>
+                                    <label data-i18n="settings_username">Username</label>
                                     <input type="text" id="notif-smtp-username" placeholder="user@gmail.com" onchange="saveNotificationSettings()">
                                 </div>
                                 <div class="form-group">
-                                    <label>Password</label>
+                                    <label data-i18n="settings_password">Password</label>
                                     <input type="password" id="notif-smtp-password" placeholder="app password" onchange="saveNotificationSettings()">
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label>From Address</label>
+                                <label data-i18n="settings_from_address">From Address</label>
                                 <input type="text" id="notif-smtp-from" placeholder="alerts@example.com" onchange="saveNotificationSettings()">
                             </div>
                             <div class="form-group">
-                                <label>To Addresses (comma-separated)</label>
+                                <label data-i18n="settings_to_addresses">To Addresses (comma-separated)</label>
                                 <input type="text" id="notif-smtp-to" placeholder="admin@example.com, team@example.com" onchange="saveNotificationSettings()">
                             </div>
                             <div class="settings-row">
