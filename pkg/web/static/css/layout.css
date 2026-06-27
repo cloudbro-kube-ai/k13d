@@ -53,7 +53,7 @@
 .user-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
 }
 
 /* Header Team Badge */

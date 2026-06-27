@@ -247,6 +247,10 @@
             <div class="user-info">
                 <span class="user-badge" id="user-badge" onclick="showSettings('admin')" title="Settings - Admin">admin</span>
                 <button class="logout-btn" onclick="showShortcuts()" aria-label="Keyboard shortcuts" title="Keyboard Shortcuts" data-i18n-title="title_shortcuts"><i data-lucide="keyboard" style="width:14px;height:14px"></i></button>
+                <button class="logout-btn" id="theme-toggle-btn" onclick="toggleDarkMode()" title="Toggle Dark Mode" data-i18n-title="title_toggle_dark_mode">
+                    <i data-lucide="sun" id="theme-icon-light" style="width:14px;height:14px;display:none"></i>
+                    <i data-lucide="moon" id="theme-icon-dark" style="width:14px;height:14px"></i>
+                </button>
                 <button class="logout-btn" onclick="showSettings()" title="Settings" data-i18n-title="title_settings"><i data-lucide="settings" style="width:14px;height:14px"></i></button>
                 <button class="logout-btn ai-header-toggle" id="ai-header-toggle-btn" onclick="toggleAIPanel()" title="Toggle AI Assistant (A key)" data-i18n-title="title_toggle_ai"><i data-lucide="bot" style="width:14px;height:14px"></i></button>
                 <button class="logout-btn" id="logout-btn" onclick="logout()" title="Logout" data-i18n-title="title_logout"><i data-lucide="log-out" style="width:14px;height:14px"></i></button>

@@ -699,25 +699,33 @@ function initTheme() {
     updateThemeIcon();
 }
 
-function toggleTheme() {
+function toggleDarkMode() {
     const current = document.documentElement.getAttribute('data-theme');
     const isLight = !current || current === 'light' || current === 'ollama';
     if (isLight) {
-        // Switch to Tokyo Night
         applyTheme('tokyo-night');
     } else {
-        // Switch to default light theme (Ollama)
         applyTheme('ollama');
     }
+    updateThemeIcon();
 }
 
 function updateThemeIcon() {
-    const btn = document.getElementById('theme-toggle');
-    if (!btn) return;
+    const lightIcon = document.getElementById('theme-icon-light');
+    const darkIcon = document.getElementById('theme-icon-dark');
+    const btn = document.getElementById('theme-toggle-btn');
+    
     const theme = document.documentElement.getAttribute('data-theme');
     const isLight = !theme || theme === 'light' || theme === 'ollama';
-    btn.textContent = isLight ? '☀️' : '🌙';
-    btn.title = isLight ? 'Switch to dark theme' : 'Switch to light theme';
+    
+    if (lightIcon && darkIcon) {
+        lightIcon.style.display = isLight ? 'none' : 'block';
+        darkIcon.style.display = isLight ? 'block' : 'none';
+    }
+    
+    if (btn) {
+        btn.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';
+    }
 }
 
 // Apply theme immediately (before DOM ready)
