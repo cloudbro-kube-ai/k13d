@@ -134,6 +134,14 @@ const translations = {
         ai_confirm_clear_session: 'Are you sure you want to clear this session? All messages will be deleted.',
         ai_session_cleared: 'Session cleared',
 
+        // Approval Modal
+        approval_decision_required: 'Decision Required',
+        approval_dangerous_operation: 'Dangerous Operation',
+        approval_wants_to_execute: 'The AI wants to execute the following command:',
+        approval_tool: 'Tool',
+        approval_reject: 'Reject',
+        approval_approve: 'Approve',
+
         // Settings
         settings: 'Settings',
         settings_general: 'General',
@@ -708,7 +716,15 @@ const translations = {
         title_auto_refresh: '자동 새로고침 토글',
         title_refresh_interval: '새로고침 간격',
         ai_confirm_clear_session: '이 세션을 지우시겠습니까? 모든 메시지가 삭제됩니다.',
-        ai_session_cleared: '세션이 지워졌습니다'
+        ai_session_cleared: '세션이 지워졌습니다',
+
+        // Approval Modal
+        approval_decision_required: '승인 필요',
+        approval_dangerous_operation: '위험한 작업',
+        approval_wants_to_execute: 'AI가 다음 명령어를 실행하려고 합니다:',
+        approval_tool: '도구',
+        approval_reject: '거부',
+        approval_approve: '승인'
     }
 };
 

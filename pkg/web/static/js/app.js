@@ -2850,8 +2850,8 @@ function showApprovalModal(approval) {
     pendingApproval = approval;
 
     const isDangerous = approval.category === 'dangerous';
-    const icon = isDangerous ? '⚠️' : '🔧';
-    const title = isDangerous ? 'Dangerous Operation' : 'Decision Required';
+    const iconName = isDangerous ? 'alert-triangle' : 'wrench';
+    const title = isDangerous ? t('approval_dangerous_operation') : t('approval_decision_required');
     const warnings = Array.isArray(approval.warnings) ? approval.warnings : [];
     const warningsHtml = warnings.length > 0
         ? `<div class="approval-warnings" style="margin:12px 0 0 0;padding:10px 12px;border-radius:8px;background:rgba(255,184,0,0.12);border:1px solid rgba(255,184,0,0.28);font-size:12px;color:var(--text-secondary);">
@@ -2865,28 +2865,33 @@ function showApprovalModal(approval) {
     modal.innerHTML = `
                 <div class="approval-box ${isDangerous ? 'dangerous' : ''}">
                     <div class="approval-header">
-                        <span class="approval-icon">${icon}</span>
+                        <span class="approval-icon"><i data-lucide="${iconName}" style="width:20px;height:20px;color:${isDangerous ? 'var(--accent-yellow)' : 'var(--accent-blue)'}"></i></span>
                         <span class="approval-title">${title}</span>
                     </div>
                     <div class="approval-category ${approval.category}">${approval.category}</div>
-                    <p>The AI wants to execute the following command:</p>
+                    <p>${t('approval_wants_to_execute')}</p>
                     <div class="approval-command">${escapeHtml(approval.command)}</div>
                     <p style="font-size: 12px; color: var(--text-secondary);">
-                        Tool: <strong>${approval.tool_name}</strong>
+                        ${t('approval_tool')}: <strong>${approval.tool_name}</strong>
                     </p>
                     ${warningsHtml}
                     <div class="approval-buttons">
                         <button class="btn-reject" onclick="respondToApproval(false)">
-                            ✕ Reject
+                            <i data-lucide="x" style="width:14px;height:14px;vertical-align:middle"></i> ${t('approval_reject')}
                         </button>
                         <button class="btn-approve" onclick="respondToApproval(true)">
-                            ✓ Approve
+                            <i data-lucide="check" style="width:14px;height:14px;vertical-align:middle"></i> ${t('approval_approve')}
                         </button>
                     </div>
                 </div>
             `;
 
     document.body.appendChild(modal);
+
+    // Initialize Lucide icons in the modal
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons({ nodes: [modal] });
+    }
 
     // Add keyboard handlers
     document.addEventListener('keydown', handleApprovalKeypress);
