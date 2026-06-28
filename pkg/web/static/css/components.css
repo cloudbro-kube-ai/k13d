@@ -244,13 +244,13 @@
 /* AI Panel Expanded State */
 .ai-panel.expanded {
     position: fixed !important;
-    top: 0;
+    top: 50px;
     left: 0;
     right: 0;
     bottom: 0;
     width: 100% !important;
     max-width: 100% !important;
-    height: 100% !important;
+    height: calc(100% - 50px) !important;
     z-index: 999; /* Below --z-modal (1000) */
     display: flex;
     flex-direction: column;
