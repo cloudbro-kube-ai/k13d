@@ -3117,6 +3117,42 @@ function clearAiInput() {
     input.focus();
 }
 
+function clearCurrentSession() {
+    if (!confirm(t('ai_confirm_clear_session'))) return;
+
+    // Clear messages from DOM
+    const container = document.getElementById('ai-messages');
+    container.innerHTML = '';
+
+    // Clear tool executions from sessionStorage
+    if (currentSessionId) {
+        sessionStorage.removeItem(`k13d_tool_executions_${currentSessionId}`);
+    }
+
+    // Reset session ID to start a new session
+    currentSessionId = null;
+    currentChatId = null;
+    sessionStorage.removeItem('k13d_session_id');
+
+    // Show welcome message
+    container.innerHTML = `
+        <div class="message assistant">
+            <div class="message-content">
+                ${t('ai_welcome')}
+                <br><br>
+                ${t('ai_try_asking')}
+                <br>- "Show me all pods"
+                <br>- "Create an nginx pod"
+                <br>- "Scale deployment to 3 replicas"
+                <br><br>
+                <strong>${t('ai_tip')}</strong> ${t('ai_tip_hint')}
+            </div>
+        </div>
+    `;
+
+    showToast(t('ai_session_cleared'), 'success');
+}
+
 function toggleAiExpand() {
     const aiPanel = document.getElementById('ai-panel');
     const btn = document.getElementById('ai-expand-btn');

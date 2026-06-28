@@ -931,6 +931,8 @@
                         <span class="ai-status-dot" id="ai-status-dot" title="Checking connection..." data-i18n-title="ai_checking_connection">●</span>
                         <span class="ai-badge" id="ai-model-badge" style="cursor:pointer;" onclick="openAIModelSettings()" title="Click to change model settings" data-i18n-title="ai_change_model">Loading...</span>
                         <div class="ai-header-actions">
+                            <button class="ai-header-btn" onclick="clearCurrentSession()"
+                                title="Clear Session" data-i18n-title="title_clear_session"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
                             <button class="ai-header-btn" onclick="toggleChatHistory()"
                                 title="Chat History" data-i18n-title="title_chat_history"><i data-lucide="clipboard-list" style="width:14px;height:14px"></i></button>
                             <button class="ai-header-btn" onclick="toggleDebugMode()"
