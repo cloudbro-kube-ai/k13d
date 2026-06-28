@@ -715,8 +715,14 @@ async function loadChat(chatId) {
                 `;
         } else {
             // Restore messages from backend
+            let assistantIndex = 0;
             session.messages.forEach(msg => {
-                addMessageToDOM(msg.content, msg.role === 'user', false);
+                if (msg.role === 'assistant') {
+                    addMessageToDOM(msg.content, false, false, chatId, assistantIndex);
+                    assistantIndex++;
+                } else {
+                    addMessageToDOM(msg.content, true, false);
+                }
             });
         }
 

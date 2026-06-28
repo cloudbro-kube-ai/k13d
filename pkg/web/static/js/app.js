@@ -2563,6 +2563,7 @@ async function sendMessageAgentic(message, context = '') {
 
     const contentEl = div.querySelector('.message-content');
     let fullContent = '';
+    const toolExecutions = [];
 
     aiAbortController = new AbortController();
     const signal = aiAbortController.signal;
@@ -2627,6 +2628,7 @@ async function sendMessageAgentic(message, context = '') {
                         try {
                             const execInfo = JSON.parse(data);
                             showToolExecution(execInfo, div, contentEl);
+                            toolExecutions.push(execInfo);
                         } catch (e) {
                             console.error('Failed to parse tool_execution:', e);
                         }
@@ -2702,6 +2704,18 @@ async function sendMessageAgentic(message, context = '') {
         if (!streamError) {
             div.classList.remove('streaming');
             div.id = '';
+
+            // Store tool executions in sessionStorage for persistence
+            if (toolExecutions.length > 0 && currentSessionId) {
+                const storageKey = `k13d_tool_executions_${currentSessionId}`;
+                const existingData = JSON.parse(sessionStorage.getItem(storageKey) || '[]');
+                existingData.push({
+                    messageIndex: existingData.length,
+                    tools: toolExecutions
+                });
+                sessionStorage.setItem(storageKey, JSON.stringify(existingData));
+            }
+
             let formatted = fullContent;
             formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
             formatted = formatResourceLinks(formatted);
@@ -3580,7 +3594,7 @@ function toggleAIPanel() {
 })();
 
 // Add message to DOM (without saving)
-function addMessageToDOM(content, isUser, scroll = true) {
+function addMessageToDOM(content, isUser, scroll = true, sessionId = null, assistantMessageIndex = -1) {
     const container = document.getElementById('ai-messages');
     const div = document.createElement('div');
     div.className = `message ${isUser ? 'user' : 'assistant'}`;
@@ -3591,6 +3605,20 @@ function addMessageToDOM(content, isUser, scroll = true) {
     }
 
     div.innerHTML = `<div class="message-content">${formattedContent}</div>`;
+
+    // Insert tool executions before the message content if available
+    if (!isUser && sessionId && assistantMessageIndex >= 0) {
+        const storageKey = `k13d_tool_executions_${sessionId}`;
+        const allToolExecutions = JSON.parse(sessionStorage.getItem(storageKey) || '[]');
+        const msgTools = allToolExecutions.find(t => t.messageIndex === assistantMessageIndex);
+        if (msgTools && msgTools.tools.length > 0) {
+            const contentEl = div.querySelector('.message-content');
+            msgTools.tools.forEach(execInfo => {
+                showToolExecution(execInfo, div, contentEl);
+            });
+        }
+    }
+
     container.appendChild(div);
 
     if (scroll) {
