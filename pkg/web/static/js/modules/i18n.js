@@ -48,6 +48,7 @@ const translations = {
         header_storage: 'Storage',
         header_cluster: 'Cluster',
         header_custom_resources: 'Custom Resources',
+        header_cluster_overview: 'Cluster Overview',
         header_menu: 'Menu',
 
         // Application View
@@ -377,6 +378,7 @@ const translations = {
         header_storage: '스토리지',
         header_cluster: '클러스터',
         header_custom_resources: '커스텀 리소스',
+        header_cluster_overview: '클러스터 개요',
         header_menu: '메뉴',
 
         // Application View
