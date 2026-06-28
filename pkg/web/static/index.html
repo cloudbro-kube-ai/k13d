@@ -956,14 +956,14 @@
                     <div class="ai-messages" id="ai-messages" tabindex="-1">
                         <div class="message assistant">
                             <div class="message-content">
-                                Welcome to k13d! I can help you manage your Kubernetes cluster.
+                                <span data-i18n="ai_welcome">Welcome to k13d! I can help you manage your Kubernetes cluster.</span>
                                 <br><br>
-                                Try asking:
+                                <span data-i18n="ai_try_asking">Try asking:</span>
                                 <br>- "Show me all pods"
                                 <br>- "Create an nginx pod"
                                 <br>- "Scale deployment to 3 replicas"
                                 <br><br>
-                                <strong>Tip:</strong> Click any resource row to add it as context for AI analysis!
+                                <strong><span data-i18n="ai_tip">Tip:</span></strong> <span data-i18n="ai_tip_hint">Click any resource row to add it as context for AI analysis!</span>
                             </div>
                         </div>
                     </div>
@@ -972,18 +972,18 @@
                         <div id="ai-tui-container" style="width: 100%; height: 100%;"></div>
                         <div id="ai-tui-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10; display: none;">
                             <div style="background: var(--bg-primary); padding: 12px 20px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                <span id="ai-tui-status">Connecting...</span>
+                                <span id="ai-tui-status" data-i18n="ai_connecting">Connecting...</span>
                             </div>
                         </div>
                     </div>
                     <!-- Debug panel for MCP Tool Calling -->
                     <div class="debug-panel" id="debug-panel">
                         <div class="debug-header">
-                            <span><i data-lucide="wrench" style="width:14px;height:14px;vertical-align:middle"></i> MCP Tool Calling Debug</span>
-                            <button class="debug-toggle" onclick="clearDebugLogs()">Clear</button>
+                            <span><i data-lucide="wrench" style="width:14px;height:14px;vertical-align:middle"></i> <span data-i18n="ai_debug_title">MCP Tool Calling Debug</span></span>
+                            <button class="debug-toggle" onclick="clearDebugLogs()" data-i18n="ai_debug_clear">Clear</button>
                         </div>
                         <div class="debug-content" id="debug-content">
-                            <div style="color: var(--text-secondary); text-align: center; padding: 20px;">
+                            <div style="color: var(--text-secondary); text-align: center; padding: 20px;" data-i18n="ai_debug_active">
                                 Debug mode active. Tool calls will appear here.
                             </div>
                         </div>
@@ -993,13 +993,13 @@
                             <textarea class="ai-input" id="ai-input" placeholder="Ask me anything about Kubernetes..."
                                 rows="2"></textarea>
                             <button class="ai-clear-btn" id="ai-clear-btn" onclick="clearAiInput()"
-                                title="Clear input" aria-label="Clear input">&#x2715;</button>
+                                title="Clear input" data-i18n-title="ai_clear_input" aria-label="Clear input">&#x2715;</button>
                         </div>
                         <div class="ai-actions">
                             <span class="ai-hint" data-i18n="ai_hint">Enter send · Shift+Enter newline · ↑↓ history</span>
                             <div class="ai-actions-buttons">
-                                <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
-                                <button class="ai-stop-btn" id="ai-stop-btn" onclick="stopGeneration()" title="Stop generation">
+                                <button class="send-btn" id="send-btn" onclick="sendMessage()" data-i18n="ai_send">Send</button>
+                                <button class="ai-stop-btn" id="ai-stop-btn" onclick="stopGeneration()" title="Stop generation" data-i18n-title="ai_stop_generation">
                                     <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg>
                                 </button>
                             </div>

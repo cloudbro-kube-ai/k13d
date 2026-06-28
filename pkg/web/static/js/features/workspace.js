@@ -702,14 +702,14 @@ async function loadChat(chatId) {
             container.innerHTML = `
                     <div class="message assistant">
                         <div class="message-content">
-                            Welcome to k13d! I can help you manage your Kubernetes cluster.
+                            ${t('ai_welcome')}
                             <br><br>
-                            Try asking:
+                            ${t('ai_try_asking')}
                             <br>- "Show me all pods"
                             <br>- "Create an nginx pod"
                             <br>- "Scale deployment to 3 replicas"
                             <br><br>
-                            <strong>Tip:</strong> Click any resource row to add it as context for AI analysis!
+                            <strong>${t('ai_tip')}</strong> ${t('ai_tip_hint')}
                         </div>
                     </div>
                 `;
