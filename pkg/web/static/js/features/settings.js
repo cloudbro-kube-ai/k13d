@@ -482,41 +482,41 @@ async function testLLMConnection() {
             indicator.style.background = '#10b981';
             indicator.style.boxShadow = '0 0 12px rgba(16,185,129,0.8)';
             indicator.style.animation = '';
-            statusText.textContent = 'Connection Successful';
+            statusText.textContent = t('settings_connection_successful');
             statusText.style.color = 'var(--accent-green)';
-            statusDetail.textContent = `${status.provider} / ${status.model} - Response time: ${status.response_time_ms}ms`;
+            statusDetail.textContent = `${status.provider} / ${status.model} - ${t('settings_response_time')}: ${status.response_time_ms}ms`;
 
             // Ask to save the configuration
             const shouldSave = confirm(
-                `Connection Successful!\n\n` +
+                `${t('settings_connection_successful')}!\n\n` +
                 `Provider: ${testConfig.provider}\n` +
                 `Model: ${testConfig.model}\n` +
                 `Endpoint: ${testConfig.endpoint}\n\n` +
-                `Do you want to save these LLM settings?`
+                `${t('settings_save_llm_confirm')}`
             );
 
             if (shouldSave) {
                 await saveSettings();
-                showToast('LLM settings saved successfully!', 'success');
+                showToast(t('settings_llm_saved'), 'success');
             }
         } else {
             // Failure - red light
             indicator.style.background = '#ef4444';
             indicator.style.boxShadow = '0 0 12px rgba(239,68,68,0.8)';
             indicator.style.animation = '';
-            statusText.textContent = 'Connection Failed';
+            statusText.textContent = t('settings_connection_failed');
             statusText.style.color = 'var(--accent-red)';
 
             if (status.error === "tool calling 모델이 필요함") {
                 statusText.textContent = testConfig.provider === 'ollama'
-                    ? 'Ollama Tools Support Required'
-                    : 'Tool Calling Not Supported';
+                    ? t('settings_ollama_tools_required')
+                    : t('settings_tool_calling_not_supported');
 
                 const extraNote = testConfig.provider === 'ollama'
                     ? `<br>${escapeHtml(getOllamaToolSupportWarning(testConfig.model))}`
                     : '';
 
-                statusDetail.innerHTML = `<strong>tool calling 모델이 필요함</strong><br>${escapeHtml(status.message || 'Please use a model that supports functions/tools.')}${extraNote}`;
+                statusDetail.innerHTML = `<strong>${t('settings_tool_calling_required')}</strong><br>${escapeHtml(status.message || t('settings_tool_calling_hint'))}${extraNote}`;
             } else {
                 statusDetail.textContent = status.error || 'Unknown error';
                 if (status.message) {
@@ -529,12 +529,12 @@ async function testLLMConnection() {
         indicator.style.background = '#ef4444';
         indicator.style.boxShadow = '0 0 12px rgba(239,68,68,0.8)';
         indicator.style.animation = '';
-        statusText.textContent = 'Connection Error';
+        statusText.textContent = t('settings_connection_error');
         statusText.style.color = 'var(--accent-red)';
-        statusDetail.textContent = e.message || 'Failed to test connection';
+        statusDetail.textContent = e.message || t('settings_connection_test_failed');
     } finally {
         btn.disabled = false;
-        btnText.textContent = 'Test Connection';
+        btnText.textContent = t('settings_test_connection');
     }
 }
 
