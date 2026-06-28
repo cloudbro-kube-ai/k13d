@@ -1,8 +1,8 @@
 # k13d 기능 개선 사항 (feature/chkwak vs main)
 
 > **기간**: 2024년 ~ 2026년 6월  
-> **커밋 수**: 23개 커밋  
-> **변경 파일**: 68개 파일 (추가 10,260줄, 삭제 1,694줄)
+> **커밋 수**: 32개 커밋  
+> **변경 파일**: 70개 파일 (추가 10,635줄, 삭제 1,725줄)
 
 ---
 
@@ -17,6 +17,7 @@
 - 기존 아이콘 → **Lucide 아이콘** 전체 교체
 - `icons.js` (180줄), `lucide.js` 추가
 - 상단 헤더 버튼을 **아이콘만 표시**로 변경
+- Decision Required 팝업 아이콘도 Lucide로 통일
 
 ### 1.3 사이드바 디자인 개선
 - **TailAdmin 스타일** 적용
@@ -31,11 +32,22 @@
 ### 1.5 한글 i18n 지원
 - 전체 UI 한글 번역 적용
 - 언어 설정을 **영어/한국어만**으로 제한
-- `i18n.js` 대폭 개선 (666줄 변경)
+- `i18n.js` 대폭 개선 (734줄 변경)
+- **번역된 주요 항목:**
+  - AI 어시스턴트 패널 전체 (환영 메시지, 버튼, 상태 표시)
+  - AI 모델 테스트 결과 메시지
+  - Decision Required 팝업 (제목, 설명, 버튼)
+  - Cluster Overview 헤더
 
 ### 1.6 로그인 화면 개선
 - 브랜딩 정리
 - 미니멀리스트 디자인 적용
+
+### 1.7 AI 어시스턴트 패널 개선
+- **세션 지우기 버튼** 추가 (휴지통 아이콘)
+- **AI 패널 확장 시 헤더 영역 표시** (top: 50px)
+- **도구 실행 정보 세션 간 유지** (sessionStorage 활용)
+- **Decision Required 팝업 한글 번역** 및 아이콘 스타일 통일
 
 ---
 
@@ -133,9 +145,9 @@
 
 | 카테고리 | 파일 | 변경량 |
 |---------|------|--------|
-| **Web UI** | `pkg/web/static/index.html` | 1,322줄 |
-| **Web UI** | `pkg/web/static/js/app.js` | 271줄 |
-| **Web UI** | `pkg/web/static/js/modules/i18n.js` | 666줄 |
+| **Web UI** | `pkg/web/static/index.html` | 1,342줄 |
+| **Web UI** | `pkg/web/static/js/app.js` | 354줄 |
+| **Web UI** | `pkg/web/static/js/modules/i18n.js` | 734줄 |
 | **Web UI** | `pkg/web/static/css/layout.css` | 402줄 |
 | **Cluster Viz** | `pkg/web/static/css/views/cluster-visualizer.css` | 873줄 |
 | **Cluster Viz** | `pkg/web/static/js/features/custom-views/cluster-visualizer.js` | 527줄 |
@@ -173,13 +185,36 @@
 | `d56e878e` | feat | 사이드바 TailAdmin 스타일 |
 | `e92ecf48` | feat | 한글 i18n 전체 적용 |
 | `9843e2c9` | feat | 다크 모드 토글 + 웰컴 스크린 |
+| `6b142abc` | docs | 브랜치 변경사항 정리 및 CLI 실행 스크립트 |
+| `d90e9355` | fix | Cluster Overview 한글 번역 누락 수정 |
+| `ff848016` | fix | AI 패널 확장 시 헤더 영역 표시 |
+| `6c9f3f5f` | feat | AI 어시스턴트 패널 한글 번역 추가 |
+| `1271138a` | feat | AI 모델 테스트 결과 메시지 한글 번역 |
+| `a9a33e65` | feat | AI 채팅 도구 실행 정보 세션 간 유지 |
+| `f7217d8c` | feat | AI 어시스턴트 패널 세션 지우기 버튼 |
+| `2b6524b7` | feat | Decision Required 팝업 한글 번역 및 아이콘 스타일 통일 |
 
 ---
 
 ## 통계 요약
 
-- **Web UI 개선**: 12개 커밋
+- **Web UI 개선**: 14개 커밋
 - **CLI 신규**: 4개 커밋  
 - **TUI 개선**: 4개 커밋
-- **버그 수정**: 5개 커밋
-- **총 코드 변경**: +10,260줄 / -1,694줄 = **net +8,566줄**
+- **버그 수정**: 6개 커밋
+- **문서화**: 2개 커밋
+- **총 코드 변경**: +10,635줄 / -1,725줄 = **net +8,910줄**
+
+---
+
+## 롤백 이력
+
+| 날짜 | 원인 | 롤백 전 | 롤백 후 |
+|------|------|---------|---------|
+| 2026-06-28 | Decision Required 자동 승인 기능 버그 | `942939d9` | `2b6524b7` |
+
+**삭제된 커밋:**
+- `942939d9` debug(web): 승인 자동 승인 디버깅을 위한 로깅 추가
+- `028350a2` fix(web): 승인 건너뛰기 시 pendingApproval 미설정 문제 수정
+- `17cb154b` feat(web): 설정에서 승인 건너뛰기 초기화 기능 추가
+- `4defd35e` feat(web): Decision Required 팝업에 '다음에 표시하지 않기' 기능 추가
