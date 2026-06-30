@@ -139,6 +139,25 @@ func (c *CLI) readLine() (string, error) {
 						cursorPos = 0
 					}
 					refreshLine("", buf, cursorPos)
+
+				case 'C': // Right arrow
+					if cursorPos < len(buf) {
+						// Skip past current multi-byte UTF-8 character
+						cursorPos++
+						for cursorPos < len(buf) && buf[cursorPos]&0xC0 == 0x80 {
+							cursorPos++
+						}
+						refreshLine("", buf, cursorPos)
+					}
+
+				case 'D': // Left arrow
+					if cursorPos > 0 {
+						cursorPos--
+						for cursorPos > 0 && buf[cursorPos]&0xC0 == 0x80 {
+							cursorPos--
+						}
+						refreshLine("", buf, cursorPos)
+					}
 				}
 			}
 		}
