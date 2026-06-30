@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>k13d 리뉴얼 프로젝트 발표 자료</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+        }
+
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            padding: 60px 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            page-break-after: always;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide-number {
+            position: absolute;
+            bottom: 30px;
+            right: 50px;
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        /* Slide 1 - Title */
+        .slide-1 {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .slide-1::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(233, 69, 96, 0.1) 0%, transparent 70%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .title-logo {
+            font-size: 72px;
+            font-weight: 800;
+            letter-spacing: -2px;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-logo span {
+            color: #e94560;
+        }
+
+        .title-subtitle {
+            font-size: 28px;
+            font-weight: 300;
+            opacity: 0.9;
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-meta {
+            font-size: 16px;
+            opacity: 0.7;
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-badge {
+            display: inline-block;
+            background: rgba(233, 69, 96, 0.2);
+            border: 1px solid rgba(233, 69, 96, 0.5);
+            padding: 8px 20px;
+            border-radius: 20px;
+            margin-top: 30px;
+            font-size: 14px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Slide 2 - Overview */
+        .slide-2 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .slide-header {
+            margin-bottom: 50px;
+        }
+
+        .slide-header h2 {
+            font-size: 36px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+        }
+
+        .slide-header .accent-line {
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, #e94560, #0f3460);
+            border-radius: 2px;
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+        }
+
+        .overview-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border-left: 4px solid;
+        }
+
+        .overview-card:nth-child(1) { border-color: #e94560; }
+        .overview-card:nth-child(2) { border-color: #0f3460; }
+        .overview-card:nth-child(3) { border-color: #16a085; }
+        .overview-card:nth-child(4) { border-color: #9b59b6; }
+
+        .overview-card h3 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #1a1a2e;
+        }
+
+        .overview-card p {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        .stat-row {
+            display: flex;
+            gap: 40px;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 36px;
+            font-weight: 700;
+            color: #e94560;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        /* Slide 3 - Web UI */
+        .slide-3 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            transition: transform 0.2s;
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+
+        .feature-card:nth-child(1) .feature-icon { background: #ffe8ec; color: #e94560; }
+        .feature-card:nth-child(2) .feature-icon { background: #e8f4fd; color: #0f3460; }
+        .feature-card:nth-child(3) .feature-icon { background: #e8f8f5; color: #16a085; }
+        .feature-card:nth-child(4) .feature-icon { background: #f4ecf7; color: #9b59b6; }
+        .feature-card:nth-child(5) .feature-icon { background: #fef5e7; color: #f39c12; }
+        .feature-card:nth-child(6) .feature-icon { background: #fde8e8; color: #c0392b; }
+
+        .feature-card h4 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #1a1a2e;
+        }
+
+        .feature-card p {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #666;
+        }
+
+        /* Slide 4 - CLI */
+        .slide-4 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .cli-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .cli-main {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .cli-main h3 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cli-list {
+            list-style: none;
+        }
+
+        .cli-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: #444;
+        }
+
+        .cli-list li:last-child {
+            border-bottom: none;
+        }
+
+        .cli-badge {
+            display: inline-block;
+            background: #e94560;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .cli-code {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 24px;
+            color: #00ff88;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        .cli-code .comment {
+            color: #666;
+        }
+
+        .cli-code .highlight {
+            color: #e94560;
+        }
+
+        /* Slide 5 - TUI & Config */
+        .slide-5 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .split-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .split-section {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .split-section h3 {
+            font-size: 22px;
+            margin-bottom: 20px;
+            color: #1a1a2e;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .improvement-list {
+            list-style: none;
+        }
+
+        .improvement-list li {
+            padding: 10px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 14px;
+            color: #444;
+        }
+
+        .improvement-list li::before {
+            content: '✓';
+            color: #16a085;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        /* Slide 6 - Technical */
+        .slide-6 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+
+        .tech-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+
+        .tech-card h4 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tech-card h4::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #e94560;
+        }
+
+        .tech-card p {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        .tech-tag {
+            display: inline-block;
+            background: #f0f2f5;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        /* Slide 7 - Summary */
+        .slide-7 {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+        }
+
+        .summary-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+        }
+
+        .summary-left h3 {
+            font-size: 28px;
+            margin-bottom: 30px;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .summary-stat {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .summary-stat .number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #e94560;
+        }
+
+        .summary-stat .label {
+            font-size: 13px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .summary-right h3 {
+            font-size: 28px;
+            margin-bottom: 30px;
+        }
+
+        .roadmap {
+            list-style: none;
+        }
+
+        .roadmap li {
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .roadmap li:last-child {
+            border-bottom: none;
+        }
+
+        .roadmap-phase {
+            background: rgba(233, 69, 96, 0.2);
+            border: 1px solid rgba(233, 69, 96, 0.5);
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .closing-message {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .closing-message p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        /* Navigation */
+        .nav-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            opacity: 0.7;
+            z-index: 1000;
+        }
+
+        /* Print styles */
+        @media print {
+            .nav-hint {
+                display: none;
+            }
+            
+            .slide {
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Slide 1: Title -->
+    <div class="slide slide-1">
+        <div class="title-logo">k<span>13</span>d</div>
+        <div class="title-subtitle">Kubernetes AI Dashboard CLI</div>
+        <div class="title-meta">
+            <p>Reboot Project - Feature Branch Review</p>
+            <p style="margin-top: 10px;">2024 ~ 2026.06</p>
+        </div>
+        <div class="title-badge">37 Commits | 73 Files Changed | +9,169 Lines</div>
+        <div class="slide-number">1 / 7</div>
+    </div>
+
+    <!-- Slide 2: Overview -->
+    <div class="slide slide-2">
+        <div class="slide-header">
+            <h2>프로젝트 개요</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="overview-grid">
+            <div class="overview-card">
+                <h3>Web UI 고도화</h3>
+                <p>Lucide 아이콘 시스템 교체, TailAdmin 스타일 사이드바, 다크모드 지원, 한글 i18n 전체 적용으로 사용자 경험 대폭 향상</p>
+            </div>
+            <div class="overview-card">
+                <h3>CLI 신규 개발</h3>
+                <p>터미널 기반 REPL 인터페이스 구축, 한글 입력 지원, K8s 컨텍스트 인식 AI 명령어로 개발자 생산성 강화</p>
+            </div>
+            <div class="overview-card">
+                <h3>TUI 개선</h3>
+                <p>화면 깜빡임 3단계 개선, Diff 렌더링 구현, 웰컴 스크린 추가로 터미널 UI 품질 향상</p>
+            </div>
+            <div class="overview-card">
+                <h3>AI 통합 강화</h3>
+                <p>Kubectl-ai 패턴 기반 도구 시스템, MCP 프로필 관리, 안전한 도구 승인 플로우 구현</p>
+            </div>
+        </div>
+        <div class="stat-row">
+            <div class="stat-item">
+                <div class="stat-number">37</div>
+                <div class="stat-label">Total Commits</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">73</div>
+                <div class="stat-label">Files Changed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">+10,939</div>
+                <div class="stat-label">Lines Added</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">-1,770</div>
+                <div class="stat-label">Lines Removed</div>
+            </div>
+        </div>
+        <div class="slide-number">2 / 7</div>
+    </div>
+
+    <!-- Slide 3: Web UI Features -->
+    <div class="slide slide-3">
+        <div class="slide-header">
+            <h2>Web UI 주요 기능</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <h4>Lucide 아이콘 시스템</h4>
+                <p>기존 아이콘 → Lucide 전체 교체, 상단 헤더 아이콘만 표시로 변경</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌙</div>
+                <h4>다크 모드 지원</h4>
+                <p>헤더 토글 버튼 추가, Sun/Moon 아이콘, Ollama 미니멀리스트 테마</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌐</div>
+                <h4>한글 i18n</h4>
+                <p>전체 UI 번역, 언어 설정 영어/한국어 제한, AI 패널 번역</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h4>Cluster Visualizer</h4>
+                <p>Pod 간 통신 실시간 애니메이션, 873줄 CSS + 527줄 JS</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h4>AI 어시스턴트 개선</h4>
+                <p>세션 지우기 버튼, 도구 실행 정보 유지, 팝업 한글 번역</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <h4>로그인 화면</h4>
+                <p>브랜딩 정리, 미니멀리스트 디자인, 사용자 뱃지 → Settings 연결</p>
+            </div>
+        </div>
+        <div class="slide-number">3 / 7</div>
+    </div>
+
+    <!-- Slide 4: CLI Features -->
+    <div class="slide slide-4">
+        <div class="slide-header">
+            <h2>CLI 기능 (신규)</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-layout">
+            <div class="cli-main">
+                <h3>⌨️ 주요 기능</h3>
+                <ul class="cli-list">
+                    <li><span class="cli-badge">NEW</span> REPL 구현 (1,554줄)</li>
+                    <li><span class="cli-badge">NEW</span> 한글(UTF-8) 입력 지원</li>
+                    <li><span class="cli-badge">NEW</span> Left/Right 커서 네비게이션</li>
+                    <li><span class="cli-badge">NEW</span> Ctrl+Enter 개행 입력</li>
+                    <li><span class="cli-badge">NEW</span> 도구 승인 프롬프트 (Y/A/n/q)</li>
+                    <li><span class="cli-badge">NEW</span> K8s 컨텍스트 인식 AI</li>
+                </ul>
+            </div>
+            <div class="cli-code">
+                <div class="comment"># CLI 실행</div>
+                <div>$ ./k13d --cli</div>
+                <br>
+                <div class="comment"># AI 명령어</div>
+                <div>> <span class="highlight">:ai</span> 파드 상태 확인</div>
+                <br>
+                <div class="comment"># 도구 승인</div>
+                <div>승인하시겠습니까? (Y/<span class="highlight">A</span>/n/q)</div>
+                <div class="comment">  A = 세션 전체 자동 승인</div>
+                <br>
+                <div class="comment"># 개행 입력</div>
+                <div>> Ctrl+Enter로 줄바꿈 ↵</div>
+            </div>
+        </div>
+        <div class="slide-number">4 / 7</div>
+    </div>
+
+    <!-- Slide 5: TUI & Config -->
+    <div class="slide slide-5">
+        <div class="slide-header">
+            <h2>TUI 개선 및 설정 시스템</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="split-layout">
+            <div class="split-section">
+                <h3>TUI 개선사항</h3>
+                <ul class="improvement-list">
+                    <li>화면 깜빡임(Flicker) 3단계 개선</li>
+                    <li>스마트 레이아웃 재구성</li>
+                    <li>navigateTo 이중 표시 문제 해결</li>
+                    <li>Diff 렌더링 구현 (311줄)</li>
+                    <li>Diff 테스트 코드 (220줄)</li>
+                    <li>웰컴 스크린 추가 (360줄)</li>
+                    <li>메뉴 기반 네비게이션</li>
+                </ul>
+            </div>
+            <div class="split-section">
+                <h3>설정 시스템</h3>
+                <ul class="improvement-list">
+                    <li>사용자 뱃지 → Settings 탭 연결</li>
+                    <li>handlers_settings.go 신규 API</li>
+                    <li>스타일 설정 구조 (71줄)</li>
+                    <li>컨텍스트별 스킨 시스템</li>
+                    <li>테마 설정 UI 개선</li>
+                    <li>MCP 프로필 시스템 (283줄)</li>
+                    <li>MCP 설정 문서화 (4 파일)</li>
+                </ul>
+            </div>
+        </div>
+        <div class="slide-number">5 / 7</div>
+    </div>
+
+    <!-- Slide 6: Technical -->
+    <div class="slide slide-6">
+        <div class="slide-header">
+            <h2>기술적 도전과 해결</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="tech-grid">
+            <div class="tech-card">
+                <h4>한글 입력 처리</h4>
+                <p>터미널에서 다중바이트 UTF-8 문자의 정확한 입력과 커서 이동 처리 구현. readLine 함수 개선으로 한국어 사용자 지원 강화.</p>
+                <span class="tech-tag">UTF-8</span>
+                <span class="tech-tag">Terminal</span>
+            </div>
+            <div class="tech-card">
+                <h4>AI 도구 승인 플로우</h4>
+                <p>stdin 기반 세션 자동 승인(A all) 구현. safety.PolicyEnforcer와 연동하여 안전한 도구 실행 보장.</p>
+                <span class="tech-tag">CLI</span>
+                <span class="tech-tag">Safety</span>
+            </div>
+            <div class="tech-card">
+                <h4>K8s 컨텍스트 수집</h4>
+                <p>네임스페이스/리소스 현황 자동 조회, YAML/Events/Logs 통합 제공으로 AI 분석 품질 향상.</p>
+                <span class="tech-tag">Kubernetes</span>
+                <span class="tech-tag">AI</span>
+            </div>
+            <div class="tech-card">
+                <h4>Web UI 번역 시스템</h4>
+                <p>i18n.js 734줄 대폭 개선. AI 패널, Decision 팝업, Cluster Overview 등 핵심 UI 한글 번역 완성.</p>
+                <span class="tech-tag">i18n</span>
+                <span class="tech-tag">Korean</span>
+            </div>
+        </div>
+        <div class="slide-number">6 / 7</div>
+    </div>
+
+    <!-- Slide 7: Summary -->
+    <div class="slide slide-7">
+        <div class="summary-content">
+            <div class="summary-left">
+                <h3>총 정리</h3>
+                <div class="summary-stats">
+                    <div class="summary-stat">
+                        <div class="number">14</div>
+                        <div class="label">Web UI 커밋</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="number">9</div>
+                        <div class="label">CLI 커밋</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="number">4</div>
+                        <div class="label">TUI 커밋</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="number">10</div>
+                        <div class="label">버그 수정/문서화</div>
+                    </div>
+                </div>
+            </div>
+            <div class="summary-right">
+                <h3>향후 계획</h3>
+                <ul class="roadmap">
+                    <li>
+                        <span class="roadmap-phase">Phase 1</span>
+                        <span>Web UI 성능 최적화 및 반응형 디자인 보완</span>
+                    </li>
+                    <li>
+                        <span class="roadmap-phase">Phase 2</span>
+                        <span>CLI 고급 기능 (스크립트, 플러그인 지원)</span>
+                    </li>
+                    <li>
+                        <span class="roadmap-phase">Phase 3</span>
+                        <span>AI 에이트 커스터마이징 강화</span>
+                    </li>
+                    <li>
+                        <span class="roadmap-phase">Phase 4</span>
+                        <span>멀티 클러스터 지원 및 대시보드 확장</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="closing-message">
+            <p>k13d - Kubernetes Management, Reimagined</p>
+        </div>
+        <div class="slide-number">7 / 7</div>
+    </div>
+
+    <div class="nav-hint">← → 키로 슬라이드 이동 | Ctrl+P로 인쇄</div>
+
+    <script>
+        // Simple keyboard navigation
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                if (i === index) {
+                    slide.style.display = 'flex';
+                } else {
+                    slide.style.display = 'none';
+                }
+            });
+        }
+
+        // Initialize
+        showSlide(0);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (currentSlide < totalSlides - 1) {
+                    currentSlide++;
+                    showSlide(currentSlide);
+                }
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (currentSlide > 0) {
+                    currentSlide--;
+                    showSlide(currentSlide);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

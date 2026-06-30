@@ -1,8 +1,8 @@
 # k13d 기능 개선 사항 (feature/chkwak vs main)
 
 > **기간**: 2024년 ~ 2026년 6월  
-> **커밋 수**: 32개 커밋  
-> **변경 파일**: 70개 파일 (추가 10,635줄, 삭제 1,725줄)
+> **커밋 수**: 37개 커밋  
+> **변경 파일**: 73개 파일 (추가 10,939줄, 删除 1,770줄)
 
 ---
 
@@ -54,13 +54,15 @@
 ## 2. CLI 기능 (신규)
 
 ### 2.1 CLI REPL 구현
-- `pkg/cli/` 패키지 신규 생성 (총 1,294줄)
-  - `repl.go` - 메인 REPL 루프 (227줄)
+- `pkg/cli/` 패키지 신규 생성 (총 1,554줄)
+  - `repl.go` - 메인 REPL 루프 (462줄)
   - `tui_repl.go` - TUI 기반 REPL (469줄)
-  - `input.go` - 입력 처리 (201줄)
+  - `input.go` - 입력 처리 (241줄)
   - `output.go` - 출력 포맷팅 (156줄)
   - `history.go` - 히스토리 관리 (100줄)
   - `splash.go` - 스플래시 스크린 (154줄)
+  - `commands.go` - 명령어 처리 (26줄)
+  - `version.go` - 버전 정보 (7줄)
 
 ### 2.2 한글 입력 지원
 - readLine에서 **한국어(UTF-8) 입력** 지원
@@ -68,6 +70,34 @@
 
 ### 2.3 CLI 로고 변경
 - 새로운 ASCII 아트 로고 적용
+
+### 2.4 커서 네비게이션 (신규)
+- **Left/Right 화살표** 커서 이동 지원
+- 다중바이트 UTF-8 문자 안전 처리
+- Up/Down 히스토리 복원 시 커서가 끝에 위치하지만 자유롭게 편집 가능
+
+### 2.5 개행 입력 지원 (신규)
+- **Ctrl+Enter**: 버퍼에 `\n` 삽입
+- **Alt+Enter**: 버퍼에 `\n` 삽입
+- `refreshLine()`에서 `\n`을 `↵` 시각적 표시기로 대체
+- Enter 제출 시 `\n`이 문자열에 보존되어 AI 질문에 개행 포함 가능
+
+### 2.6 시작 시 프롬프트 및 도움말 (신규)
+- `readLine()`이 첫 키 입력 전에 프롬프트를 즉시 표시하여 커서 깜빡임 방지
+- CLI 시작 시 입력 영역 위에 도움말 메시지 표시
+
+### 2.7 도구 승인 프롬프트 개선 (신규)
+- `(Y/A/n/q)` 프롬프트에 **A(all)** 옵션 추가
+- `sessionAutoApprove` bool 필드로 세션 전체 자동 승인 지원
+- A를 누르면 이후 모든 도구 호출이 자동 승인됨
+
+### 2.8 K8s 컨텍스트 인식 AI 명령어 (신규)
+- `:ai` 명령어에 **Kubernetes 컨텍스트 인식** 기능 추가
+- **3단계 처리**:
+  1. `gatherClusterContext()` - 네임스페이스/리소스 현황 조회
+  2. `parseAIArgs()` + `getResourceDetailedContext()` - 리소스 지정 시 YAML/Events/Logs 제공
+  3. `toolApprovalCallback()` - safety.PolicyEnforcer 기반 stdin 승인 프롬프트
+- `SupportsTools`에 따른 분기 처리
 
 ---
 
@@ -152,7 +182,8 @@
 | **Cluster Viz** | `pkg/web/static/css/views/cluster-visualizer.css` | 873줄 |
 | **Cluster Viz** | `pkg/web/static/js/features/custom-views/cluster-visualizer.js` | 527줄 |
 | **CLI** | `pkg/cli/tui_repl.go` | 469줄 |
-| **CLI** | `pkg/cli/repl.go` | 227줄 |
+| **CLI** | `pkg/cli/repl.go` | 462줄 |
+| **CLI** | `pkg/cli/input.go` | 241줄 |
 | **TUI** | `pkg/ui/welcome.go` | 360줄 |
 | **TUI** | `pkg/ui/render_diff.go` | 311줄 |
 | **MCP** | `pkg/mcp/profiles.go` | 283줄 |
@@ -193,17 +224,22 @@
 | `a9a33e65` | feat | AI 채팅 도구 실행 정보 세션 간 유지 |
 | `f7217d8c` | feat | AI 어시스턴트 패널 세션 지우기 버튼 |
 | `2b6524b7` | feat | Decision Required 팝업 한글 번역 및 아이콘 스타일 통일 |
+| `2c7d4bc5` | feat | :ai 명령어 K8s 컨텍스트 인식 및 도구 호출 지원 |
+| `00b0c697` | feat | Ctrl+Enter/Alt+Enter로 개행 입력 지원 |
+| `07eed852` | feat | 시작 시 프롬프트 커서 표시 및 도움말 텍스트 추가 |
+| `baf49fd3` | feat | 도구 승인 프롬프트에 A(all) 옵션 추가 |
+| `c287a0f9` | feat | Left/Right 화살표 커서 이동 지원 |
 
 ---
 
 ## 통계 요약
 
 - **Web UI 개선**: 14개 커밋
-- **CLI 신규**: 4개 커밋  
+- **CLI 신규**: 9개 커밋  
 - **TUI 개선**: 4개 커밋
 - **버그 수정**: 6개 커밋
 - **문서화**: 2개 커밋
-- **총 코드 변경**: +10,635줄 / -1,725줄 = **net +8,910줄**
+- **총 코드 변경**: +10,939줄 / -1,770줄 = **net +9,169줄**
 
 ---
 
