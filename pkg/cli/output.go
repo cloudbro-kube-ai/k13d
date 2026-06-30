@@ -137,6 +137,7 @@ Built-in Commands:
   :context <name>         Switch Kubernetes context
   :history                Show command history
   :ai <question>          Ask AI about your cluster
+  :model [name]           Show current model or switch profile
 Any other input is executed as a kubectl command.
 
 Examples:

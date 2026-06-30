@@ -119,6 +119,8 @@ func (c *CLI) handleBuiltin(cmdLine string) {
 		c.handleContext(args)
 	case "history":
 		c.printHistory()
+	case "model", "models":
+		c.handleModel(args)
 	case "ai":
 		if len(args) == 0 {
 			fmt.Println("Usage: :ai <question>")
@@ -129,6 +131,51 @@ func (c *CLI) handleBuiltin(cmdLine string) {
 		fmt.Printf("Unknown command: :%s\n", cmd)
 		fmt.Println("Type :help for available commands.")
 	}
+}
+
+func (c *CLI) handleModel(args []string) {
+	if len(args) == 0 {
+		// Show current model and list profiles
+		fmt.Println("Current model:")
+		fmt.Printf("  Provider: %s\n", c.cfg.LLM.Provider)
+		fmt.Printf("  Model:    %s\n", c.cfg.LLM.Model)
+		if c.cfg.ActiveModel != "" {
+			fmt.Printf("  Profile:  %s\n", c.cfg.ActiveModel)
+		}
+		if len(c.cfg.Models) > 0 {
+			fmt.Println("\nAvailable profiles:")
+			for _, m := range c.cfg.Models {
+				mark := " "
+				if m.Name == c.cfg.ActiveModel {
+					mark = "*"
+				}
+				desc := ""
+				if m.Description != "" {
+					desc = " - " + m.Description
+				}
+				fmt.Printf("  %s %s (%s/%s)%s\n", mark, m.Name, m.Provider, m.Model, desc)
+			}
+		}
+		return
+	}
+	// Switch model
+	name := args[0]
+	if !c.cfg.SetActiveModel(name) {
+		fmt.Printf("Model profile '%s' not found.\n", name)
+		return
+	}
+	if err := c.cfg.Save(); err != nil {
+		fmt.Printf("Failed to save config: %v\n", err)
+		return
+	}
+	// Reinit AI client
+	ac, err := ai.NewClient(&c.cfg.LLM)
+	if err != nil {
+		fmt.Printf("Failed to initialize model '%s': %v\n", name, err)
+		return
+	}
+	c.aiClient = ac
+	fmt.Printf("Switched to model: %s (%s/%s)\n", name, c.cfg.LLM.Provider, c.cfg.LLM.Model)
 }
 
 func (c *CLI) handleNamespace(args []string) {
