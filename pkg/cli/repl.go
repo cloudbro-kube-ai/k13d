@@ -16,13 +16,14 @@ import (
 )
 
 type CLI struct {
-	cfg       *config.Config
-	client    *k8s.Client
-	aiClient  *ai.Client
-	namespace string
-	history   *CommandHistory
-	version   VersionInfo
-	running   bool
+	cfg                *config.Config
+	client             *k8s.Client
+	aiClient           *ai.Client
+	namespace          string
+	history            *CommandHistory
+	version            VersionInfo
+	running            bool
+	sessionAutoApprove bool
 }
 
 func New(cfg *config.Config, ver VersionInfo) *CLI {
@@ -394,6 +395,11 @@ func (c *CLI) toolApprovalCallback(toolName string, argsJSON string) bool {
 	enforcer := safety.NewDefaultPolicyEnforcer()
 	decision := enforcer.Evaluate(command)
 
+	// 세션 자동승인이 켜져 있으면 바로 승인
+	if c.sessionAutoApprove {
+		return true
+	}
+
 	// Auto-approve if policy says no approval needed
 	if decision.Allowed && !decision.RequiresApproval {
 		return true
@@ -411,7 +417,7 @@ func (c *CLI) toolApprovalCallback(toolName string, argsJSON string) bool {
 		fmt.Printf("   Warning: %s\n", w)
 	}
 	fmt.Printf("   [Category: %s]\n", decision.Category)
-	fmt.Print("[green]Approve?[-] (Y/n/q): ")
+	fmt.Print("[green]Approve?[-] (Y/A/n/q): ")
 
 	var response string
 	fmt.Scanln(&response)
@@ -419,6 +425,9 @@ func (c *CLI) toolApprovalCallback(toolName string, argsJSON string) bool {
 
 	switch response {
 	case "", "y", "yes":
+		return true
+	case "a", "all":
+		c.sessionAutoApprove = true
 		return true
 	case "q", "quit":
 		return false
