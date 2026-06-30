@@ -13,12 +13,14 @@ import (
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/k8s"
 	"github.com/cloudbro-kube-ai/k13d/pkg/log"
+	"github.com/cloudbro-kube-ai/k13d/pkg/mcp"
 )
 
 type CLI struct {
 	cfg                *config.Config
 	client             *k8s.Client
 	aiClient           *ai.Client
+	mcpClient          *mcp.Client
 	namespace          string
 	history            *CommandHistory
 	version            VersionInfo
@@ -46,12 +48,17 @@ func (c *CLI) Start() error {
 		c.namespace = "default"
 	}
 
+	// Initialize AI client
 	if c.cfg.LLM.Provider != "" {
 		ac, err := ai.NewClient(&c.cfg.LLM)
 		if err == nil {
 			c.aiClient = ac
 		}
 	}
+
+	// Initialize MCP client and connect to servers
+	c.initMCP()
+
 	PrintSplash(c.version.Version)
 	fmt.Println()
 	fmt.Print("\033[38;5;240m:  키를 입력하고 엔터를 누르면 도움말을 볼 수 있습니다.\033[0m\n\n")
@@ -67,6 +74,13 @@ func (c *CLI) Start() error {
 			break
 		}
 
+		// ESC key pressed: clear current input and refresh prompt
+		if input == escPressed {
+			fmt.Println()
+			refreshLine("", nil, 0)
+			continue
+		}
+
 		input = strings.TrimSpace(input)
 		if input == "" {
 			continue
@@ -80,6 +94,10 @@ func (c *CLI) Start() error {
 
 func (c *CLI) Stop() {
 	c.running = false
+	// Disconnect MCP servers
+	if c.mcpClient != nil {
+		c.mcpClient.DisconnectAll()
+	}
 }
 
 func (c *CLI) dispatch(input string) {
@@ -121,6 +139,8 @@ func (c *CLI) handleBuiltin(cmdLine string) {
 		c.printHistory()
 	case "model", "models":
 		c.handleModel(args)
+	case "mcp":
+		c.handleMCP(args)
 	case "ai":
 		if len(args) == 0 {
 			fmt.Println("Usage: :ai <question>")
@@ -370,7 +390,9 @@ func (c *CLI) handleAI(args []string) {
 		"You are a Kubernetes assistant running in CLI mode. "+
 			"%s"+
 			"Provide concise, evidence-based answers. "+
-			"Keep responses to 2-3 paragraphs unless asked for details."+"%s",
+			"Keep responses to 2-3 paragraphs unless asked for details. "+
+			"IMPORTANT: Do NOT use interactive flags like -i, -it, -ti in kubectl commands. "+
+			"These flags require a terminal and will fail in this environment."+"%s",
 		ctxBlock.String(), toolNote)
 
 	fmt.Print("[cyan]Sending to AI...[-]\n\n")
@@ -380,9 +402,10 @@ func (c *CLI) handleAI(args []string) {
 	ctx := context.Background()
 	fullPrompt := systemPrompt + "\n\nUser question: " + question
 
+	var aiErr error
 	if supportsTools {
 		log.Debugf("Using tool-supported AI call")
-		err := c.aiClient.AskWithToolsAndExecution(ctx, fullPrompt,
+		aiErr = c.aiClient.AskWithToolsAndExecution(ctx, fullPrompt,
 			func(chunk string) {
 				fmt.Print(chunk)
 				respBuilder.WriteString(chunk)
@@ -390,37 +413,41 @@ func (c *CLI) handleAI(args []string) {
 			c.toolApprovalCallback,
 			c.toolExecutionCallback,
 		)
-		if err != nil {
-			log.Debugf("Streaming tool AI call failed: %v, falling back to non-streaming", err)
+		if aiErr != nil {
+			log.Debugf("Streaming tool AI call failed: %v, falling back to non-streaming", aiErr)
 			resp, e := c.aiClient.AskNonStreaming(ctx, fullPrompt)
 			if e != nil {
-				fmt.Printf("Error getting AI response: %v\n", e)
-				fmt.Println("------------------")
-				fmt.Println()
-				return
+				aiErr = e
+			} else {
+				fmt.Print(resp)
+				aiErr = nil
 			}
-			fmt.Print(resp)
 		}
 	} else {
-		err := c.aiClient.Ask(ctx, fullPrompt, func(chunk string) {
+		aiErr = c.aiClient.Ask(ctx, fullPrompt, func(chunk string) {
 			fmt.Print(chunk)
 			respBuilder.WriteString(chunk)
 		})
-		if err != nil {
-			log.Debugf("Streaming AI call failed: %v, falling back to non-streaming", err)
+		if aiErr != nil {
+			log.Debugf("Streaming AI call failed: %v, falling back to non-streaming", aiErr)
 			resp, e := c.aiClient.AskNonStreaming(ctx, fullPrompt)
 			if e != nil {
-				fmt.Printf("Error getting AI response: %v\n", e)
-				fmt.Println("------------------")
-				fmt.Println()
-				return
+				aiErr = e
+			} else {
+				fmt.Print(resp)
+				aiErr = nil
 			}
-			fmt.Print(resp)
 		}
 	}
 
 	fmt.Println()
 	fmt.Println("------------------")
+
+	if aiErr != nil {
+		fmt.Printf("\n[red]Error: %v[-]\n", aiErr)
+		fmt.Println("[dim]Press ESC or Enter to return to prompt[-]")
+	}
+
 	fmt.Println()
 }
 
@@ -506,4 +533,164 @@ func (c *CLI) executeKubectl(input string) {
 		return
 	}
 	PrintOutput(output)
+}
+
+// initMCP initializes MCP client and connects to configured servers
+func (c *CLI) initMCP() {
+	enabledServers := c.cfg.GetEnabledMCPServers()
+	if len(enabledServers) == 0 {
+		return
+	}
+
+	c.mcpClient = mcp.NewClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	connected := 0
+	for _, server := range enabledServers {
+		if err := c.mcpClient.Connect(ctx, server); err != nil {
+			log.Warnf("Failed to connect MCP server %s: %v", server.Name, err)
+			continue
+		}
+		connected++
+	}
+
+	if connected > 0 && c.aiClient != nil {
+		// Connect MCP executor to AI client's tool registry
+		executor := mcp.NewMCPToolExecutor(c.mcpClient)
+		c.aiClient.GetToolRegistry().SetMCPExecutor(executor)
+
+		// Register MCP tools
+		tools := c.mcpClient.GetAllTools()
+		for _, tool := range tools {
+			c.aiClient.GetToolRegistry().RegisterMCPTool(
+				tool.Name,
+				tool.Description,
+				tool.ServerName,
+				tool.InputSchema,
+			)
+		}
+	}
+}
+
+// handleMCP handles :mcp command to show MCP server status
+func (c *CLI) handleMCP(args []string) {
+	if len(args) > 0 {
+		cmd := args[0]
+		switch cmd {
+		case "list", "ls":
+			c.mcpListServers()
+		case "tools":
+			c.mcpListTools()
+		case "status":
+			c.mcpShowStatus()
+		case "help":
+			c.mcpHelp()
+		default:
+			fmt.Printf("Unknown :mcp command: %s\n", cmd)
+			c.mcpHelp()
+		}
+		return
+	}
+
+	c.mcpShowStatus()
+}
+
+// mcpHelp displays MCP command help
+func (c *CLI) mcpHelp() {
+	fmt.Println("MCP Commands")
+	fmt.Println("------------")
+	fmt.Println("  :mcp              Show MCP connection status")
+	fmt.Println("  :mcp list         List all configured MCP servers")
+	fmt.Println("  :mcp tools        List all available MCP tools")
+	fmt.Println("  :mcp status       Show MCP connection status")
+	fmt.Println("  :mcp help         Show this help message")
+}
+
+// mcpShowStatus displays MCP connection status
+func (c *CLI) mcpShowStatus() {
+	fmt.Println("MCP Status")
+	fmt.Println("----------")
+
+	if c.mcpClient == nil {
+		fmt.Println("  MCP client not initialized")
+		configured := c.cfg.GetEnabledMCPServers()
+		if len(configured) > 0 {
+			fmt.Printf("  %d server(s) configured but not connected\n", len(configured))
+		} else {
+			fmt.Println("  No MCP servers configured")
+		}
+		return
+	}
+
+	servers := c.mcpClient.GetConnectedServers()
+	if len(servers) == 0 {
+		fmt.Println("  No MCP servers connected")
+		return
+	}
+
+	fmt.Printf("  Connected servers: %d\n", len(servers))
+	for _, name := range servers {
+		fmt.Printf("    - %s\n", name)
+	}
+
+	tools := c.mcpClient.GetAllTools()
+	if len(tools) > 0 {
+		fmt.Printf("  Available tools: %d\n", len(tools))
+	}
+}
+
+// mcpListServers lists all configured MCP servers
+func (c *CLI) mcpListServers() {
+	fmt.Println("Configured MCP Servers")
+	fmt.Println("----------------------")
+
+	allServers := c.cfg.MCP.Servers
+	if len(allServers) == 0 {
+		fmt.Println("  No MCP servers configured")
+		fmt.Println("  Add servers to config.yaml under 'mcp.servers'")
+		return
+	}
+
+	for _, server := range allServers {
+		status := "disabled"
+		if server.Enabled {
+			if c.mcpClient != nil && c.mcpClient.IsConnected(server.Name) {
+				status = "connected"
+			} else {
+				status = "enabled (not connected)"
+			}
+		}
+		fmt.Printf("  [%s] %s - %s\n", status, server.Name, server.Description)
+		fmt.Printf("    Command: %s %s\n", server.Command, strings.Join(server.Args, " "))
+	}
+}
+
+// mcpListTools lists all available MCP tools
+func (c *CLI) mcpListTools() {
+	fmt.Println("Available MCP Tools")
+	fmt.Println("-------------------")
+
+	if c.aiClient == nil {
+		fmt.Println("  AI client not initialized")
+		return
+	}
+
+	tools := c.aiClient.GetToolRegistry().GetMCPTools()
+	if len(tools) == 0 {
+		fmt.Println("  No MCP tools available")
+		return
+	}
+
+	for _, tool := range tools {
+		fmt.Printf("  %s (%s)\n", tool.Name, tool.ServerName)
+		if tool.Description != "" {
+			// Truncate long descriptions
+			desc := tool.Description
+			if len(desc) > 80 {
+				desc = desc[:77] + "..."
+			}
+			fmt.Printf("    %s\n", desc)
+		}
+	}
 }

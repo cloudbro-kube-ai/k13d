@@ -138,6 +138,7 @@ Built-in Commands:
   :history                Show command history
   :ai <question>          Ask AI about your cluster
   :model [name]           Show current model or switch profile
+  :mcp [list|tools|status] Manage MCP servers
 Any other input is executed as a kubectl command.
 
 Examples:

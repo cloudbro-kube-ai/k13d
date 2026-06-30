@@ -20,6 +20,9 @@ const (
 	keyCtrlL     = 0x0c
 	keyEscape    = 0x1b
 	keyDelete    = 0x08
+
+	// Special return values
+	escPressed = "__ESC__"
 )
 
 // readLine reads a line of input with history navigation support.
@@ -56,6 +59,10 @@ func (c *CLI) readLine() (string, error) {
 			case keyEnter:
 				fmt.Print("\r\n")
 				return string(buf), nil
+
+			case keyEscape:
+				// ESC pressed alone: return cancel signal
+				return escPressed, nil
 
 			case keyCtrlEnter:
 				buf = insertAt(buf, cursorPos, '\n')
@@ -116,6 +123,9 @@ func (c *CLI) readLine() (string, error) {
 				buf = insertAt(buf, cursorPos, '\n')
 				cursorPos++
 				refreshLine("", buf, cursorPos)
+			} else if key[0] == keyEscape && key[1] != '[' {
+				// ESC + other key: return ESC signal for cancel
+				return escPressed, nil
 			}
 
 		case 3:
@@ -166,6 +176,7 @@ func (c *CLI) readLine() (string, error) {
 
 // readKey reads a single key press. Returns 1-3 bytes.
 // Arrow keys return 3 bytes: ESC [ A/B/C/D
+// ESC alone returns 1 byte: ESC
 func readKey() ([]byte, error) {
 	var buf [1]byte
 	_, err := os.Stdin.Read(buf[:])
@@ -177,9 +188,15 @@ func readKey() ([]byte, error) {
 		var seq [2]byte
 		n, _ := os.Stdin.Read(seq[:])
 		if n == 0 {
+			// ESC pressed alone - no more bytes after short delay
 			return []byte{keyEscape}, nil
 		}
+		if n == 1 {
+			// ESC + another key (like Alt+key)
+			return []byte{keyEscape, seq[0]}, nil
+		}
 		if n == 2 && seq[0] == '[' {
+			// Arrow key or other escape sequence
 			return []byte{keyEscape, '[', seq[1]}, nil
 		}
 		return []byte{keyEscape, seq[0]}, nil
