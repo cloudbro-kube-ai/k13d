@@ -51,8 +51,9 @@ func (c *CLI) Start() error {
 			c.aiClient = ac
 		}
 	}
-
 	PrintSplash(c.version.Version)
+	fmt.Println()
+	fmt.Print("\033[38;5;240m:  키를 입력하고 엔터를 누르면 도움말을 볼 수 있습니다.\033[0m\n\n")
 	c.running = true
 	for c.running {
 		input, err := c.readLine()

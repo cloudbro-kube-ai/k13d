@@ -40,7 +40,11 @@ func (c *CLI) readLine() (string, error) {
 	cursorPos := 0
 	histIdx := c.history.Len()
 
+	// Show prompt and cursor immediately before waiting for input
+	refreshLine("", buf, cursorPos)
+
 	for {
+
 		key, err := readKey()
 		if err != nil {
 			return "", err
