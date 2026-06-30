@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/mattn/go-runewidth"
 	"golang.org/x/term"
@@ -15,6 +16,7 @@ const (
 	keyBackspace = 0x7f
 	keyCtrlC     = 0x03
 	keyCtrlD     = 0x04
+	keyCtrlEnter = 0x0a
 	keyCtrlL     = 0x0c
 	keyEscape    = 0x1b
 	keyDelete    = 0x08
@@ -50,6 +52,11 @@ func (c *CLI) readLine() (string, error) {
 			case keyEnter:
 				fmt.Print("\r\n")
 				return string(buf), nil
+
+			case keyCtrlEnter:
+				buf = insertAt(buf, cursorPos, '\n')
+				cursorPos++
+				refreshLine("", buf, cursorPos)
 
 			case keyBackspace, keyDelete:
 				if cursorPos > 0 && len(buf) > 0 {
@@ -97,6 +104,14 @@ func (c *CLI) readLine() (string, error) {
 					}
 					refreshLine("", buf, cursorPos)
 				}
+			}
+
+		case 2:
+			// Alt+Enter (ESC + Enter): insert newline
+			if key[0] == keyEscape && key[1] == keyEnter {
+				buf = insertAt(buf, cursorPos, '\n')
+				cursorPos++
+				refreshLine("", buf, cursorPos)
 			}
 
 		case 3:
@@ -150,15 +165,17 @@ func readKey() ([]byte, error) {
 	return buf[:], nil
 }
 
-// refreshLine clears the current line and reprints the prompt and buffer.
 func refreshLine(prompt string, buf []byte, cursorPos int) {
 	if prompt == "" {
 		prompt = RenderPrompt()
 	}
-	line := prompt + string(buf)
+	// Replace actual newlines with visual indicator for single-line display
+	displayStr := strings.ReplaceAll(string(buf), "\n", "↵")
+	line := prompt + displayStr
 	fmt.Print("\r\033[K" + line)
 	// Use visual width for cursor positioning (essential for CJK/UTF-8)
-	cursorVisual := runewidth.StringWidth(prompt) + runewidth.StringWidth(string(buf[:cursorPos]))
+	preCursorStr := strings.ReplaceAll(string(buf[:cursorPos]), "\n", "↵")
+	cursorVisual := runewidth.StringWidth(prompt) + runewidth.StringWidth(preCursorStr)
 	lineVisual := runewidth.StringWidth(line)
 	if move := lineVisual - cursorVisual; move > 0 {
 		fmt.Printf("\033[%dD", move)
