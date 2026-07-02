@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **Dependency vulnerabilities**: Cleared 14 of 17 code-reachable advisories reported by `govulncheck`. Bumped the Go toolchain to `1.25.11` (fixes 8 stdlib advisories in `crypto/tls`, `crypto/x509`, `net/http`, `net`, `mime`, `net/textproto`, `archive/tar`), `golang.org/x/net` v0.51→v0.55 (HTTP/2 DoS), `golang.org/x/crypto` v0.49→v0.51, and `github.com/moby/spdystream` v0.5.0→v0.5.1. The 3 remaining are `containerd` CRI-server advisories (checkpoint restore/import) with no v1.7.x fix — not reachable from a dashboard client (containerd is a transitive dep k13d never calls directly).
 - **API key exposure**: Stop returning the raw LLM API key from `GET /api/settings` and `/api/llm/status`; only `has_api_key` is sent
 - **XSS**: Escape untrusted content (user messages, AI/assistant output incl. code blocks, tool labels, approval fields, container names) before `innerHTML` in the web UI
 - **Timing-safe auth**: Use `subtle.ConstantTimeCompare` for the legacy SHA256 password fallback
