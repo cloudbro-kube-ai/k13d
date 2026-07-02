@@ -8,7 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
-- **Dependency vulnerabilities**: Cleared 14 of 17 code-reachable advisories reported by `govulncheck`. Bumped the Go toolchain to `1.25.11` (fixes 8 stdlib advisories in `crypto/tls`, `crypto/x509`, `net/http`, `net`, `mime`, `net/textproto`, `archive/tar`), `golang.org/x/net` v0.51→v0.55 (HTTP/2 DoS), `golang.org/x/crypto` v0.49→v0.51, and `github.com/moby/spdystream` v0.5.0→v0.5.1. The 3 remaining are `containerd` CRI-server advisories (checkpoint restore/import) with no v1.7.x fix — not reachable from a dashboard client (containerd is a transitive dep k13d never calls directly).
+- **Dependency vulnerabilities**: Cleared 14 of 17 code-reachable advisories reported by `govulncheck`. Bumped the Go toolchain to `1.25.11` (fixes 8 stdlib advisories in `crypto/tls`, `crypto/x509`, `net/http`, `net`, `mime`, `net/textproto`, `archive/tar`), `golang.org/x/net` v0.51→v0.55 (HTTP/2 DoS), `golang.org/x/crypto` v0.49→v0.53, and `github.com/moby/spdystream` v0.5.0→v0.5.1. The 3 remaining are `containerd` CRI-server advisories (checkpoint restore/import) with no v1.7.x fix — not reachable from a dashboard client (containerd is a transitive dep k13d never calls directly).
+
+### Changed
+- **Dependency freshness**: Updated direct dependencies within their current major versions — `tcell` v2.13.8→v2.13.10, `go-ldap/ldap/v3` v3.4.12→v3.4.13, `mvdan.cc/sh/v3` v3.13.0→v3.13.1, `lib/pq` v1.11.2→v1.12.3, `go-sql-driver/mysql` v1.9.3→v1.10.0, and `modernc.org/sqlite` v1.46.1→v1.53.0. Held `helm.sh/helm/v3` v3.21 and `k8s.io/*` v0.36 (they require Go 1.26, which the pinned CI toolchain can't build yet) for a separate, coordinated upgrade.
 - **API key exposure**: Stop returning the raw LLM API key from `GET /api/settings` and `/api/llm/status`; only `has_api_key` is sent
 - **XSS**: Escape untrusted content (user messages, AI/assistant output incl. code blocks, tool labels, approval fields, container names) before `innerHTML` in the web UI
 - **Timing-safe auth**: Use `subtle.ConstantTimeCompare` for the legacy SHA256 password fallback
