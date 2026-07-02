@@ -16,7 +16,8 @@ type Server struct {
 	stdin   io.Reader
 	stdout  io.Writer
 	scanner *bufio.Scanner
-	mu      sync.Mutex
+	mu      sync.Mutex   // serializes writes to stdout
+	toolsMu sync.RWMutex // guards the tools map
 	tools   map[string]*Tool
 	running atomic.Bool
 
@@ -139,7 +140,9 @@ func NewWithIO(name, version string, stdin io.Reader, stdout io.Writer) *Server 
 
 // RegisterTool adds a tool to the server
 func (s *Server) RegisterTool(tool *Tool) {
+	s.toolsMu.Lock()
 	s.tools[tool.Name] = tool
+	s.toolsMu.Unlock()
 }
 
 // Run starts the MCP server and processes requests
@@ -219,6 +222,7 @@ func (s *Server) handleInitialize(req *JSONRPCRequest) {
 
 // handleListTools handles the tools/list request
 func (s *Server) handleListTools(req *JSONRPCRequest) {
+	s.toolsMu.RLock()
 	tools := make([]ToolDefinition, 0, len(s.tools))
 	for _, t := range s.tools {
 		tools = append(tools, ToolDefinition{
@@ -227,6 +231,7 @@ func (s *Server) handleListTools(req *JSONRPCRequest) {
 			InputSchema: t.InputSchema,
 		})
 	}
+	s.toolsMu.RUnlock()
 	s.sendResult(req.ID, ListToolsResult{Tools: tools})
 }
 
@@ -238,7 +243,9 @@ func (s *Server) handleCallTool(ctx context.Context, req *JSONRPCRequest) {
 		return
 	}
 
+	s.toolsMu.RLock()
 	tool, ok := s.tools[params.Name]
+	s.toolsMu.RUnlock()
 	if !ok {
 		s.sendError(req.ID, -32602, "Unknown tool", params.Name)
 		return

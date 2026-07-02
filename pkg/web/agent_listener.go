@@ -120,6 +120,14 @@ func (l *SSEAgentListener) AgentApprovalTimeout(choiceID string) {
 	l.pendingApproval = nil
 	l.mu.Unlock()
 
+	// Unblock any goroutine parked in WaitForApproval so it doesn't leak (and
+	// so a later, unrelated approval can't wake it with a stale decision).
+	// approvalChan is buffered size 1; the non-blocking send avoids a stall.
+	select {
+	case l.approvalChan <- false:
+	default:
+	}
+
 	l.sendEvent("approval_timeout", map[string]string{
 		"id": choiceID,
 	})

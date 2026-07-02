@@ -2,10 +2,21 @@
 package safety
 
 import (
+	"path"
 	"strings"
 
 	"mvdan.cc/sh/v3/syntax"
 )
+
+// normalizeProgram strips any leading path from a program name so a path-prefixed
+// invocation like "/usr/bin/kubectl" is classified the same as "kubectl" (otherwise
+// it falls through to the unknown/non-dangerous branch and bypasses the analyzer).
+func normalizeProgram(prog string) string {
+	if prog == "" {
+		return ""
+	}
+	return path.Base(prog)
+}
 
 // ParsedCommand represents a parsed shell command
 type ParsedCommand struct {
@@ -72,7 +83,7 @@ func (p *ParsedCommand) parseCallExpr(expr *syntax.CallExpr) {
 	}
 
 	// Extract program name (first word)
-	p.Program = wordToString(expr.Args[0])
+	p.Program = normalizeProgram(wordToString(expr.Args[0]))
 
 	// Extract remaining arguments
 	for i := 1; i < len(expr.Args); i++ {
@@ -143,7 +154,7 @@ func (p *ParsedCommand) parseSimple(cmd string) {
 		return
 	}
 
-	p.Program = parts[0]
+	p.Program = normalizeProgram(parts[0])
 	if len(parts) > 1 {
 		p.Args = parts[1:]
 	}
