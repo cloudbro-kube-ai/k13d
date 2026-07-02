@@ -36,37 +36,83 @@ type ModelProfile struct {
 }
 
 // InitModelProfilesTable creates the model_profiles table if it doesn't exist.
-// TODO: DDL uses SQLite-only syntax (INTEGER PRIMARY KEY AUTOINCREMENT).
-// Add multi-DB DDL variants when supporting Postgres/MySQL.
 func InitModelProfilesTable() error {
 	if DB == nil {
 		return ErrDBNotInitialized
 	}
 
-	query := `
-	CREATE TABLE IF NOT EXISTS model_profiles (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT UNIQUE NOT NULL,
-		provider TEXT NOT NULL,
-		model TEXT NOT NULL,
-		endpoint TEXT,
-		api_key_hash TEXT,
-		region TEXT,
-		azure_deployment TEXT,
-		description TEXT,
-		is_active INTEGER DEFAULT 0,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		created_by TEXT
-	);
+	// Only the table's column types differ by backend; the index statements
+	// below are portable, so they're issued separately.
+	var tableDDL string
+	switch currentDBType {
+	case DBTypePostgres:
+		tableDDL = `
+		CREATE TABLE IF NOT EXISTS model_profiles (
+			id SERIAL PRIMARY KEY,
+			name VARCHAR(255) UNIQUE NOT NULL,
+			provider VARCHAR(100) NOT NULL,
+			model VARCHAR(255) NOT NULL,
+			endpoint TEXT,
+			api_key_hash TEXT,
+			region VARCHAR(100),
+			azure_deployment VARCHAR(255),
+			description TEXT,
+			is_active INTEGER DEFAULT 0,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_by VARCHAR(255)
+		);`
+	case DBTypeMariaDB, DBTypeMySQL:
+		tableDDL = `
+		CREATE TABLE IF NOT EXISTS model_profiles (
+			id BIGINT AUTO_INCREMENT PRIMARY KEY,
+			name VARCHAR(255) UNIQUE NOT NULL,
+			provider VARCHAR(100) NOT NULL,
+			model VARCHAR(255) NOT NULL,
+			endpoint TEXT,
+			api_key_hash TEXT,
+			region VARCHAR(100),
+			azure_deployment VARCHAR(255),
+			description TEXT,
+			is_active INTEGER DEFAULT 0,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			created_by VARCHAR(255)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+	default: // SQLite
+		tableDDL = `
+		CREATE TABLE IF NOT EXISTS model_profiles (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT UNIQUE NOT NULL,
+			provider TEXT NOT NULL,
+			model TEXT NOT NULL,
+			endpoint TEXT,
+			api_key_hash TEXT,
+			region TEXT,
+			azure_deployment TEXT,
+			description TEXT,
+			is_active INTEGER DEFAULT 0,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			created_by TEXT
+		);`
+	}
 
-	CREATE INDEX IF NOT EXISTS idx_model_profiles_name ON model_profiles(name);
-	CREATE INDEX IF NOT EXISTS idx_model_profiles_provider ON model_profiles(provider);
-	CREATE INDEX IF NOT EXISTS idx_model_profiles_active ON model_profiles(is_active);
-	`
+	if _, err := DB.Exec(tableDDL); err != nil {
+		return err
+	}
 
-	_, err := DB.Exec(query)
-	return err
+	indexes := []string{
+		`CREATE INDEX IF NOT EXISTS idx_model_profiles_name ON model_profiles(name)`,
+		`CREATE INDEX IF NOT EXISTS idx_model_profiles_provider ON model_profiles(provider)`,
+		`CREATE INDEX IF NOT EXISTS idx_model_profiles_active ON model_profiles(is_active)`,
+	}
+	for _, idx := range indexes {
+		if _, err := DB.Exec(idx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SaveModelProfile creates or updates a model profile

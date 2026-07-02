@@ -67,39 +67,92 @@ type TimeSeriesPoint struct {
 }
 
 // InitLLMUsageTable creates the llm_usage table if it doesn't exist.
-// TODO: DDL uses SQLite-only syntax (INTEGER PRIMARY KEY AUTOINCREMENT, datetime()).
-// Add multi-DB DDL variants (like audit_logs in db.go) when supporting Postgres/MySQL.
 func InitLLMUsageTable() error {
 	if DB == nil {
 		return fmt.Errorf("database not initialized")
 	}
 
-	query := `
-	CREATE TABLE IF NOT EXISTS llm_usage (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-		request_id TEXT NOT NULL,
-		user TEXT NOT NULL DEFAULT 'anonymous',
-		provider TEXT NOT NULL,
-		model TEXT NOT NULL,
-		request_type TEXT DEFAULT 'chat',
-		prompt_tokens INTEGER DEFAULT 0,
-		completion_tokens INTEGER DEFAULT 0,
-		total_tokens INTEGER DEFAULT 0,
-		tools_called INTEGER DEFAULT 0,
-		request_duration_ms INTEGER DEFAULT 0,
-		success INTEGER DEFAULT 1,
-		error_message TEXT DEFAULT ''
-	);
+	// Mirrors the per-dialect convention used for audit_logs in db.go. Only the
+	// table definition varies; the indexes below are portable.
+	var tableDDL string
+	switch currentDBType {
+	case DBTypePostgres:
+		tableDDL = `
+		CREATE TABLE IF NOT EXISTS llm_usage (
+			id SERIAL PRIMARY KEY,
+			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			request_id VARCHAR(255) NOT NULL,
+			"user" VARCHAR(255) NOT NULL DEFAULT 'anonymous',
+			provider VARCHAR(100) NOT NULL,
+			model VARCHAR(255) NOT NULL,
+			request_type VARCHAR(50) DEFAULT 'chat',
+			prompt_tokens INTEGER DEFAULT 0,
+			completion_tokens INTEGER DEFAULT 0,
+			total_tokens INTEGER DEFAULT 0,
+			tools_called INTEGER DEFAULT 0,
+			request_duration_ms INTEGER DEFAULT 0,
+			success INTEGER DEFAULT 1,
+			error_message TEXT DEFAULT ''
+		);`
+	case DBTypeMariaDB, DBTypeMySQL:
+		tableDDL = `
+		CREATE TABLE IF NOT EXISTS llm_usage (
+			id BIGINT AUTO_INCREMENT PRIMARY KEY,
+			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+			request_id VARCHAR(255) NOT NULL,
+			user VARCHAR(255) NOT NULL DEFAULT 'anonymous',
+			provider VARCHAR(100) NOT NULL,
+			model VARCHAR(255) NOT NULL,
+			request_type VARCHAR(50) DEFAULT 'chat',
+			prompt_tokens INTEGER DEFAULT 0,
+			completion_tokens INTEGER DEFAULT 0,
+			total_tokens INTEGER DEFAULT 0,
+			tools_called INTEGER DEFAULT 0,
+			request_duration_ms INTEGER DEFAULT 0,
+			success INTEGER DEFAULT 1,
+			error_message TEXT
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+	default: // SQLite
+		tableDDL = `
+		CREATE TABLE IF NOT EXISTS llm_usage (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+			request_id TEXT NOT NULL,
+			user TEXT NOT NULL DEFAULT 'anonymous',
+			provider TEXT NOT NULL,
+			model TEXT NOT NULL,
+			request_type TEXT DEFAULT 'chat',
+			prompt_tokens INTEGER DEFAULT 0,
+			completion_tokens INTEGER DEFAULT 0,
+			total_tokens INTEGER DEFAULT 0,
+			tools_called INTEGER DEFAULT 0,
+			request_duration_ms INTEGER DEFAULT 0,
+			success INTEGER DEFAULT 1,
+			error_message TEXT DEFAULT ''
+		);`
+	}
 
-	CREATE INDEX IF NOT EXISTS idx_llm_usage_timestamp ON llm_usage(timestamp DESC);
-	CREATE INDEX IF NOT EXISTS idx_llm_usage_user ON llm_usage(user);
-	CREATE INDEX IF NOT EXISTS idx_llm_usage_model ON llm_usage(model);
-	CREATE INDEX IF NOT EXISTS idx_llm_usage_provider ON llm_usage(provider);
-	`
+	if _, err := DB.Exec(tableDDL); err != nil {
+		return err
+	}
 
-	_, err := DB.Exec(query)
-	return err
+	// Postgres reserves "user"; quote it in the index expression there.
+	userCol := "user"
+	if currentDBType == DBTypePostgres {
+		userCol = `"user"`
+	}
+	indexes := []string{
+		`CREATE INDEX IF NOT EXISTS idx_llm_usage_timestamp ON llm_usage(timestamp DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_llm_usage_user ON llm_usage(` + userCol + `)`,
+		`CREATE INDEX IF NOT EXISTS idx_llm_usage_model ON llm_usage(model)`,
+		`CREATE INDEX IF NOT EXISTS idx_llm_usage_provider ON llm_usage(provider)`,
+	}
+	for _, idx := range indexes {
+		if _, err := DB.Exec(idx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // RecordLLMUsage inserts a new LLM usage record

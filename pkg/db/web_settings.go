@@ -14,19 +14,36 @@ type WebSetting struct {
 }
 
 // InitWebSettingsTable creates the web_settings table if it doesn't exist.
-// TODO: DDL uses SQLite-only syntax (TEXT PRIMARY KEY, ON CONFLICT).
-// Add multi-DB DDL variants when supporting Postgres/MySQL.
 func InitWebSettingsTable() error {
 	if DB == nil {
 		return ErrDBNotInitialized
 	}
 
-	query := `
-	CREATE TABLE IF NOT EXISTS web_settings (
-		key TEXT PRIMARY KEY,
-		value TEXT NOT NULL,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);`
+	var query string
+	switch currentDBType {
+	case DBTypePostgres:
+		query = `
+		CREATE TABLE IF NOT EXISTS web_settings (
+			key TEXT PRIMARY KEY,
+			value TEXT NOT NULL,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);`
+	case DBTypeMariaDB, DBTypeMySQL:
+		// key is a reserved word in MySQL and needs a length for a TEXT PK.
+		query = `
+		CREATE TABLE IF NOT EXISTS web_settings (
+			` + "`key`" + ` VARCHAR(255) PRIMARY KEY,
+			value TEXT NOT NULL,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+	default: // SQLite
+		query = `
+		CREATE TABLE IF NOT EXISTS web_settings (
+			key TEXT PRIMARY KEY,
+			value TEXT NOT NULL,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);`
+	}
 
 	_, err := DB.Exec(query)
 	return err
@@ -38,10 +55,17 @@ func SaveWebSetting(key, value string) error {
 		return ErrDBNotInitialized
 	}
 
-	query := `
-	INSERT INTO web_settings (key, value, updated_at)
-	VALUES (?, ?, ?)
-	ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+	var query string
+	switch currentDBType {
+	case DBTypeMariaDB, DBTypeMySQL:
+		query = "INSERT INTO web_settings (`key`, value, updated_at) VALUES (?, ?, ?) " +
+			"ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = VALUES(updated_at)"
+	default: // SQLite and PostgreSQL both support ON CONFLICT ... excluded
+		query = Rebind(`
+		INSERT INTO web_settings (key, value, updated_at)
+		VALUES (?, ?, ?)
+		ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`)
+	}
 
 	_, err := DB.Exec(query, key, value, time.Now())
 	return err
