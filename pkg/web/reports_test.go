@@ -593,3 +593,26 @@ func containsReportString(values []string, target string) bool {
 	}
 	return false
 }
+
+// TestExportToHTMLEscapesXSS guards that free-text/LLM fields are HTML-escaped
+// in the report so a malicious resource name or AI response can't inject script.
+func TestExportToHTMLEscapesXSS(t *testing.T) {
+	rg := &ReportGenerator{}
+	payload := `<script>alert(1)</script>`
+	report := &ComprehensiveReport{
+		AIAnalysis:  payload,
+		GeneratedBy: payload,
+		SecurityScan: &SecurityScanReport{
+			PodSecurityIssues: []PodSecurityIssueReport{
+				{Namespace: "ns", Pod: "p", Issue: payload, Severity: "HIGH"},
+			},
+		},
+	}
+	html := rg.ExportToHTML(report)
+	if strings.Contains(html, payload) {
+		t.Error("ExportToHTML must not contain the raw <script> payload")
+	}
+	if !strings.Contains(html, "&lt;script&gt;") {
+		t.Error("ExportToHTML should contain the escaped payload")
+	}
+}

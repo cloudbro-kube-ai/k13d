@@ -366,11 +366,10 @@ func (rg *ReportGenerator) GenerateReport(ctx context.Context, username string, 
 		report.Workloads.RunningPods, report.Workloads.TotalPods,
 	)
 
-	// Set cluster info
-	report.ClusterInfo = ClusterInfo{
-		TotalNodes: report.NodeSummary.Total,
-		TotalPods:  report.Workloads.TotalPods,
-	}
+	// Update only the computed totals; don't replace the struct, which would
+	// wipe ServerVersion/Platform gathered earlier from the discovery API.
+	report.ClusterInfo.TotalNodes = report.NodeSummary.Total
+	report.ClusterInfo.TotalPods = report.Workloads.TotalPods
 
 	// Generate FinOps analysis
 	if included.FinOps {
