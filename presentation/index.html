@@ -213,8 +213,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
             margin-bottom: 16px;
+        }
+
+.feature-icon svg {
+            width: 26px;
+            height: 26px;
         }
 
         .feature-card:nth-child(1) .feature-icon { background: #ffe8ec; color: #e94560; }
@@ -236,8 +240,49 @@
             color: #666;
         }
 
-        /* Slide 4 - CLI */
+        /* Slide 4 - Screenshots */
         .slide-4 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .screenshot-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screenshot-card img {
+            width: 100%;
+            flex: 1;
+            object-fit: contain;
+            background: white;
+            padding: 8px;
+            min-height: 0;
+        }
+
+        .screenshot-card .caption {
+            padding: 14px 16px;
+            font-size: 14px;
+            color: #444;
+            font-weight: 500;
+            text-align: center;
+            border-top: 1px solid #f0f0f0;
+            background: white;
+        }
+
+        /* Slide 8 - CLI */
+        .slide-8 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
 
@@ -309,8 +354,30 @@
             color: #e94560;
         }
 
-        /* Slide 5 - TUI & Config */
-        .slide-5 {
+        /* Slide 9 - CLI Screenshot */
+        .slide-9 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+.cli-screenshot {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+            padding: 0 20px;
+        }
+
+.cli-screenshot img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+        }
+
+        /* Slide 10 - TUI & Config */
+        .slide-10 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
 
@@ -355,8 +422,13 @@
             flex-shrink: 0;
         }
 
-        /* Slide 6 - Technical */
-        .slide-6 {
+        /* Slide 11 - TUI Screenshot */
+        .slide-11 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        /* Slide 12 - Technical */
+        .slide-12 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
 
@@ -405,9 +477,65 @@
             color: #666;
             margin-top: 10px;
         }
+        .slide-1 .slide-number {
+            bottom: 80px;
+        }
 
-        /* Slide 7 - Summary */
-        .slide-7 {
+.contributors {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+.contributors-label {
+            width: 100%;
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 2px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+.contributor {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            text-decoration: none;
+        }
+
+.contributor img {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.25);
+            transition: border-color 0.2s;
+        }
+
+.contributor:hover img {
+            border-color: #e94560;
+        }
+
+.contributor-name {
+            font-size: 10px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* Slide 13 - Direction */
+.slide-13 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+.slide-13 .tech-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* Slide 14 - Summary */
+        .slide-14 {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             color: white;
         }
@@ -512,31 +640,98 @@
             .nav-hint {
                 display: none;
             }
-            
+            .pdf-download-btn {
+                display: none;
+            }
             .slide {
                 page-break-after: always;
                 page-break-inside: avoid;
+                overflow: visible;
+                width: 100%;
+                height: 100vh;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
             }
         }
+        .pdf-download-btn {
+            position: fixed;
+            top: 24px;
+            right: 30px;
+            z-index: 1001;
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 16px rgba(233, 69, 96, 0.35);
+            transition: all 0.25s ease;
+            font-family: inherit;
+            line-height: 1;
+        }
+        .pdf-download-btn:hover {
+            background: #d63851;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.45);
+        }
+        .pdf-download-btn:disabled {
+            opacity: 0.7;
+            cursor: wait;
+            transform: none;
+        }
+    
     </style>
+    
 </head>
 <body>
     <!-- Slide 1: Title -->
     <div class="slide slide-1">
         <div class="title-logo">k<span>13</span>d</div>
-        <div class="title-subtitle">Kubernetes AI Dashboard CLI</div>
+        <div class="title-subtitle">Kubernetes AI Dashboard</div>
         <div class="title-meta">
             <p>Reboot Project - Feature Branch Review</p>
             <p style="margin-top: 10px;">2024 ~ 2026.06</p>
         </div>
         <div class="title-badge">37 Commits | 73 Files Changed | +9,169 Lines</div>
-        <div class="slide-number">1 / 7</div>
+        <div class="slide-number">1 / 14</div>
+        <div class="contributors">
+            <div class="contributors-label">Contributors</div>
+            <a class="contributor" href="https://github.com/fjvbn2003" target="_blank">
+                <img src="https://avatars.githubusercontent.com/u/19268960?v=4" alt="fjvbn2003">
+                <span class="contributor-name">fjvbn2003</span>
+            </a>
+            <a class="contributor" href="https://github.com/seoeunbae" target="_blank">
+                <img src="https://avatars.githubusercontent.com/u/71380240?v=4" alt="seoeunbae">
+                <span class="contributor-name">seoeunbae</span>
+            </a>
+            <a class="contributor" href="https://github.com/heung115" target="_blank">
+                <img src="https://avatars.githubusercontent.com/u/76578919?v=4" alt="heung115">
+                <span class="contributor-name">heung115</span>
+            </a>
+            <a class="contributor" href="https://github.com/nchime" target="_blank">
+                <img src="https://avatars.githubusercontent.com/u/5561391?v=4" alt="nchime">
+                <span class="contributor-name">nchime</span>
+            </a>
+            <a class="contributor" href="https://github.com/claude" target="_blank">
+                <img src="https://avatars.githubusercontent.com/u/81847?v=4" alt="claude">
+                <span class="contributor-name">claude</span>
+            </a>
+            <a class="contributor" href="https://github.com/vanillacake369" target="_blank">
+                <img src="https://avatars.githubusercontent.com/u/75259783?v=4" alt="vanillacake369">
+                <span class="contributor-name">vanillacake369</span>
+            </a>
+        </div>
     </div>
 
     <!-- Slide 2: Overview -->
     <div class="slide slide-2">
         <div class="slide-header">
-            <h2>프로젝트 개요</h2>
+            <h2>주요 개선 작업</h2>
             <div class="accent-line"></div>
         </div>
         <div class="overview-grid">
@@ -575,7 +770,7 @@
                 <div class="stat-label">Lines Removed</div>
             </div>
         </div>
-        <div class="slide-number">2 / 7</div>
+        <div class="slide-number">2 / 14</div>
     </div>
 
     <!-- Slide 3: Web UI Features -->
@@ -586,48 +781,96 @@
         </div>
         <div class="feature-grid">
             <div class="feature-card">
-                <div class="feature-icon">🎨</div>
+                <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/></svg></div>
                 <h4>Lucide 아이콘 시스템</h4>
                 <p>기존 아이콘 → Lucide 전체 교체, 상단 헤더 아이콘만 표시로 변경</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">🌙</div>
+                <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></div>
                 <h4>다크 모드 지원</h4>
                 <p>헤더 토글 버튼 추가, Sun/Moon 아이콘, Ollama 미니멀리스트 테마</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">🌐</div>
+                <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></div>
                 <h4>한글 i18n</h4>
                 <p>전체 UI 번역, 언어 설정 영어/한국어 제한, AI 패널 번역</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">📊</div>
+                <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16h8"/><path d="M7 11h12"/><path d="M7 6h3"/></svg></div>
                 <h4>Cluster Visualizer</h4>
                 <p>Pod 간 통신 실시간 애니메이션, 873줄 CSS + 527줄 JS</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">🤖</div>
+                <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></div>
                 <h4>AI 어시스턴트 개선</h4>
                 <p>세션 지우기 버튼, 도구 실행 정보 유지, 팝업 한글 번역</p>
             </div>
             <div class="feature-card">
-                <div class="feature-icon">🔐</div>
+                <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
                 <h4>로그인 화면</h4>
                 <p>브랜딩 정리, 미니멀리스트 디자인, 사용자 뱃지 → Settings 연결</p>
             </div>
         </div>
-        <div class="slide-number">3 / 7</div>
+        <div class="slide-number">3 / 14</div>
     </div>
 
-    <!-- Slide 4: CLI Features -->
+    <!-- Slide 4: Web UI Screenshot 1 -->
     <div class="slide slide-4">
+        <div class="slide-header">
+            <h2>실제 구현 화면 (Web UI)</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-screenshot">
+            <img src="screenshot-web1.png" alt="Web UI Dashboard">
+        </div>
+        <div class="slide-number">4 / 14</div>
+    </div>
+
+    <!-- Slide 5: Web UI Screenshot 2 -->
+    <div class="slide slide-5">
+        <div class="slide-header">
+            <h2>실제 구현 화면 (Web UI)</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-screenshot">
+            <img src="screenshot-web2.png" alt="AI Assistant Panel">
+        </div>
+        <div class="slide-number">5 / 14</div>
+    </div>
+
+    <!-- Slide 6: Web UI Screenshot 3 -->
+    <div class="slide slide-6">
+        <div class="slide-header">
+            <h2>실제 구현 화면 (Web UI)</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-screenshot">
+            <img src="screenshot-web3.png" alt="Cluster Visualizer">
+        </div>
+        <div class="slide-number">6 / 14</div>
+    </div>
+
+    <!-- Slide 7: Web UI Screenshot 4 -->
+    <div class="slide slide-7">
+        <div class="slide-header">
+            <h2>실제 구현 화면 (Web UI)</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-screenshot">
+            <img src="screenshot-web4.png" alt="Web UI Settings">
+        </div>
+        <div class="slide-number">7 / 14</div>
+    </div>
+
+    <!-- Slide 8: CLI Features -->
+    <div class="slide slide-8">
         <div class="slide-header">
             <h2>CLI 기능 (신규)</h2>
             <div class="accent-line"></div>
         </div>
         <div class="cli-layout">
             <div class="cli-main">
-                <h3>⌨️ 주요 기능</h3>
+                <h3>주요 기능</h3>
                 <ul class="cli-list">
                     <li><span class="cli-badge">NEW</span> REPL 구현 (1,554줄)</li>
                     <li><span class="cli-badge">NEW</span> 한글(UTF-8) 입력 지원</li>
@@ -652,11 +895,23 @@
                 <div>> Ctrl+Enter로 줄바꿈 ↵</div>
             </div>
         </div>
-        <div class="slide-number">4 / 7</div>
+        <div class="slide-number">8 / 14</div>
     </div>
 
-    <!-- Slide 5: TUI & Config -->
-    <div class="slide slide-5">
+    <!-- Slide 9: CLI Screenshot -->
+    <div class="slide slide-9">
+        <div class="slide-header">
+            <h2>CLI 실제 구현 화면</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-screenshot">
+            <img src="screenshot-cli.png" alt="CLI Screenshot">
+        </div>
+        <div class="slide-number">9 / 14</div>
+    </div>
+
+    <!-- Slide 10: TUI & Config -->
+    <div class="slide slide-10">
         <div class="slide-header">
             <h2>TUI 개선 및 설정 시스템</h2>
             <div class="accent-line"></div>
@@ -687,11 +942,23 @@
                 </ul>
             </div>
         </div>
-        <div class="slide-number">5 / 7</div>
+        <div class="slide-number">10 / 14</div>
     </div>
 
-    <!-- Slide 6: Technical -->
-    <div class="slide slide-6">
+    <!-- Slide 11: TUI Screenshot -->
+    <div class="slide slide-11">
+        <div class="slide-header">
+            <h2>실제 구현 화면 (TUI)</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-screenshot">
+            <img src="screenshot-tui.png" alt="TUI Screenshot">
+        </div>
+        <div class="slide-number">11 / 14</div>
+    </div>
+
+    <!-- Slide 12: Technical -->
+    <div class="slide slide-12">
         <div class="slide-header">
             <h2>기술적 도전과 해결</h2>
             <div class="accent-line"></div>
@@ -722,11 +989,49 @@
                 <span class="tech-tag">Korean</span>
             </div>
         </div>
-        <div class="slide-number">6 / 7</div>
+        <div class="slide-number">12 / 14</div>
     </div>
 
-    <!-- Slide 7: Summary -->
-    <div class="slide slide-7">
+    <!-- Slide 13: Direction -->
+    <div class="slide slide-13">
+        <div class="slide-header">
+            <h2>K13D의 방향성 고민</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="tech-grid">
+            <div class="tech-card">
+                <h4>타겟 유저</h4>
+                <p>Kubernetes를 운영하는 플랫폼 엔지니어, AI로 K8s 운영을 자동화하려는 DevOps 팀, CLI · TUI를 선호하는 개발자</p>
+                <span class="tech-tag">Platform Engineer</span>
+                <span class="tech-tag">DevOps</span>
+                <span class="tech-tag">Developer</span>
+            </div>
+            <div class="tech-card">
+                <h4>공략할 틈새 시장</h4>
+                <p>오픈소스 K8s AI 네이티브 도구 부재, Air-gapped · 온프레미스 보안 환경, 한국어 · 아시아권 K8s 운영 시장</p>
+                <span class="tech-tag">Open Source</span>
+                <span class="tech-tag">Air-gapped</span>
+                <span class="tech-tag">Korean</span>
+            </div>
+            <div class="tech-card">
+                <h4>CLI 기능 확대 전략</h4>
+                <p>AI 기반 문제 진단 및 자동 수정, 반복 작업 자동화 스크립트 지원, MCP 기반 플러그인 생태계 구축</p>
+                <span class="tech-tag">AI</span>
+                <span class="tech-tag">Automation</span>
+                <span class="tech-tag">MCP</span>
+            </div>
+            <div class="tech-card">
+                <h4>실무 활용 예시 발굴</h4>
+                <p>장애 상황 AI 자동 진단 · 복구, 배포 전 영향도 분석 리포트, 인시던트 기반 사후 분석</p>
+                <span class="tech-tag">Diagnosis</span>
+                <span class="tech-tag">Impact Analysis</span>
+                <span class="tech-tag">Postmortem</span>
+            </div>
+        </div>
+        <div class="slide-number">13 / 14</div>
+    </div>
+    <!-- Slide 14: Summary -->
+    <div class="slide slide-14">
         <div class="summary-content">
             <div class="summary-left">
                 <h3>총 정리</h3>
@@ -774,12 +1079,53 @@
         <div class="closing-message">
             <p>k13d - Kubernetes Management, Reimagined</p>
         </div>
-        <div class="slide-number">7 / 7</div>
+        <div class="slide-number">14 / 14</div>
     </div>
 
     <div class="nav-hint">← → 키로 슬라이드 이동 | Ctrl+P로 인쇄</div>
 
+    <button class="pdf-download-btn" onclick="downloadPDF()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+        </svg>
+        PDF 다운로드
+    </button>
+
     <script>
+        // PDF Download - uses browser's native print-to-PDF
+        function downloadPDF() {
+            const btn = document.querySelector('.pdf-download-btn');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '인쇄 대화상자 열기...';
+
+            const slides = document.querySelectorAll('.slide');
+            const navHint = document.querySelector('.nav-hint');
+            const currentIdx = currentSlide;
+
+            // Show all slides for printing
+            slides.forEach(function(s) { s.style.display = 'flex'; });
+            navHint.style.display = 'none';
+            btn.style.display = 'none';
+
+            requestAnimationFrame(function () {
+                window.print();
+
+                // Restore after print dialog closes
+                slides.forEach(function(s, j) {
+                    s.style.display = j === currentIdx ? 'flex' : 'none';
+                });
+                navHint.style.display = '';
+                btn.style.display = '';
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            });
+        }
+
         // Simple keyboard navigation
         let currentSlide = 0;
         const slides = document.querySelectorAll('.slide');
