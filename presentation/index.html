@@ -240,8 +240,8 @@
             color: #666;
         }
 
-        /* Slide 4 - Screenshots */
-        .slide-4 {
+        /* Slide 5 - Screenshots */
+        .slide-5 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
 
@@ -281,15 +281,116 @@
             background: white;
         }
 
-        /* Slide 8 - CLI */
-        .slide-8 {
+        /* Slide 9 - CLI */
+        .slide-9 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
 
         .cli-layout {
             display: grid;
+            grid-template-columns: 1fr 1.4fr;
+            gap: 30px;
+        }
+
+        .cli-commands-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cli-commands-panel h3 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #1a1a2e;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .cli-cmd-group {
+            margin-bottom: 12px;
+        }
+
+        .cli-cmd-group-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            padding-left: 4px;
+        }
+
+        .cli-cmd-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .cli-cmd-table td {
+            padding: 4px 8px;
+            font-size: 11px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .cli-cmd-table td:first-child {
+            font-family: 'Monaco', 'Menlo', monospace;
+            color: #e94560;
+            font-weight: 600;
+            white-space: nowrap;
+            width: 110px;
+        }
+
+        .cli-cmd-table td:last-child {
+            color: #666;
+        }
+
+        .cli-cmd-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .cli-keys-panel {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 12px;
+        }
+
+        .cli-keys-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .cli-keys-grid {
+            display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 40px;
+            gap: 4px;
+        }
+
+        .cli-key-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            padding: 2px 0;
+        }
+
+        .cli-key-item kbd {
+            background: rgba(255,255,255,0.15);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 9px;
+            color: #00ff88;
+            min-width: 50px;
+            text-align: center;
         }
 
         .cli-main {
@@ -354,8 +455,8 @@
             color: #e94560;
         }
 
-        /* Slide 9 - CLI Screenshot */
-        .slide-9 {
+        /* Slide 10 - CLI Screenshot */
+        .slide-10 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
 
@@ -376,8 +477,8 @@
             box-shadow: 0 4px 24px rgba(0,0,0,0.12);
         }
 
-        /* Slide 10 - TUI & Config */
-        .slide-10 {
+        /* Slide 11 - TUI & Config */
+        .slide-11 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
 
@@ -422,13 +523,13 @@
             flex-shrink: 0;
         }
 
-        /* Slide 11 - TUI Screenshot */
-        .slide-11 {
+        /* Slide 12 - TUI Screenshot */
+        .slide-12 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
 
-        /* Slide 12 - Technical */
-        .slide-12 {
+        /* Slide 13 - Technical */
+        .slide-13 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
 
@@ -440,30 +541,19 @@
 
         .tech-card {
             background: white;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
 
         .tech-card h4 {
-            font-size: 16px;
-            margin-bottom: 12px;
+            font-size: 20px;
+            margin-bottom: 15px;
             color: #1a1a2e;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .tech-card h4::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #e94560;
         }
 
         .tech-card p {
-            font-size: 13px;
+            font-size: 15px;
             line-height: 1.6;
             color: #555;
         }
@@ -473,9 +563,9 @@
             background: #f0f2f5;
             padding: 4px 10px;
             border-radius: 4px;
-            font-size: 11px;
+            font-size: 12px;
             color: #666;
-            margin-top: 10px;
+            margin-top: 12px;
         }
         .slide-1 .slide-number {
             bottom: 80px;
@@ -524,18 +614,18 @@
             color: rgba(255,255,255,0.5);
         }
 
-        /* Slide 13 - Direction */
-.slide-13 {
+        /* Slide 14 - Direction */
+.slide-14 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
 
-.slide-13 .tech-grid {
+.slide-14 .tech-grid {
             grid-template-columns: 1fr 1fr;
             gap: 20px;
         }
 
-        /* Slide 14 - Summary */
-        .slide-14 {
+        /* Slide 15 - Summary */
+        .slide-15 {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             color: white;
         }
@@ -684,7 +774,275 @@
             cursor: wait;
             transform: none;
         }
-    
+
+        /* Slide 4 - Web UI Block Diagram */
+        .slide-4 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 40px 50px;
+        }
+
+        .block-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* Top Bar Block */
+        .block-topbar {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .block-topbar-label {
+            color: rgba(255,255,255,0.5);
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            min-width: 60px;
+        }
+
+        .block-topbar-items {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .block-topbar-item {
+            font-size: 10px;
+            color: white;
+            background: rgba(255,255,255,0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .block-topbar-item.key {
+            background: #e94560;
+            font-weight: 600;
+        }
+
+        /* Main Content Area */
+        .block-main {
+            display: grid;
+            grid-template-columns: 200px 1fr 260px;
+            gap: 12px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* Sidebar Block */
+        .block-sidebar {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow: hidden;
+        }
+
+        .block-sidebar-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #e94560;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 4px;
+        }
+
+        .block-sidebar-group {
+            font-size: 8px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.35);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            padding: 4px 0 2px;
+        }
+
+        .block-sidebar-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+        }
+
+        .block-sidebar-item {
+            font-size: 9px;
+            color: rgba(255,255,255,0.7);
+            background: rgba(255,255,255,0.08);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .block-sidebar-item.active {
+            background: rgba(233, 69, 96, 0.3);
+            color: #e94560;
+        }
+
+        /* Content Area */
+        .block-content {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .block-content-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .block-content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .block-content-section {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        .block-content-section h5 {
+            font-size: 10px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .block-content-section h5 .count {
+            font-size: 8px;
+            background: #0f3460;
+            color: white;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+
+        .block-content-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .block-content-list li {
+            font-size: 9px;
+            color: #555;
+            padding: 2px 0;
+        }
+
+        /* AI Panel Block */
+        .block-ai {
+            background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .block-ai-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #e94560;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .block-ai-title .badge {
+            font-size: 8px;
+            background: #e94560;
+            color: white;
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+
+        .block-ai-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .block-ai-section h6 {
+            font-size: 9px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 4px;
+        }
+
+        .block-ai-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+        }
+
+        .block-ai-item {
+            font-size: 8px;
+            color: rgba(255,255,255,0.8);
+            background: rgba(233, 69, 96, 0.2);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        /* Settings Block */
+        .block-settings {
+            background: white;
+            border-radius: 8px;
+            padding: 10px 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .block-settings-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #1a1a2e;
+            min-width: 80px;
+        }
+
+        .block-settings-tabs {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .block-settings-tab {
+            font-size: 9px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: #f0f2f5;
+            color: #666;
+        }
+
+        .block-settings-tab.key {
+            background: #0f3460;
+            color: white;
+        }
+
     </style>
     
 </head>
@@ -698,7 +1056,7 @@
             <p style="margin-top: 10px;">2024 ~ 2026.06</p>
         </div>
         <div class="title-badge">37 Commits | 73 Files Changed | +9,169 Lines</div>
-        <div class="slide-number">1 / 14</div>
+        <div class="slide-number">1 / 15</div>
         <div class="contributors">
             <div class="contributors-label">Contributors</div>
             <a class="contributor" href="https://github.com/fjvbn2003" target="_blank">
@@ -770,13 +1128,13 @@
                 <div class="stat-label">Lines Removed</div>
             </div>
         </div>
-        <div class="slide-number">2 / 14</div>
+        <div class="slide-number">2 / 15</div>
     </div>
 
     <!-- Slide 3: Web UI Features -->
     <div class="slide slide-3">
         <div class="slide-header">
-            <h2>Web UI 주요 기능</h2>
+            <h2>Web UI 주요 업데이트</h2>
             <div class="accent-line"></div>
         </div>
         <div class="feature-grid">
@@ -811,11 +1169,222 @@
                 <p>브랜딩 정리, 미니멀리스트 디자인, 사용자 뱃지 → Settings 연결</p>
             </div>
         </div>
-        <div class="slide-number">3 / 14</div>
+        <div class="slide-number">3 / 15</div>
     </div>
 
-    <!-- Slide 4: Web UI Screenshot 1 -->
+    <!-- Slide 4: Web UI Block Diagram -->
     <div class="slide slide-4">
+        <div class="slide-header">
+            <h2>Web UI 전체 메뉴 / 기능 구성도</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="block-diagram">
+            <!-- Top Bar -->
+            <div class="block-topbar">
+                <div class="block-topbar-label">TOP BAR</div>
+                <div class="block-topbar-items">
+                    <div class="block-topbar-item">Sidebar Toggle</div>
+                    <div class="block-topbar-item">Cmd+K Search</div>
+                    <div class="block-topbar-item">Cluster Switch</div>
+                    <div class="block-topbar-item">Health Status</div>
+                    <div class="block-topbar-item">Auto Refresh</div>
+                    <div class="block-topbar-item key">AI Panel (A)</div>
+                    <div class="block-topbar-item">Dark Mode</div>
+                    <div class="block-topbar-item">Settings</div>
+                    <div class="block-topbar-item">Shortcuts</div>
+                    <div class="block-topbar-item">Logout</div>
+                </div>
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="block-main">
+                <!-- Sidebar -->
+                <div class="block-sidebar">
+                    <div class="block-sidebar-title">k13d</div>
+
+                    <div class="block-sidebar-group">WORKLOADS (7)</div>
+                    <div class="block-sidebar-items">
+                        <span class="block-sidebar-item active">Pods</span>
+                        <span class="block-sidebar-item">Deploy</span>
+                        <span class="block-sidebar-item">DaemonSet</span>
+                        <span class="block-sidebar-item">StatefulSet</span>
+                        <span class="block-sidebar-item">ReplicaSet</span>
+                        <span class="block-sidebar-item">Jobs</span>
+                        <span class="block-sidebar-item">CronJob</span>
+                    </div>
+
+                    <div class="block-sidebar-group">NETWORK (3)</div>
+                    <div class="block-sidebar-items">
+                        <span class="block-sidebar-item">Services</span>
+                        <span class="block-sidebar-item">Ingress</span>
+                        <span class="block-sidebar-item">NetPol</span>
+                    </div>
+
+                    <div class="block-sidebar-group">CONFIG (3)</div>
+                    <div class="block-sidebar-items">
+                        <span class="block-sidebar-item">ConfigMap</span>
+                        <span class="block-sidebar-item">Secrets</span>
+                        <span class="block-sidebar-item">SvcAccount</span>
+                    </div>
+
+                    <div class="block-sidebar-group">STORAGE (2)</div>
+                    <div class="block-sidebar-items">
+                        <span class="block-sidebar-item">PV</span>
+                        <span class="block-sidebar-item">PVC</span>
+                    </div>
+
+                    <div class="block-sidebar-group">CLUSTER (3)</div>
+                    <div class="block-sidebar-items">
+                        <span class="block-sidebar-item">Nodes</span>
+                        <span class="block-sidebar-item">NS</span>
+                        <span class="block-sidebar-item">Events</span>
+                    </div>
+
+                    <div class="block-sidebar-group">RBAC (4)</div>
+                    <div class="block-sidebar-items">
+                        <span class="block-sidebar-item">Roles</span>
+                        <span class="block-sidebar-item">RoleBind</span>
+                        <span class="block-sidebar-item">ClRoles</span>
+                        <span class="block-sidebar-item">ClRoleBind</span>
+                    </div>
+
+                    <div class="block-sidebar-group">CRD (동적)</div>
+                    <div class="block-sidebar-items">
+                        <span class="block-sidebar-item">Custom Resources</span>
+                    </div>
+
+                    <div class="block-sidebar-group">VIZ (6)</div>
+                    <div class="block-sidebar-items">
+                        <span class="block-sidebar-item">Topology</span>
+                        <span class="block-sidebar-item">Apps</span>
+                        <span class="block-sidebar-item">RBAC Viz</span>
+                        <span class="block-sidebar-item">NetPol Viz</span>
+                        <span class="block-sidebar-item">Timeline</span>
+                        <span class="block-sidebar-item">Cluster Viz</span>
+                    </div>
+
+                    <div class="block-sidebar-group">MONITOR (3)</div>
+                    <div class="block-sidebar-items">
+                        <span class="block-sidebar-item">Metrics</span>
+                        <span class="block-sidebar-item">Audit</span>
+                        <span class="block-sidebar-item">Reports</span>
+                    </div>
+                </div>
+
+                <!-- Content Area -->
+                <div class="block-content">
+                    <div class="block-content-title">메인 콘텐츠 영역</div>
+                    <div class="block-content-grid">
+                        <div class="block-content-section">
+                            <h5>리소스 테이블 <span class="count">35+</span></h5>
+                            <ul class="block-content-list">
+                                <li>실시간 상태 뱃지</li>
+                                <li>네임스페이스 필터</li>
+                                <li>정렬 / 검색</li>
+                                <li>행 클릭 → 상세 모달</li>
+                            </ul>
+                        </div>
+                        <div class="block-content-section">
+                            <h5>상세 모달 탭</h5>
+                            <ul class="block-content-list">
+                                <li>Overview / YAML / Events</li>
+                                <li>Related Pods</li>
+                                <li>Referenced By</li>
+                                <li>Analyze with AI 버튼</li>
+                            </ul>
+                        </div>
+                        <div class="block-content-section">
+                            <h5>편집 & 터미널</h5>
+                            <ul class="block-content-list">
+                                <li>YAML Editor (생성/수정)</li>
+                                <li>Web Terminal (xterm.js)</li>
+                                <li>Log Viewer (스트리밍)</li>
+                                <li>Port Forwarding</li>
+                            </ul>
+                        </div>
+                        <div class="block-content-section">
+                            <h5>시각화 뷰</h5>
+                            <ul class="block-content-list">
+                                <li>Cluster Visualizer (애니메이션)</li>
+                                <li>Topology Tree</li>
+                                <li>RBAC / NetPol 시각화</li>
+                                <li>Metrics Dashboard</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Panel -->
+                <div class="block-ai">
+                    <div class="block-ai-title">AI ASSISTANT <span class="badge">KEY</span></div>
+
+                    <div class="block-ai-section">
+                        <h6>채팅 인터페이스</h6>
+                        <div class="block-ai-items">
+                            <span class="block-ai-item">Chat History</span>
+                            <span class="block-ai-item">New Chat</span>
+                            <span class="block-ai-item">Chat / TUI 모드</span>
+                        </div>
+                    </div>
+
+                    <div class="block-ai-section">
+                        <h6>모델 & 상태</h6>
+                        <div class="block-ai-items">
+                            <span class="block-ai-item">Model Select</span>
+                            <span class="block-ai-item">Guardrails</span>
+                            <span class="block-ai-item">Safe/Unsafe</span>
+                        </div>
+                    </div>
+
+                    <div class="block-ai-section">
+                        <h6>컨텍스트</h6>
+                        <div class="block-ai-items">
+                            <span class="block-ai-item">Resource Chips</span>
+                            <span class="block-ai-item">K8s Context</span>
+                            <span class="block-ai-item">YAML/Events/Logs</span>
+                        </div>
+                    </div>
+
+                    <div class="block-ai-section">
+                        <h6>도구 & 디버그</h6>
+                        <div class="block-ai-items">
+                            <span class="block-ai-item">Kubectl Tool</span>
+                            <span class="block-ai-item">Bash Tool</span>
+                            <span class="block-ai-item">MCP Tools</span>
+                            <span class="block-ai-item">Debug Panel</span>
+                        </div>
+                    </div>
+
+                    <div class="block-ai-section">
+                        <h6>내장 터미널</h6>
+                        <div class="block-ai-items">
+                            <span class="block-ai-item">TUI Mode</span>
+                            <span class="block-ai-item">Embedded Shell</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Bar -->
+            <div class="block-settings">
+                <div class="block-settings-label">SETTINGS (8탭)</div>
+                <div class="block-settings-tabs">
+                    <span class="block-settings-tab">General</span>
+                    <span class="block-settings-tab key">AI (Provider/Model/API Key)</span>
+                    <span class="block-settings-tab">MCP (Profiles/Servers)</span>
+                    <span class="block-settings-tab">Security (Trivy CVE)</span>
+                    <span class="block-settings-tab">Metrics (Prometheus)</span>
+                    <span class="block-settings-tab">Notifications (Webhook)</span>
+                    <span class="block-settings-tab">Admin (OIDC/LDAP/RBAC)</span>
+                    <span class="block-settings-tab">About</span>
+                </div>
+            </div>
+        </div>
+        <div class="slide-number">4 / 15</div>
+    </div>
+
+    <!-- Slide 5: Web UI Screenshot 1 -->
+    <div class="slide slide-5">
         <div class="slide-header">
             <h2>실제 구현 화면 (Web UI)</h2>
             <div class="accent-line"></div>
@@ -823,11 +1392,11 @@
         <div class="cli-screenshot">
             <img src="screenshot-web1.png" alt="Web UI Dashboard">
         </div>
-        <div class="slide-number">4 / 14</div>
+        <div class="slide-number">5 / 15</div>
     </div>
 
-    <!-- Slide 5: Web UI Screenshot 2 -->
-    <div class="slide slide-5">
+    <!-- Slide 6: Web UI Screenshot 2 -->
+    <div class="slide slide-6">
         <div class="slide-header">
             <h2>실제 구현 화면 (Web UI)</h2>
             <div class="accent-line"></div>
@@ -835,11 +1404,11 @@
         <div class="cli-screenshot">
             <img src="screenshot-web2.png" alt="AI Assistant Panel">
         </div>
-        <div class="slide-number">5 / 14</div>
+        <div class="slide-number">6 / 15</div>
     </div>
 
-    <!-- Slide 6: Web UI Screenshot 3 -->
-    <div class="slide slide-6">
+    <!-- Slide 7: Web UI Screenshot 3 -->
+    <div class="slide slide-7">
         <div class="slide-header">
             <h2>실제 구현 화면 (Web UI)</h2>
             <div class="accent-line"></div>
@@ -847,11 +1416,11 @@
         <div class="cli-screenshot">
             <img src="screenshot-web3.png" alt="Cluster Visualizer">
         </div>
-        <div class="slide-number">6 / 14</div>
+        <div class="slide-number">7 / 15</div>
     </div>
 
-    <!-- Slide 7: Web UI Screenshot 4 -->
-    <div class="slide slide-7">
+    <!-- Slide 8: Web UI Screenshot 4 -->
+    <div class="slide slide-8">
         <div class="slide-header">
             <h2>실제 구현 화면 (Web UI)</h2>
             <div class="accent-line"></div>
@@ -859,47 +1428,105 @@
         <div class="cli-screenshot">
             <img src="screenshot-web4.png" alt="Web UI Settings">
         </div>
-        <div class="slide-number">7 / 14</div>
+        <div class="slide-number">8 / 15</div>
     </div>
 
-    <!-- Slide 8: CLI Features -->
-    <div class="slide slide-8">
+    <!-- Slide 9: CLI Features -->
+    <div class="slide slide-9">
         <div class="slide-header">
-            <h2>CLI 기능 (신규)</h2>
+            <h2>CLI 추가 (신규)</h2>
             <div class="accent-line"></div>
         </div>
         <div class="cli-layout">
-            <div class="cli-main">
-                <h3>주요 기능</h3>
-                <ul class="cli-list">
-                    <li><span class="cli-badge">NEW</span> REPL 구현 (1,554줄)</li>
-                    <li><span class="cli-badge">NEW</span> 한글(UTF-8) 입력 지원</li>
-                    <li><span class="cli-badge">NEW</span> Left/Right 커서 네비게이션</li>
-                    <li><span class="cli-badge">NEW</span> Ctrl+Enter 개행 입력</li>
-                    <li><span class="cli-badge">NEW</span> 도구 승인 프롬프트 (Y/A/n/q)</li>
-                    <li><span class="cli-badge">NEW</span> K8s 컨텍스트 인식 AI</li>
-                </ul>
+            <!-- Left: Features + Code -->
+            <div>
+                <div class="cli-main" style="margin-bottom: 16px;">
+                    <h3>주요 기능</h3>
+                    <ul class="cli-list">
+                        <li><span class="cli-badge">NEW</span> REPL 구현 (1,554줄)</li>
+                        <li><span class="cli-badge">NEW</span> 한글(UTF-8) 입력 지원</li>
+                        <li><span class="cli-badge">NEW</span> Left/Right 커서 네비게이션</li>
+                        <li><span class="cli-badge">NEW</span> Ctrl+Enter 개행 입력</li>
+                        <li><span class="cli-badge">NEW</span> 도구 승인 프롬프트 (Y/A/n/q)</li>
+                        <li><span class="cli-badge">NEW</span> K8s 컨텍스트 인식 AI</li>
+                        <li><span class="cli-badge">NEW</span> Tab 자동 완성</li>
+                        <li><span class="cli-badge">NEW</span> 명령 히스토리 (Up/Down)</li>
+                    </ul>
+                </div>
+                <div class="cli-code">
+                    <div class="comment"># CLI 실행</div>
+                    <div>$ ./k13d --cli</div>
+                    <br>
+                    <div class="comment"># AI 명령어</div>
+                    <div>> <span class="highlight">:ai</span> 파드 상태 확인</div>
+                    <br>
+                    <div class="comment"># 리소스별 AI 분석</div>
+                    <div>> <span class="highlight">:ai</span> pod/nginx why failing?</div>
+                    <br>
+                    <div class="comment"># kubectl 패스스루</div>
+                    <div>> get pods -n production</div>
+                </div>
             </div>
-            <div class="cli-code">
-                <div class="comment"># CLI 실행</div>
-                <div>$ ./k13d --cli</div>
-                <br>
-                <div class="comment"># AI 명령어</div>
-                <div>> <span class="highlight">:ai</span> 파드 상태 확인</div>
-                <br>
-                <div class="comment"># 도구 승인</div>
-                <div>승인하시겠습니까? (Y/<span class="highlight">A</span>/n/q)</div>
-                <div class="comment">  A = 세션 전체 자동 승인</div>
-                <br>
-                <div class="comment"># 개행 입력</div>
-                <div>> Ctrl+Enter로 줄바꿈 ↵</div>
+
+            <!-- Right: Command List -->
+            <div class="cli-commands-panel">
+                <h3> 명령어 리스트</h3>
+
+                <div class="cli-cmd-group">
+                    <div class="cli-cmd-group-title">REPL 명령어</div>
+                    <table class="cli-cmd-table">
+                        <tr><td>:help</td><td>도움말 표시</td></tr>
+                        <tr><td>:ai &lt;질문&gt;</td><td>AI 어시스턴트에 질문</td></tr>
+                        <tr><td>:ai &lt;리소스&gt; &lt;질문&gt;</td><td>리소스별 AI 분석</td></tr>
+                        <tr><td>:model [&lt;이름&gt;]</td><td>LLM 모델 조회/전환</td></tr>
+                        <tr><td>:namespace [&lt;이름&gt;]</td><td>네임스페이스 조회/설정</td></tr>
+                        <tr><td>:context [&lt;이름&gt;]</td><td>K8s 컨텍스트 조회/전환</td></tr>
+                        <tr><td>:mcp [list|tools]</td><td>MCP 상태/도구 목록</td></tr>
+                        <tr><td>:history</td><td>명령 히스토리 표시</td></tr>
+                        <tr><td>:clear</td><td>화면 지우기</td></tr>
+                        <tr><td>:version</td><td>버전 정보 표시</td></tr>
+                        <tr><td>:quit / :exit</td><td>CLI 종료</td></tr>
+                    </table>
+                </div>
+
+                <div class="cli-cmd-group">
+                    <div class="cli-cmd-group-title">kubectl 패스스루</div>
+                    <table class="cli-cmd-table">
+                        <tr><td>&lt;명령어&gt;</td><td>: 접두사 없이 입력 시 kubectl 실행</td></tr>
+                        <tr><td style="color: #666; font-style: italic;">예: get pods -n ns</td><td>네임스페이스 자동 추가</td></tr>
+                    </table>
+                </div>
+
+                <div class="cli-cmd-group">
+                    <div class="cli-cmd-group-title">도구 승인 (Tool Approval)</div>
+                    <table class="cli-cmd-table">
+                        <tr><td style="color: #16a085;">Y / Enter</td><td>현재 명령어 승인</td></tr>
+                        <tr><td style="color: #e94560;">A / all</td><td>세션 전체 자동 승인</td></tr>
+                        <tr><td style="color: #666;">N</td><td>명령어 거부</td></tr>
+                        <tr><td style="color: #666;">Q / quit</td><td>승인 프롬프트 종료</td></tr>
+                    </table>
+                </div>
+
+                <div class="cli-keys-panel">
+                    <div class="cli-keys-title">단축키</div>
+                    <div class="cli-keys-grid">
+                        <div class="cli-key-item"><kbd>Ctrl+C</kbd> 취소/종료</div>
+                        <div class="cli-key-item"><kbd>Ctrl+D</kbd> EOF 종료</div>
+                        <div class="cli-key-item"><kbd>Ctrl+L</kbd> 화면 지우기</div>
+                        <div class="cli-key-item"><kbd>Ctrl+Enter</kbd> 개행 입력</div>
+                        <div class="cli-key-item"><kbd>↑ / ↓</kbd> 히스토리 탐색</div>
+                        <div class="cli-key-item"><kbd>← / →</kbd> 커서 이동</div>
+                        <div class="cli-key-item"><kbd>Tab</kbd> 자동 완성</div>
+                        <div class="cli-key-item"><kbd>ESC</kbd> 입력 초기화</div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="slide-number">8 / 14</div>
+        <div class="slide-number">9 / 15</div>
     </div>
 
-    <!-- Slide 9: CLI Screenshot -->
-    <div class="slide slide-9">
+    <!-- Slide 10: CLI Screenshot -->
+    <div class="slide slide-10">
         <div class="slide-header">
             <h2>CLI 실제 구현 화면</h2>
             <div class="accent-line"></div>
@@ -907,11 +1534,11 @@
         <div class="cli-screenshot">
             <img src="screenshot-cli.png" alt="CLI Screenshot">
         </div>
-        <div class="slide-number">9 / 14</div>
+        <div class="slide-number">10 / 15</div>
     </div>
 
-    <!-- Slide 10: TUI & Config -->
-    <div class="slide slide-10">
+    <!-- Slide 11: TUI & Config -->
+    <div class="slide slide-11">
         <div class="slide-header">
             <h2>TUI 개선 및 설정 시스템</h2>
             <div class="accent-line"></div>
@@ -942,11 +1569,11 @@
                 </ul>
             </div>
         </div>
-        <div class="slide-number">10 / 14</div>
+        <div class="slide-number">11 / 15</div>
     </div>
 
-    <!-- Slide 11: TUI Screenshot -->
-    <div class="slide slide-11">
+    <!-- Slide 12: TUI Screenshot -->
+    <div class="slide slide-12">
         <div class="slide-header">
             <h2>실제 구현 화면 (TUI)</h2>
             <div class="accent-line"></div>
@@ -954,11 +1581,11 @@
         <div class="cli-screenshot">
             <img src="screenshot-tui.png" alt="TUI Screenshot">
         </div>
-        <div class="slide-number">11 / 14</div>
+        <div class="slide-number">12 / 15</div>
     </div>
 
-    <!-- Slide 12: Technical -->
-    <div class="slide slide-12">
+    <!-- Slide 13: Technical -->
+    <div class="slide slide-13">
         <div class="slide-header">
             <h2>기술적 도전과 해결</h2>
             <div class="accent-line"></div>
@@ -989,11 +1616,11 @@
                 <span class="tech-tag">Korean</span>
             </div>
         </div>
-        <div class="slide-number">12 / 14</div>
+        <div class="slide-number">13 / 15</div>
     </div>
 
-    <!-- Slide 13: Direction -->
-    <div class="slide slide-13">
+    <!-- Slide 14: Direction -->
+    <div class="slide slide-14">
         <div class="slide-header">
             <h2>K13D의 방향성 고민</h2>
             <div class="accent-line"></div>
@@ -1028,10 +1655,10 @@
                 <span class="tech-tag">Postmortem</span>
             </div>
         </div>
-        <div class="slide-number">13 / 14</div>
+        <div class="slide-number">14 / 15</div>
     </div>
-    <!-- Slide 14: Summary -->
-    <div class="slide slide-14">
+    <!-- Slide 15: Summary -->
+    <div class="slide slide-15">
         <div class="summary-content">
             <div class="summary-left">
                 <h3>총 정리</h3>
@@ -1079,7 +1706,7 @@
         <div class="closing-message">
             <p>k13d - Kubernetes Management, Reimagined</p>
         </div>
-        <div class="slide-number">14 / 14</div>
+        <div class="slide-number">15 / 15</div>
     </div>
 
     <div class="nav-hint">← → 키로 슬라이드 이동 | Ctrl+P로 인쇄</div>
