@@ -511,6 +511,174 @@
             margin-top: 4px;
         }
 
+        .slide-arch {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+.arch-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            gap: 16px;
+            min-height: 0;
+            padding: 20px 40px;
+        }
+
+.arch-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 28px;
+            width: 100%;
+        }
+
+.arch-layer-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(0,0,0,0.35);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+
+.arch-box {
+            background: white;
+            border-radius: 14px;
+            padding: 16px 22px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+            border: 1px solid rgba(0,0,0,0.06);
+            text-align: center;
+            min-width: 120px;
+            position: relative;
+        }
+
+.arch-box .name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+.arch-box .sub {
+            font-size: 12px;
+            color: rgba(0,0,0,0.45);
+            margin-top: 2px;
+        }
+
+.arch-box .badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 8px;
+            border-radius: 10px;
+            margin-top: 4px;
+        }
+
+.arch-box-highlight {
+            border-color: #e94560;
+            border-width: 2px;
+            box-shadow: 0 4px 24px rgba(233,69,96,0.15);
+        }
+
+.arch-box-highlight .name {
+            color: #e94560;
+        }
+
+.arch-arrow-down {
+            width: 2px;
+            height: 20px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.06));
+            margin: 0 auto;
+        }
+
+.arch-arrow-down::after {
+            content: '';
+            display: block;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid rgba(0,0,0,0.15);
+            margin: 0 auto;
+            position: relative;
+            top: 2px;
+        }
+
+.arch-core {
+            background: linear-gradient(135deg, #1a1a2e, #0f3460);
+            border-radius: 16px;
+            padding: 20px 28px;
+            box-shadow: 0 4px 28px rgba(15,52,96,0.25);
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+.arch-core-item {
+            text-align: center;
+            padding: 8px 16px;
+        }
+
+.arch-core-item .name {
+            font-size: 14px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.9);
+        }
+
+.arch-core-item .sub {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            margin-top: 2px;
+        }
+
+.arch-core-divider {
+            width: 1px;
+            height: 30px;
+            background: rgba(255,255,255,0.15);
+        }
+
+.arch-external {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+        }
+
+.arch-external-item {
+            background: white;
+            border-radius: 12px;
+            padding: 14px 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.06);
+            text-align: center;
+            min-width: 110px;
+        }
+
+.arch-external-item .name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+        }
+
+.arch-external-item .sub {
+            font-size: 11px;
+            color: rgba(0,0,0,0.4);
+            margin-top: 2px;
+        }
+
+.arch-external-item .badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 8px;
+            border-radius: 10px;
+            margin-top: 3px;
+            background: #e8f4fd;
+            color: #0f3460;
+        }
         /* Slide 4 - Web UI */
         .slide-3 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
@@ -1388,7 +1556,7 @@
             <p style="margin-top: 10px;">2026.03 ~ 2026.06</p>
         </div>
         <div class="title-badge">37 Commits | 73 Files Changed | +9,169 Lines</div>
-        <div class="slide-number">1 / 16</div>
+        <div class="slide-number">1 / 17</div>
         <div class="contributors">
             <div class="contributors-label">Contributors</div>
             <a class="contributor" href="https://github.com/fjvbn2003" target="_blank">
@@ -1548,9 +1716,84 @@
         </div>
 
 
-        <div class="slide-number">2 / 16</div>
+        <div class="slide-number">2 / 17</div>
     </div>
 
+    <!-- Slide 3: k13d Architecture -->
+    <div class="slide slide-arch">
+        <div class="slide-header">
+            <h2>k13d Architecture</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="arch-content">
+            <!-- Entry Points -->
+            <div class="arch-layer-label">User Interface</div>
+            <div class="arch-row">
+                <div class="arch-box">
+                    <div class="name">TUI</div>
+                    <div class="sub">tview · Terminal</div>
+                </div>
+                <div class="arch-box arch-box-highlight">
+                    <div class="name">Web UI</div>
+                    <div class="sub">HTTP · Browser</div>
+                </div>
+                <div class="arch-box">
+                    <div class="name">CLI / MCP</div>
+                    <div class="sub">REPL · stdio</div>
+                </div>
+            </div>
+            <div class="arch-arrow-down"></div>
+            <!-- Shared Core -->
+            <div class="arch-layer-label">Shared Core</div>
+            <div class="arch-core">
+                <div class="arch-core-item">
+                    <div class="name">AI Agent</div>
+                    <div class="sub">Providers · Tools · Safety</div>
+                </div>
+                <div class="arch-core-divider"></div>
+                <div class="arch-core-item">
+                    <div class="name">K8s Client</div>
+                    <div class="sub">client-go · Watcher</div>
+                </div>
+                <div class="arch-core-divider"></div>
+                <div class="arch-core-item">
+                    <div class="name">Config &amp; DB</div>
+                    <div class="sub">Settings · Audit · Session</div>
+                </div>
+                <div class="arch-core-divider"></div>
+                <div class="arch-core-item">
+                    <div class="name">Security</div>
+                    <div class="sub">Safety · Scanner</div>
+                </div>
+            </div>
+            <div class="arch-arrow-down"></div>
+            <!-- External Services -->
+            <div class="arch-layer-label">External Services</div>
+            <div class="arch-external">
+                <div class="arch-external-item">
+                    <div class="name">Kubernetes API</div>
+                    <div class="sub">Cluster Resources</div>
+                    <div class="badge">client-go</div>
+                </div>
+                <div class="arch-external-item">
+                    <div class="name">LLM Provider</div>
+                    <div class="sub">OpenAI / Ollama / ...</div>
+                    <div class="badge">REST API</div>
+                </div>
+                <div class="arch-external-item">
+                    <div class="name">MCP Server</div>
+                    <div class="sub">Extensible Tools</div>
+                    <div class="badge">JSON-RPC</div>
+                </div>
+                <div class="arch-external-item">
+                    <div class="name">SQLite</div>
+                    <div class="sub">Audit Log &amp; Settings</div>
+                    <div class="badge">Embedded</div>
+                </div>
+            </div>
+        </div>
+        <div class="slide-number">3 / 17</div>
+    </div>
     <!-- Slide 3: Overview -->
     <div class="slide slide-2">
         <div class="slide-header">
@@ -1597,7 +1840,7 @@
                 <div class="stat-label">Lines Removed</div>
             </div>
         </div>
-        <div class="slide-number">3 / 16</div>
+        <div class="slide-number">4 / 17</div>
     </div>
 
     <!-- Slide 4: Web UI Features -->
@@ -1638,7 +1881,7 @@
                 <p>브랜딩 정리, 미니멀리스트 디자인, 사용자 뱃지 → Settings 연결</p>
             </div>
         </div>
-        <div class="slide-number">4 / 16</div>
+        <div class="slide-number">5 / 17</div>
     </div>
 
     <!-- Slide 5: Web UI Block Diagram -->
@@ -1849,7 +2092,7 @@
                 </div>
             </div>
         </div>
-        <div class="slide-number">5 / 16</div>
+        <div class="slide-number">6 / 17</div>
     </div>
 
     <!-- Slide 6: Web UI Screenshot 1 -->
@@ -1861,7 +2104,7 @@
         <div class="cli-screenshot">
             <img src="screenshot-web1.png" alt="Web UI Dashboard">
         </div>
-        <div class="slide-number">6 / 16</div>
+        <div class="slide-number">7 / 17</div>
     </div>
 
     <!-- Slide 7: Web UI Screenshot 2 -->
@@ -1873,7 +2116,7 @@
         <div class="cli-screenshot">
             <img src="screenshot-web2.png" alt="AI Assistant Panel">
         </div>
-        <div class="slide-number">7 / 16</div>
+        <div class="slide-number">8 / 17</div>
     </div>
 
     <!-- Slide 8: Web UI Screenshot 3 -->
@@ -1885,7 +2128,7 @@
         <div class="cli-screenshot">
             <img src="screenshot-web3.png" alt="Cluster Visualizer">
         </div>
-        <div class="slide-number">8 / 16</div>
+        <div class="slide-number">9 / 17</div>
     </div>
 
     <!-- Slide 9: Web UI Screenshot 4 -->
@@ -1897,7 +2140,7 @@
         <div class="cli-screenshot">
             <img src="screenshot-web4.png" alt="Web UI Settings">
         </div>
-        <div class="slide-number">9 / 16</div>
+        <div class="slide-number">10 / 17</div>
     </div>
 
     <!-- Slide 10: CLI Features -->
@@ -1991,7 +2234,7 @@
                 </div>
             </div>
         </div>
-        <div class="slide-number">10 / 16</div>
+        <div class="slide-number">11 / 17</div>
     </div>
 
     <!-- Slide 11: CLI Screenshot -->
@@ -2003,7 +2246,7 @@
         <div class="cli-screenshot">
             <img src="screenshot-cli.png" alt="CLI Screenshot">
         </div>
-        <div class="slide-number">11 / 16</div>
+        <div class="slide-number">12 / 17</div>
     </div>
 
     <!-- Slide 12: TUI & Config -->
@@ -2038,7 +2281,7 @@
                 </ul>
             </div>
         </div>
-        <div class="slide-number">12 / 16</div>
+        <div class="slide-number">13 / 17</div>
     </div>
 
     <!-- Slide 13: TUI Screenshot -->
@@ -2050,7 +2293,7 @@
         <div class="cli-screenshot">
             <img src="screenshot-tui.png" alt="TUI Screenshot">
         </div>
-        <div class="slide-number">13 / 16</div>
+        <div class="slide-number">14 / 17</div>
     </div>
 
     <!-- Slide 14: Technical -->
@@ -2085,7 +2328,7 @@
                 <span class="tech-tag">Korean</span>
             </div>
         </div>
-        <div class="slide-number">14 / 16</div>
+        <div class="slide-number">15 / 17</div>
     </div>
 
     <!-- Slide 15: Direction -->
@@ -2124,7 +2367,7 @@
                 <span class="tech-tag">Postmortem</span>
             </div>
         </div>
-        <div class="slide-number">15 / 16</div>
+        <div class="slide-number">16 / 17</div>
     </div>
     <!-- Slide 16: Summary -->
     <div class="slide slide-15">
@@ -2175,7 +2418,7 @@
         <div class="closing-message">
             <p>k13d - Kubernetes Management, Reimagined</p>
         </div>
-        <div class="slide-number">16 / 16</div>
+        <div class="slide-number">17 / 17</div>
     </div>
 
     <div class="nav-hint">← → 키로 슬라이드 이동 | Ctrl+P로 인쇄</div>
