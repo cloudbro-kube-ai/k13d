@@ -109,7 +109,307 @@
             z-index: 1;
         }
 
-        /* Slide 2 - Overview */
+        /* Slide About - Introduction */
+        .slide-about {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+
+
+        .about-visual {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 30px;
+            flex: 1;
+            min-height: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Dual Screen Mockup */
+        .about-dual {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            justify-content: center;
+        }
+
+        .about-dual-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-bottom: 10px;
+        }
+        .about-dual-title .paradigm {
+            font-size: 22px;
+            font-weight: 800;
+            color: #333;
+            letter-spacing: -0.5px;
+        }
+        .about-dual-title .sub {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e94560;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .dual-screens {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .dual-screen {
+            background: rgba(0,0,0,0.02);
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        .dual-screen-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 14px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            font-size: 14px;
+            font-weight: 600;
+            color: rgba(0,0,0,0.7);
+        }
+
+        .dual-screen .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 3px;
+        }
+
+        .dual-screen .dot.red { background: #ff5f56; }
+        .dual-screen .dot.yellow { background: #ffbd2e; }
+        .dual-screen .dot.green { background: #27c93f; }
+
+        .dual-screen-content {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .dual-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: rgba(0,0,0,0.65);
+            padding: 6px 8px;
+            border-radius: 6px;
+        }
+
+        .dual-row .status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .dual-row .status.ok { background: #27c93f; }
+        .dual-row .status.bad { background: #e94560; }
+        .dual-row .status.warn { background: #ffbd2e; }
+
+        .dual-row .name {
+            flex: 1;
+        }
+
+        .dual-row .ns {
+            font-size: 11px;
+            color: rgba(0,0,0,0.35);
+        }
+
+        .dual-row.highlight {
+            background: rgba(233,69,96,0.15);
+            border: 1px solid rgba(233,69,96,0.3);
+            border-radius: 6px;
+        }
+
+        .dual-chat {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chat-bubble {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+            max-width: 85%;
+        }
+
+        .chat-bubble.user {
+            background: rgba(233,69,96,0.2);
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        .chat-bubble.ai {
+            background: rgba(0,0,0,0.04);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+
+        .chat-bubble .highlight-text {
+            color: #e94560;
+            font-weight: 600;
+        }
+
+        .about-connect {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 14px 20px;
+            background: rgba(233,69,96,0.08);
+            border: 1px solid rgba(233,69,96,0.2);
+            border-radius: 10px;
+            font-size: 15px;
+            color: rgba(0,0,0,0.75);
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .about-connect strong {
+            color: #e94560;
+        }
+
+        /* Right - Key Value */
+        .about-value {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 14px;
+        }
+
+        .about-namederiv {
+            font-size: 16px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .about-namederiv .code {
+            font-size: 24px;
+            font-weight: 800;
+            color: #e94560;
+            font-family: inherit;
+        }
+        .about-namederiv .op {
+            font-size: 13px;
+            color: rgba(0,0,0,0.35);
+        }
+        .about-namederiv .label {
+            font-size: 13px;
+            color: rgba(0,0,0,0.45);
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+        .about-namederiv .label span {
+            color: #e94560;
+            font-weight: 700;
+        }
+
+        .about-value-title {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.3;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+.about-value-title .paradigm {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+        }
+
+.about-value-title .sub {
+            font-size: 36px;
+            font-weight: 800;
+            color: #e94560;
+            letter-spacing: -1px;
+        }
+
+        .about-value-desc {
+            font-size: 17px;
+            line-height: 1.7;
+            color: rgba(0,0,0,0.65);
+        }
+
+        .about-compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .about-compare-item {
+            background: rgba(233,69,96,0.04);
+            border: 1px solid rgba(233,69,96,0.12);
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+        .about-compare-item .vs {
+            font-size: 12px;
+            font-weight: 700;
+            color: #e94560;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .about-compare-item .vs-label {
+            font-size: 12px;
+            color: rgba(0,0,0,0.5);
+            line-height: 1.4;
+            display: block;
+        }
+
+        .about-features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .about-feat {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background: rgba(0,0,0,0.02);
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 12px;
+            padding: 16px 18px;
+        }
+
+        .about-feat-icon {
+            font-size: 22px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .about-feat-text strong {
+            display: block;
+            font-size: 15px;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .about-feat-text {
+            font-size: 14px;
+            line-height: 1.5;
+            color: rgba(0,0,0,0.55);
+        }
+
+        /* Slide 3 - Overview */
         .slide-2 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
@@ -136,6 +436,8 @@
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 30px;
+            flex: 1;
+            min-height: 0;
         }
 
         .overview-card {
@@ -158,7 +460,7 @@
         }
 
         .overview-card p {
-            font-size: 15px;
+            font-size: 17px;
             line-height: 1.6;
             color: #555;
         }
@@ -182,12 +484,12 @@
         }
 
         .stat-label {
-            font-size: 14px;
+            font-size: 17px;
             color: #666;
             margin-top: 5px;
         }
 
-        /* Slide 3 - Web UI */
+        /* Slide 4 - Web UI */
         .slide-3 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
@@ -196,6 +498,8 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 24px;
+            flex: 1;
+            min-height: 0;
         }
 
         .feature-card {
@@ -235,12 +539,12 @@
         }
 
         .feature-card p {
-            font-size: 13px;
+            font-size: 17px;
             line-height: 1.5;
             color: #666;
         }
 
-        /* Slide 5 - Screenshots */
+        /* Slide 6 - Screenshots */
         .slide-5 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
@@ -273,7 +577,7 @@
 
         .screenshot-card .caption {
             padding: 14px 16px;
-            font-size: 14px;
+            font-size: 17px;
             color: #444;
             font-weight: 500;
             text-align: center;
@@ -281,7 +585,7 @@
             background: white;
         }
 
-        /* Slide 9 - CLI */
+        /* Slide 10 - CLI */
         .slide-9 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
@@ -290,6 +594,8 @@
             display: grid;
             grid-template-columns: 1fr 1.4fr;
             gap: 30px;
+            flex: 1;
+            min-height: 0;
         }
 
         .cli-commands-panel {
@@ -455,7 +761,7 @@
             color: #e94560;
         }
 
-        /* Slide 10 - CLI Screenshot */
+        /* Slide 11 - CLI Screenshot */
         .slide-10 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
@@ -477,7 +783,7 @@
             box-shadow: 0 4px 24px rgba(0,0,0,0.12);
         }
 
-        /* Slide 11 - TUI & Config */
+        /* Slide 12 - TUI & Config */
         .slide-11 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
@@ -486,6 +792,8 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 40px;
+            flex: 1;
+            min-height: 0;
         }
 
         .split-section {
@@ -512,7 +820,7 @@
             display: flex;
             align-items: flex-start;
             gap: 12px;
-            font-size: 14px;
+            font-size: 17px;
             color: #444;
         }
 
@@ -523,12 +831,12 @@
             flex-shrink: 0;
         }
 
-        /* Slide 12 - TUI Screenshot */
+        /* Slide 13 - TUI Screenshot */
         .slide-12 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
 
-        /* Slide 13 - Technical */
+        /* Slide 14 - Technical */
         .slide-13 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
@@ -537,6 +845,8 @@
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 24px;
+            flex: 1;
+            min-height: 0;
         }
 
         .tech-card {
@@ -553,7 +863,7 @@
         }
 
         .tech-card p {
-            font-size: 15px;
+            font-size: 17px;
             line-height: 1.6;
             color: #555;
         }
@@ -563,7 +873,7 @@
             background: #f0f2f5;
             padding: 4px 10px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 14px;
             color: #666;
             margin-top: 12px;
         }
@@ -614,7 +924,7 @@
             color: rgba(255,255,255,0.5);
         }
 
-        /* Slide 14 - Direction */
+        /* Slide 15 - Direction */
 .slide-14 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
@@ -624,7 +934,7 @@
             gap: 20px;
         }
 
-        /* Slide 15 - Summary */
+        /* Slide 16 - Summary */
         .slide-15 {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             color: white;
@@ -661,7 +971,7 @@
         }
 
         .summary-stat .label {
-            font-size: 13px;
+            font-size: 17px;
             opacity: 0.8;
             margin-top: 5px;
         }
@@ -692,7 +1002,7 @@
             border: 1px solid rgba(233, 69, 96, 0.5);
             padding: 4px 12px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 600;
             min-width: 60px;
             text-align: center;
@@ -706,7 +1016,8 @@
         }
 
         .closing-message p {
-            font-size: 18px;
+            font-size: 17px;
+            line-height: 1.6;
             opacity: 0.9;
         }
 
@@ -775,10 +1086,9 @@
             transform: none;
         }
 
-        /* Slide 4 - Web UI Block Diagram */
+        /* Slide 5 - Web UI Block Diagram */
         .slide-4 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
-            padding: 40px 50px;
         }
 
         .block-diagram {
@@ -1056,7 +1366,7 @@
             <p style="margin-top: 10px;">2026.03 ~ 2026.06</p>
         </div>
         <div class="title-badge">37 Commits | 73 Files Changed | +9,169 Lines</div>
-        <div class="slide-number">1 / 15</div>
+        <div class="slide-number">1 / 16</div>
         <div class="contributors">
             <div class="contributors-label">Contributors</div>
             <a class="contributor" href="https://github.com/fjvbn2003" target="_blank">
@@ -1086,7 +1396,158 @@
         </div>
     </div>
 
-    <!-- Slide 2: Overview -->
+    <!-- Slide About: K13D Introduction -->
+    <div class="slide slide-about">
+        <div class="slide-header">
+            <h2>K13D: 지능형 DevOps 플랫폼</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="about-visual">
+            <!-- Left: Dual Screen Mockup -->
+            <div class="about-dual">
+                <div class="about-dual-title">
+                    <span class="paradigm">K8s 운영의 새로운 패러다임</span>
+                    <span class="sub">✦ Dashboard + AI Assistant</span>
+                </div>
+                <div class="dual-screens">
+                    <!-- Dashboard Screen -->
+                    <div class="dual-screen">
+                        <div class="dual-screen-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            k13d dashboard
+                        </div>
+                        <div class="dual-screen-content">
+                            <div class="dual-row">
+                                <span class="status ok"></span>
+                                <span class="name">nginx-pod</span>
+                                <span class="ns">default</span>
+                                <span style="color:#27c93f;font-size:8px;">Running</span>
+                            </div>
+                            <div class="dual-row">
+                                <span class="status ok"></span>
+                                <span class="name">api-server</span>
+                                <span class="ns">prod</span>
+                                <span style="color:#27c93f;font-size:8px;">Running</span>
+                            </div>
+                            <div class="dual-row highlight">
+                                <span class="status bad"></span>
+                                <span class="name">redis-master</span>
+                                <span class="ns">prod</span>
+                                <span style="color:#e94560;font-size:8px;">CrashLoop</span>
+                            </div>
+                            <div class="dual-row">
+                                <span class="status ok"></span>
+                                <span class="name">gateway</span>
+                                <span class="ns">default</span>
+                            </div>
+                            <div class="dual-row">
+                                <span class="status warn"></span>
+                                <span class="name">worker-1</span>
+                                <span class="ns">data</span>
+                                <span style="color:#ffbd2e;font-size:8px;">OOMKill</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- AI Chat Screen -->
+                    <div class="dual-screen">
+                        <div class="dual-screen-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            AI Assistant
+                        </div>
+                        <div class="dual-chat">
+                            <div class="chat-bubble user">
+                                왜 <span class="highlight-text">redis-master</span> pod가
+                                계속 CrashLoopBackOff인가요?
+                            </div>
+                            <div class="chat-bubble ai">
+                                redis-master의 리소스 사용량을
+                                분석한 결과, 메모리 제한이
+                                256Mi로 설정되어 있으나 최근
+                                트래픽 증가로 380Mi까지
+                                사용 중입니다.
+                            </div>
+                            <div class="chat-bubble ai" style="max-width:100%;">
+                                → <strong>kubectl</strong> 명령어로 메모리
+                                제한을 512Mi로 증가시키겠습니다.
+                                승인하시겠습니까?
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="about-connect">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;flex-shrink:0"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg> <strong>대시보드를 보면서</strong> 특정 리소스를 지목하여
+                    <strong>자연어로 질문</strong>하고 AI가 컨텍스트를 이해하여 실행
+                </div>
+            </div>
+
+            <!-- Right: Value Props -->
+            <div class="about-value">
+                <div class="about-value-title">
+                    <div class="about-namederiv">
+                        <span class="code">k</span>
+                        <span class="op">+ 13 letters +</span>
+                        <span class="code">d</span>
+                        <span class="op">=</span>
+                        <span class="label">kube<span>a</span>idashboar<span>d</span></span>
+                    </div>
+                    <span class="paradigm">K8s 운영의 새로운 패러다임</span>
+                    <span class="sub">Dashboard + AI Assistant</span>
+                </div>
+                <div class="about-value-desc">
+                    k9s, Kubernetes Dashboard, kubectl-ai — K8s 도구들이
+                    각각의 인터페이스에 갇혀 단편화된 불편함을
+                    <strong>하나의 바이너리</strong>로 해결합니다.<br>
+                    TUI와 Web UI를 동시에 제공하며, AI가 리소스 컨텍스트를
+                    이해하고 실제 kubectl 명령어를 직접 실행하는
+                    <strong>올인원 DevOps 플랫폼</strong>입니다.
+                </div>
+                <div class="about-compare">
+                    <div class="about-compare-item">
+                        <span class="vs">vs k9s</span>
+                        <span class="vs-label">TUI 전용 → TUI + Web + AI</span>
+                    </div>
+                    <div class="about-compare-item">
+                        <span class="vs">vs K8s Dashboard</span>
+                        <span class="vs-label">Web 전용 → Web + TUI + AI</span>
+                    </div>
+                    <div class="about-compare-item">
+                        <span class="vs">vs kubectl-ai</span>
+                        <span class="vs-label">CLI 전용 → Dashboard + TUI</span>
+                    </div>
+                    <div class="about-compare-item">
+                        <span class="vs">vs Lens</span>
+                        <span class="vs-label">Desktop IDE → 단일 바이너리 + AI</span>
+                    </div>
+                </div>
+                </div>
+                <div class="about-features">
+                    <div class="about-feat">
+                        <span class="about-feat-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+                        <span class="about-feat-text"><strong>Dashboard</strong>실시간 K8s 리소스 모니터링 및 상태 시각화</span>
+                    </div>
+                    <div class="about-feat">
+                        <span class="about-feat-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+                        <span class="about-feat-text"><strong>Natural Language</strong>kubectl 몰라도 자연어로 K8s 제어</span>
+                    </div>
+                    <div class="about-feat">
+                        <span class="about-feat-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg></span>
+                        <span class="about-feat-text"><strong>Context-Aware</strong>선택한 리소스의 YAML/Events/Logs 전달</span>
+                    </div>
+                    <div class="about-feat">
+                        <span class="about-feat-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></span>
+                        <span class="about-feat-text"><strong>Agentic AI</strong>단순 조언이 아닌 실제 kubectl 실행 · 문제 해결</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="slide-number">2 / 16</div>
+    </div>
+
+    <!-- Slide 3: Overview -->
     <div class="slide slide-2">
         <div class="slide-header">
             <h2>주요 개선 작업</h2>
@@ -1128,10 +1589,10 @@
                 <div class="stat-label">Lines Removed</div>
             </div>
         </div>
-        <div class="slide-number">2 / 15</div>
+        <div class="slide-number">3 / 16</div>
     </div>
 
-    <!-- Slide 3: Web UI Features -->
+    <!-- Slide 4: Web UI Features -->
     <div class="slide slide-3">
         <div class="slide-header">
             <h2>Web UI 주요 업데이트</h2>
@@ -1169,10 +1630,10 @@
                 <p>브랜딩 정리, 미니멀리스트 디자인, 사용자 뱃지 → Settings 연결</p>
             </div>
         </div>
-        <div class="slide-number">3 / 15</div>
+        <div class="slide-number">4 / 16</div>
     </div>
 
-    <!-- Slide 4: Web UI Block Diagram -->
+    <!-- Slide 5: Web UI Block Diagram -->
     <div class="slide slide-4">
         <div class="slide-header">
             <h2>Web UI 전체 메뉴 / 기능 구성도</h2>
@@ -1380,10 +1841,10 @@
                 </div>
             </div>
         </div>
-        <div class="slide-number">4 / 15</div>
+        <div class="slide-number">5 / 16</div>
     </div>
 
-    <!-- Slide 5: Web UI Screenshot 1 -->
+    <!-- Slide 6: Web UI Screenshot 1 -->
     <div class="slide slide-5">
         <div class="slide-header">
             <h2>실제 구현 화면 (Web UI)</h2>
@@ -1392,10 +1853,10 @@
         <div class="cli-screenshot">
             <img src="screenshot-web1.png" alt="Web UI Dashboard">
         </div>
-        <div class="slide-number">5 / 15</div>
+        <div class="slide-number">6 / 16</div>
     </div>
 
-    <!-- Slide 6: Web UI Screenshot 2 -->
+    <!-- Slide 7: Web UI Screenshot 2 -->
     <div class="slide slide-6">
         <div class="slide-header">
             <h2>실제 구현 화면 (Web UI)</h2>
@@ -1404,10 +1865,10 @@
         <div class="cli-screenshot">
             <img src="screenshot-web2.png" alt="AI Assistant Panel">
         </div>
-        <div class="slide-number">6 / 15</div>
+        <div class="slide-number">7 / 16</div>
     </div>
 
-    <!-- Slide 7: Web UI Screenshot 3 -->
+    <!-- Slide 8: Web UI Screenshot 3 -->
     <div class="slide slide-7">
         <div class="slide-header">
             <h2>실제 구현 화면 (Web UI)</h2>
@@ -1416,10 +1877,10 @@
         <div class="cli-screenshot">
             <img src="screenshot-web3.png" alt="Cluster Visualizer">
         </div>
-        <div class="slide-number">7 / 15</div>
+        <div class="slide-number">8 / 16</div>
     </div>
 
-    <!-- Slide 8: Web UI Screenshot 4 -->
+    <!-- Slide 9: Web UI Screenshot 4 -->
     <div class="slide slide-8">
         <div class="slide-header">
             <h2>실제 구현 화면 (Web UI)</h2>
@@ -1428,10 +1889,10 @@
         <div class="cli-screenshot">
             <img src="screenshot-web4.png" alt="Web UI Settings">
         </div>
-        <div class="slide-number">8 / 15</div>
+        <div class="slide-number">9 / 16</div>
     </div>
 
-    <!-- Slide 9: CLI Features -->
+    <!-- Slide 10: CLI Features -->
     <div class="slide slide-9">
         <div class="slide-header">
             <h2>CLI 추가 (신규)</h2>
@@ -1522,10 +1983,10 @@
                 </div>
             </div>
         </div>
-        <div class="slide-number">9 / 15</div>
+        <div class="slide-number">10 / 16</div>
     </div>
 
-    <!-- Slide 10: CLI Screenshot -->
+    <!-- Slide 11: CLI Screenshot -->
     <div class="slide slide-10">
         <div class="slide-header">
             <h2>CLI 실제 구현 화면</h2>
@@ -1534,10 +1995,10 @@
         <div class="cli-screenshot">
             <img src="screenshot-cli.png" alt="CLI Screenshot">
         </div>
-        <div class="slide-number">10 / 15</div>
+        <div class="slide-number">11 / 16</div>
     </div>
 
-    <!-- Slide 11: TUI & Config -->
+    <!-- Slide 12: TUI & Config -->
     <div class="slide slide-11">
         <div class="slide-header">
             <h2>TUI 개선 및 설정 시스템</h2>
@@ -1569,10 +2030,10 @@
                 </ul>
             </div>
         </div>
-        <div class="slide-number">11 / 15</div>
+        <div class="slide-number">12 / 16</div>
     </div>
 
-    <!-- Slide 12: TUI Screenshot -->
+    <!-- Slide 13: TUI Screenshot -->
     <div class="slide slide-12">
         <div class="slide-header">
             <h2>실제 구현 화면 (TUI)</h2>
@@ -1581,10 +2042,10 @@
         <div class="cli-screenshot">
             <img src="screenshot-tui.png" alt="TUI Screenshot">
         </div>
-        <div class="slide-number">12 / 15</div>
+        <div class="slide-number">13 / 16</div>
     </div>
 
-    <!-- Slide 13: Technical -->
+    <!-- Slide 14: Technical -->
     <div class="slide slide-13">
         <div class="slide-header">
             <h2>기술적 도전과 해결</h2>
@@ -1616,10 +2077,10 @@
                 <span class="tech-tag">Korean</span>
             </div>
         </div>
-        <div class="slide-number">13 / 15</div>
+        <div class="slide-number">14 / 16</div>
     </div>
 
-    <!-- Slide 14: Direction -->
+    <!-- Slide 15: Direction -->
     <div class="slide slide-14">
         <div class="slide-header">
             <h2>K13D의 방향성 고민</h2>
@@ -1655,9 +2116,9 @@
                 <span class="tech-tag">Postmortem</span>
             </div>
         </div>
-        <div class="slide-number">14 / 15</div>
+        <div class="slide-number">15 / 16</div>
     </div>
-    <!-- Slide 15: Summary -->
+    <!-- Slide 16: Summary -->
     <div class="slide slide-15">
         <div class="summary-content">
             <div class="summary-left">
@@ -1706,7 +2167,7 @@
         <div class="closing-message">
             <p>k13d - Kubernetes Management, Reimagined</p>
         </div>
-        <div class="slide-number">15 / 15</div>
+        <div class="slide-number">16 / 16</div>
     </div>
 
     <div class="nav-hint">← → 키로 슬라이드 이동 | Ctrl+P로 인쇄</div>
