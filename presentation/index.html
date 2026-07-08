@@ -435,7 +435,8 @@
         .overview-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 30px;
+            grid-template-rows: 1fr 1fr;
+            gap: 20px;
             flex: 1;
             min-height: 0;
         }
@@ -443,33 +444,54 @@
         .overview-card {
             background: white;
             border-radius: 16px;
-            padding: 30px;
+            padding: 28px 30px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             border-left: 4px solid;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
 
+        .overview-card .card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .overview-card .card-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+        .overview-card:nth-child(1) .card-icon { background: #ffe8ec; color: #e94560; }
+        .overview-card:nth-child(2) .card-icon { background: #e8f4fd; color: #0f3460; }
+        .overview-card:nth-child(3) .card-icon { background: #e8f8f5; color: #16a085; }
+        .overview-card:nth-child(4) .card-icon { background: #f4ecf7; color: #9b59b6; }
         .overview-card:nth-child(1) { border-color: #e94560; }
         .overview-card:nth-child(2) { border-color: #0f3460; }
         .overview-card:nth-child(3) { border-color: #16a085; }
         .overview-card:nth-child(4) { border-color: #9b59b6; }
 
         .overview-card h3 {
-            font-size: 20px;
-            margin-bottom: 15px;
+            font-size: 26px;
+            font-weight: 700;
             color: #1a1a2e;
         }
 
         .overview-card p {
-            font-size: 17px;
+            font-size: 18px;
             line-height: 1.6;
             color: #555;
+            flex: 1;
         }
 
         .stat-row {
             display: flex;
             gap: 40px;
-            margin-top: 40px;
-            padding-top: 30px;
+            margin-top: 24px;
+            padding-top: 20px;
             border-top: 1px solid #eee;
         }
 
@@ -478,15 +500,15 @@
         }
 
         .stat-number {
-            font-size: 36px;
+            font-size: 32px;
             font-weight: 700;
             color: #e94560;
         }
 
         .stat-label {
-            font-size: 17px;
+            font-size: 15px;
             color: #666;
-            margin-top: 5px;
+            margin-top: 4px;
         }
 
         /* Slide 4 - Web UI */
@@ -1403,7 +1425,47 @@
             <div class="accent-line"></div>
         </div>
         <div class="about-visual">
-            <!-- Left: Dual Screen Mockup -->
+            <!-- Right: Value Props (swapped to left) -->
+            <div class="about-value">
+                <div class="about-value-title">
+                    <div class="about-namederiv">
+                        <span class="code">k</span>
+                        <span class="op">+ 13 letters +</span>
+                        <span class="code">d</span>
+                        <span class="op">=</span>
+                        <span class="label">kube<span>a</span>idashboar<span>d</span></span>
+                    </div>
+                    <span class="paradigm">K8s 운영의 새로운 패러다임</span>
+                    <span class="sub">Dashboard + AI Assistant</span>
+                </div>
+                <div class="about-value-desc">
+                    k9s, Kubernetes Dashboard, kubectl-ai — K8s 도구들이
+                    각각의 인터페이스에 갇혀 단편화된 불편함을
+                    <strong>하나의 바이너리</strong>로 해결합니다.<br>
+                    TUI와 Web UI를 동시에 제공하며, AI가 리소스 컨텍스트를
+                    이해하고 실제 kubectl 명령어를 직접 실행하는
+                    <strong>올인원 DevOps 플랫폼</strong>입니다.
+                </div>
+                <div class="about-compare">
+                    <div class="about-compare-item">
+                        <span class="vs">vs k9s</span>
+                        <span class="vs-label">TUI 전용 → TUI + Web + AI</span>
+                    </div>
+                    <div class="about-compare-item">
+                        <span class="vs">vs K8s Dashboard</span>
+                        <span class="vs-label">Web 전용 → Web + TUI + AI</span>
+                    </div>
+                    <div class="about-compare-item">
+                        <span class="vs">vs kubectl-ai</span>
+                        <span class="vs-label">CLI 전용 → Dashboard + TUI</span>
+                    </div>
+                    <div class="about-compare-item">
+                        <span class="vs">vs Lens</span>
+                        <span class="vs-label">Desktop IDE → 단일 바이너리 + AI</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Left: Dual Screen Mockup (swapped to right) -->
             <div class="about-dual">
                 <div class="about-dual-title">
                     <span class="paradigm">K8s 운영의 새로운 패러다임</span>
@@ -1483,67 +1545,9 @@
                     <strong>자연어로 질문</strong>하고 AI가 컨텍스트를 이해하여 실행
                 </div>
             </div>
-
-            <!-- Right: Value Props -->
-            <div class="about-value">
-                <div class="about-value-title">
-                    <div class="about-namederiv">
-                        <span class="code">k</span>
-                        <span class="op">+ 13 letters +</span>
-                        <span class="code">d</span>
-                        <span class="op">=</span>
-                        <span class="label">kube<span>a</span>idashboar<span>d</span></span>
-                    </div>
-                    <span class="paradigm">K8s 운영의 새로운 패러다임</span>
-                    <span class="sub">Dashboard + AI Assistant</span>
-                </div>
-                <div class="about-value-desc">
-                    k9s, Kubernetes Dashboard, kubectl-ai — K8s 도구들이
-                    각각의 인터페이스에 갇혀 단편화된 불편함을
-                    <strong>하나의 바이너리</strong>로 해결합니다.<br>
-                    TUI와 Web UI를 동시에 제공하며, AI가 리소스 컨텍스트를
-                    이해하고 실제 kubectl 명령어를 직접 실행하는
-                    <strong>올인원 DevOps 플랫폼</strong>입니다.
-                </div>
-                <div class="about-compare">
-                    <div class="about-compare-item">
-                        <span class="vs">vs k9s</span>
-                        <span class="vs-label">TUI 전용 → TUI + Web + AI</span>
-                    </div>
-                    <div class="about-compare-item">
-                        <span class="vs">vs K8s Dashboard</span>
-                        <span class="vs-label">Web 전용 → Web + TUI + AI</span>
-                    </div>
-                    <div class="about-compare-item">
-                        <span class="vs">vs kubectl-ai</span>
-                        <span class="vs-label">CLI 전용 → Dashboard + TUI</span>
-                    </div>
-                    <div class="about-compare-item">
-                        <span class="vs">vs Lens</span>
-                        <span class="vs-label">Desktop IDE → 단일 바이너리 + AI</span>
-                    </div>
-                </div>
-                </div>
-                <div class="about-features">
-                    <div class="about-feat">
-                        <span class="about-feat-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
-                        <span class="about-feat-text"><strong>Dashboard</strong>실시간 K8s 리소스 모니터링 및 상태 시각화</span>
-                    </div>
-                    <div class="about-feat">
-                        <span class="about-feat-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
-                        <span class="about-feat-text"><strong>Natural Language</strong>kubectl 몰라도 자연어로 K8s 제어</span>
-                    </div>
-                    <div class="about-feat">
-                        <span class="about-feat-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg></span>
-                        <span class="about-feat-text"><strong>Context-Aware</strong>선택한 리소스의 YAML/Events/Logs 전달</span>
-                    </div>
-                    <div class="about-feat">
-                        <span class="about-feat-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg></span>
-                        <span class="about-feat-text"><strong>Agentic AI</strong>단순 조언이 아닌 실제 kubectl 실행 · 문제 해결</span>
-                    </div>
-                </div>
-            </div>
         </div>
+
+
         <div class="slide-number">2 / 16</div>
     </div>
 
@@ -1555,18 +1559,22 @@
         </div>
         <div class="overview-grid">
             <div class="overview-card">
+                <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></div>
                 <h3>Web UI 고도화</h3>
                 <p>Lucide 아이콘 시스템 교체, TailAdmin 스타일 사이드바, 다크모드 지원, 한글 i18n 전체 적용으로 사용자 경험 대폭 향상</p>
             </div>
             <div class="overview-card">
+                <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
                 <h3>CLI 신규 개발</h3>
                 <p>터미널 기반 REPL 인터페이스 구축, 한글 입력 지원, K8s 컨텍스트 인식 AI 명령어로 개발자 생산성 강화</p>
             </div>
             <div class="overview-card">
+                <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
                 <h3>TUI 개선</h3>
                 <p>화면 깜빡임 3단계 개선, Diff 렌더링 구현, 웰컴 스크린 추가로 터미널 UI 품질 향상</p>
             </div>
             <div class="overview-card">
+                <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="14" x="3" y="3" rx="2"/><circle cx="9" cy="11" r="1"/><circle cx="15" cy="11" r="1"/><path d="M9 11h6"/><path d="M8 19h8"/></svg></div>
                 <h3>AI 통합 강화</h3>
                 <p>Kubectl-ai 패턴 기반 도구 시스템, MCP 프로필 관리, 안전한 도구 승인 플로우 구현</p>
             </div>
