@@ -1226,8 +1226,9 @@
 
 .cli-ref-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: 1fr 1fr;
+            gap: 24px;
             flex: 1;
             min-height: 0;
         }
@@ -1238,24 +1239,19 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             overflow: hidden;
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
         }
 
 .cli-ref-card img {
             width: 100%;
-            flex: 1;
+            height: 100%;
             object-fit: contain;
             display: block;
+            border-radius: 8px;
         }
 
-.cli-ref-label {
-            padding: 14px 16px;
-            text-align: center;
-            font-size: 18px;
-            font-weight: 600;
-            color: #1a1a2e;
-            border-top: 1px solid #eee;
-        }
 
         /* Navigation */
         .nav-hint {
@@ -2477,19 +2473,15 @@
         <div class="cli-ref-grid">
             <div class="cli-ref-card">
                 <img src="hermes.png" alt="Hermes CLI">
-                <div class="cli-ref-label">hermes</div>
             </div>
             <div class="cli-ref-card">
                 <img src="ibmbob.png" alt="IBM BOP CLI">
-                <div class="cli-ref-label">ibmbob</div>
             </div>
             <div class="cli-ref-card">
                 <img src="mimo.png" alt="Mimo CLI">
-                <div class="cli-ref-label">mimo</div>
             </div>
             <div class="cli-ref-card">
                 <img src="opencode.png" alt="OpenCode CLI">
-                <div class="cli-ref-label">opencode</div>
             </div>
         </div>
         <div class="slide-number">18 / 18</div>
