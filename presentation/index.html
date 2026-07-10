@@ -771,14 +771,14 @@
             gap: 10px;
             padding: 12px 16px;
             font-weight: 700;
-            font-size: 15px;
+            font-size: 17px;
             letter-spacing: -0.3px;
             border-bottom: 1px solid #f0f0f0;
         }
 
         .feat-header .badge {
             margin-left: auto;
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 600;
             padding: 2px 10px;
             border-radius: 10px;
@@ -792,7 +792,7 @@
         }
 
         .feat-item {
-            font-size: 13px;
+            font-size: 14.5px;
             line-height: 1.5;
             color: #444;
             padding: 3px 0;
@@ -1940,20 +1940,22 @@
     }
 
 .aiflow-node .aiflow-label {
-        font-size: 13px;
+        font-size: 19px;
         font-weight: 700;
         color: #1a1a2e;
     }
 
-.aiflow-node .aiflow-sub {
-        font-size: 10px;
+    .aiflow-node .aiflow-sub {
+        font-size: 14px;
         color: rgba(0,0,0,0.45);
         margin-top: 2px;
     }
 
 .aiflow-node.aiflow-user { border-color: #0f3460; border-width: 2px; }
-.aiflow-node.aiflow-user .aiflow-icon { color: #0f3460; }
-.aiflow-node.aiflow-llm { border-color: #9b59b6; border-width: 2px; }
+    .aiflow-node.aiflow-user .aiflow-icon { color: #0f3460; }
+    .aiflow-node.aiflow-context { border-color: #3498db; border-width: 2.5px; }
+    .aiflow-node.aiflow-context .aiflow-icon { color: #3498db; }
+    .aiflow-node.aiflow-llm { border-color: #9b59b6; border-width: 2px; }
 .aiflow-node.aiflow-llm .aiflow-icon { color: #9b59b6; }
 .aiflow-node.aiflow-synth { border-color: #16a085; border-width: 2px; }
 .aiflow-node.aiflow-synth .aiflow-icon { color: #16a085; }
@@ -1985,7 +1987,7 @@
     }
 
 .aiflow-group-title {
-        font-size: 10px;
+        font-size: 14px;
         font-weight: 700;
         color: rgba(0,0,0,0.4);
         text-transform: uppercase;
@@ -2002,7 +2004,7 @@
     }
 
 .aiflow-tool {
-        font-size: 10px;
+        font-size: 14px;
         color: #555;
         line-height: 1.5;
         display: flex;
@@ -2010,11 +2012,11 @@
         gap: 6px;
     }
 
-.aiflow-tool-badge {
+    .aiflow-tool-badge {
         display: inline-block;
         padding: 1px 6px;
         border-radius: 3px;
-        font-size: 9px;
+        font-size: 13px;
         font-weight: 700;
         font-family: 'Monaco', 'Menlo', monospace;
         flex-shrink: 0;
@@ -2040,7 +2042,7 @@
     }
 
 .aiflow-info-item {
-        font-size: 10px;
+        font-size: 14px;
         color: rgba(255,255,255,0.85);
         line-height: 1.6;
         font-family: 'Monaco', 'Menlo', monospace;
@@ -2566,7 +2568,7 @@
                     <div class="aiflow-sub">"redis-master가 왜 CrashLoop인가요?"</div>
                 </div>
                 <div class="aiflow-arrow">→</div>
-                <div class="aiflow-node">
+                <div class="aiflow-node aiflow-context">
                     <div class="aiflow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M9 9h12"/><path d="M9 15h12"/></svg></div>
                     <div class="aiflow-label">컨텍스트 수집</div>
                     <div class="aiflow-sub">YAML + Events + Logs</div>
@@ -2616,7 +2618,7 @@
                 <div class="aiflow-arrow-v">→</div>
                 <div class="aiflow-group">
                     <div class="aiflow-group-title">실제 K8s API</div>
-                    <div class="aiflow-group-items" style="font-size:10px;color:#555;line-height:1.6;font-family:'Monaco','Menlo',monospace;">
+                    <div class="aiflow-group-items" style="font-size:14px;color:#555;line-height:1.6;font-family:'Monaco','Menlo',monospace;">
                         kubectl get pod redis-master -o yaml<br>
                         kubectl logs redis-master --tail=50<br>
                         kubectl describe pod redis-master
@@ -2647,7 +2649,7 @@
                 </div>
                 <div class="aiflow-info-item">
                     <strong>실행</strong> kubectl set resources deployment/redis-master -c redis --limits=memory=512Mi
-                    <span class="aiflow-tool-badge warn" style="margin-left:6px;font-size:9px;">⚠️ 사용자 승인 필요</span>
+                    <span class="aiflow-tool-badge warn" style="margin-left:6px;font-size:12px;">⚠️ 사용자 승인 필요</span>
                 </div>
                 <div class="aiflow-info-item">
                     <strong>답변</strong> redis-master의 메모리 제한을 512Mi로 증가시켰습니다. 이제 정상 작동 중입니다.
@@ -2681,8 +2683,8 @@
             </div>
             <div class="overview-card">
                 <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="14" x="3" y="3" rx="2"/><circle cx="9" cy="11" r="1"/><circle cx="15" cy="11" r="1"/><path d="M9 11h6"/><path d="M8 19h8"/></svg></div>
-                <h3>AI 통합 강화</h3>
-                <p>Kubectl-ai 패턴 기반 도구 시스템, MCP 프로필 관리, 안전한 도구 승인 플로우 구현</p>
+                <h3>AI 모델 설정 방식 개선</h3>
+                <p>AI 모델 설정 UI 개선, openrouter 제공 모델 연동 기능 추가</p>
             </div>
         </div>
         <div class="stat-row">
@@ -2799,6 +2801,18 @@
         <div class="slide-number">12 / 20</div>
     </div>
 
+    <!-- Slide 16: TUI Screenshot (moved after 12) -->
+    <div class="slide slide-12">
+        <div class="slide-header">
+            <h2>TUI 개선 화면</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-screenshot">
+            <img src="screenshot-tui.png" alt="TUI Screenshot">
+        </div>
+        <div class="slide-number">16 / 20</div>
+    </div>
+
     <!-- Slide 13: CLI Features -->
     <div class="slide slide-9">
         <div class="slide-header">
@@ -2905,49 +2919,6 @@
         <div class="slide-number">14 / 20</div>
     </div>
 
-    <!-- Slide 15: TUI & Config -->
-    <div class="slide slide-11">
-        <div class="slide-header">
-            <h2>TUI 및 설정 기능 개선</h2>
-            <div class="accent-line"></div>
-        </div>
-        <div class="split-layout">
-            <div class="split-section">
-                <h3>TUI 개선 사항</h3>
-                <ul class="improvement-list">
-                    <li>화면 깜빡임(Flicker) 3단계 개선</li>
-                    <li>스마트 레이아웃 재구성</li>
-                    <li>navigateTo 이중 표시 문제 해결</li>
-                    <li>Diff 렌더링 알고리즘 적용</li>
-                    <li>웰컴 스크린 추가</li>
-                    <li>메뉴 기반 네비게이션 기능 적용</li>
-                </ul>
-            </div>
-            <div class="split-section">
-                <h3>설정 기능 개선 사항 </h3>
-                <ul class="improvement-list">
-                    <li>사용자 뱃지 → Settings 탭 연결</li>
-                    <li>태마 적용 방식을 awesome theme 방식 적용 예정</li>
-                    <li>테마 설정 UI 개선</li>
-                    <li>AI 모델 설정 UI 직관적 스타일로 변경</li>
-                </ul>
-            </div>
-        </div>
-        <div class="slide-number">15 / 20</div>
-    </div>
-
-    <!-- Slide 16: TUI Screenshot -->
-    <div class="slide slide-12">
-        <div class="slide-header">
-            <h2>실제 구현 화면 (TUI)</h2>
-            <div class="accent-line"></div>
-        </div>
-        <div class="cli-screenshot">
-            <img src="screenshot-tui.png" alt="TUI Screenshot">
-        </div>
-        <div class="slide-number">16 / 20</div>
-    </div>
-
     <!-- Slide 17: Technical -->
     <div class="slide slide-13">
         <div class="slide-header">
@@ -2970,7 +2941,7 @@
                 <span class="tech-tag">Safety</span>
             </div>
             <div class="tech-card">
-                <h4>K8s 컨텍스트 수집</h4>
+                <h4>K8s 컨텍스트 수집 방식 개선</h4>
                 <p>네임스페이스/리소스 현황 자동 조회</p>
                 <p>YAML/Events/Logs 통합 제공으로 AI 분석 품질 향상</p>
                 <span class="tech-tag">Kubernetes</span>
@@ -3003,10 +2974,10 @@
             </div>
             <div class="tech-card">
                 <h4>공략할 틈새 시장</h4>
-                <p>오픈소스 K8s AI 네이티브 도구 부재, Air-gapped · 온프레미스 보안 환경, 한국어 · 아시아권 K8s 운영 시장</p>
+                <p>오픈소스 K8s AI 네이티브 전용 도구 특화, Air-gapped(폐쇄망)/온프레미스 보안 환경용 도구, k8s 자격증 대비 테스트 도구</p>
                 <span class="tech-tag">Open Source</span>
                 <span class="tech-tag">Air-gapped</span>
-                <span class="tech-tag">Korean</span>
+                <span class="tech-tag">Kubernetes Exam</span>
             </div>
             <div class="tech-card">
                 <h4>CLI 기능 확대 전략</h4>
