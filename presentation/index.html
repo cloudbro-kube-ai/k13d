@@ -735,6 +735,112 @@
             color: #555;
         }
 
+        /* Slide 5 - Feature Map */
+.slide-featmap {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 40px 50px;
+        }
+        .slide-5 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 40px 50px;
+        }
+
+        .feat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            flex: 1;
+            min-height: 0;
+            align-content: start;
+        }
+
+        .feat-group {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .feat-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: -0.3px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .feat-header .badge {
+            margin-left: auto;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 10px;
+            border-radius: 10px;
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .feat-body {
+            padding: 10px 16px 12px;
+            flex: 1;
+        }
+
+        .feat-item {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #444;
+            padding: 3px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .feat-item::before {
+            content: '';
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: #ccc;
+        }
+
+        .feat-item strong {
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+
+        .feat-more {
+            font-size: 12px;
+            color: #999;
+            padding: 6px 0 2px;
+            font-style: italic;
+        }
+
+        .feat-group-1 .feat-header { background: linear-gradient(135deg, #0f3460, #1a5276); color: white; }
+        .feat-group-2 .feat-header { background: linear-gradient(135deg, #e94560, #c0392b); color: white; }
+        .feat-group-3 .feat-header { background: linear-gradient(135deg, #16a085, #1abc9c); color: white; }
+        .feat-group-4 .feat-header { background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; }
+        .feat-group-5 .feat-header { background: linear-gradient(135deg, #f39c12, #e67e22); color: white; }
+        .feat-group-6 .feat-header { background: linear-gradient(135deg, #c0392b, #96281b); color: white; }
+
+        .feat-group-1 .feat-header .badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+        .feat-group-2 .feat-header .badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+        .feat-group-3 .feat-header .badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+        .feat-group-4 .feat-header .badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+        .feat-group-5 .feat-header .badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+        .feat-group-6 .feat-header .badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+
+
+        .slide-5 .slide-header h2 {
+            font-size: 30px;
+        }
+
         /* Slide 6 - Screenshots */
         .slide-5 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
@@ -1585,6 +1691,367 @@
             color: white;
         }
 
+    /* Slide - Context Collection Flow */
+.slide-context {
+        background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+    }
+
+.context-content {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        flex: 1;
+        min-height: 0;
+    }
+
+.context-flow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+.context-node {
+        background: white;
+        border-radius: 12px;
+        padding: 14px 18px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.06);
+        text-align: center;
+        min-width: 100px;
+    }
+
+.context-node .icon {
+        font-size: 20px;
+        margin-bottom: 4px;
+    }
+
+.context-node .label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1a1a2e;
+    }
+
+.context-node .sub {
+        font-size: 10px;
+        color: rgba(0,0,0,0.45);
+        margin-top: 2px;
+    }
+
+.context-node.key {
+        border-color: #e94560;
+        border-width: 2px;
+        background: rgba(233,69,96,0.04);
+    }
+
+.context-node.key .label {
+        color: #e94560;
+    }
+
+.context-arrow {
+        display: flex;
+        align-items: center;
+        color: rgba(0,0,0,0.25);
+        font-size: 18px;
+        font-weight: 300;
+    }
+
+.context-row {
+        display: flex;
+        align-items: stretch;
+        gap: 16px;
+    }
+
+.context-panel {
+        background: white;
+        border-radius: 12px;
+        padding: 18px 20px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        flex: 1;
+    }
+
+.context-panel-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #e94560;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+.context-code {
+        background: #1a1a2e;
+        border-radius: 8px;
+        padding: 12px 14px;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 9px;
+        line-height: 1.7;
+        color: #00ff88;
+        overflow-x: auto;
+        white-space: pre;
+    }
+
+.context-code .kw { color: #bb9af7; }
+.context-code .fn { color: #7dcfff; }
+.context-code .cm { color: #565f89; }
+.context-code .s { color: #9ece6a; }
+.context-code .hl { color: #e94560; }
+
+.context-feat-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+.context-feat-list li {
+        font-size: 12px;
+        color: #555;
+        padding: 4px 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        line-height: 1.5;
+    }
+
+.context-feat-list li::before {
+        content: '▸';
+        color: #e94560;
+        font-weight: bold;
+        flex-shrink: 0;
+    }
+
+.context-badge {
+        display: inline-block;
+        background: #e8f4fd;
+        color: #0f3460;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+        margin-right: 4px;
+    }
+
+.apispec-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        flex: 1;
+        min-height: 0;
+        align-content: start;
+    }
+
+.apispec-group {
+        background: white;
+        border-radius: 10px;
+        padding: 14px 16px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+.apispec-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+.apispec-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 800;
+        flex-shrink: 0;
+    }
+
+.apispec-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #1a1a2e;
+        flex: 1;
+    }
+
+.apispec-count {
+        font-size: 10px;
+        font-weight: 700;
+        color: #999;
+        background: #f5f5f5;
+        padding: 1px 7px;
+        border-radius: 8px;
+    }
+
+.apispec-item {
+        font-size: 10px;
+        color: #555;
+        padding: 3px 0;
+        font-family: 'Monaco', 'Menlo', monospace;
+        line-height: 1.5;
+        padding: 3px 0;
+        font-family: 'Monaco', 'Menlo', monospace;
+        line-height: 1.5;
+    }
+
+.aiflow-content {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        flex: 1;
+        min-height: 0;
+    }
+
+.aiflow-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+    }
+
+.aiflow-subrow {
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        gap: 14px;
+        background: rgba(0,0,0,0.02);
+        border-radius: 12px;
+        padding: 12px 18px;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+.aiflow-node {
+        background: white;
+        border-radius: 10px;
+        padding: 12px 16px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+        border: 1px solid rgba(0,0,0,0.06);
+        text-align: center;
+        min-width: 110px;
+    }
+
+.aiflow-node .aiflow-icon {
+        margin-bottom: 4px;
+        color: #0f3460;
+    }
+
+.aiflow-node .aiflow-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: #1a1a2e;
+    }
+
+.aiflow-node .aiflow-sub {
+        font-size: 10px;
+        color: rgba(0,0,0,0.45);
+        margin-top: 2px;
+    }
+
+.aiflow-node.aiflow-user { border-color: #0f3460; border-width: 2px; }
+.aiflow-node.aiflow-user .aiflow-icon { color: #0f3460; }
+.aiflow-node.aiflow-llm { border-color: #9b59b6; border-width: 2px; }
+.aiflow-node.aiflow-llm .aiflow-icon { color: #9b59b6; }
+.aiflow-node.aiflow-synth { border-color: #16a085; border-width: 2px; }
+.aiflow-node.aiflow-synth .aiflow-icon { color: #16a085; }
+.aiflow-node.aiflow-answer { border-color: #e94560; border-width: 2px; }
+.aiflow-node.aiflow-answer .aiflow-icon { color: #e94560; }
+
+.aiflow-arrow {
+        color: rgba(0,0,0,0.2);
+        font-size: 20px;
+        font-weight: 300;
+        flex-shrink: 0;
+    }
+
+.aiflow-arrow-v {
+        color: rgba(0,0,0,0.15);
+        font-size: 16px;
+        font-weight: 300;
+        display: flex;
+        align-items: center;
+        padding: 0 4px;
+    }
+
+.aiflow-group {
+        flex: 1;
+        background: white;
+        border-radius: 8px;
+        padding: 10px 12px;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+    }
+
+.aiflow-group-title {
+        font-size: 10px;
+        font-weight: 700;
+        color: rgba(0,0,0,0.4);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+.aiflow-group-items {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+.aiflow-tool {
+        font-size: 10px;
+        color: #555;
+        line-height: 1.5;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+.aiflow-tool-badge {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 9px;
+        font-weight: 700;
+        font-family: 'Monaco', 'Menlo', monospace;
+        flex-shrink: 0;
+    }
+.aiflow-tool-badge.kb { background: #e8f4fd; color: #0f3460; }
+.aiflow-tool-badge.bs { background: #e8f8f5; color: #16a085; }
+.aiflow-tool-badge.mcp { background: #f4ecf7; color: #9b59b6; }
+.aiflow-tool-badge.ok { background: #e8f8f5; color: #16a085; }
+.aiflow-tool-badge.warn { background: #fef5e7; color: #f39c12; }
+
+.aiflow-group.aiflow-approval {
+        border: 1px solid rgba(243,156,18,0.2);
+        background: rgba(254,245,231,0.3);
+    }
+
+.aiflow-info {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        background: #1a1a2e;
+        border-radius: 10px;
+        padding: 12px 16px;
+    }
+
+.aiflow-info-item {
+        font-size: 10px;
+        color: rgba(255,255,255,0.85);
+        line-height: 1.6;
+        font-family: 'Monaco', 'Menlo', monospace;
+    }
+
+.aiflow-info-item strong {
+        color: #bb9af7;
+        font-weight: 700;
+        margin-right: 6px;
+    }
+
     </style>
     
 </head>
@@ -1598,7 +2065,7 @@
             <p style="margin-top: 10px;">2026.03 ~ 2026.06</p>
         </div>
         <div class="title-badge">37 Commits | 73 Files Changed | +9,169 Lines</div>
-        <div class="slide-number">1 / 18</div>
+        <div class="slide-number">1 / 20</div>
         <div class="contributors">
             <div class="contributors-label">Contributors</div>
             <a class="contributor" href="https://github.com/fjvbn2003" target="_blank">
@@ -1758,13 +2225,13 @@
         </div>
 
 
-        <div class="slide-number">2 / 18</div>
+        <div class="slide-number">2 / 20</div>
     </div>
 
     <!-- Slide 3: k13d Architecture -->
     <div class="slide slide-arch">
         <div class="slide-header">
-            <h2>k13d Architecture</h2>
+            <h2>k13D Architecture</h2>
             <div class="accent-line"></div>
         </div>
         <div class="arch-content">
@@ -1834,9 +2301,367 @@
                 </div>
             </div>
         </div>
-        <div class="slide-number">3 / 18</div>
+        <div class="slide-number">3 / 20</div>
     </div>
-    <!-- Slide 3: Overview -->
+
+    <!-- Slide 4: K13D Feature Map (기능 구성도) -->
+    <div class="slide slide-featmap">
+        <div class="slide-header">
+            <h2>K13D 기능 구성도</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="feat-grid">
+            <!-- Group 1: K8s Resource Views -->
+            <div class="feat-group feat-group-1">
+                <div class="feat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M9 9h12"/><path d="M9 15h12"/></svg>
+                    K8s Resource Views
+                    <span class="badge">25+ types</span>
+                </div>
+                <div class="feat-body">
+                    <div class="feat-item"><strong>Core:</strong> Pods, Deployments, Services, Nodes, Namespaces, Events</div>
+                    <div class="feat-item"><strong>Config:</strong> ConfigMaps, Secrets, PV/PVC, StorageClasses</div>
+                    <div class="feat-item"><strong>Workloads:</strong> ReplicaSets, DaemonSets, StatefulSets, Jobs, CronJobs</div>
+                    <div class="feat-item"><strong>Networking:</strong> Ingresses, NetworkPolicies, Endpoints, IngressClasses</div>
+                    <div class="feat-item"><strong>RBAC:</strong> ServiceAccounts, Roles, RoleBindings, ClusterRoles, CRBs</div>
+                    <div class="feat-item"><strong>Policy &amp; CRDs:</strong> PDB, HPA, Quota, LimitRanges, CRDs</div>
+                </div>
+            </div>
+
+            <!-- Group 2: AI Assistant -->
+            <div class="feat-group feat-group-2">
+                <div class="feat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10"/><path d="M2 12a10 10 0 0 1 10-10 10 10 0 0 1 10 10"/><circle cx="12" cy="12" r="6"/></svg>
+                    AI Assistant
+                    <span class="badge">7+ providers</span>
+                </div>
+                <div class="feat-body">
+                    <div class="feat-item"><strong>NL Query:</strong> Natural language K8s 질의 ("왜 CrashLoop인가요?")</div>
+                    <div class="feat-item"><strong>Context-Aware:</strong> YAML + Events + Logs 자동 수집</div>
+                    <div class="feat-item"><strong>Tool Use:</strong> kubectl 실행, bash 스크립트, MCP 서버 연동</div>
+                    <div class="feat-item"><strong>Safety:</strong> 위험 명령어 승인 모달, 명령어 분류/필터링</div>
+                    <div class="feat-item"><strong>Providers:</strong> OpenAI, Anthropic, Gemini, Ollama, Bedrock, Azure, LiteLLM</div>
+                    <div class="feat-item"><strong>MCP:</strong> JSON-RPC 2.0 기반 동적 도구 확장</div>
+                </div>
+            </div>
+
+            <!-- Group 3: TUI Operations -->
+            <div class="feat-group feat-group-3">
+                <div class="feat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+                    TUI Operations
+                    <span class="badge">k9s parity</span>
+                </div>
+                <div class="feat-body">
+                    <div class="feat-item"><strong>Navigation:</strong> Vim-style j/k/g/G, Ctrl+D/U/F/B, Tab/Shift+Tab</div>
+                    <div class="feat-item"><strong>Command Mode:</strong> :pods, :deploy, :svc, :ns, :ctx 등 30+ 명령어</div>
+                    <div class="feat-item"><strong>Resource Actions:</strong> describe(d), YAML(y), edit(e), delete, logs(l), shell(s)</div>
+                    <div class="feat-item"><strong>Workloads:</strong> scale(S), restart/rollout(R), port-forward, attach</div>
+                    <div class="feat-item"><strong>Filter &amp; Sort:</strong> / 필터, Shift+A/N/T/P/C/D 정렬, :sort</div>
+                    <div class="feat-item"><strong>Namespace:</strong> 0-9 단축키, :ns &lt;name&gt;, 컨텍스트 전환(c)</div>
+                </div>
+            </div>
+
+            <!-- Group 4: Web UI -->
+            <div class="feat-group feat-group-4">
+                <div class="feat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                    Web UI
+                    <span class="badge">full dashboard</span>
+                </div>
+                <div class="feat-body">
+                    <div class="feat-item"><strong>Dashboard:</strong> 리소스 대시보드, 클러스터 개요, 실시간 모니터링</div>
+                    <div class="feat-item"><strong>AI Chat:</strong> Web 환경에서 AI 비서와 대화, 컨텍스트 연동</div>
+                    <div class="feat-item"><strong>Multi-Cluster:</strong> 여러 클러스터 전환, 통합 관리</div>
+                    <div class="feat-item"><strong>Helm &amp; GitOps:</strong> Helm 차트 관리, ArgoCD/Flux 연동</div>
+                    <div class="feat-item"><strong>Terminal:</strong> Web 터미널, 토폴로지 뷰, 글로벌 검색</div>
+                    <div class="feat-item"><strong>Auth:</strong> Local/OIDC/LDAP 인증, 세션 관리</div>
+                </div>
+            </div>
+
+            <!-- Group 5: Monitoring & Analysis -->
+            <div class="feat-group feat-group-5">
+                <div class="feat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16h8"/><path d="M7 11h12"/><path d="M7 6h3"/></svg>
+                    Monitoring &amp; Analysis
+                    <span class="badge">deep insights</span>
+                </div>
+                <div class="feat-body">
+                    <div class="feat-item"><strong>Metrics:</strong> Pod/Node CPU/Memory 실시간 메트릭, 히스토리 트렌드</div>
+                    <div class="feat-item"><strong>Pulse:</strong> 클러스터 상태 Pulse 진단 (건강 점수)</div>
+                    <div class="feat-item"><strong>XRay:</strong> 리소스 계층 구조 분석, 의존성 시각화</div>
+                    <div class="feat-item"><strong>Analysis:</strong> AI 기반 Pod/Node/Service/Deployment 분석</div>
+                    <div class="feat-item"><strong>Security:</strong> 취약점 스캔, RBAC/네트워크 정책 시각화</div>
+                    <div class="feat-item"><strong>Audit:</strong> 감사 로그, 보고서 생성, 비용 추정</div>
+                </div>
+            </div>
+
+            <!-- Group 6: Operations -->
+            <div class="feat-group feat-group-6">
+                <div class="feat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    Operations
+                    <span class="badge">enterprise</span>
+                </div>
+                <div class="feat-body">
+                    <div class="feat-item"><strong>GitOps:</strong> ArgoCD, Flux 연동, 선언형 배포 관리</div>
+                    <div class="feat-item"><strong>Backup:</strong> Velero 기반 백업/복구, 스케줄 관리</div>
+                    <div class="feat-item"><strong>Self-Healing:</strong> 이상 감지 시 자동 복구 워크플로우</div>
+                    <div class="feat-item"><strong>Config:</strong> config.yaml, hotkeys.yaml, plugins.yaml, aliases.yaml, views.yaml</div>
+                    <div class="feat-item"><strong>Audit:</strong> SQLite 기반 감사 로그, 세션 기록</div>
+                    <div class="feat-item"><strong>Integration:</strong> Webhook, Slack 알림, 커스텀 플러그인</div>
+                </div>
+            </div>
+        </div>
+        <div class="slide-number">4 / 20</div>
+    </div>
+
+    <!-- Slide 5: API Spec -->
+    <div class="slide slide-2">
+        <div class="slide-header">
+            <h2>K13D API Spec</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="apispec-grid">
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#e8f4fd;color:#0f3460;">S</span>
+                    <span class="apispec-title">System</span>
+                    <span class="apispec-count">4</span>
+                </div>
+                <div class="apispec-item">GET /api/health</div>
+                <div class="apispec-item">GET /api/version</div>
+                <div class="apispec-item">GET /api/features</div>
+                <div class="apispec-item">GET /api/metrics (Prometheus)</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#ffe8ec;color:#e94560;">A</span>
+                    <span class="apispec-title">Auth</span>
+                    <span class="apispec-count">12</span>
+                </div>
+                <div class="apispec-item">POST /api/auth/login</div>
+                <div class="apispec-item">POST /api/auth/logout</div>
+                <div class="apispec-item">POST /api/auth/kubeconfig</div>
+                <div class="apispec-item">GET /api/auth/status</div>
+                <div class="apispec-item">GET /api/auth/me</div>
+                <div class="apispec-item">GET /api/auth/permissions</div>
+                <div class="apispec-item">OIDC login/callback/status</div>
+                <div class="apispec-item">LDAP status/test</div>
+                <div class="apispec-item">GET/PUT /api/roles</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#e8f8f5;color:#16a085;">K</span>
+                    <span class="apispec-title">K8s Resources</span>
+                    <span class="apispec-count">10</span>
+                </div>
+                <div class="apispec-item">GET /api/k8s/{resource}</div>
+                <div class="apispec-item">POST /api/k8s/apply</div>
+                <div class="apispec-item">GET /api/crd/</div>
+                <div class="apispec-item">GET /api/overview</div>
+                <div class="apispec-item">GET /api/applications</div>
+                <div class="apispec-item">GET /api/search</div>
+                <div class="apispec-item">GET /api/pulse</div>
+                <div class="apispec-item">POST /api/xray</div>
+                <div class="apispec-item">POST /api/diff</div>
+                <div class="apispec-item">GET /api/resource/references</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#f4ecf7;color:#9b59b6;">W</span>
+                    <span class="apispec-title">Workload Ops</span>
+                    <span class="apispec-count">16</span>
+                </div>
+                <div class="apispec-item">PUT deployment/scale, POST restart</div>
+                <div class="apispec-item">POST pause/resume/rollback</div>
+                <div class="apispec-item">GET /api/deployment/history</div>
+                <div class="apispec-item">PUT statefulset/scale, POST restart</div>
+                <div class="apispec-item">POST daemonset/restart</div>
+                <div class="apispec-item">POST cronjob/trigger, POST suspend</div>
+                <div class="apispec-item">POST node/cordon, POST node/drain</div>
+                <div class="apispec-item">POST /api/portforward/start</div>
+                <div class="apispec-item">GET /api/portforward/list</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#fef5e7;color:#f39c12;">AI</span>
+                    <span class="apispec-title">AI &amp; LLM</span>
+                    <span class="apispec-count">18</span>
+                </div>
+                <div class="apispec-item">POST /api/chat/agentic</div>
+                <div class="apispec-item">POST /api/tool/approve</div>
+                <div class="apispec-item">GET /api/sessions, GET /api/sessions/{id}</div>
+                <div class="apispec-item">GET/PUT /api/settings, /api/settings/llm</div>
+                <div class="apispec-item">POST /api/llm/test, GET /api/llm/status</div>
+                <div class="apispec-item">GET /api/llm/ollama/status</div>
+                <div class="apispec-item">GET /api/models, GET /api/models/active</div>
+                <div class="apispec-item">GET /api/mcp/servers|tools|profiles</div>
+                <div class="apispec-item">POST /api/troubleshoot</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#fde8e8;color:#c0392b;">C</span>
+                    <span class="apispec-title">Cluster</span>
+                    <span class="apispec-count">12</span>
+                </div>
+                <div class="apispec-item">GET /api/contexts</div>
+                <div class="apispec-item">POST /api/contexts/switch</div>
+                <div class="apispec-item">GET /api/pods/{name}/logs</div>
+                <div class="apispec-item">GET /api/events/timeline</div>
+                <div class="apispec-item">GET /api/topology/{resource}</div>
+                <div class="apispec-item">WebSocket /api/terminal/{pod}</div>
+                <div class="apispec-item">GET /api/healing/rules|events</div>
+                <div class="apispec-item">GET /api/gitops/status</div>
+                <div class="apispec-item">GET /api/velero/backups|schedules</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#e8f4fd;color:#0f3460;">H</span>
+                    <span class="apispec-title">Helm</span>
+                    <span class="apispec-count">8</span>
+                </div>
+                <div class="apispec-item">GET /api/helm/releases</div>
+                <div class="apispec-item">POST install, PUT upgrade</div>
+                <div class="apispec-item">DELETE uninstall, POST rollback</div>
+                <div class="apispec-item">GET /api/helm/repos, search</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#e8f8f5;color:#16a085;">M</span>
+                    <span class="apispec-title">Metrics &amp; Audit</span>
+                    <span class="apispec-count">12</span>
+                </div>
+                <div class="apispec-item">GET /api/metrics/pods|nodes</div>
+                <div class="apispec-item">GET /api/metrics/history/cluster|nodes|pods</div>
+                <div class="apispec-item">POST prometheus/query</div>
+                <div class="apispec-item">GET /api/audit</div>
+                <div class="apispec-item">GET /api/reports</div>
+                <div class="apispec-item">POST /api/reports/preview</div>
+                <div class="apispec-item">GET /api/notifications/config|history|status</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#f4ecf7;color:#9b59b6;">S</span>
+                    <span class="apispec-title">Security</span>
+                    <span class="apispec-count">8</span>
+                </div>
+                <div class="apispec-item">POST /api/security/scan</div>
+                <div class="apispec-item">POST /api/security/scan/quick</div>
+                <div class="apispec-item">GET /api/security/scans, /scans/stats</div>
+                <div class="apispec-item">POST /api/safety/analyze</div>
+                <div class="apispec-item">GET /api/notifications/config</div>
+            </div>
+        </div>
+        <div class="slide-number">5 / 20</div>
+    </div>
+    <!-- Slide 6: AI Answering Flow -->
+    <div class="slide slide-arch">
+        <div class="slide-header">
+            <h2>K13D가 답변을 내는 과정</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="aiflow-content">
+            <!-- User Question -->
+            <div class="aiflow-row">
+                <div class="aiflow-node aiflow-user">
+                    <div class="aiflow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+                    <div class="aiflow-label">사용자 질문</div>
+                    <div class="aiflow-sub">"redis-master가 왜 CrashLoop인가요?"</div>
+                </div>
+                <div class="aiflow-arrow">→</div>
+                <div class="aiflow-node">
+                    <div class="aiflow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M9 9h12"/><path d="M9 15h12"/></svg></div>
+                    <div class="aiflow-label">컨텍스트 수집</div>
+                    <div class="aiflow-sub">YAML + Events + Logs</div>
+                </div>
+                <div class="aiflow-arrow">→</div>
+                <div class="aiflow-node aiflow-llm">
+                    <div class="aiflow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10"/><path d="M2 12a10 10 0 0 1 10-10 10 10 0 0 1 10 10"/><circle cx="12" cy="12" r="6"/></svg></div>
+                    <div class="aiflow-label">LLM 호출</div>
+                    <div class="aiflow-sub">Tool Call 요청</div>
+                </div>
+            </div>
+
+            <!-- Tool Execution Row -->
+            <div class="aiflow-subrow">
+                <div class="aiflow-group">
+                    <div class="aiflow-group-title">도구 실행</div>
+                    <div class="aiflow-group-items">
+                        <div class="aiflow-tool">
+                            <span class="aiflow-tool-badge kb">kubectl</span>
+                            <span>get pod, describe, logs, top</span>
+                        </div>
+                        <div class="aiflow-tool">
+                            <span class="aiflow-tool-badge bs">bash</span>
+                            <span>curl, system commands</span>
+                        </div>
+                        <div class="aiflow-tool">
+                            <span class="aiflow-tool-badge mcp">MCP</span>
+                            <span>확장 도구 (DB, HTTP 등)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="aiflow-arrow-v">→</div>
+                <div class="aiflow-group aiflow-approval">
+                    <div class="aiflow-group-title">안전 검증</div>
+                    <div class="aiflow-group-items">
+                        <div class="aiflow-tool">
+                            <span class="aiflow-tool-badge ok">✅ 명령어 분류</span>
+                        </div>
+                        <div class="aiflow-tool">
+                            <span class="aiflow-tool-badge ok">✅ 위험도 분석</span>
+                        </div>
+                        <div class="aiflow-tool">
+                            <span class="aiflow-tool-badge warn">⚠️ 위험 명령어 → 사용자 승인</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="aiflow-arrow-v">→</div>
+                <div class="aiflow-group">
+                    <div class="aiflow-group-title">실제 K8s API</div>
+                    <div class="aiflow-group-items" style="font-size:10px;color:#555;line-height:1.6;font-family:'Monaco','Menlo',monospace;">
+                        kubectl get pod redis-master -o yaml<br>
+                        kubectl logs redis-master --tail=50<br>
+                        kubectl describe pod redis-master
+                    </div>
+                </div>
+            </div>
+
+            <!-- Final Answer Row -->
+            <div class="aiflow-row" style="margin-top:6px;">
+                <div class="aiflow-arrow">→</div>
+                <div class="aiflow-node aiflow-synth">
+                    <div class="aiflow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></div>
+                    <div class="aiflow-label">결과 합성</div>
+                    <div class="aiflow-sub">Tool 결과 → LLM 재호출</div>
+                </div>
+                <div class="aiflow-arrow">→</div>
+                <div class="aiflow-node aiflow-answer">
+                    <div class="aiflow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/></svg></div>
+                    <div class="aiflow-label">최종 답변</div>
+                    <div class="aiflow-sub">SSE 스트리밍 / TUI 출력</div>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="aiflow-info">
+                <div class="aiflow-info-item">
+                    <strong>질문</strong> redis-master의 메모리 제한이 256Mi로 설정되어 있으나 최근 트래픽 증가로 380Mi까지 사용 중입니다.
+                </div>
+                <div class="aiflow-info-item">
+                    <strong>실행</strong> kubectl set resources deployment/redis-master -c redis --limits=memory=512Mi
+                    <span class="aiflow-tool-badge warn" style="margin-left:6px;font-size:9px;">⚠️ 사용자 승인 필요</span>
+                </div>
+                <div class="aiflow-info-item">
+                    <strong>답변</strong> redis-master의 메모리 제한을 512Mi로 증가시켰습니다. 이제 정상 작동 중입니다.
+                </div>
+            </div>
+        </div>
+        <div class="slide-number">6 / 20</div>
+    </div>
+
+    <!-- Slide 7: Overview -->
     <div class="slide slide-2">
         <div class="slide-header">
             <h2>주요 개선 작업</h2>
@@ -1882,10 +2707,10 @@
                 <div class="stat-label">Lines Removed</div>
             </div>
         </div>
-        <div class="slide-number">4 / 18</div>
+        <div class="slide-number">7 / 20</div>
     </div>
 
-    <!-- Slide 4: Web UI Features -->
+    <!-- Slide 8: Web UI Features -->
     <div class="slide slide-3">
         <div class="slide-header">
             <h2>Web UI 주요 업데이트</h2>
@@ -1895,12 +2720,15 @@
             <div class="feature-card">
                 <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/></svg></div>
                 <h4>Lucide 아이콘 시스템</h4>
-                <p>기존 아이콘 → Lucide 전체 교체, 상단 헤더 아이콘만 표시로 변경</p>
+                <p>기존 아이콘 → Lucide 전체 교체</p>
+                <p>상단 헤더 아이콘만 표시로 변경하여 사용성 개선</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></div>
                 <h4>다크 모드 지원</h4>
-                <p>헤더 토글 버튼 추가, Sun/Moon 아이콘, Ollama 미니멀리스트 테마</p>
+                <p>헤더 토글 버튼 추가, Sun/Moon 아이콘, Ollama 미니멀리스트 테마 방식</p>
+                <p>향후 awesome design 추가 적용 예정</p>
+                <p></p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></div>
@@ -1910,282 +2738,72 @@
             <div class="feature-card">
                 <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16h8"/><path d="M7 11h12"/><path d="M7 6h3"/></svg></div>
                 <h4>Cluster Visualizer</h4>
-                <p>Pod 간 통신 실시간 애니메이션, 873줄 CSS + 527줄 JS</p>
+                <p>Pod 간 통신 실시간 애니메이션 효과가 적용하여 K8S 전체 상태 시각화</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></div>
                 <h4>AI 어시스턴트 개선</h4>
                 <p>세션 지우기 버튼, 도구 실행 정보 유지, 팝업 한글 번역</p>
+                <p>openRouter 연동 추가</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
                 <h4>로그인 화면</h4>
-                <p>브랜딩 정리, 미니멀리스트 디자인, 사용자 뱃지 → Settings 연결</p>
+                <p>브랜딩 정리, 미니멀리스트 디자인</p>
             </div>
         </div>
-        <div class="slide-number">5 / 18</div>
+        <div class="slide-number">8 / 20</div>
     </div>
 
-    <!-- Slide 5: Web UI Block Diagram -->
-    <div class="slide slide-4">
+    <!-- Slide 9: Web UI Screenshot 1 -->
+    <div class="slide slide-6">
         <div class="slide-header">
-            <h2>Web UI 전체 메뉴 / 기능 구성도</h2>
-            <div class="accent-line"></div>
-        </div>
-        <div class="block-diagram">
-            <!-- Top Bar -->
-            <div class="block-topbar">
-                <div class="block-topbar-label">TOP BAR</div>
-                <div class="block-topbar-items">
-                    <div class="block-topbar-item">Sidebar Toggle</div>
-                    <div class="block-topbar-item">Cmd+K Search</div>
-                    <div class="block-topbar-item">Cluster Switch</div>
-                    <div class="block-topbar-item">Health Status</div>
-                    <div class="block-topbar-item">Auto Refresh</div>
-                    <div class="block-topbar-item key">AI Panel (A)</div>
-                    <div class="block-topbar-item">Dark Mode</div>
-                    <div class="block-topbar-item">Settings</div>
-                    <div class="block-topbar-item">Shortcuts</div>
-                    <div class="block-topbar-item">Logout</div>
-                </div>
-            </div>
-
-            <!-- Main Content Area -->
-            <div class="block-main">
-                <!-- Sidebar -->
-                <div class="block-sidebar">
-                    <div class="block-sidebar-title">k13d</div>
-
-                    <div class="block-sidebar-group">WORKLOADS (7)</div>
-                    <div class="block-sidebar-items">
-                        <span class="block-sidebar-item active">Pods</span>
-                        <span class="block-sidebar-item">Deploy</span>
-                        <span class="block-sidebar-item">DaemonSet</span>
-                        <span class="block-sidebar-item">StatefulSet</span>
-                        <span class="block-sidebar-item">ReplicaSet</span>
-                        <span class="block-sidebar-item">Jobs</span>
-                        <span class="block-sidebar-item">CronJob</span>
-                    </div>
-
-                    <div class="block-sidebar-group">NETWORK (3)</div>
-                    <div class="block-sidebar-items">
-                        <span class="block-sidebar-item">Services</span>
-                        <span class="block-sidebar-item">Ingress</span>
-                        <span class="block-sidebar-item">NetPol</span>
-                    </div>
-
-                    <div class="block-sidebar-group">CONFIG (3)</div>
-                    <div class="block-sidebar-items">
-                        <span class="block-sidebar-item">ConfigMap</span>
-                        <span class="block-sidebar-item">Secrets</span>
-                        <span class="block-sidebar-item">SvcAccount</span>
-                    </div>
-
-                    <div class="block-sidebar-group">STORAGE (2)</div>
-                    <div class="block-sidebar-items">
-                        <span class="block-sidebar-item">PV</span>
-                        <span class="block-sidebar-item">PVC</span>
-                    </div>
-
-                    <div class="block-sidebar-group">CLUSTER (3)</div>
-                    <div class="block-sidebar-items">
-                        <span class="block-sidebar-item">Nodes</span>
-                        <span class="block-sidebar-item">NS</span>
-                        <span class="block-sidebar-item">Events</span>
-                    </div>
-
-                    <div class="block-sidebar-group">RBAC (4)</div>
-                    <div class="block-sidebar-items">
-                        <span class="block-sidebar-item">Roles</span>
-                        <span class="block-sidebar-item">RoleBind</span>
-                        <span class="block-sidebar-item">ClRoles</span>
-                        <span class="block-sidebar-item">ClRoleBind</span>
-                    </div>
-
-                    <div class="block-sidebar-group">CRD (동적)</div>
-                    <div class="block-sidebar-items">
-                        <span class="block-sidebar-item">Custom Resources</span>
-                    </div>
-
-                    <div class="block-sidebar-group">VIZ (6)</div>
-                    <div class="block-sidebar-items">
-                        <span class="block-sidebar-item">Topology</span>
-                        <span class="block-sidebar-item">Apps</span>
-                        <span class="block-sidebar-item">RBAC Viz</span>
-                        <span class="block-sidebar-item">NetPol Viz</span>
-                        <span class="block-sidebar-item">Timeline</span>
-                        <span class="block-sidebar-item">Cluster Viz</span>
-                    </div>
-
-                    <div class="block-sidebar-group">MONITOR (3)</div>
-                    <div class="block-sidebar-items">
-                        <span class="block-sidebar-item">Metrics</span>
-                        <span class="block-sidebar-item">Audit</span>
-                        <span class="block-sidebar-item">Reports</span>
-                    </div>
-                </div>
-
-                <!-- Content Area -->
-                <div class="block-content">
-                    <div class="block-content-title">메인 콘텐츠 영역</div>
-                    <div class="block-content-grid">
-                        <div class="block-content-section">
-                            <h5>리소스 테이블 <span class="count">35+</span></h5>
-                            <ul class="block-content-list">
-                                <li>실시간 상태 뱃지</li>
-                                <li>네임스페이스 필터</li>
-                                <li>정렬 / 검색</li>
-                                <li>행 클릭 → 상세 모달</li>
-                            </ul>
-                        </div>
-                        <div class="block-content-section">
-                            <h5>상세 모달 탭</h5>
-                            <ul class="block-content-list">
-                                <li>Overview / YAML / Events</li>
-                                <li>Related Pods</li>
-                                <li>Referenced By</li>
-                                <li>Analyze with AI 버튼</li>
-                            </ul>
-                        </div>
-                        <div class="block-content-section">
-                            <h5>편집 & 터미널</h5>
-                            <ul class="block-content-list">
-                                <li>YAML Editor (생성/수정)</li>
-                                <li>Web Terminal (xterm.js)</li>
-                                <li>Log Viewer (스트리밍)</li>
-                                <li>Port Forwarding</li>
-                            </ul>
-                        </div>
-                        <div class="block-content-section">
-                            <h5>시각화 뷰</h5>
-                            <ul class="block-content-list">
-                                <li>Cluster Visualizer (애니메이션)</li>
-                                <li>Topology Tree</li>
-                                <li>RBAC / NetPol 시각화</li>
-                                <li>Metrics Dashboard</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- AI Panel -->
-                <div class="block-ai">
-                    <div class="block-ai-title">AI ASSISTANT <span class="badge">KEY</span></div>
-
-                    <div class="block-ai-section">
-                        <h6>채팅 인터페이스</h6>
-                        <div class="block-ai-items">
-                            <span class="block-ai-item">Chat History</span>
-                            <span class="block-ai-item">New Chat</span>
-                            <span class="block-ai-item">Chat / TUI 모드</span>
-                        </div>
-                    </div>
-
-                    <div class="block-ai-section">
-                        <h6>모델 & 상태</h6>
-                        <div class="block-ai-items">
-                            <span class="block-ai-item">Model Select</span>
-                            <span class="block-ai-item">Guardrails</span>
-                            <span class="block-ai-item">Safe/Unsafe</span>
-                        </div>
-                    </div>
-
-                    <div class="block-ai-section">
-                        <h6>컨텍스트</h6>
-                        <div class="block-ai-items">
-                            <span class="block-ai-item">Resource Chips</span>
-                            <span class="block-ai-item">K8s Context</span>
-                            <span class="block-ai-item">YAML/Events/Logs</span>
-                        </div>
-                    </div>
-
-                    <div class="block-ai-section">
-                        <h6>도구 & 디버그</h6>
-                        <div class="block-ai-items">
-                            <span class="block-ai-item">Kubectl Tool</span>
-                            <span class="block-ai-item">Bash Tool</span>
-                            <span class="block-ai-item">MCP Tools</span>
-                            <span class="block-ai-item">Debug Panel</span>
-                        </div>
-                    </div>
-
-                    <div class="block-ai-section">
-                        <h6>내장 터미널</h6>
-                        <div class="block-ai-items">
-                            <span class="block-ai-item">TUI Mode</span>
-                            <span class="block-ai-item">Embedded Shell</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Settings Bar -->
-            <div class="block-settings">
-                <div class="block-settings-label">SETTINGS (8탭)</div>
-                <div class="block-settings-tabs">
-                    <span class="block-settings-tab">General</span>
-                    <span class="block-settings-tab key">AI (Provider/Model/API Key)</span>
-                    <span class="block-settings-tab">MCP (Profiles/Servers)</span>
-                    <span class="block-settings-tab">Security (Trivy CVE)</span>
-                    <span class="block-settings-tab">Metrics (Prometheus)</span>
-                    <span class="block-settings-tab">Notifications (Webhook)</span>
-                    <span class="block-settings-tab">Admin (OIDC/LDAP/RBAC)</span>
-                    <span class="block-settings-tab">About</span>
-                </div>
-            </div>
-        </div>
-        <div class="slide-number">6 / 18</div>
-    </div>
-
-    <!-- Slide 6: Web UI Screenshot 1 -->
-    <div class="slide slide-5">
-        <div class="slide-header">
-            <h2>실제 구현 화면 (Web UI)</h2>
+            <h2>Web UI 개선 화면</h2>
             <div class="accent-line"></div>
         </div>
         <div class="cli-screenshot">
             <img src="screenshot-web1.png" alt="Web UI Dashboard">
         </div>
-        <div class="slide-number">7 / 18</div>
+        <div class="slide-number">9 / 20</div>
     </div>
 
-    <!-- Slide 7: Web UI Screenshot 2 -->
+    <!-- Slide 10: Web UI Screenshot 2 -->
     <div class="slide slide-6">
         <div class="slide-header">
-            <h2>실제 구현 화면 (Web UI)</h2>
+            <h2>Web UI 개선 화면</h2>
             <div class="accent-line"></div>
         </div>
         <div class="cli-screenshot">
             <img src="screenshot-web2.png" alt="AI Assistant Panel">
         </div>
-        <div class="slide-number">8 / 18</div>
+        <div class="slide-number">10 / 20</div>
     </div>
 
-    <!-- Slide 8: Web UI Screenshot 3 -->
+    <!-- Slide 11: Web UI Screenshot 3 -->
     <div class="slide slide-7">
         <div class="slide-header">
-            <h2>실제 구현 화면 (Web UI)</h2>
+            <h2>Web UI 개선 화면</h2>
             <div class="accent-line"></div>
         </div>
         <div class="cli-screenshot">
             <img src="screenshot-web3.png" alt="Cluster Visualizer">
         </div>
-        <div class="slide-number">9 / 18</div>
+        <div class="slide-number">11 / 20</div>
     </div>
 
-    <!-- Slide 9: Web UI Screenshot 4 -->
+    <!-- Slide 12: Web UI Screenshot 4 -->
     <div class="slide slide-8">
         <div class="slide-header">
-            <h2>실제 구현 화면 (Web UI)</h2>
+            <h2>Web UI 개선 화면</h2>
             <div class="accent-line"></div>
         </div>
         <div class="cli-screenshot">
             <img src="screenshot-web4.png" alt="Web UI Settings">
         </div>
-        <div class="slide-number">10 / 18</div>
+        <div class="slide-number">12 / 20</div>
     </div>
 
-    <!-- Slide 10: CLI Features -->
+    <!-- Slide 13: CLI Features -->
     <div class="slide slide-9">
         <div class="slide-header">
             <h2>CLI 추가 (신규)</h2>
@@ -2276,10 +2894,10 @@
                 </div>
             </div>
         </div>
-        <div class="slide-number">11 / 18</div>
+        <div class="slide-number">13 / 20</div>
     </div>
 
-    <!-- Slide 11: CLI Screenshot -->
+    <!-- Slide 14: CLI Screenshot -->
     <div class="slide slide-10">
         <div class="slide-header">
             <h2>CLI 실제 구현 화면</h2>
@@ -2288,45 +2906,41 @@
         <div class="cli-screenshot">
             <img src="screenshot-cli.png" alt="CLI Screenshot">
         </div>
-        <div class="slide-number">12 / 18</div>
+        <div class="slide-number">14 / 20</div>
     </div>
 
-    <!-- Slide 12: TUI & Config -->
+    <!-- Slide 15: TUI & Config -->
     <div class="slide slide-11">
         <div class="slide-header">
-            <h2>TUI 개선 및 설정 시스템</h2>
+            <h2>TUI 및 설정 기능 개선</h2>
             <div class="accent-line"></div>
         </div>
         <div class="split-layout">
             <div class="split-section">
-                <h3>TUI 개선사항</h3>
+                <h3>TUI 개선 사항</h3>
                 <ul class="improvement-list">
                     <li>화면 깜빡임(Flicker) 3단계 개선</li>
                     <li>스마트 레이아웃 재구성</li>
                     <li>navigateTo 이중 표시 문제 해결</li>
-                    <li>Diff 렌더링 구현 (311줄)</li>
-                    <li>Diff 테스트 코드 (220줄)</li>
-                    <li>웰컴 스크린 추가 (360줄)</li>
-                    <li>메뉴 기반 네비게이션</li>
+                    <li>Diff 렌더링 알고리즘 적용</li>
+                    <li>웰컴 스크린 추가</li>
+                    <li>메뉴 기반 네비게이션 기능 적용</li>
                 </ul>
             </div>
             <div class="split-section">
-                <h3>설정 시스템</h3>
+                <h3>설정 기능 개선 사항 </h3>
                 <ul class="improvement-list">
                     <li>사용자 뱃지 → Settings 탭 연결</li>
-                    <li>handlers_settings.go 신규 API</li>
-                    <li>스타일 설정 구조 (71줄)</li>
-                    <li>컨텍스트별 스킨 시스템</li>
+                    <li>태마 적용 방식을 awesome theme 방식 적용 예정</li>
                     <li>테마 설정 UI 개선</li>
-                    <li>MCP 프로필 시스템 (283줄)</li>
-                    <li>MCP 설정 문서화 (4 파일)</li>
+                    <li>AI 모델 설정 UI 직관적 스타일로 변경</li>
                 </ul>
             </div>
         </div>
-        <div class="slide-number">13 / 18</div>
+        <div class="slide-number">15 / 20</div>
     </div>
 
-    <!-- Slide 13: TUI Screenshot -->
+    <!-- Slide 16: TUI Screenshot -->
     <div class="slide slide-12">
         <div class="slide-header">
             <h2>실제 구현 화면 (TUI)</h2>
@@ -2335,10 +2949,10 @@
         <div class="cli-screenshot">
             <img src="screenshot-tui.png" alt="TUI Screenshot">
         </div>
-        <div class="slide-number">14 / 18</div>
+        <div class="slide-number">16 / 20</div>
     </div>
 
-    <!-- Slide 14: Technical -->
+    <!-- Slide 17: Technical -->
     <div class="slide slide-13">
         <div class="slide-header">
             <h2>기술적 도전과 해결</h2>
@@ -2347,33 +2961,37 @@
         <div class="tech-grid">
             <div class="tech-card">
                 <h4>한글 입력 처리</h4>
-                <p>터미널에서 다중바이트 UTF-8 문자의 정확한 입력과 커서 이동 처리 구현. readLine 함수 개선으로 한국어 사용자 지원 강화.</p>
+                <p>CLI 터미널에서 다중바이트 UTF-8 문자의 정확한 입력과 커서 이동 처리 구현</p>
+                <p>readLine 함수 개선으로 한국어 사용자 지원 강화</p>                
                 <span class="tech-tag">UTF-8</span>
                 <span class="tech-tag">Terminal</span>
             </div>
             <div class="tech-card">
                 <h4>AI 도구 승인 플로우</h4>
-                <p>stdin 기반 세션 자동 승인(A all) 구현. safety.PolicyEnforcer와 연동하여 안전한 도구 실행 보장.</p>
+                <p>stdin 기반 세션 자동 승인(A all)</p>
+                <p>구현safety.PolicyEnforcer와 연동하여 안전한 도구 실행 보장</p>
                 <span class="tech-tag">CLI</span>
                 <span class="tech-tag">Safety</span>
             </div>
             <div class="tech-card">
                 <h4>K8s 컨텍스트 수집</h4>
-                <p>네임스페이스/리소스 현황 자동 조회, YAML/Events/Logs 통합 제공으로 AI 분석 품질 향상.</p>
+                <p>네임스페이스/리소스 현황 자동 조회</p>
+                <p>YAML/Events/Logs 통합 제공으로 AI 분석 품질 향상</p>
                 <span class="tech-tag">Kubernetes</span>
                 <span class="tech-tag">AI</span>
             </div>
             <div class="tech-card">
                 <h4>Web UI 번역 시스템</h4>
-                <p>i18n.js 734줄 대폭 개선. AI 패널, Decision 팝업, Cluster Overview 등 핵심 UI 한글 번역 완성.</p>
+                <p>i18n.js 734줄 대폭 개선. AI 패널</p>
+                <p>Decision 팝업, Cluster Overview 등 핵심 UI 한글 번역 완성</p>
                 <span class="tech-tag">i18n</span>
                 <span class="tech-tag">Korean</span>
             </div>
         </div>
-        <div class="slide-number">15 / 18</div>
+        <div class="slide-number">17 / 20</div>
     </div>
 
-    <!-- Slide 15: Direction -->
+    <!-- Slide 18: Direction -->
     <div class="slide slide-14">
         <div class="slide-header">
             <h2>K13D의 방향성 고민</h2>
@@ -2409,9 +3027,9 @@
                 <span class="tech-tag">Postmortem</span>
             </div>
         </div>
-        <div class="slide-number">16 / 18</div>
+        <div class="slide-number">18 / 20</div>
     </div>
-    <!-- Slide 16: Summary -->
+    <!-- Slide 19: Summary -->
     <div class="slide slide-15">
         <div class="summary-content">
             <div class="summary-left">
@@ -2444,15 +3062,15 @@
                     </li>
                     <li>
                         <span class="roadmap-phase">Phase 2</span>
-                        <span>CLI 고급 기능 (스크립트, 플러그인 지원)</span>
+                        <span>사용 가능한 AI 모델과의 최적 연동성 강화</span>
                     </li>
                     <li>
                         <span class="roadmap-phase">Phase 3</span>
-                        <span>AI 에이트 커스터마이징 강화</span>
+                        <span>다양한 WebUI / CLI 기능 발굴 및 개선</span>
                     </li>
                     <li>
                         <span class="roadmap-phase">Phase 4</span>
-                        <span>멀티 클러스터 지원 및 대시보드 확장</span>
+                        <span>기존 사용중인 도구에서 부착해서 사용 가능한 플러그인 사업 모델 개발</span>
                     </li>
                 </ul>
             </div>
@@ -2460,11 +3078,11 @@
         <div class="closing-message">
             <p>k13d - Kubernetes Management, Reimagined</p>
         </div>
-        <div class="slide-number">17 / 18</div>
+        <div class="slide-number">19 / 20</div>
     </div>
 
 
-    <!-- Slide 18: CLI Reference UI -->
+    <!-- Slide 20: CLI Reference UI -->
     <div class="slide slide-cli-ref">
         <div class="slide-header">
             <h2>참고용 CLI UI</h2>
@@ -2484,7 +3102,7 @@
                 <img src="opencode.png" alt="OpenCode CLI">
             </div>
         </div>
-        <div class="slide-number">18 / 18</div>
+        <div class="slide-number">20 / 20</div>
     </div>
     <div class="nav-hint">← → 키로 슬라이드 이동 | Ctrl+P로 인쇄</div>
 
