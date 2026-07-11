@@ -1424,7 +1424,123 @@
             transform: none;
         }
 
-        /* Slide 5 - Web UI Block Diagram */
+        /* Slide - LLM Provider Table */
+.slide-llm-table {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .llm-table-wrapper {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .llm-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            font-size: 14px;
+        }
+
+        .llm-table thead th {
+            background: linear-gradient(135deg, #1a1a2e, #0f3460);
+            color: white;
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.3px;
+        }
+
+        .llm-table thead th:first-child {
+            border-radius: 12px 0 0 0;
+        }
+
+        .llm-table thead th:last-child {
+            border-radius: 0 12px 0 0;
+        }
+
+        .llm-table tbody td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #444;
+            vertical-align: middle;
+        }
+
+        .llm-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .llm-table tbody tr:hover {
+            background: rgba(233, 69, 96, 0.03);
+        }
+
+        .llm-table .provider-name {
+            font-weight: 700;
+            color: #1a1a2e;
+            font-size: 14px;
+        }
+
+        .llm-table .provider-alias {
+            font-size: 11px;
+            color: #999;
+            font-style: italic;
+        }
+
+        .llm-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .llm-badge.yes {
+            background: #e8f8f5;
+            color: #16a085;
+        }
+
+        .llm-badge.no {
+            background: #f5f5f5;
+            color: #999;
+        }
+
+        .llm-badge.shim {
+            background: #fef5e7;
+            color: #f39c12;
+        }
+
+        .llm-badge.cloud {
+            background: #e8f4fd;
+            color: #0f3460;
+        }
+
+        .llm-badge.local {
+            background: #f4ecf7;
+            color: #9b59b6;
+        }
+
+        .llm-note {
+            font-size: 13px;
+            color: rgba(0,0,0,0.5);
+            line-height: 1.6;
+            padding: 12px 16px;
+            background: rgba(233, 69, 96, 0.04);
+            border: 1px solid rgba(233, 69, 96, 0.12);
+            border-radius: 10px;
+        }
+
+        .llm-note strong {
+            color: #e94560;
+        }
+
+    /* Slide 5 - Web UI Block Diagram */
         .slide-4 {
             background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
         }
@@ -1887,16 +2003,127 @@
         border-radius: 8px;
     }
 
-.apispec-item {
-        font-size: 10px;
-        color: #555;
-        padding: 3px 0;
-        font-family: 'Monaco', 'Menlo', monospace;
-        line-height: 1.5;
-        padding: 3px 0;
-        font-family: 'Monaco', 'Menlo', monospace;
-        line-height: 1.5;
-    }
+        .apispec-item {
+            font-size: 10px;
+            color: #555;
+            padding: 3px 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            line-height: 1.5;
+            padding: 3px 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            line-height: 1.5;
+        }
+
+        /* Slide - LLM Provider Table */
+        .slide-llm {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .llm-table-wrapper {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+        }
+
+        .llm-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 15px;
+        }
+
+        .llm-table thead th {
+            background: linear-gradient(135deg, #1a1a2e, #0f3460);
+            color: white;
+            padding: 14px 18px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: -0.3px;
+            border-bottom: 2px solid #e94560;
+            white-space: nowrap;
+        }
+
+        .llm-table thead th:first-child {
+            border-radius: 10px 0 0 0;
+        }
+
+        .llm-table thead th:last-child {
+            border-radius: 0 10px 0 0;
+        }
+
+        .llm-table tbody td {
+            padding: 12px 18px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #444;
+            vertical-align: middle;
+        }
+
+        .llm-table tbody tr:nth-child(even) {
+            background: rgba(233, 69, 96, 0.02);
+        }
+
+        .llm-table tbody tr:hover {
+            background: rgba(233, 69, 96, 0.06);
+        }
+
+        .llm-table .provider-name {
+            font-weight: 700;
+            color: #1a1a2e;
+            font-size: 15px;
+        }
+
+        .llm-table .provider-type {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            color: #888;
+            background: #f5f5f5;
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .llm-table .check {
+            color: #16a085;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .llm-table .cross {
+            color: #ccc;
+            font-size: 16px;
+        }
+
+        .llm-table .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 1px 2px;
+        }
+
+        .llm-table .tag-cloud { background: #e8f4fd; color: #0f3460; }
+        .llm-table .tag-local { background: #e8f8f5; color: #16a085; }
+        .llm-table .tag-enterprise { background: #f4ecf7; color: #9b59b6; }
+        .llm-table .tag-proxy { background: #fef5e7; color: #f39c12; }
+
+        .llm-note {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 16px;
+            padding: 12px 18px;
+            background: rgba(233, 69, 96, 0.06);
+            border: 1px solid rgba(233, 69, 96, 0.15);
+            border-radius: 10px;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .llm-note strong {
+            color: #e94560;
+        }
 
 .aiflow-content {
         display: flex;
@@ -2245,7 +2472,7 @@
                     <div class="sub">HTTP · Browser</div>
                 </div>
                 <div class="arch-box">
-                    <div class="name">CLI / MCP</div>
+                    <div class="name">CLI</div>
                     <div class="sub">REPL · stdio</div>
                 </div>
             </div>
@@ -2553,7 +2780,120 @@
         </div>
         <div class="slide-number">5 / 20</div>
     </div>
-    <!-- Slide 6: AI Answering Flow -->
+
+    <!-- Slide 6: LLM Providers -->
+    <div class="slide slide-llm">
+        <div class="slide-header">
+            <h2>k13d에서 사용가능한 LLM</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="llm-table-wrapper">
+            <table class="llm-table">
+                <thead>
+                    <tr>
+                        <th>Provider</th>
+                        <th>유형</th>
+                        <th>Tool Calling</th>
+                        <th>Streaming</th>
+                        <th>Multi-Model</th>
+                        <th>환경</th>
+                        <th>비고</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="provider-name">OpenAI</span><br><span class="provider-type">openai</span></td>
+                        <td>REST API</td>
+                        <td><span class="check">&#10003;</span> Function Call</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-cloud">Cloud</span></td>
+                        <td>GPT-4o, GPT-4, o-series 지원<br>reasoning_effort 설정 가능</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">Anthropic</span><br><span class="provider-type">anthropic</span></td>
+                        <td>REST API</td>
+                        <td><span class="check">&#10003;</span> Native Tool</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-cloud">Cloud</span></td>
+                        <td>Claude 4, Claude 3.5 Sonnet<br>Extended Thinking 지원</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">Google Gemini</span><br><span class="provider-type">gemini</span></td>
+                        <td>REST API</td>
+                        <td><span class="check">&#10003;</span> Function Call</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-cloud">Cloud</span></td>
+                        <td>Gemini 2.5 Flash/Pro<br>Google API Key 필요</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">AWS Bedrock</span><br><span class="provider-type">bedrock</span></td>
+                        <td>AWS SDK</td>
+                        <td><span class="check">&#10003;</span> Tool Use</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-enterprise">Enterprise</span></td>
+                        <td>Claude, Llama 등 다수 모델<br>AWS IAM 인증</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">Azure OpenAI</span><br><span class="provider-type">azopenai</span></td>
+                        <td>REST API</td>
+                        <td><span class="check">&#10003;</span> Function Call</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-enterprise">Enterprise</span></td>
+                        <td>Microsoft Azure 클라우드<br>커스텀 엔드포인트 지원</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">Ollama</span><br><span class="provider-type">ollama</span></td>
+                        <td>REST API</td>
+                        <td><span class="check">&#10003;</span> Native Tool</td>
+                        <td><span class="check">&#10003;</span> NDJSON</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-local">Local</span></td>
+                        <td>LLaMA, Mistral 등 로컬 실행<br>폐쇄망 환경 지원</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">LiteLLM</span><br><span class="provider-type">litellm</span></td>
+                        <td>Proxy</td>
+                        <td><span class="check">&#10003;</span> Delegate</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-proxy">Proxy</span></td>
+                        <td>100+ LLM 프록시 지원<br>OpenAI-compatible 인터페이스</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">OpenRouter</span><br><span class="provider-type">openrouter</span></td>
+                        <td>Proxy</td>
+                        <td><span class="check">&#10003;</span> Function Call</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-proxy">Proxy</span></td>
+                        <td>다수 모델 라우팅<br>OpenAI-compatible API</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">Upstage Solar</span><br><span class="provider-type">solar</span></td>
+                        <td>REST API</td>
+                        <td><span class="check">&#10003;</span> Function Call</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-cloud">Cloud</span></td>
+                        <td>한국형 LLM (Solar Pro2)<br>OpenAI-compatible API</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="llm-note">
+                <strong>Tip:</strong> 모든 Provider는 config.yaml에서 <code>llm.provider</code> 필드로 설정하며,
+                Tool Calling은 kubectl, bash, MCP 도구를 AI가 직접 실행할 때 필요합니다.
+                Ollama는 로컬/폐쇄망 환경에 최적화되어 있습니다.
+            </div>
+        </div>
+        <div class="slide-number">6 / 20</div>
+    </div>
+
+    <!-- Slide 7: AI Answering Flow -->
     <div class="slide slide-arch">
         <div class="slide-header">
             <h2>K13D가 답변을 내는 과정</h2>
@@ -2656,10 +2996,10 @@
                 </div>
             </div>
         </div>
-        <div class="slide-number">6 / 20</div>
+        <div class="slide-number">7 / 20</div>
     </div>
 
-    <!-- Slide 7: Overview -->
+    <!-- Slide 8: Overview -->
     <div class="slide slide-2">
         <div class="slide-header">
             <h2>주요 개선 작업</h2>
@@ -2705,10 +3045,10 @@
                 <div class="stat-label">Lines Removed</div>
             </div>
         </div>
-        <div class="slide-number">7 / 20</div>
+        <div class="slide-number">8 / 20</div>
     </div>
 
-    <!-- Slide 8: Web UI Features -->
+    <!-- Slide 9: Web UI Features -->
     <div class="slide slide-3">
         <div class="slide-header">
             <h2>Web UI 주요 업데이트</h2>
@@ -2750,10 +3090,10 @@
                 <p>브랜딩 정리, 미니멀리스트 디자인</p>
             </div>
         </div>
-        <div class="slide-number">8 / 20</div>
+        <div class="slide-number">9 / 20</div>
     </div>
 
-    <!-- Slide 9: Web UI Screenshot 1 -->
+    <!-- Slide 10: Web UI Screenshot 1 -->
     <div class="slide slide-6">
         <div class="slide-header">
             <h2>Web UI 개선 화면</h2>
@@ -2762,10 +3102,10 @@
         <div class="cli-screenshot">
             <img src="screenshot-web1.png" alt="Web UI Dashboard">
         </div>
-        <div class="slide-number">9 / 20</div>
+        <div class="slide-number">10 / 20</div>
     </div>
 
-    <!-- Slide 10: Web UI Screenshot 2 -->
+    <!-- Slide 11: Web UI Screenshot 2 -->
     <div class="slide slide-6">
         <div class="slide-header">
             <h2>Web UI 개선 화면</h2>
@@ -2774,10 +3114,10 @@
         <div class="cli-screenshot">
             <img src="screenshot-web2.png" alt="AI Assistant Panel">
         </div>
-        <div class="slide-number">10 / 20</div>
+        <div class="slide-number">11 / 20</div>
     </div>
 
-    <!-- Slide 11: Web UI Screenshot 3 -->
+    <!-- Slide 12: Web UI Screenshot 3 -->
     <div class="slide slide-7">
         <div class="slide-header">
             <h2>Web UI 개선 화면</h2>
@@ -2786,10 +3126,10 @@
         <div class="cli-screenshot">
             <img src="screenshot-web3.png" alt="Cluster Visualizer">
         </div>
-        <div class="slide-number">11 / 20</div>
+        <div class="slide-number">12 / 20</div>
     </div>
 
-    <!-- Slide 12: Web UI Screenshot 4 -->
+    <!-- Slide 13: Web UI Screenshot 4 -->
     <div class="slide slide-8">
         <div class="slide-header">
             <h2>Web UI 개선 화면</h2>
@@ -2798,10 +3138,10 @@
         <div class="cli-screenshot">
             <img src="screenshot-web4.png" alt="Web UI Settings">
         </div>
-        <div class="slide-number">12 / 20</div>
+        <div class="slide-number">13 / 20</div>
     </div>
 
-    <!-- Slide 16: TUI Screenshot (moved after 12) -->
+    <!-- Slide 14: TUI Screenshot -->
     <div class="slide slide-12">
         <div class="slide-header">
             <h2>TUI 개선 화면</h2>
@@ -2810,10 +3150,10 @@
         <div class="cli-screenshot">
             <img src="screenshot-tui.png" alt="TUI Screenshot">
         </div>
-        <div class="slide-number">16 / 20</div>
+        <div class="slide-number">14 / 20</div>
     </div>
 
-    <!-- Slide 13: CLI Features -->
+    <!-- Slide 15: CLI Features -->
     <div class="slide slide-9">
         <div class="slide-header">
             <h2>CLI 추가 (신규)</h2>
@@ -2904,10 +3244,10 @@
                 </div>
             </div>
         </div>
-        <div class="slide-number">13 / 20</div>
+        <div class="slide-number">15 / 20</div>
     </div>
 
-    <!-- Slide 14: CLI Screenshot -->
+    <!-- Slide 16: CLI Screenshot -->
     <div class="slide slide-10">
         <div class="slide-header">
             <h2>CLI 실제 구현 화면</h2>
@@ -2916,7 +3256,7 @@
         <div class="cli-screenshot">
             <img src="screenshot-cli.png" alt="CLI Screenshot">
         </div>
-        <div class="slide-number">14 / 20</div>
+        <div class="slide-number">16 / 20</div>
     </div>
 
     <!-- Slide 17: Technical -->
@@ -3071,7 +3411,7 @@
         </div>
         <div class="slide-number">20 / 20</div>
     </div>
-    <div class="nav-hint">← → 키로 슬라이드 이동 | Ctrl+P로 인쇄</div>
+    <div class="nav-hint">&larr; &rarr; 키로 슬라이드 이동 | Ctrl+P로 인쇄</div>
 
     <button class="pdf-download-btn" onclick="downloadPDF()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
