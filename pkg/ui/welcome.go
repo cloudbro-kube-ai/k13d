@@ -32,7 +32,6 @@ type WelcomeScreen struct {
 	input        *tview.InputField
 	hintBar      *tview.TextView
 	onComplete   func(cmd string)
-	selectedItem int
 }
 
 // NewWelcomeScreen creates a new welcome screen

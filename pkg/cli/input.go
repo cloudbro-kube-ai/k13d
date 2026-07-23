@@ -107,7 +107,7 @@ func (c *CLI) readLine() (string, error) {
 						seq[0] = key[0]
 						for i := 1; i < n; i++ {
 							var b [1]byte
-							os.Stdin.Read(b[:])
+							_, _ = os.Stdin.Read(b[:])
 							seq[i] = b[0]
 						}
 						buf = append(buf[:cursorPos], append(seq, buf[cursorPos:]...)...)

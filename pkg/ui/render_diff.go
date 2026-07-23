@@ -99,12 +99,6 @@ func syncDataRows(table *tview.Table, keys []string, rows [][]string, cfg tableR
 		row := rows[targetIdx]
 		tableRow := dataRowOffset + targetIdx
 
-		// Recalculate count since prior iterations may have inserted/removed rows.
-		currentCount := table.GetRowCount() - dataRowOffset
-		if currentCount < 0 {
-			currentCount = 0
-		}
-
 		// Find an existing row with this key at or after the target position.
 		existingIdx := findRowByKeyFrom(table, key, cfg.resource, targetIdx)
 
@@ -173,18 +167,6 @@ func cellKeyAt(table *tview.Table, dataIdx int, resource string) string {
 		return ""
 	}
 	return ns.Text + "/" + name.Text
-}
-
-// readRowCells reads up to n cells from a data row as plain text.
-func readRowCells(table *tview.Table, dataIdx, n int) []string {
-	out := make([]string, n)
-	for c := 0; c < n; c++ {
-		cell := table.GetCell(dataRowOffset+dataIdx, c)
-		if cell != nil {
-			out[c] = cell.Text
-		}
-	}
-	return out
 }
 
 // writeRowCells writes each cell of a row, skipping cells whose text already

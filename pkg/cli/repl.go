@@ -494,7 +494,7 @@ func (c *CLI) toolApprovalCallback(toolName string, argsJSON string) bool {
 	fmt.Print("[green]Approve?[-] (Y/A/n/q): ")
 
 	var response string
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response)
 	response = strings.TrimSpace(strings.ToLower(response))
 
 	switch response {
