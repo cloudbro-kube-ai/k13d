@@ -189,9 +189,9 @@ func TestAnalyzerConditionalDangerousFlags(t *testing.T) {
 	analyzer := NewAnalyzer()
 
 	tests := []struct {
-		cmd           string
-		isDangerous   bool
-		description   string
+		cmd         string
+		isDangerous bool
+		description string
 	}{
 		// Read-only commands with -A should NOT be dangerous
 		{"kubectl get pods -A", false, "get pods with -A is read-only"},

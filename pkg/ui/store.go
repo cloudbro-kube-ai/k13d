@@ -23,7 +23,7 @@ type ResourceStore struct {
 	mu sync.RWMutex
 
 	headers []string
-	order   []string          // insertion order of keys (preserves stable display order)
+	order   []string            // insertion order of keys (preserves stable display order)
 	rows    map[string][]string // key -> row cells
 }
 

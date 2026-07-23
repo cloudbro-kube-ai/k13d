@@ -32,8 +32,8 @@ func GetFactory() *ProviderFactory {
 			providers: make(map[string]func(*ProviderConfig) (Provider, error)),
 		}
 		// Register built-in providers
-		defaultFactory.Register("solar", NewOpenAIProvider)     // Upstage Solar (OpenAI-compatible)
-		defaultFactory.Register("upstage", NewOpenAIProvider)   // alias for solar
+		defaultFactory.Register("solar", NewOpenAIProvider)      // Upstage Solar (OpenAI-compatible)
+		defaultFactory.Register("upstage", NewOpenAIProvider)    // alias for solar
 		defaultFactory.Register("openrouter", NewOpenAIProvider) // OpenRouter (OpenAI-compatible)
 		defaultFactory.Register("openai", NewOpenAIProvider)
 		defaultFactory.Register("litellm", NewLiteLLMProvider)

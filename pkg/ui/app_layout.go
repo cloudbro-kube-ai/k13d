@@ -635,7 +635,7 @@ func (a *App) rebuildContentLayout(focusAI bool) {
 	// Check if layout actually needs to change to avoid unnecessary Clear()
 	currentItemCount := a.contentFlex.GetItemCount()
 	needsRebuild := false
-	
+
 	if showAI && fullscreen {
 		// Fullscreen AI: should have 1 item (aiContainer)
 		needsRebuild = currentItemCount != 1
@@ -646,7 +646,7 @@ func (a *App) rebuildContentLayout(focusAI bool) {
 		// Table only: should have 1 item (table)
 		needsRebuild = currentItemCount != 1
 	}
-	
+
 	// Only rebuild if layout structure changed
 	if needsRebuild {
 		a.contentFlex.Clear()
@@ -659,7 +659,7 @@ func (a *App) rebuildContentLayout(focusAI bool) {
 			}
 		}
 	}
-	
+
 	if focusAI && showAI {
 		a.focusAIInput()
 	} else {
