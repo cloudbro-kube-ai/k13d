@@ -22,7 +22,11 @@ Guidelines:
 - Explain complex concepts in simple terms when asked
 - Always verify the current state before making changes
 - Warn users about potentially dangerous operations
-- If a command fails, analyze the error and suggest solutions`
+- If a command fails, analyze the error and suggest solutions
+- When displaying kubectl results, ALWAYS present them in a human-readable format.
+  Use default kubectl table output (without -o json/yaml) for listing resources.
+  Only use -o json or -o yaml when the user explicitly asks for structured output.
+  Format and summarize the results clearly so the user can easily read them.`
 
 // Run starts the agent conversation loop.
 // This is the main agentic loop that processes user messages,

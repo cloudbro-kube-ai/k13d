@@ -138,6 +138,7 @@ type App struct {
 	selectedRows        map[int]bool      // Multi-select: selected row indices (k9s Space key)
 	sortColumn          int               // Current sort column index (-1 = none)
 	sortAscending       bool              // Sort direction (true = ascending, false = descending)
+	store               *ResourceStore    // Resource data store for diff rendering
 
 	// Command history
 	cmdHistory        []string
@@ -311,6 +312,7 @@ func NewAppWithNamespace(initialNamespace string) *App {
 		selectedRows:        make(map[int]bool),
 		sortColumn:          -1,
 		sortAscending:       true,
+		store:               NewResourceStore(),
 		cmdHistoryIdx:       -1,
 		aiInputHistoryIdx:   -1,
 		pendingToolApproval: make(chan bool, 1),
@@ -395,7 +397,9 @@ func (a *App) Run() error {
 	})
 
 	go func() {
-		ticker := time.NewTicker(250 * time.Millisecond)
+		// Reduced from 250ms to 500ms to minimize unnecessary redraws
+		// and reduce flicker during loading states
+		ticker := time.NewTicker(500 * time.Millisecond)
 		defer ticker.Stop()
 		for {
 			if atomic.LoadInt32(&a.stopping) == 1 {

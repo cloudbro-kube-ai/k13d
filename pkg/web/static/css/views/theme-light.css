@@ -4,13 +4,95 @@
  * for login, modals, detail panels, etc.
  * ========================================== */
 
-/* Login page */
-html[data-theme="light"] .login-container::before {
+/* Login page - Split layout */
+html[data-theme="light"] .login-left {
+    background:
+        radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.45) 0%, transparent 45%),
+        radial-gradient(circle at 80% 30%, rgba(168, 85, 247, 0.40) 0%, transparent 45%),
+        radial-gradient(circle at 30% 80%, rgba(59, 130, 246, 0.38) 0%, transparent 45%),
+        radial-gradient(circle at 75% 78%, rgba(139, 92, 246, 0.35) 0%, transparent 45%),
+        linear-gradient(135deg, #4f46e5 0%, #6d28d9 50%, #7c3aed 100%);
+}
+html[data-theme="light"] .login-left::before {
     background-image:
-        radial-gradient(circle at 20% 80%, rgba(52, 84, 138, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(90, 74, 120, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 40% 40%, rgba(22, 103, 117, 0.04) 0%, transparent 40%),
-        radial-gradient(circle at 60% 60%, rgba(72, 94, 48, 0.04) 0%, transparent 40%);
+        radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.18) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.14) 0%, transparent 50%);
+}
+html[data-theme="light"] .login-right {
+    background: var(--bg-primary);
+}
+html[data-theme="light"] .login-box input {
+    border-color: rgba(52, 84, 138, 0.15);
+}
+html[data-theme="light"] .login-box input:focus {
+    box-shadow: 0 0 0 3px rgba(52, 84, 138, 0.1);
+}
+html[data-theme="light"] .login-box button.login-btn:hover {
+    box-shadow: 0 8px 24px rgba(52, 84, 138, 0.25);
+}
+html[data-theme="light"] .login-box button.login-btn:focus {
+    box-shadow: 0 0 0 3px rgba(52, 84, 138, 0.2), 0 8px 24px rgba(52, 84, 138, 0.25);
+}
+html[data-theme="light"] .login-error {
+    background: rgba(140, 67, 81, 0.08);
+    border-color: rgba(140, 67, 81, 0.15);
+}
+html[data-theme="light"] .login-footer {
+    border-top-color: rgba(52, 84, 138, 0.08);
+}
+html[data-theme="light"] .token-help-box {
+    border-color: rgba(52, 84, 138, 0.1);
+}
+html[data-theme="light"] .token-help-toggle:hover {
+    background: rgba(52, 84, 138, 0.06);
+}
+html[data-theme="light"] .token-help-note {
+    background: rgba(143, 94, 21, 0.06);
+    border-color: rgba(143, 94, 21, 0.12);
+}
+html[data-theme="light"] .auth-mode-indicator.token-mode {
+    background: rgba(72, 94, 48, 0.08);
+    border-color: rgba(72, 94, 48, 0.15);
+}
+html[data-theme="light"] .auth-mode-indicator.local-mode {
+    background: rgba(52, 84, 138, 0.06);
+    border-color: rgba(52, 84, 138, 0.12);
+}
+
+/* Re-apply dark values for auto dark mode */
+@media (prefers-color-scheme: dark) {
+    html[data-theme="light"] .login-left {
+        background:
+            radial-gradient(circle at 20% 20%, rgba(124, 144, 255, 0.55) 0%, transparent 45%),
+            radial-gradient(circle at 80% 30%, rgba(187, 154, 247, 0.50) 0%, transparent 45%),
+            radial-gradient(circle at 30% 80%, rgba(76, 201, 240, 0.45) 0%, transparent 45%),
+            radial-gradient(circle at 75% 78%, rgba(129, 140, 248, 0.45) 0%, transparent 45%),
+            linear-gradient(135deg, #1b1f3b 0%, #2a2d52 50%, #3a2a5e 100%);
+    }
+    html[data-theme="light"] .login-left::before {
+        background-image:
+            radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    }
+    html[data-theme="light"] .login-box input {
+        border-color: rgba(122, 162, 247, 0.2);
+    }
+    html[data-theme="light"] .login-box input:focus {
+        box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.15);
+    }
+    html[data-theme="light"] .login-box button.login-btn:hover {
+        box-shadow: 0 10px 30px rgba(122, 162, 247, 0.3);
+    }
+    html[data-theme="light"] .login-box button.login-btn:focus {
+        box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.3), 0 10px 30px rgba(122, 162, 247, 0.3);
+    }
+    html[data-theme="light"] .login-error {
+        background: rgba(247, 118, 142, 0.1);
+        border-color: rgba(247, 118, 142, 0.2);
+    }
+    html[data-theme="light"] .login-footer {
+        border-top-color: rgba(122, 162, 247, 0.1);
+    }
 }
 html[data-theme="light"] .login-box {
     box-shadow:

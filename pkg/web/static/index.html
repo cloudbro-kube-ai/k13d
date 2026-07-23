@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="ollama">
 
 <head>
     <meta charset="UTF-8">
@@ -54,106 +54,135 @@
 <body>
     <!-- Login Page -->
     <div class="login-container" id="login-page">
-        <div class="login-box">
-            <!-- Team Branding -->
-            <div class="team-branding">
-                <span class="team-cloud">☁️ Cloud Bro</span>
-                <span class="team-divider">×</span>
-                <span class="team-kubeai">KubeAI Team</span>
-            </div>
-
-            <!-- ASCII Art Logo -->
-            <div class="login-ascii-logo">
+        <!-- Left Panel - Branding -->
+        <div class="login-left">
+            <div class="login-branding">
+                <!-- ASCII Art Logo -->
+                <div class="login-ascii-logo">
 ██╗ ██╗ ██╗██████╗ ██████╗
 ██║ ██╔╝███║╚════██╗██╔══██╗
 █████╔╝ ╚██║ █████╔╝██║ ██║
 ██╔═██╗ ██║ ╚═══██╗██║ ██║
 ██║ ██╗ ██║██████╔╝██████╔╝
 ╚═╝ ╚═╝ ╚═╝╚═════╝ ╚═════╝</div>
-            <h1>k13d</h1>
-            <div class="login-subtitle"><span>kube-ai-dashboard</span></div>
+                <h1 class="login-title">k13d</h1>
+                <div class="login-subtitle"><span>kube-ai-dashboard</span></div>
 
-            <!-- Auth Mode Indicator -->
-            <div id="auth-mode-indicator" class="auth-mode-indicator"></div>
-
-            <div class="login-error" id="login-error"></div>
-
-            <!-- Token Login Form (for token mode) -->
-            <div id="token-login-form" class="login-form">
-                <div class="token-hint" id="token-hint">
-                    <div style="margin-bottom: 12px;">🔐 <span data-i18n="login_token_hint">Sign in with your Kubernetes ServiceAccount token</span></div>
-                    <div class="token-help-box" id="token-help-box">
-                        <div class="token-help-toggle" onclick="toggleTokenHelp()" role="button" tabindex="0">
-                            <span class="token-help-toggle-text">📋 <span data-i18n="login_token_help_toggle">How to create a token</span></span>
-                            <span class="token-help-toggle-icon">▼</span>
+                <!-- Features -->
+                <div class="login-features">
+                    <div class="login-feature">
+                        <span class="feature-icon"><i data-lucide="bot" style="width:24px;height:24px"></i></span>
+                        <div>
+                            <strong data-i18n="login_feature_ai">AI Assistant</strong>
+                            <p data-i18n="login_feature_ai_desc">Natural language cluster management</p>
                         </div>
-                        <div class="token-help-content">
-                            <div class="token-help-step">
-                                <span class="step-num">1</span>
-                                <div>
-                                    <div data-i18n="login_token_step1">Create ServiceAccount (optional):</div>
-                                    <code>kubectl create sa my-user -n default</code>
-                                </div>
-                            </div>
-                            <div class="token-help-step">
-                                <span class="step-num">2</span>
-                                <div>
-                                    <div data-i18n="login_token_step2">Grant permissions:</div>
-                                    <code>kubectl create clusterrolebinding my-user-binding \<br/>  --clusterrole=cluster-admin \<br/>  --serviceaccount=default:my-user</code>
-                                </div>
-                            </div>
-                            <div class="token-help-step">
-                                <span class="step-num">3</span>
-                                <div>
-                                    <div data-i18n="login_token_step3">Create token:</div>
-                                    <code>kubectl create token my-user -n default --duration=8760h</code>
-                                </div>
-                            </div>
-                            <div class="token-help-note">
-                                💡 <strong>Tip:</strong> <span data-i18n="login_token_tip">Paste the token below and press Enter!</span>
-                            </div>
+                    </div>
+                    <div class="login-feature">
+                        <span class="feature-icon"><i data-lucide="zap" style="width:24px;height:24px"></i></span>
+                        <div>
+                            <strong data-i18n="login_feature_monitoring">Real-time Monitoring</strong>
+                            <p data-i18n="login_feature_monitoring_desc">Live resource status and metrics</p>
+                        </div>
+                    </div>
+                    <div class="login-feature">
+                        <span class="feature-icon"><i data-lucide="shield" style="width:24px;height:24px"></i></span>
+                        <div>
+                            <strong data-i18n="login_feature_safety">Safety First</strong>
+                            <p data-i18n="login_feature_safety_desc">Guardrails for dangerous operations</p>
                         </div>
                     </div>
                 </div>
-                <label for="login-token" class="sr-only">Kubernetes Token</label>
-                <textarea id="login-token" class="token-input" placeholder="eyJhbGciOiJSUzI1NiIs..."
-                    aria-label="Kubernetes service account token" onkeydown="handleTokenKeydown(event)"></textarea>
-                <button class="login-btn" onclick="loginWithToken()">🚀 Sign In with Token</button>
-            </div>
 
-            <!-- Password Login Form (for local mode) -->
-            <div id="password-login-form" class="login-form">
-                <div class="local-login-hint">
-                    <div style="margin-bottom: 8px;">👤 <span data-i18n="login_local_hint">로컬 계정으로 로그인하세요</span></div>
-                    <div style="font-size: 11px; color: var(--text-muted);"><span data-i18n="login_local_sub_hint">Ask your administrator for credentials</span></div>
-                </div>
-                <label for="login-username" class="sr-only">Username</label>
-                <input type="text" id="login-username" placeholder="Username" aria-label="Username"
-                    autocomplete="username" onkeydown="handlePasswordKeydown(event)">
-                <label for="login-password" class="sr-only">Password</label>
-                <input type="password" id="login-password" placeholder="Password" aria-label="Password"
-                    autocomplete="current-password" onkeydown="handlePasswordKeydown(event)">
-                <button class="login-btn" onclick="login()">🚀 Sign In</button>
-            </div>
 
-            <!-- Footer with branding -->
-            <div class="login-footer">
-                <div class="login-k8s-badge">
-                    <svg viewBox="0 0 32 32" fill="currentColor">
-                        <path
-                            d="M16 0C7.2 0 0 7.2 0 16s7.2 16 16 16 16-7.2 16-16S24.8 0 16 0zm0 2c7.7 0 14 6.3 14 14s-6.3 14-14 14S2 23.7 2 16 8.3 2 16 2z" />
-                        <circle cx="16" cy="16" r="4" />
-                        <circle cx="16" cy="6" r="2" />
-                        <circle cx="24.5" cy="11" r="2" />
-                        <circle cx="24.5" cy="21" r="2" />
-                        <circle cx="16" cy="26" r="2" />
-                        <circle cx="7.5" cy="21" r="2" />
-                        <circle cx="7.5" cy="11" r="2" />
-                    </svg>
-                    Powered by Kubernetes
+            </div>
+        </div>
+
+        <!-- Right Panel - Login Form -->
+        <div class="login-right">
+            <div class="login-box">
+                <div class="login-form-header">
+                    <h2 data-i18n="login_welcome">Welcome</h2>
+                    <p data-i18n="login_subtitle">Sign in to your account</p>
                 </div>
-                <div class="login-version">
-                    Made with 💙 by <strong>Cloud Bro KubeAI Team</strong>
+
+                <!-- Auth Mode Indicator -->
+                <div id="auth-mode-indicator" class="auth-mode-indicator"></div>
+
+                <div class="login-error" id="login-error"></div>
+
+                <!-- Token Login Form (for token mode) -->
+                <div id="token-login-form" class="login-form">
+                    <div class="token-hint" id="token-hint">
+                        <div style="margin-bottom: 12px;"><i data-lucide="lock" style="width:16px;height:16px;vertical-align:middle"></i> <span data-i18n="login_token_hint">Sign in with your Kubernetes ServiceAccount token</span></div>
+                        <div class="token-help-box" id="token-help-box">
+                            <div class="token-help-toggle" onclick="toggleTokenHelp()" role="button" tabindex="0">
+                                <span class="token-help-toggle-text"><i data-lucide="clipboard-list" style="width:14px;height:14px;vertical-align:middle"></i> <span data-i18n="login_token_help_toggle">How to create a token</span></span>
+                                <span class="token-help-toggle-icon">▼</span>
+                            </div>
+                            <div class="token-help-content">
+                                <div class="token-help-step">
+                                    <span class="step-num">1</span>
+                                    <div>
+                                        <div data-i18n="login_token_step1">Create ServiceAccount (optional):</div>
+                                        <code>kubectl create sa my-user -n default</code>
+                                    </div>
+                                </div>
+                                <div class="token-help-step">
+                                    <span class="step-num">2</span>
+                                    <div>
+                                        <div data-i18n="login_token_step2">Grant permissions:</div>
+                                        <code>kubectl create clusterrolebinding my-user-binding \<br/>  --clusterrole=cluster-admin \<br/>  --serviceaccount=default:my-user</code>
+                                    </div>
+                                </div>
+                                <div class="token-help-step">
+                                    <span class="step-num">3</span>
+                                    <div>
+                                        <div data-i18n="login_token_step3">Create token:</div>
+                                        <code>kubectl create token my-user -n default --duration=8760h</code>
+                                    </div>
+                                </div>
+                                <div class="token-help-note">
+                                    <i data-lucide="lightbulb" style="width:14px;height:14px;vertical-align:middle"></i> <strong>Tip:</strong> <span data-i18n="login_token_tip">Paste the token below and press Enter!</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <label for="login-token" class="sr-only">Kubernetes Token</label>
+                    <textarea id="login-token" class="token-input" placeholder="eyJhbGciOiJSUzI1NiIs..."
+                        aria-label="Kubernetes service account token" onkeydown="handleTokenKeydown(event)"></textarea>
+                    <button class="login-btn" onclick="loginWithToken()">Sign In with Token</button>
+                </div>
+
+                <!-- Password Login Form (for local mode) -->
+                <div id="password-login-form" class="login-form">
+                    <div class="local-login-hint">
+                        <div style="margin-bottom: 8px;"><i data-lucide="user" style="width:16px;height:16px;vertical-align:middle"></i> <span data-i18n="login_local_hint">로컬 계정으로 로그인하세요</span></div>
+                        <div style="font-size: 11px; color: var(--text-muted);"><span data-i18n="login_local_sub_hint">Ask your administrator for credentials</span></div>
+                    </div>
+                    <label for="login-username" class="sr-only">Username</label>
+                    <input type="text" id="login-username" placeholder="Username" aria-label="Username"
+                        autocomplete="username" onkeydown="handlePasswordKeydown(event)">
+                    <label for="login-password" class="sr-only">Password</label>
+                    <input type="password" id="login-password" placeholder="Password" aria-label="Password"
+                        autocomplete="current-password" onkeydown="handlePasswordKeydown(event)">
+                    <button class="login-btn" onclick="login()">Sign In</button>
+                </div>
+
+                <!-- Footer -->
+                <div class="login-footer">
+                    <div class="login-k8s-badge">
+                        <svg viewBox="0 0 32 32" fill="currentColor">
+                            <path d="M16 0C7.2 0 0 7.2 0 16s7.2 16 16 16 16-7.2 16-16S24.8 0 16 0zm0 2c7.7 0 14 6.3 14 14s-6.3 14-14 14S2 23.7 2 16 8.3 2 16 2z" />
+                            <circle cx="16" cy="16" r="4" />
+                            <circle cx="16" cy="6" r="2" />
+                            <circle cx="24.5" cy="11" r="2" />
+                            <circle cx="24.5" cy="21" r="2" />
+                            <circle cx="16" cy="26" r="2" />
+                            <circle cx="7.5" cy="21" r="2" />
+                            <circle cx="7.5" cy="11" r="2" />
+                        </svg>
+                        <span>by Cloud Bro KubeAI Team</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -163,33 +192,24 @@
     <div class="app-container" id="app">
         <!-- Top Bar -->
         <div class="top-bar" role="banner">
-            <div class="top-bar-brand" style="display: flex; align-items: center;">
-                <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" title="Toggle Sidebar (B)"
-                    aria-label="Toggle navigation" aria-expanded="false">
-                    <span class="hamburger-line"></span>
-                    <span class="hamburger-line"></span>
-                    <span class="hamburger-line"></span>
-                    <span class="sidebar-toggle-icon" id="sidebar-toggle-icon">«</span>
-                </button>
-                <div class="logo">k13d</div>
-                <div class="header-team-badge">
-                    <span class="header-team-cloud">☁️</span>
-                    <span class="header-team-text">Cloud Bro × KubeAI</span>
+                <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar (B)"
+                    data-i18n-title="title_toggle_sidebar" aria-label="Toggle sidebar" aria-expanded="false">
+                <i data-lucide="menu" style="width:18px;height:18px"></i>
+            </button>
+                <div class="search-container">
+                    <span class="search-icon"><i data-lucide="search" style="width:16px;height:16px"></i></span>
+                    <input type="text" class="global-search" id="global-search" placeholder="Search all resources..."
+                        data-i18n-placeholder="title_search"
+                        oninput="handleGlobalSearchInput(event)" onkeydown="handleGlobalSearchKeydown(event)"
+                        onfocus="showSearchResults()" autocomplete="off">
+                    <div class="search-results" id="search-results"></div>
                 </div>
-            </div>
-            <div class="search-container">
-                <span class="search-icon">🔍</span>
-                <input type="text" class="global-search" id="global-search" placeholder="Search all resources..."
-                    oninput="handleGlobalSearchInput(event)" onkeydown="handleGlobalSearchKeydown(event)"
-                    onfocus="showSearchResults()" autocomplete="off">
-                <span class="search-shortcut">⌘K</span>
-                <div class="search-results" id="search-results"></div>
-            </div>
             <div class="cluster-switcher" id="cluster-switcher">
-                <button class="cluster-switcher-btn" onclick="toggleClusterDropdown()" title="Switch Cluster Context">
-                    <span class="cluster-icon">⎈</span>
+                <button class="cluster-switcher-btn" onclick="toggleClusterDropdown()" title="Switch Cluster Context"
+                    data-i18n-title="title_switch_cluster">
+                    <span class="cluster-icon"><i data-lucide="container" style="width:16px;height:16px"></i></span>
                     <span class="cluster-name" id="cluster-name">default</span>
-                    <span class="cluster-arrow">▾</span>
+                    <span class="cluster-arrow"><i data-lucide="chevron-down" style="width:14px;height:14px"></i></span>
                 </button>
                 <div class="cluster-dropdown" id="cluster-dropdown">
                     <div class="cluster-dropdown-header">Kubernetes Contexts</div>
@@ -203,7 +223,7 @@
                 <span id="health-status">Connected</span>
             </div>
             <div class="auto-refresh-container">
-                <button class="refresh-btn" onclick="manualRefresh()" title="Refresh now" aria-label="Refresh now">
+                <button class="refresh-btn" onclick="manualRefresh()" title="Refresh now" data-i18n-title="title_refresh_now" aria-label="Refresh now">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         aria-hidden="true">
                         <path d="M23 4v6h-6M1 20v-6h6" />
@@ -225,10 +245,15 @@
                 <span class="last-refresh-time" id="last-refresh-time">--:--:--</span>
             </div>
             <div class="user-info">
-                <span class="user-badge" id="user-badge">admin</span>
-                <button class="logout-btn" onclick="showShortcuts()" aria-label="Keyboard shortcuts">?</button>
-                <button class="logout-btn" onclick="showSettings()">Settings</button>
-                <button class="logout-btn" id="logout-btn" onclick="logout()">Logout</button>
+                <span class="user-badge" id="user-badge" onclick="showSettings('admin')" title="Settings - Admin">admin</span>
+                <button class="logout-btn" onclick="showShortcuts()" aria-label="Keyboard shortcuts" title="Keyboard Shortcuts" data-i18n-title="title_shortcuts"><i data-lucide="keyboard" style="width:14px;height:14px"></i></button>
+                <button class="logout-btn" id="theme-toggle-btn" onclick="toggleDarkMode()" title="Toggle Dark Mode" data-i18n-title="title_toggle_dark_mode">
+                    <i data-lucide="sun" id="theme-icon-light" style="width:14px;height:14px;display:none"></i>
+                    <i data-lucide="moon" id="theme-icon-dark" style="width:14px;height:14px"></i>
+                </button>
+                <button class="logout-btn" onclick="showSettings()" title="Settings" data-i18n-title="title_settings"><i data-lucide="settings" style="width:14px;height:14px"></i></button>
+                <button class="logout-btn ai-header-toggle" id="ai-header-toggle-btn" onclick="toggleAIPanel()" title="Toggle AI Assistant (A key)" data-i18n-title="title_toggle_ai"><i data-lucide="bot" style="width:14px;height:14px"></i></button>
+                <button class="logout-btn" id="logout-btn" onclick="logout()" title="Logout" data-i18n-title="title_logout"><i data-lucide="log-out" style="width:14px;height:14px"></i></button>
             </div>
         </div>
 
@@ -245,200 +270,262 @@
                     <button class="sidebar-close-btn" onclick="toggleSidebar()" title="Close"
                         aria-label="Close sidebar">&times;</button>
                 </div>
-                <div class="nav-section">
-                    <div class="nav-item" data-resource="overview" onclick="showOverviewPanel()"
-                        style="font-weight: 600; margin-bottom: 8px;" role="button" tabindex="0">
-                        <span data-i18n="nav_overview">Overview</span>
-                    </div>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_workloads">Workloads</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item active" data-resource="pods" onclick="switchResource('pods')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_pods">Pods</span>
-                        <span class="count" id="pods-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="deployments" onclick="switchResource('deployments')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_deployments">Deployments</span>
-                        <span class="count" id="deployments-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="daemonsets" onclick="switchResource('daemonsets')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_daemonsets">DaemonSets</span>
-                        <span class="count" id="daemonsets-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="statefulsets" onclick="switchResource('statefulsets')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_statefulsets">StatefulSets</span>
-                        <span class="count" id="statefulsets-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="replicasets" onclick="switchResource('replicasets')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_replicasets">ReplicaSets</span>
-                        <span class="count" id="replicasets-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="jobs" onclick="switchResource('jobs')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_jobs">Jobs</span>
-                        <span class="count" id="jobs-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="cronjobs" onclick="switchResource('cronjobs')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_cronjobs">CronJobs</span>
-                        <span class="count" id="cronjobs-count">0</span>
-                    </div>
+
+                <!-- Sidebar Logo -->
+                <div class="sidebar-logo-container">
+                    <a href="#" class="sidebar-logo" onclick="showOverviewPanel(); return false;">
+                        <span class="sidebar-logo-icon">K</span>
+                        <span class="sidebar-logo-text">k13d</span>
+                    </a>
                 </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_network">Network</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="services" onclick="switchResource('services')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_services">Services</span>
-                        <span class="count" id="services-count">0</span>
+                <!-- Sidebar Navigation -->
+                <div class="sidebar-nav">
+                    <!-- WORKLOADS Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="box"></i></span>
+                            <span class="menu-group-title-text" data-i18n="header_workloads">WORKLOADS</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="pods" onclick="switchResource('pods')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="circle"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_pods">Pods</span>
+                                <span class="menu-item-count" id="pods-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="deployments" onclick="switchResource('deployments')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="rocket"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_deployments">Deployments</span>
+                                <span class="menu-item-count" id="deployments-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="daemonsets" onclick="switchResource('daemonsets')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="server"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_daemonsets">DaemonSets</span>
+                                <span class="menu-item-count" id="daemonsets-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="statefulsets" onclick="switchResource('statefulsets')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="database"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_statefulsets">StatefulSets</span>
+                                <span class="menu-item-count" id="statefulsets-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="replicasets" onclick="switchResource('replicasets')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="copy"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_replicasets">ReplicaSets</span>
+                                <span class="menu-item-count" id="replicasets-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="jobs" onclick="switchResource('jobs')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="briefcase"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_jobs">Jobs</span>
+                                <span class="menu-item-count" id="jobs-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="cronjobs" onclick="switchResource('cronjobs')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="clock"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_cronjobs">CronJobs</span>
+                                <span class="menu-item-count" id="cronjobs-count">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="nav-item" data-resource="ingresses" onclick="switchResource('ingresses')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_ingresses">Ingresses</span>
-                        <span class="count" id="ingresses-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="networkpolicies" onclick="switchResource('networkpolicies')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_networkpolicies">NetworkPolicies</span>
-                        <span class="count" id="networkpolicies-count">0</span>
-                    </div>
-                </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_config">Config</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="configmaps" onclick="switchResource('configmaps')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_configmaps">ConfigMaps</span>
-                        <span class="count" id="configmaps-count">0</span>
+                    <!-- NETWORK Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="network"></i></span>
+                            <span class="menu-group-title-text" data-i18n="header_network">NETWORK</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="services" onclick="switchResource('services')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="share-2"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_services">Services</span>
+                                <span class="menu-item-count" id="services-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="ingresses" onclick="switchResource('ingresses')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="globe"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_ingresses">Ingresses</span>
+                                <span class="menu-item-count" id="ingresses-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="networkpolicies" onclick="switchResource('networkpolicies')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="shield"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_networkpolicies">NetworkPolicies</span>
+                                <span class="menu-item-count" id="networkpolicies-count">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="nav-item" data-resource="secrets" onclick="switchResource('secrets')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_secrets">Secrets</span>
-                        <span class="count" id="secrets-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="serviceaccounts" onclick="switchResource('serviceaccounts')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_serviceaccounts">ServiceAccounts</span>
-                        <span class="count" id="serviceaccounts-count">0</span>
-                    </div>
-                </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_storage">Storage</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="persistentvolumes"
-                        onclick="switchResource('persistentvolumes')" role="button" tabindex="0">
-                        <span data-i18n="nav_pvs">PersistentVolumes</span>
-                        <span class="count" id="persistentvolumes-count">0</span>
+                    <!-- CONFIG Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="settings"></i></span>
+                            <span class="menu-group-title-text" data-i18n="header_config">CONFIG</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="configmaps" onclick="switchResource('configmaps')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="file-text"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_configmaps">ConfigMaps</span>
+                                <span class="menu-item-count" id="configmaps-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="secrets" onclick="switchResource('secrets')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="lock"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_secrets">Secrets</span>
+                                <span class="menu-item-count" id="secrets-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="serviceaccounts" onclick="switchResource('serviceaccounts')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="user"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_serviceaccounts">ServiceAccounts</span>
+                                <span class="menu-item-count" id="serviceaccounts-count">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="nav-item" data-resource="persistentvolumeclaims"
-                        onclick="switchResource('persistentvolumeclaims')" role="button" tabindex="0">
-                        <span data-i18n="nav_pvcs">PVCs</span>
-                        <span class="count" id="persistentvolumeclaims-count">0</span>
-                    </div>
-                </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_cluster">Cluster</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="nodes" onclick="switchResource('nodes')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_nodes">Nodes</span>
-                        <span class="count" id="nodes-count">0</span>
+                    <!-- STORAGE Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="hard-drive"></i></span>
+                            <span class="menu-group-title-text" data-i18n="header_storage">STORAGE</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="persistentvolumes" onclick="switchResource('persistentvolumes')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="database"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_pvs">PersistentVolumes</span>
+                                <span class="menu-item-count" id="persistentvolumes-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="persistentvolumeclaims" onclick="switchResource('persistentvolumeclaims')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="file-plus"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_pvcs">PVCs</span>
+                                <span class="menu-item-count" id="persistentvolumeclaims-count">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="nav-item" data-resource="namespaces" onclick="switchResource('namespaces')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_namespaces">Namespaces</span>
-                        <span class="count" id="namespaces-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="events" onclick="switchResource('events')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_events">Events</span>
-                        <span class="count" id="events-count">0</span>
-                    </div>
-                </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_rbac">RBAC</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="roles" onclick="switchResource('roles')" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_roles">Roles</span>
-                        <span class="count" id="roles-count">0</span>
+                    <!-- CLUSTER Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="server"></i></span>
+                            <span class="menu-group-title-text" data-i18n="header_cluster">CLUSTER</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="nodes" onclick="switchResource('nodes')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="cpu"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_nodes">Nodes</span>
+                                <span class="menu-item-count" id="nodes-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="namespaces" onclick="switchResource('namespaces')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="folder"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_namespaces">Namespaces</span>
+                                <span class="menu-item-count" id="namespaces-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="events" onclick="switchResource('events')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="activity"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_events">Events</span>
+                                <span class="menu-item-count" id="events-count">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="nav-item" data-resource="rolebindings" onclick="switchResource('rolebindings')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_rolebindings">RoleBindings</span>
-                        <span class="count" id="rolebindings-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="clusterroles" onclick="switchResource('clusterroles')"
-                        role="button" tabindex="0">
-                        <span data-i18n="nav_clusterroles">ClusterRoles</span>
-                        <span class="count" id="clusterroles-count">0</span>
-                    </div>
-                    <div class="nav-item" data-resource="clusterrolebindings"
-                        onclick="switchResource('clusterrolebindings')" role="button" tabindex="0">
-                        <span data-i18n="nav_clusterrolebindings">ClusterRoleBindings</span>
-                        <span class="count" id="clusterrolebindings-count">0</span>
-                    </div>
-                </div>
 
-                <div class="nav-section" id="crd-nav-section">
-                    <div class="nav-title" style="display: flex; justify-content: space-between; align-items: center;"
-                        onclick="toggleNavSection(this)" role="button" tabindex="0">
-                        Custom Resources
-                        <span class="count" id="crd-count" style="font-size: 10px;">0</span>
-                        <span class="nav-section-arrow">▾</span>
+                    <!-- RBAC Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="shield"></i></span>
+                            <span class="menu-group-title-text" data-i18n="header_rbac">RBAC</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="roles" onclick="switchResource('roles')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="shield-check"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_roles">Roles</span>
+                                <span class="menu-item-count" id="roles-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="rolebindings" onclick="switchResource('rolebindings')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="link"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_rolebindings">RoleBindings</span>
+                                <span class="menu-item-count" id="rolebindings-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="clusterroles" onclick="switchResource('clusterroles')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="shield-alert"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_clusterroles">ClusterRoles</span>
+                                <span class="menu-item-count" id="clusterroles-count">0</span>
+                            </div>
+                            <div class="menu-item" data-resource="clusterrolebindings" onclick="switchResource('clusterrolebindings')" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="unlink"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_clusterrolebindings">ClusterRoleBindings</span>
+                                <span class="menu-item-count" id="clusterrolebindings-count">0</span>
+                            </div>
+                        </div>
                     </div>
-                    <div id="crd-nav-items">
-                        <!-- CRD items will be dynamically loaded here -->
-                    </div>
-                </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0">
-                        <span data-i18n="header_visualization">Visualization</span><span class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="topology" onclick="showTopology()" role="button" tabindex="0">
-                        <span data-i18n="nav_topology">Topology</span>
+                    <!-- CRD Group -->
+                    <div class="menu-group" id="crd-nav-section">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="package"></i></span>
+                            <span class="menu-group-title-text" data-i18n="header_custom_resources">CUSTOM RESOURCES</span>
+                            <span class="menu-item-count" id="crd-count">0</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items" id="crd-nav-items">
+                            <!-- CRD items will be dynamically loaded here -->
+                        </div>
                     </div>
-                    <div class="nav-item" data-resource="applications" onclick="showApplicationsView()" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_applications">Applications</span>
-                    </div>
-                    <div class="nav-item" data-resource="rbac-viz" onclick="showRBACVizView()" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_rbac_viewer">RBAC Viewer</span>
-                    </div>
-                    <div class="nav-item" data-resource="netpol-viz" onclick="showNetPolVizView()" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_netpol_map">Net Policy Map</span>
-                    </div>
-                    <div class="nav-item" data-resource="timeline" onclick="showTimelineView()" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_timeline">Event Timeline</span>
-                    </div>
-                </div>
 
-                <div class="nav-section">
-                    <div class="nav-title" onclick="toggleNavSection(this)" role="button" tabindex="0"><span data-i18n="header_monitoring">Monitoring</span><span
-                            class="nav-section-arrow">▾</span></div>
-                    <div class="nav-item" data-resource="metrics" onclick="showMetricsDashboard()" role="button"
-                        tabindex="0">
-                        <span data-i18n="nav_metrics">Metrics</span>
+                    <!-- VISUALIZATION Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="eye"></i></span>
+                            <span class="menu-group-title-text" data-i18n="header_visualization">VISUALIZATION</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="topology" onclick="showTopology()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="git-branch"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_topology">Topology</span>
+                            </div>
+                            <div class="menu-item" data-resource="applications" onclick="showApplicationsView()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="layers"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_applications">Applications</span>
+                            </div>
+                            <div class="menu-item" data-resource="rbac-viz" onclick="showRBACVizView()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="users"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_rbac_viewer">RBAC Viewer</span>
+                            </div>
+                            <div class="menu-item" data-resource="netpol-viz" onclick="showNetPolVizView()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="share-2"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_netpol_map">Net Policy Map</span>
+                            </div>
+                            <div class="menu-item" data-resource="timeline" onclick="showTimelineView()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="calendar"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_timeline">Event Timeline</span>
+                            </div>
+                            <div class="menu-item" data-resource="cluster-viz" onclick="showClusterVisualizer()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="aperture"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_cluster_visualizer">Cluster Visualizer</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="nav-item" onclick="showAuditLogs()" role="button" tabindex="0">
-                        <span data-i18n="nav_audit_logs">Audit Logs</span>
-                    </div>
-                    <div class="nav-item" onclick="showReports()" role="button" tabindex="0">
-                        <span data-i18n="nav_reports">Reports</span>
+
+                    <!-- MONITORING Group -->
+                    <div class="menu-group">
+                        <div class="menu-group-title" onclick="toggleMenuGroup(this)">
+                            <span class="menu-group-icon"><i data-lucide="activity"></i></span>
+                            <span class="menu-group-title-text" data-i18n="header_monitoring">MONITORING</span>
+                            <span class="menu-group-arrow"><i data-lucide="chevron-down"></i></span>
+                        </div>
+                        <div class="menu-group-items">
+                            <div class="menu-item" data-resource="metrics" onclick="showMetricsDashboard()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="bar-chart-2"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_metrics">Metrics</span>
+                            </div>
+                            <div class="menu-item" onclick="showAuditLogs()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="file-search"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_audit_logs">Audit Logs</span>
+                            </div>
+                            <div class="menu-item" onclick="showReports()" role="button" tabindex="0">
+                                <span class="menu-item-icon"><i data-lucide="clipboard"></i></span>
+                                <span class="menu-item-text" data-i18n="nav_reports">Reports</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -458,8 +545,6 @@
                                 <option value="">All Namespaces</option>
                             </select>
                             <button class="refresh-btn" onclick="refreshData()">↻ Refresh</button>
-                            <button class="ai-toggle-btn" id="ai-toggle-btn" onclick="toggleAIPanel()"
-                                title="Toggle AI Assistant (Ctrl+A)" aria-label="Toggle AI Assistant">🤖</button>
                         </div>
                     </div>
                     <div class="filter-bar">
@@ -575,7 +660,7 @@
                 <!-- Overview Container -->
                 <div class="custom-view-container" id="overview-container" style="display:none;">
                     <div class="custom-view-toolbar">
-                        <h2>Cluster Overview</h2>
+                        <h2 data-i18n="header_cluster_overview">Cluster Overview</h2>
                         <div style="display:flex;gap:8px;align-items:center;">
                             <span class="overview-context" id="overview-context"
                                 style="color:var(--text-secondary);font-size:12px;"></span>
@@ -781,6 +866,35 @@
                     </div>
                 </div>
 
+                <!-- Cluster Visualizer Container -->
+                <div class="custom-view-container" id="cluster-viz-container" style="display:none;flex-direction:column;padding:0;overflow:hidden;">
+                    <div id="cv-canvas-body" style="flex:1;display:flex;flex-direction:column;overflow:auto;">
+                        <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-secondary);">Loading cluster data...</div>
+                    </div>
+                </div>
+
+                <!-- Audit Logs Container -->
+                <div class="custom-view-container" id="audit-container" style="display:none;">
+                    <div class="custom-view-toolbar">
+                        <h2 data-i18n="header_audit_logs">Audit Logs</h2>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;">
+                                <input type="checkbox" id="audit-filter-llm-inline" onchange="toggleAuditFilter('onlyLLM')">
+                                <span>LLM Only</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;">
+                                <input type="checkbox" id="audit-filter-errors-inline" onchange="toggleAuditFilter('onlyErrors')">
+                                <span>Errors</span>
+                            </label>
+                            <span style="color:var(--text-secondary);font-size:12px;" id="audit-entry-count-inline"></span>
+                            <button onclick="loadAuditContainerData()">↻ Refresh</button>
+                        </div>
+                    </div>
+                    <div class="custom-view-body" id="audit-body">
+                        <div class="loading-placeholder">Loading audit logs...</div>
+                    </div>
+                </div>
+
 
 
                 <!-- Resize Handle -->
@@ -791,15 +905,16 @@
                     <!-- Chat History Sidebar -->
                     <div class="chat-history-sidebar" id="chat-history-sidebar">
                         <div class="chat-history-header">
-                            <h4>💬 Chat History</h4>
+                            <h4><i data-lucide="message-square" style="width:16px;height:16px;vertical-align:middle"></i> <span data-i18n="ai_chat_history">Chat History</span></h4>
                             <div class="chat-history-actions">
                                 <button class="chat-history-btn primary" onclick="createNewChat()"
-                                    title="New Chat">+</button>
-                                <button class="chat-history-btn" onclick="toggleChatHistory()" title="Close">✕</button>
+                                    title="New Chat" data-i18n-title="title_new_chat">+</button>
+                                <button class="chat-history-btn" onclick="toggleChatHistory()" title="Close" data-i18n-title="title_close">✕</button>
                             </div>
                         </div>
                         <div class="chat-history-search">
                             <input type="text" id="chat-history-search" placeholder="Search chats..."
+                                data-i18n-placeholder="ai_search_chats"
                                 oninput="filterChatHistory(this.value)">
                         </div>
                         <div class="chat-history-list" id="chat-history-list">
@@ -808,42 +923,49 @@
                     </div>
 
                     <div class="ai-header">
-                        <button class="chat-history-toggle" id="chat-history-toggle" onclick="toggleChatHistory()"
-                            title="Chat History">📋</button>
-                        <span>AI Assistant</span>
+                        <span class="ai-header-title" data-i18n="header_ai_assistant">AI Assistant</span>
                         <div class="ai-mode-selector" id="ai-mode-selector" style="display:none">
-                            <button class="ai-mode-btn active" id="ai-btn-chat" onclick="setAIMode('chat')" title="Chat View">Chat</button>
-                            <button class="ai-mode-btn" id="ai-btn-tui" onclick="setAIMode('tui')" title="Terminal View">TUI</button>
+                            <button class="ai-mode-btn active" id="ai-btn-chat" onclick="setAIMode('chat')" title="Chat View" data-i18n-title="ai_chat_view">Chat</button>
+                            <button class="ai-mode-btn" id="ai-btn-tui" onclick="setAIMode('tui')" title="Terminal View" data-i18n-title="ai_terminal_view">TUI</button>
                         </div>
-                        <span class="ai-status-dot" id="ai-status-dot" title="Checking connection...">●</span>
-                        <span class="ai-badge" id="ai-model-badge" style="cursor:pointer;" onclick="openAIModelSettings()" title="Click to change model settings">Loading...</span>
-                        <button class="debug-toggle" id="debug-toggle" onclick="toggleDebugMode()"
-                            style="margin-left: auto;" title="Toggle Debug Mode">🐛 Debug</button>
+                        <span class="ai-status-dot" id="ai-status-dot" title="Checking connection..." data-i18n-title="ai_checking_connection">●</span>
+                        <span class="ai-badge" id="ai-model-badge" style="cursor:pointer;" onclick="openAIModelSettings()" title="Click to change model settings" data-i18n-title="ai_change_model">Loading...</span>
+                        <div class="ai-header-actions">
+                            <button class="ai-header-btn" onclick="clearCurrentSession()"
+                                title="Clear Session" data-i18n-title="title_clear_session"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>
+                            <button class="ai-header-btn" onclick="toggleChatHistory()"
+                                title="Chat History" data-i18n-title="title_chat_history"><i data-lucide="clipboard-list" style="width:14px;height:14px"></i></button>
+                            <button class="ai-header-btn" onclick="toggleDebugMode()"
+                                title="Toggle Debug Mode" data-i18n-title="title_debug_mode"><i data-lucide="bug" style="width:14px;height:14px"></i></button>
+                            <button class="ai-header-btn" onclick="toggleAiExpand()"
+                                title="Expand Panel" data-i18n-title="title_expand_panel"><i data-lucide="maximize-2" style="width:14px;height:14px"></i></button>
+                            <button class="ai-header-btn" onclick="toggleAIPanel()"
+                                title="Close Panel" data-i18n-title="title_close_panel"><i data-lucide="x" style="width:14px;height:14px"></i></button>
+                        </div>
                     </div>
                     <!-- Guardrails Status -->
                     <div class="guardrails-status" id="guardrails-status">
                         <div class="guardrails-indicator safe" id="guardrails-indicator">
                             <span class="dot"></span>
-                            <span>Safe Mode</span>
+                            <span data-i18n="ai_safe_mode">Safe Mode</span>
                         </div>
-                        <span class="guardrails-limit" id="guardrails-limit">Requests: 0/50</span>
+                        <span class="guardrails-limit" id="guardrails-limit"><span data-i18n="ai_requests">Requests</span>: 0/50</span>
                     </div>
                     <!-- Context chips for selected resources -->
                     <div class="context-chips" id="context-chips">
-                        <span style="font-size: 11px; color: var(--text-secondary);">Context: Click resources to
-                            add</span>
+                        <span style="font-size: 11px; color: var(--text-secondary);" data-i18n="ai_context_hint">Context: Click resources to add</span>
                     </div>
                     <div class="ai-messages" id="ai-messages" tabindex="-1">
                         <div class="message assistant">
                             <div class="message-content">
-                                Welcome to k13d! I can help you manage your Kubernetes cluster.
+                                <span data-i18n="ai_welcome">Welcome to k13d! I can help you manage your Kubernetes cluster.</span>
                                 <br><br>
-                                Try asking:
+                                <span data-i18n="ai_try_asking">Try asking:</span>
                                 <br>- "Show me all pods"
                                 <br>- "Create an nginx pod"
                                 <br>- "Scale deployment to 3 replicas"
                                 <br><br>
-                                <strong>Tip:</strong> Click any resource row to add it as context for AI analysis!
+                                <strong><span data-i18n="ai_tip">Tip:</span></strong> <span data-i18n="ai_tip_hint">Click any resource row to add it as context for AI analysis!</span>
                             </div>
                         </div>
                     </div>
@@ -852,34 +974,34 @@
                         <div id="ai-tui-container" style="width: 100%; height: 100%;"></div>
                         <div id="ai-tui-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10; display: none;">
                             <div style="background: var(--bg-primary); padding: 12px 20px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                <span id="ai-tui-status">Connecting...</span>
+                                <span id="ai-tui-status" data-i18n="ai_connecting">Connecting...</span>
                             </div>
                         </div>
                     </div>
                     <!-- Debug panel for MCP Tool Calling -->
                     <div class="debug-panel" id="debug-panel">
                         <div class="debug-header">
-                            <span>🔧 MCP Tool Calling Debug</span>
-                            <button class="debug-toggle" onclick="clearDebugLogs()">Clear</button>
+                            <span><i data-lucide="wrench" style="width:14px;height:14px;vertical-align:middle"></i> <span data-i18n="ai_debug_title">MCP Tool Calling Debug</span></span>
+                            <button class="debug-toggle" onclick="clearDebugLogs()" data-i18n="ai_debug_clear">Clear</button>
                         </div>
                         <div class="debug-content" id="debug-content">
-                            <div style="color: var(--text-secondary); text-align: center; padding: 20px;">
+                            <div style="color: var(--text-secondary); text-align: center; padding: 20px;" data-i18n="ai_debug_active">
                                 Debug mode active. Tool calls will appear here.
                             </div>
                         </div>
                     </div>
                     <div class="ai-input-container" id="ai-input-container">
-                        <textarea class="ai-input" id="ai-input" placeholder="Ask me anything about Kubernetes..."
-                            rows="2"></textarea>
+                        <div class="ai-input-wrapper">
+                            <textarea class="ai-input" id="ai-input" placeholder="Ask me anything about Kubernetes..."
+                                rows="2"></textarea>
+                            <button class="ai-clear-btn" id="ai-clear-btn" onclick="clearAiInput()"
+                                title="Clear input" data-i18n-title="ai_clear_input" aria-label="Clear input">&#x2715;</button>
+                        </div>
                         <div class="ai-actions">
                             <span class="ai-hint" data-i18n="ai_hint">Enter send · Shift+Enter newline · ↑↓ history</span>
                             <div class="ai-actions-buttons">
-                                <button class="ai-clear-btn" id="ai-clear-btn" onclick="clearAiInput()"
-                                    title="Clear input" aria-label="Clear input">&#x2715;</button>
-                                <button class="ai-expand-btn" id="ai-expand-btn" onclick="toggleAiExpand()"
-                                    title="Expand input area" aria-label="Expand input area">&#x26F6;</button>
-                                <button class="send-btn" id="send-btn" onclick="sendMessage()">Send</button>
-                                <button class="ai-stop-btn" id="ai-stop-btn" onclick="stopGeneration()" title="Stop generation">
+                                <button class="send-btn" id="send-btn" onclick="sendMessage()" data-i18n="ai_send">Send</button>
+                                <button class="ai-stop-btn" id="ai-stop-btn" onclick="stopGeneration()" title="Stop generation" data-i18n-title="ai_stop_generation">
                                     <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg>
                                 </button>
                             </div>
@@ -894,58 +1016,60 @@
     <div class="modal-overlay" id="settings-modal" role="dialog" aria-modal="true">
         <div class="modal">
             <div class="modal-header">
-                <h2>Settings</h2>
+                <h2 data-i18n="settings">Settings</h2>
                 <button class="modal-close" onclick="closeSettings()" aria-label="Close settings">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="tabs" role="tablist">
                     <div class="tab active" role="tab" aria-selected="true" onclick="switchSettingsTab('general')">
-                        General</div>
-                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('ai')">AI</div>
-                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('mcp')">MCP</div>
-                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('security')">Security
-                    </div>
-                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('metrics')">Metrics
-                    </div>
+                        <span data-i18n="settings_general">General</span></div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('ai')">
+                        <span data-i18n="settings_ai">AI</span></div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('mcp')">
+                        <span data-i18n="settings_mcp">MCP</span></div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('security')">
+                        <span data-i18n="settings_security">Security</span></div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('metrics')">
+                        <span data-i18n="settings_metrics">Metrics</span></div>
                     <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('notifications')">
-                        Notifications</div>
+                        <span data-i18n="settings_notifications">Notifications</span></div>
                     <div class="tab" role="tab" aria-selected="false" id="admin-tab"
-                        onclick="switchSettingsTab('admin')" style="display:none;">Admin</div>
-                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('about')">About</div>
+                        onclick="switchSettingsTab('admin')" style="display:none;">
+                        <span data-i18n="settings_admin">Admin</span></div>
+                    <div class="tab" role="tab" aria-selected="false" onclick="switchSettingsTab('about')">
+                        <span data-i18n="settings_about">About</span></div>
                 </div>
 
                 <div id="settings-general" class="settings-content">
                     <div class="settings-section">
-                        <h4>Display</h4>
+                        <h4 data-i18n="settings_display">Display</h4>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Language</div>
+                                <div class="settings-label" data-i18n="settings_language">Language</div>
                             </div>
-                            <select id="setting-language">
-                                <option value="en">English</option>
+                            <select id="setting-language" onchange="autoSaveGeneralSettings()">
+                                <option value="en">영어 (English)</option>
                                 <option value="ko">한국어 (Korean)</option>
-                                <option value="zh">中文 (Chinese)</option>
-                                <option value="ja">日本語 (Japanese)</option>
                             </select>
                         </div>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Log Level</div>
+                                <div class="settings-label" data-i18n="settings_log_level">Log Level</div>
                             </div>
-                            <select id="setting-log-level">
-                                <option value="debug">Debug</option>
-                                <option value="info">Info</option>
-                                <option value="warn">Warning</option>
-                                <option value="error">Error</option>
+                            <select id="setting-log-level" onchange="autoSaveGeneralSettings()">
+                                <option value="debug" data-i18n="settings_log_debug">Debug</option>
+                                <option value="info" data-i18n="settings_log_info">Info</option>
+                                <option value="warn" data-i18n="settings_log_warning">Warning</option>
+                                <option value="error" data-i18n="settings_log_error">Error</option>
                             </select>
                         </div>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Timezone</div>
-                                <div class="settings-description">Set the timezone for displaying dates and times</div>
+                                <div class="settings-label" data-i18n="settings_timezone">Timezone</div>
+                                <div class="settings-description" data-i18n="settings_timezone_desc">Set the timezone for displaying dates and times</div>
                             </div>
-                            <select id="setting-timezone">
-                                <option value="auto">Auto (Browser)</option>
+                            <select id="setting-timezone" onchange="autoSaveGeneralSettings()">
+                                <option value="auto" data-i18n="settings_timezone_auto">Auto (Browser)</option>
                                 <option value="UTC">UTC</option>
                                 <option value="Asia/Seoul">Asia/Seoul (KST)</option>
                                 <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
@@ -961,49 +1085,49 @@
                         </div>
                     </div>
                     <div class="settings-section">
-                        <h4>AI Chat</h4>
+                        <h4 data-i18n="settings_ai_chat">AI Chat</h4>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Enable Streaming</div>
-                                <div class="settings-description">Show AI responses as they're generated</div>
+                                <div class="settings-label" data-i18n="settings_enable_streaming">Enable Streaming</div>
+                                <div class="settings-description" data-i18n="settings_enable_streaming_desc">Show AI responses as they're generated</div>
                             </div>
                             <div class="auto-refresh-toggle" id="setting-streaming" onclick="toggleStreamingSetting()">
                             </div>
                         </div>
                     </div>
                     <div class="settings-section">
-                        <h4>Auto Refresh</h4>
+                        <h4 data-i18n="settings_auto_refresh">Auto Refresh</h4>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Enable Auto Refresh</div>
-                                <div class="settings-description">Automatically refresh resource data</div>
+                                <div class="settings-label" data-i18n="settings_enable_auto_refresh">Enable Auto Refresh</div>
+                                <div class="settings-description" data-i18n="settings_enable_auto_refresh_desc">Automatically refresh resource data</div>
                             </div>
                             <div class="auto-refresh-toggle" id="setting-auto-refresh"
                                 onclick="toggleAutoRefreshSetting()"></div>
                         </div>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Refresh Interval</div>
-                                <div class="settings-description">How often to refresh data</div>
+                                <div class="settings-label" data-i18n="settings_refresh_interval">Refresh Interval</div>
+                                <div class="settings-description" data-i18n="settings_refresh_interval_desc">How often to refresh data</div>
                             </div>
                             <select id="setting-refresh-interval" onchange="setAutoRefreshIntervalSetting(this.value)">
-                                <option value="10">10 seconds</option>
-                                <option value="30">30 seconds</option>
-                                <option value="60">1 minute</option>
-                                <option value="120">2 minutes</option>
-                                <option value="300">5 minutes</option>
+                                <option value="10" data-i18n="settings_interval_10s">10 seconds</option>
+                                <option value="30" data-i18n="settings_interval_30s">30 seconds</option>
+                                <option value="60" data-i18n="settings_interval_1m">1 minute</option>
+                                <option value="120" data-i18n="settings_interval_2m">2 minutes</option>
+                                <option value="300" data-i18n="settings_interval_5m">5 minutes</option>
                             </select>
                         </div>
                     </div>
                     <div class="settings-section">
-                        <h4>Theme / Skin</h4>
+                        <h4 data-i18n="settings_theme">Theme / Skin</h4>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Color Theme</div>
-                                <div class="settings-description">Change the dashboard color scheme</div>
+                                <div class="settings-label" data-i18n="settings_color_theme">Color Theme</div>
+                                <div class="settings-description" data-i18n="settings_color_theme_desc">Change the dashboard color scheme</div>
                             </div>
                             <select id="setting-theme" onchange="applyTheme(this.value)">
-                                <option value="light">Light (Default)</option>
+                                <option value="ollama">Ollama (Minimalist White, Default)</option>
                                 <option value="tokyo-night">Tokyo Night</option>
                                 <option value="production">Production (Red)</option>
                                 <option value="staging">Staging (Yellow)</option>
@@ -1017,33 +1141,37 @@
                 <div id="settings-ai" class="settings-content" style="display:none;">
                     <!-- LLM Connection Status -->
                     <div class="settings-section" style="margin-bottom:16px;">
-                        <div
-                            style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg-primary);border-radius:8px;">
+                        <div style="padding:12px;background:var(--bg-primary);border-radius:8px;">
                             <div style="display:flex;align-items:center;gap:12px;">
                                 <div id="llm-status-indicator"
                                     style="width:16px;height:16px;border-radius:50%;background:#888;box-shadow:0 0 8px rgba(136,136,136,0.5);transition:all 0.3s;">
                                 </div>
                                 <div>
-                                    <div id="llm-status-text" style="font-weight:500;">Connection Status: Unknown</div>
-                                    <div id="llm-status-detail" style="font-size:12px;color:var(--text-secondary);">
-                                        Click 'Test Connection' to verify</div>
+                                    <div id="llm-status-text" style="font-weight:500;" data-i18n="settings_connection_status">Connection Status: Unknown</div>
+                                    <div id="llm-status-detail" style="font-size:12px;color:var(--text-secondary);"
+                                        data-i18n="settings_save_to_test">Save to test connection</div>
                                 </div>
                             </div>
-                            <button class="btn btn-secondary" id="llm-test-btn" onclick="testLLMConnection()"
-                                style="min-width:130px;">
-                                <span id="llm-test-btn-text">Test Connection</span>
-                            </button>
+                            <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+                                <button id="llm-test-btn" onclick="testLLMConnection()"
+                                    style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid var(--accent-blue);background:transparent;color:var(--accent-blue);cursor:pointer;font-size:13px;transition:all 0.2s;"
+                                    onmouseover="this.style.background='var(--accent-blue)';this.style.color='#fff'"
+                                    onmouseout="this.style.background='transparent';this.style.color='var(--accent-blue)'">
+                                    <span id="llm-test-btn-text" data-i18n="settings_test_connection">Test Connection</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Current LLM Configuration -->
                     <div class="settings-section">
-                        <h4>LLM Configuration</h4>
+                        <h4 data-i18n="settings_llm_config">LLM Configuration</h4>
                         <div class="form-group">
-                            <label>Provider</label>
-                            <select id="setting-llm-provider" onchange="updateEndpointPlaceholder()">
+                            <label data-i18n="settings_provider">Provider</label>
+                            <select id="setting-llm-provider" onchange="updateEndpointPlaceholder(); autoSaveLLMSettings()">
                                 <option value="upstage">Upstage Solar</option>
                                 <option value="openai">OpenAI</option>
+                                <option value="openrouter">OpenRouter</option>
                                 <option value="litellm">LiteLLM Gateway</option>
                                 <option value="ollama">Ollama</option>
                                 <option value="gemini">Google Gemini</option>
@@ -1053,29 +1181,30 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Model <button type="button" id="fetch-models-btn" onclick="fetchAvailableModels()"
-                                    style="font-size:11px;color:var(--accent-blue);background:none;border:1px solid var(--accent-blue);border-radius:4px;padding:1px 8px;margin-left:8px;cursor:pointer;display:none;">Fetch
-                                    Models</button><span id="fetch-models-status"
+                            <label data-i18n="settings_model">Model <button type="button" id="fetch-models-btn" onclick="fetchAvailableModels()"
+                                    style="font-size:11px;color:var(--accent-blue);background:none;border:1px solid var(--accent-blue);border-radius:4px;padding:1px 8px;margin-left:8px;cursor:pointer;display:none;"><span data-i18n="settings_fetch_models">Fetch Models</span></button><span id="fetch-models-status"
                                     style="font-size:11px;color:var(--text-secondary);margin-left:6px;"></span></label>
                             <select id="setting-llm-model-select"
-                                onchange="document.getElementById('setting-llm-model').value=this.value; updateLLMToolSupportWarning()"
+                                onchange="document.getElementById('setting-llm-model').value=this.value; updateLLMToolSupportWarning(); autoSaveLLMSettings()"
                                 style="display:none;margin-bottom:4px;"></select>
                             <input type="text" id="setting-llm-model" placeholder="solar-pro2"
-                                oninput="updateLLMToolSupportWarning()">
+                                oninput="updateLLMToolSupportWarning()" onchange="autoSaveLLMSettings()">
                             <div id="llm-tool-support-warning"
                                 style="display:none;margin-top:8px;font-size:12px;line-height:1.5;color:var(--accent-yellow);">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Endpoint <span id="endpoint-hint"
+                            <label data-i18n="settings_endpoint">Endpoint <span id="endpoint-hint"
                                     style="font-size:11px;color:var(--text-secondary);"></span></label>
-                            <input type="text" id="setting-llm-endpoint" placeholder="https://api.upstage.ai/v1">
+                            <input type="text" id="setting-llm-endpoint" placeholder="https://api.upstage.ai/v1"
+                                onchange="autoSaveLLMSettings()">
                         </div>
                         <div class="form-group">
-                            <label>API Key <a href="https://console.upstage.ai/api-keys" target="_blank"
-                                    style="font-size:11px;color:var(--accent-blue);margin-left:8px;">Get API Key
+                            <label data-i18n="settings_api_key">API Key <a href="https://console.upstage.ai/api-keys" target="_blank"
+                                    style="font-size:11px;color:var(--accent-blue);margin-left:8px;"><span data-i18n="settings_get_api_key">Get API Key</span>
                                     →</a></label>
-                            <input type="password" id="setting-llm-apikey" placeholder="up_...">
+                            <input type="password" id="setting-llm-apikey" placeholder="up_..."
+                                onchange="autoSaveLLMSettings()">
                         </div>
                     </div>
 
@@ -1085,96 +1214,27 @@
                         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
                             <span style="font-size:20px;">🧠</span>
                             <div>
-                                <h4 style="margin:0;color:var(--accent-purple);">Reasoning Effort (Solar Pro2)</h4>
-                                <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0 0;">Control
-                                    reasoning depth for complex tasks</p>
+                                <h4 style="margin:0;color:var(--accent-purple);" data-i18n="settings_reasoning_effort">Reasoning Effort (Solar Pro2)</h4>
+                                <p style="font-size:12px;color:var(--text-secondary);margin:4px 0 0 0;" data-i18n="settings_reasoning_effort_desc">Control reasoning depth for complex tasks</p>
                             </div>
                         </div>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Enable High Reasoning</div>
-                                <div class="settings-description">Use deeper reasoning for complex tasks (may increase
-                                    token usage)</div>
+                                <div class="settings-label" data-i18n="settings_enable_high_reasoning">Enable High Reasoning</div>
+                                <div class="settings-description" data-i18n="settings_enable_high_reasoning_desc">Use deeper reasoning for complex tasks (may increase token usage)</div>
                             </div>
                             <div class="auto-refresh-toggle" id="reasoning-effort-toggle"
                                 onclick="toggleReasoningEffort()"></div>
                         </div>
                         <div style="margin-top:8px;font-size:12px;color:var(--text-secondary);">
-                            <span id="reasoning-effort-status">Current: minimal (default)</span>
-                        </div>
-                    </div>
-
-                    <!-- Model Profiles -->
-                    <div class="settings-section" style="margin-top:20px;">
-                        <h4>Saved Model Profiles</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Manage multiple LLM configurations
-                            and switch between them easily.</p>
-
-                        <div id="models-list" style="margin-bottom:16px;">
-                            <!-- Populated by JavaScript -->
-                        </div>
-
-                        <button class="btn-add" onclick="showAddModelForm()" style="margin-top:8px;"><span
-                                class="plus-icon">+</span> Add Model Profile</button>
-                    </div>
-
-                    <div id="add-model-form" class="settings-section"
-                        style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
-                        <h4 id="add-model-header">Add New Model Profile</h4>
-                        <div class="form-group">
-                            <label>Profile Name</label>
-                            <input type="text" id="new-model-name" placeholder="e.g., gpt-4-turbo">
-                        </div>
-                        <div class="form-group">
-                            <label>Provider</label>
-                            <select id="new-model-provider" onchange="updateNewModelToolSupportWarning()">
-                                <option value="upstage">Upstage Solar</option>
-                                <option value="openai">OpenAI</option>
-                                <option value="litellm">LiteLLM Gateway</option>
-                                <option value="ollama">Ollama</option>
-                                <option value="gemini">Google Gemini</option>
-                                <option value="anthropic">Anthropic Claude</option>
-                                <option value="bedrock">AWS Bedrock</option>
-                                <option value="azopenai">Azure OpenAI</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Model</label>
-                            <input type="text" id="new-model-model" placeholder="e.g., solar-pro2"
-                                oninput="updateNewModelToolSupportWarning()">
-                            <div id="new-model-tool-support-warning"
-                                style="display:none;margin-top:8px;font-size:12px;line-height:1.5;color:var(--accent-yellow);">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Endpoint (optional)</label>
-                            <input type="text" id="new-model-endpoint" placeholder="https://api.openai.com/v1">
-                        </div>
-                        <div class="form-group">
-                            <label>API Key (optional)</label>
-                            <input type="password" id="new-model-apikey" placeholder="sk-...">
-                        </div>
-                        <div class="form-group">
-                            <label>Description (optional)</label>
-                            <input type="text" id="new-model-description" placeholder="Fast model for quick tasks">
-                        </div>
-                        <div class="form-group">
-                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                                <input type="checkbox" id="new-model-skip-tls">
-                                Skip TLS Verification (for self-signed certificates)
-                            </label>
-                        </div>
-                        <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button id="add-model-btn" class="btn btn-primary" onclick="addModelProfile()">Add Profile</button>
-                            <button class="btn btn-secondary" onclick="hideAddModelForm()">Cancel</button>
+                            <span id="reasoning-effort-status"><span data-i18n="settings_current">Current</span>: minimal (default)</span>
                         </div>
                     </div>
 
                     <!-- K8s Safety Guardrails Configuration -->
                     <div class="settings-section" style="margin-top:20px;">
-                        <h4>🛡️ K8s Safety Guardrails</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Protect your cluster from dangerous
-                            AI-proposed operations</p>
+                        <h4 data-i18n="settings_k8s_safety">🛡️ K8s Safety Guardrails</h4>
+                        <p class="settings-description" style="margin-bottom:12px;" data-i18n="settings_k8s_safety_desc">Protect your cluster from dangerous AI-proposed operations</p>
 
                         <div class="settings-row">
                             <div>
@@ -1188,9 +1248,8 @@
 
                         <div class="settings-row" style="margin-top:12px;">
                             <div>
-                                <div class="settings-label">Strict Mode</div>
-                                <div class="settings-description">Block all dangerous/critical operations (not just
-                                    warn)</div>
+                                <div class="settings-label" data-i18n="settings_strict_mode">Strict Mode</div>
+                                <div class="settings-description" data-i18n="settings_strict_mode_desc">Block all dangerous/critical operations (not just warn)</div>
                             </div>
                             <div class="auto-refresh-toggle" id="guardrails-strict-toggle" onclick="toggleStrictMode()">
                             </div>
@@ -1198,9 +1257,8 @@
 
                         <div class="settings-row" style="margin-top:12px;">
                             <div>
-                                <div class="settings-label">Auto-Analyze AI Responses</div>
-                                <div class="settings-description">Automatically analyze kubectl commands in AI responses
-                                </div>
+                                <div class="settings-label" data-i18n="settings_auto_analyze">Auto-Analyze AI Responses</div>
+                                <div class="settings-description" data-i18n="settings_auto_analyze_desc">Automatically analyze kubectl commands in AI responses</div>
                             </div>
                             <div class="auto-refresh-toggle active" id="guardrails-auto-analyze"
                                 onclick="toggleAutoAnalyze()"></div>
@@ -1208,57 +1266,52 @@
 
                         <!-- Risk Level Descriptions -->
                         <div style="margin-top:16px; padding:12px; background:var(--bg-tertiary); border-radius:8px;">
-                            <div style="font-weight:600; margin-bottom:8px;">Risk Level Descriptions:</div>
+                            <div style="font-weight:600; margin-bottom:8px;" data-i18n="settings_risk_levels">Risk Level Descriptions:</div>
                             <div style="display:grid; gap:6px; font-size:13px;">
-                                <div><span style="color:var(--accent-green);">● Safe</span> - Read-only operations (get,
-                                    describe, logs)</div>
-                                <div><span style="color:var(--accent-yellow);">● Warning</span> - Modifications that
-                                    need review (apply, scale)</div>
-                                <div><span style="color:var(--accent-red);">● Dangerous</span> - Deletions and
-                                    destructive changes</div>
-                                <div><span style="color:#ff4757;">● Critical</span> - Cluster-wide impact (drain, delete
-                                    namespace)</div>
+                                <div><span style="color:var(--accent-green);">● <span data-i18n="settings_risk_safe">Safe</span></span> - <span data-i18n="settings_risk_safe_desc">Read-only operations (get, describe, logs)</span></div>
+                                <div><span style="color:var(--accent-yellow);">● <span data-i18n="settings_risk_warning">Warning</span></span> - <span data-i18n="settings_risk_warning_desc">Modifications that need review (apply, scale)</span></div>
+                                <div><span style="color:var(--accent-red);">● <span data-i18n="settings_risk_dangerous">Dangerous</span></span> - <span data-i18n="settings_risk_dangerous_desc">Deletions and destructive changes</span></div>
+                                <div><span style="color:#ff4757;">● <span data-i18n="settings_risk_critical">Critical</span></span> - <span data-i18n="settings_risk_critical_desc">Cluster-wide impact (drain, delete namespace)</span></div>
                             </div>
                         </div>
 
                         <!-- Recent Safety Analysis -->
                         <div style="margin-top:16px;">
-                            <div style="font-weight:600; margin-bottom:8px;">Recent Safety Checks:</div>
+                            <div style="font-weight:600; margin-bottom:8px;" data-i18n="settings_recent_checks">Recent Safety Checks:</div>
                             <div id="guardrails-history"
                                 style="max-height:150px; overflow-y:auto; background:var(--bg-primary); border-radius:8px; padding:8px;">
-                                <div style="color:var(--text-secondary); font-size:13px;">No recent checks</div>
+                                <div style="color:var(--text-secondary); font-size:13px;" data-i18n="settings_no_recent_checks">No recent checks</div>
                             </div>
                         </div>
 
                         <button class="btn btn-secondary" onclick="clearGuardrailsHistory()"
-                            style="margin-top:12px;">Clear History</button>
+                            style="margin-top:12px;" data-i18n="settings_clear_history">Clear History</button>
                     </div>
 
                     <!-- Tool Approval Policy -->
                     <div class="settings-section" style="margin-top:20px;">
-                        <h4>Tool Approval Policy</h4>
-                        <p class="settings-description">Control which AI tool commands require user approval</p>
+                        <h4 data-i18n="settings_tool_approval">Tool Approval Policy</h4>
+                        <p class="settings-description" data-i18n="settings_tool_approval_desc">Control which AI tool commands require user approval</p>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Auto-approve read-only commands</div>
-                                <div class="settings-description">kubectl get, describe, logs, etc. Disabled by default.</div>
+                                <div class="settings-label" data-i18n="settings_auto_approve_readonly">Auto-approve read-only commands</div>
+                                <div class="settings-description" data-i18n="settings_auto_approve_readonly_desc">kubectl get, describe, logs, etc. Disabled by default.</div>
                             </div>
                             <div class="auto-refresh-toggle" id="ta-auto-approve-ro"
                                 onclick="toggleToolApproval(this)"></div>
                         </div>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Require approval for write operations</div>
-                                <div class="settings-description">kubectl apply, scale, restart, etc.</div>
+                                <div class="settings-label" data-i18n="settings_require_approval_write">Require approval for write operations</div>
+                                <div class="settings-description" data-i18n="settings_require_approval_write_desc">kubectl apply, scale, restart, etc.</div>
                             </div>
                             <div class="auto-refresh-toggle active" id="ta-require-write"
                                 onclick="toggleToolApproval(this)"></div>
                         </div>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Block dangerous commands entirely</div>
-                                <div class="settings-description">Dangerous operations will be blocked, not just
-                                    requiring approval</div>
+                                <div class="settings-label" data-i18n="settings_block_dangerous">Block dangerous commands entirely</div>
+                                <div class="settings-description" data-i18n="settings_block_dangerous_desc">Dangerous operations will be blocked, not just requiring approval</div>
                             </div>
                             <div class="auto-refresh-toggle" id="ta-block-dangerous" onclick="toggleToolApproval(this)">
                             </div>
@@ -1273,15 +1326,13 @@
                         <div class="form-group" style="margin-top:12px;">
                             <label>Approval Timeout (seconds)</label>
                             <input type="number" id="ta-timeout" class="form-control" value="60" min="10" max="600"
-                                style="width:120px;">
+                                style="width:120px;" onchange="autoSaveToolApprovalSettings()">
                         </div>
                         <div class="form-group">
                             <label>Blocked Patterns (one regex per line)</label>
                             <textarea id="ta-blocked-patterns" class="form-control" rows="3"
-                                placeholder="rm -rf.*&#10;kubectl delete ns.*"></textarea>
+                                placeholder="rm -rf.*&#10;kubectl delete ns.*" onchange="autoSaveToolApprovalSettings()"></textarea>
                         </div>
-                        <button class="btn btn-primary" onclick="saveToolApprovalSettings()">Save Tool Approval
-                            Settings</button>
                     </div>
 
                     <!-- Agent Settings -->
@@ -1293,13 +1344,15 @@
                             <div style="display:flex;align-items:center;gap:8px;">
                                 <input type="range" id="agent-max-iterations" min="1" max="30" value="10"
                                     style="flex:1;"
-                                    oninput="document.getElementById('agent-max-iter-val').textContent=this.value">
+                                    oninput="document.getElementById('agent-max-iter-val').textContent=this.value"
+                                    onchange="autoSaveAgentSettings()">
                                 <span id="agent-max-iter-val" style="min-width:24px;">10</span>
                             </div>
                         </div>
                         <div class="form-group">
                             <label>Reasoning Effort</label>
-                            <select id="agent-reasoning-effort" class="form-control" style="width:200px;">
+                            <select id="agent-reasoning-effort" class="form-control" style="width:200px;"
+                                onchange="autoSaveAgentSettings()">
                                 <option value="low">Low (faster)</option>
                                 <option value="medium" selected>Medium (balanced)</option>
                                 <option value="high">High (deeper reasoning)</option>
@@ -1310,68 +1363,75 @@
                             <div style="display:flex;align-items:center;gap:8px;">
                                 <input type="range" id="agent-temperature" min="0" max="200" value="70" step="10"
                                     style="flex:1;"
-                                    oninput="document.getElementById('agent-temp-val').textContent=(this.value/100).toFixed(1)">
+                                    oninput="document.getElementById('agent-temp-val').textContent=(this.value/100).toFixed(1)"
+                                    onchange="autoSaveAgentSettings()">
                                 <span id="agent-temp-val" style="min-width:32px;">0.7</span>
                             </div>
                         </div>
                         <div class="form-group">
                             <label>Max Tokens (0 = provider default)</label>
                             <input type="number" id="agent-max-tokens" class="form-control" value="4096" min="0"
-                                max="128000" step="256" style="width:150px;">
+                                max="128000" step="256" style="width:150px;" onchange="autoSaveAgentSettings()">
                         </div>
-                        <button class="btn btn-primary" onclick="saveAgentSettings()">Save Agent Settings</button>
                     </div>
                 </div>
 
                 <!-- MCP Tab -->
                 <div id="settings-mcp" class="settings-content" style="display:none;">
+                    <div class="settings-section" style="margin-bottom:24px;">
+                        <h4 data-i18n="settings_mcp_profiles">MCP Profiles</h4>
+                        <p class="settings-description" style="margin-bottom:12px;" data-i18n="settings_mcp_profiles_desc">Install pre-configured DevOps server bundles to quickly set up your AI environment.</p>
+                        <div id="mcp-profiles-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:16px; margin-top:16px;">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+
                     <div class="settings-section">
-                        <h4>MCP Servers</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Connect to Model Context Protocol
-                            servers to extend AI capabilities with additional tools.</p>
+                        <h4 data-i18n="settings_mcp_servers">MCP Servers</h4>
+                        <p class="settings-description" style="margin-bottom:12px;" data-i18n="settings_mcp_servers_desc">Connect to Model Context Protocol servers to extend AI capabilities with additional tools.</p>
 
                         <div id="mcp-servers-list" style="margin-bottom:16px;">
                             <!-- Populated by JavaScript -->
                         </div>
 
                         <button class="btn-add" onclick="showAddMCPForm()" style="margin-top:8px;"><span
-                                class="plus-icon">+</span> Add MCP Server</button>
+                                class="plus-icon">+</span> <span data-i18n="settings_add_mcp_server">Add MCP Server</span></button>
                     </div>
 
                     <div id="add-mcp-form" class="settings-section"
                         style="display:none;margin-top:16px;background:var(--bg-primary);padding:16px;border-radius:8px;">
-                        <h4 id="add-mcp-form-header">Add MCP Server</h4>
+                        <h4 id="add-mcp-form-header" data-i18n="settings_add_mcp_server">Add MCP Server</h4>
                         <div class="form-group">
-                            <label>Server Name</label>
+                            <label data-i18n="settings_server_name">Server Name</label>
                             <input type="text" id="new-mcp-name" placeholder="e.g., kubernetes-mcp">
                         </div>
                         <div class="form-group">
-                            <label>Command</label>
+                            <label data-i18n="settings_command">Command</label>
                             <input type="text" id="new-mcp-command" placeholder="e.g., npx, docker">
                         </div>
                         <div class="form-group">
-                            <label>Arguments (comma-separated)</label>
+                            <label data-i18n="settings_arguments">Arguments (comma-separated)</label>
                             <input type="text" id="new-mcp-args" placeholder="e.g., -y, @anthropic/mcp-server">
                         </div>
                         <div class="form-group">
-                            <label>Description (optional)</label>
+                            <label data-i18n="settings_description">Description (optional)</label>
                             <input type="text" id="new-mcp-description" placeholder="Kubernetes management tools">
                         </div>
                         <div class="settings-row" style="margin-top:8px;">
                             <div>
-                                <div class="settings-label">Enable on Add</div>
+                                <div class="settings-label" data-i18n="settings_enable_on_add">Enable on Add</div>
                             </div>
                             <input type="checkbox" id="new-mcp-enabled" checked>
                         </div>
                         <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button id="add-mcp-form-btn" class="btn btn-primary" onclick="addMCPServer()">Add Server</button>
-                            <button class="btn btn-secondary" onclick="hideAddMCPForm()">Cancel</button>
+                            <button id="add-mcp-form-btn" class="btn btn-primary" onclick="addMCPServer()"><span data-i18n="settings_add_server">Add Server</span></button>
+                            <button class="btn btn-secondary" onclick="hideAddMCPForm()"><span data-i18n="btn_cancel">Cancel</span></button>
                         </div>
                     </div>
 
 
                     <div class="settings-section" style="margin-top:16px;">
-                        <h4>Available Tools</h4>
+                        <h4 data-i18n="settings_available_tools">Available Tools</h4>
                         <div id="mcp-tools-list">
                             <!-- Populated by JavaScript -->
                         </div>
@@ -1382,10 +1442,8 @@
                 <!-- Security/Trivy Settings Tab -->
                 <div id="settings-security" class="settings-content" style="display:none;">
                     <div class="settings-section">
-                        <h4>Trivy CVE Scanner</h4>
-                        <p class="settings-description" style="margin-bottom:16px;">Trivy is used to scan container
-                            images for known vulnerabilities (CVEs). For air-gapped environments, you can download Trivy
-                            manually.</p>
+                        <h4 data-i18n="settings_trivy_scanner">Trivy CVE Scanner</h4>
+                        <p class="settings-description" style="margin-bottom:16px;" data-i18n="settings_trivy_desc">Trivy is used to scan container images for known vulnerabilities (CVEs). For air-gapped environments, you can download Trivy manually.</p>
 
                         <div id="trivy-status-card"
                             style="padding:16px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);margin-bottom:16px;">
@@ -1394,7 +1452,7 @@
                                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
                                         <span id="trivy-status-indicator"
                                             style="width:10px;height:10px;border-radius:50%;background:var(--text-secondary);"></span>
-                                        <span id="trivy-status-text" style="font-weight:600;">Checking...</span>
+                                        <span id="trivy-status-text" style="font-weight:600;" data-i18n="settings_checking">Checking...</span>
                                     </div>
                                     <div id="trivy-version" style="font-size:12px;color:var(--text-secondary);"></div>
                                     <div id="trivy-path"
@@ -1403,8 +1461,8 @@
                                 </div>
                                 <div id="trivy-actions">
                                     <button class="btn btn-primary" id="trivy-install-btn" onclick="installTrivy()"
-                                        style="display:none;">Install Trivy</button>
-                                    <button class="btn btn-secondary" onclick="checkTrivyStatus()">Refresh</button>
+                                        style="display:none;" data-i18n="settings_install_trivy">Install Trivy</button>
+                                    <button class="btn btn-secondary" onclick="checkTrivyStatus()" data-i18n="btn_refresh">Refresh</button>
                                 </div>
                             </div>
                             <div id="trivy-install-progress" style="display:none;margin-top:12px;">
@@ -1421,39 +1479,36 @@
 
                         <div id="trivy-instructions"
                             style="display:none;padding:16px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);">
-                            <h5 style="margin-bottom:12px;color:var(--text-primary);">Manual Installation (Air-gapped)
-                            </h5>
+                            <h5 style="margin-bottom:12px;color:var(--text-primary);" data-i18n="settings_manual_install">Manual Installation (Air-gapped)</h5>
                             <pre id="trivy-install-commands"
                                 style="padding:12px;background:var(--bg-tertiary);border-radius:6px;font-size:12px;overflow-x:auto;white-space:pre-wrap;"></pre>
-                            <p style="margin-top:12px;font-size:12px;color:var(--text-secondary);">
+                            <p style="margin-top:12px;font-size:12px;color:var(--text-secondary);" data-i18n="settings_manual_install_desc">
                                 After manual installation, click "Refresh" to detect Trivy.
                             </p>
                         </div>
                     </div>
 
                     <div class="settings-section" style="margin-top:20px;">
-                        <h4>Security Scanning</h4>
+                        <h4 data-i18n="settings_security_scanning">Security Scanning</h4>
 
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Enable Image Vulnerability Scanning</div>
-                                <div class="settings-description">Scan container images for CVEs during security reports
-                                    (requires Trivy)</div>
+                                <div class="settings-label" data-i18n="settings_enable_image_scanning">Enable Image Vulnerability Scanning</div>
+                                <div class="settings-description" data-i18n="settings_enable_image_scanning_desc">Scan container images for CVEs during security reports (requires Trivy)</div>
                             </div>
                             <input type="checkbox" id="security-scan-images" checked onchange="saveSecurityPreferences()">
                         </div>
 
                         <div class="settings-row" style="margin-top:12px;">
                             <div>
-                                <div class="settings-label">Minimum Severity</div>
-                                <div class="settings-description">Only report vulnerabilities at or above this level
-                                </div>
+                                <div class="settings-label" data-i18n="settings_min_severity">Minimum Severity</div>
+                                <div class="settings-description" data-i18n="settings_min_severity_desc">Only report vulnerabilities at or above this level</div>
                             </div>
                             <select id="security-min-severity" onchange="saveSecurityPreferences()">
-                                <option value="CRITICAL">Critical only</option>
-                                <option value="HIGH" selected>High and above</option>
-                                <option value="MEDIUM">Medium and above</option>
-                                <option value="LOW">All severities</option>
+                                <option value="CRITICAL" data-i18n="settings_severity_critical">Critical only</option>
+                                <option value="HIGH" selected data-i18n="settings_severity_high">High and above</option>
+                                <option value="MEDIUM" data-i18n="settings_severity_medium">Medium and above</option>
+                                <option value="LOW" data-i18n="settings_severity_low">All severities</option>
                             </select>
                         </div>
                     </div>
@@ -1463,27 +1518,26 @@
                 <!-- Metrics/Prometheus Settings Tab -->
                 <div id="settings-metrics" class="settings-content" style="display:none;">
                     <div class="settings-section">
-                        <h4>Prometheus Integration</h4>
-                        <p class="settings-description" style="margin-bottom:16px;">Expose metrics for Prometheus
-                            scraping and connect to external Prometheus servers.</p>
+                        <h4 data-i18n="settings_prometheus_integration">Prometheus Integration</h4>
+                        <p class="settings-description" style="margin-bottom:16px;" data-i18n="settings_prometheus_integration_desc">Expose metrics for Prometheus scraping and connect to external Prometheus servers.</p>
 
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Expose /metrics Endpoint</div>
-                                <div class="settings-description">Allow Prometheus to scrape metrics from k13d</div>
+                                <div class="settings-label" data-i18n="settings_expose_metrics">Expose /metrics Endpoint</div>
+                                <div class="settings-description" data-i18n="settings_expose_metrics_desc">Allow Prometheus to scrape metrics from k13d</div>
                             </div>
                             <input type="checkbox" id="prometheus-expose-metrics"
-                                onchange="updatePrometheusExposeInfo()">
+                                onchange="updatePrometheusExposeInfo(); autoSavePrometheusSettings()">
                         </div>
 
                         <div id="prometheus-expose-info"
                             style="margin-top:12px;padding:12px;background:var(--bg-primary);border-radius:8px;border:1px solid var(--border-color);display:none;">
-                            <div style="font-size:12px;color:var(--text-secondary);">
+                            <div style="font-size:12px;color:var(--text-secondary);" data-i18n="settings_prometheus_scrape_info">
                                 Prometheus can scrape metrics at: <code
                                     style="background:var(--bg-tertiary);padding:2px 6px;border-radius:4px;font-family:var(--font-mono);">http://&lt;host&gt;:&lt;port&gt;/metrics</code>
                             </div>
                             <div style="margin-top:12px;font-size:11px;color:var(--text-secondary);">
-                                <strong>Example prometheus.yml:</strong>
+                                <strong data-i18n="settings_example_config">Example prometheus.yml:</strong>
                                 <pre
                                     style="margin-top:6px;padding:10px;background:var(--bg-tertiary);border-radius:4px;font-size:11px;overflow-x:auto;font-family:var(--font-mono);">scrape_configs:
   - job_name: 'k13d'
@@ -1494,28 +1548,29 @@
                     </div>
 
                     <div class="settings-section" style="margin-top:20px;">
-                        <h4>External Prometheus Server</h4>
-                        <p class="settings-description" style="margin-bottom:12px;">Connect to an external Prometheus
-                            server for advanced queries.</p>
+                        <h4 data-i18n="settings_external_prometheus">External Prometheus Server</h4>
+                        <p class="settings-description" style="margin-bottom:12px;" data-i18n="settings_external_prometheus_desc">Connect to an external Prometheus server for advanced queries.</p>
 
                         <div class="form-group">
-                            <label>Prometheus URL</label>
-                            <input type="text" id="prometheus-external-url" placeholder="http://prometheus:9090">
+                            <label data-i18n="settings_prometheus_url">Prometheus URL</label>
+                            <input type="text" id="prometheus-external-url" placeholder="http://prometheus:9090"
+                                onchange="autoSavePrometheusSettings()">
                         </div>
 
                         <div class="form-group">
-                            <label>Username (optional)</label>
-                            <input type="text" id="prometheus-username" placeholder="admin">
+                            <label data-i18n="settings_username">Username (optional)</label>
+                            <input type="text" id="prometheus-username" placeholder="admin"
+                                onchange="autoSavePrometheusSettings()">
                         </div>
 
                         <div class="form-group">
-                            <label>Password (optional)</label>
-                            <input type="password" id="prometheus-password" placeholder="••••••••">
+                            <label data-i18n="settings_password">Password (optional)</label>
+                            <input type="password" id="prometheus-password" placeholder="••••••••"
+                                onchange="autoSavePrometheusSettings()">
                         </div>
 
                         <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button class="btn btn-secondary" onclick="testPrometheusConnection()">Test
-                                Connection</button>
+                            <button class="btn btn-secondary" onclick="testPrometheusConnection()"><span data-i18n="settings_test_connection">Test Connection</span></button>
                         </div>
 
                         <div id="prometheus-test-result"
@@ -1530,7 +1585,7 @@
                                 <div class="settings-label">Enable K8s Metrics Collection</div>
                                 <div class="settings-description">Collect metrics from Kubernetes metrics-server</div>
                             </div>
-                            <input type="checkbox" id="prometheus-collect-k8s" checked>
+                            <input type="checkbox" id="prometheus-collect-k8s" checked onchange="autoSavePrometheusSettings()">
                         </div>
 
                         <div class="settings-row" style="margin-top:12px;">
@@ -1538,7 +1593,7 @@
                                 <div class="settings-label">Collection Interval</div>
                                 <div class="settings-description">How often to collect metrics</div>
                             </div>
-                            <select id="prometheus-collection-interval">
+                            <select id="prometheus-collection-interval" onchange="autoSavePrometheusSettings()">
                                 <option value="30">30 seconds</option>
                                 <option value="60" selected>1 minute</option>
                                 <option value="120">2 minutes</option>
@@ -1555,7 +1610,7 @@
                                 <div class="settings-label">Metrics Retention Period</div>
                                 <div class="settings-description">How long to keep historical metrics</div>
                             </div>
-                            <select id="prometheus-retention-days" onchange="updateMetricsStorageInfo()">
+                            <select id="prometheus-retention-days" onchange="updateMetricsStorageInfo(); autoSavePrometheusSettings()">
                                 <option value="7">7 days</option>
                                 <option value="14">14 days</option>
                                 <option value="30" selected>30 days</option>
@@ -1577,62 +1632,57 @@
                             </div>
                         </div>
                     </div>
-
-                    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-color);">
-                        <button class="btn btn-primary" onclick="savePrometheusSettings()">Save Prometheus
-                            Settings</button>
-                    </div>
                 </div>
 
                 <div id="settings-about" class="settings-content" style="display:none;">
                     <div class="about-header">
-                        <div class="about-logo">⎈</div>
+                        <div class="about-logo"><i data-lucide="container" style="width:48px;height:48px"></i></div>
                         <div class="about-title">
                             <h2>k13d</h2>
-                            <p class="about-tagline">AI-Powered Kubernetes Dashboard</p>
+                            <p class="about-tagline" data-i18n="about_tagline">AI-Powered Kubernetes Dashboard</p>
                         </div>
                     </div>
 
                     <div class="about-version-card">
                         <div class="about-version-row">
-                            <span class="about-label">Version</span>
+                            <span class="about-label" data-i18n="about_version">Version</span>
                             <span class="about-value" id="about-version">Loading...</span>
                         </div>
                         <div class="about-version-row">
-                            <span class="about-label">Build Time</span>
+                            <span class="about-label" data-i18n="about_build_time">Build Time</span>
                             <span class="about-value" id="about-build-time">-</span>
                         </div>
                         <div class="about-version-row">
-                            <span class="about-label">Git Commit</span>
+                            <span class="about-label" data-i18n="about_git_commit">Git Commit</span>
                             <span class="about-value about-mono" id="about-git-commit">-</span>
                         </div>
                     </div>
 
                     <div class="about-description">
-                        <p>A modern Kubernetes dashboard combining the power of <strong>k9s-style TUI</strong> with an
+                        <p data-i18n="about_description">A modern Kubernetes dashboard combining the power of <strong>k9s-style TUI</strong> with an
                             AI assistant. Manage clusters efficiently with natural language commands and intelligent
                             analysis.</p>
                     </div>
 
                     <div class="about-features">
                         <div class="about-feature">
-                            <span class="about-feature-icon">🤖</span>
+                            <span class="about-feature-icon"><i data-lucide="bot" style="width:24px;height:24px"></i></span>
                             <div>
-                                <strong>AI Assistant</strong>
-                                <p>Natural language cluster management</p>
+                                <strong data-i18n="about_feature_ai">AI Assistant</strong>
+                                <p data-i18n="about_feature_ai_desc">Natural language cluster management</p>
                             </div>
                         </div>
                         <div class="about-feature">
-                            <span class="about-feature-icon">⚡</span>
+                            <span class="about-feature-icon"><i data-lucide="zap" style="width:24px;height:24px"></i></span>
                             <div>
-                                <strong>Real-time Monitoring</strong>
-                                <p>Live resource status and metrics</p>
+                                <strong data-i18n="about_feature_monitoring">Real-time Monitoring</strong>
+                                <p data-i18n="about_feature_monitoring_desc">Live resource status and metrics</p>
                             </div>
                         </div>
                         <div class="about-feature">
-                            <span class="about-feature-icon">🔒</span>
+                            <span class="about-feature-icon"><i data-lucide="shield" style="width:24px;height:24px"></i></span>
                             <div>
-                                <strong>Safety First</strong>
+                                <strong data-i18n="about_feature_safety">Safety First</strong>
                                 <p>Guardrails for dangerous operations</p>
                             </div>
                         </div>
@@ -1640,7 +1690,7 @@
                             <span class="about-feature-icon">🌍</span>
                             <div>
                                 <strong>Multi-language</strong>
-                                <p>English, 한국어, 中文, 日本語</p>
+                                <p>English, 한국어</p>
                             </div>
                         </div>
                     </div>
@@ -1648,20 +1698,20 @@
                     <div class="about-links">
                         <a href="https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli" target="_blank"
                             class="about-link">
-                            <span>📦</span> GitHub Repository
+                            <span><i data-lucide="github" style="width:16px;height:16px;vertical-align:middle"></i></span> GitHub Repository
                         </a>
                         <a href="https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/issues" target="_blank"
                             class="about-link">
-                            <span>🐛</span> Report Issue
+                            <span><i data-lucide="bug" style="width:16px;height:16px;vertical-align:middle"></i></span> Report Issue
                         </a>
                         <a href="https://github.com/kube-ai-dashbaord/kube-ai-dashboard-cli/blob/main/docs/USER_GUIDE.md"
                             target="_blank" class="about-link">
-                            <span>📖</span> Documentation
+                            <span><i data-lucide="book-open" style="width:16px;height:16px;vertical-align:middle"></i></span> Documentation
                         </a>
                     </div>
 
                     <div class="about-footer">
-                        <p>Made with ❤️ for the Kubernetes Community</p>
+                        <p>Made with <i data-lucide="heart" style="width:14px;height:14px;vertical-align:middle;color:var(--accent-red)"></i> for the Kubernetes Community</p>
                         <p class="about-license">MIT License</p>
                     </div>
                 </div>
@@ -1669,71 +1719,70 @@
                 <!-- Notifications Tab -->
                 <div id="settings-notifications" class="settings-content" style="display:none;">
                     <div class="settings-section">
-                        <h4>Webhook Notifications</h4>
-                        <p class="settings-description" style="margin-bottom:16px;">Receive alerts for cluster events
-                            via Slack, Discord, Teams, Email, or custom webhook.</p>
+                        <h4 data-i18n="settings_webhook_notifications">Webhook Notifications</h4>
+                        <p class="settings-description" style="margin-bottom:16px;" data-i18n="settings_webhook_notifications_desc">Receive alerts for cluster events via Slack, Discord, Teams, Email, or custom webhook.</p>
                         <div class="settings-row">
                             <div>
-                                <div class="settings-label">Enable Notifications</div>
-                                <div class="settings-description">Send alerts when cluster events occur</div>
+                                <div class="settings-label" data-i18n="settings_enable_notifications">Enable Notifications</div>
+                                <div class="settings-description" data-i18n="settings_enable_notifications_desc">Send alerts when cluster events occur</div>
                             </div>
                             <input type="checkbox" id="notif-enabled" onchange="saveNotificationSettings()">
                         </div>
                         <div class="form-group" style="margin-top:12px;">
-                            <label>Platform</label>
-                            <select id="notif-platform" onchange="updateNotifPlaceholder()">
+                            <label data-i18n="settings_platform">Platform</label>
+                            <select id="notif-platform" onchange="updateNotifPlaceholder(); saveNotificationSettings()">
                                 <option value="slack">Slack</option>
                                 <option value="discord">Discord</option>
                                 <option value="teams">Microsoft Teams</option>
-                                <option value="email">Email (SMTP)</option>
-                                <option value="custom">Custom Webhook</option>
+                                <option value="email" data-i18n="settings_email_smtp">Email (SMTP)</option>
+                                <option value="custom" data-i18n="settings_custom_webhook">Custom Webhook</option>
                             </select>
                         </div>
                         <div id="notif-webhook-section">
                             <div class="form-group">
-                                <label>Webhook URL</label>
+                                <label data-i18n="settings_webhook_url">Webhook URL</label>
                                 <input type="text" id="notif-webhook-url"
-                                    placeholder="https://hooks.slack.com/services/...">
+                                    placeholder="https://hooks.slack.com/services/..." onchange="saveNotificationSettings()">
                             </div>
                             <div class="form-group">
-                                <label>Channel (optional)</label>
-                                <input type="text" id="notif-channel" placeholder="#k8s-alerts">
+                                <label data-i18n="settings_channel">Channel (optional)</label>
+                                <input type="text" id="notif-channel" placeholder="#k8s-alerts" onchange="saveNotificationSettings()">
                             </div>
                         </div>
                         <div id="notif-smtp-section" style="display:none;">
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                                 <div class="form-group">
-                                    <label>SMTP Host</label>
-                                    <input type="text" id="notif-smtp-host" placeholder="smtp.gmail.com">
+                                    <label data-i18n="settings_smtp_host">SMTP Host</label>
+                                    <input type="text" id="notif-smtp-host" placeholder="smtp.gmail.com" onchange="saveNotificationSettings()">
                                 </div>
                                 <div class="form-group">
-                                    <label>Port</label>
-                                    <input type="number" id="notif-smtp-port" placeholder="587" value="587">
+                                    <label data-i18n="settings_port">Port</label>
+                                    <input type="number" id="notif-smtp-port" placeholder="587" value="587" onchange="saveNotificationSettings()">
                                 </div>
                             </div>
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                                 <div class="form-group">
-                                    <label>Username</label>
-                                    <input type="text" id="notif-smtp-username" placeholder="user@gmail.com">
+                                    <label data-i18n="settings_username">Username</label>
+                                    <input type="text" id="notif-smtp-username" placeholder="user@gmail.com" onchange="saveNotificationSettings()">
                                 </div>
                                 <div class="form-group">
-                                    <label>Password</label>
-                                    <input type="password" id="notif-smtp-password" placeholder="app password">
+                                    <label data-i18n="settings_password">Password</label>
+                                    <input type="password" id="notif-smtp-password" placeholder="app password" onchange="saveNotificationSettings()">
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label>From Address</label>
-                                <input type="text" id="notif-smtp-from" placeholder="alerts@example.com">
+                                <label data-i18n="settings_from_address">From Address</label>
+                                <input type="text" id="notif-smtp-from" placeholder="alerts@example.com" onchange="saveNotificationSettings()">
                             </div>
                             <div class="form-group">
-                                <label>To Addresses (comma-separated)</label>
-                                <input type="text" id="notif-smtp-to" placeholder="admin@example.com, team@example.com">
+                                <label data-i18n="settings_to_addresses">To Addresses (comma-separated)</label>
+                                <input type="text" id="notif-smtp-to" placeholder="admin@example.com, team@example.com" onchange="saveNotificationSettings()">
                             </div>
                             <div class="settings-row">
                                 <div>
                                     <div class="settings-label">Use TLS</div>
                                 </div>
-                                <input type="checkbox" id="notif-smtp-tls" checked>
+                                <input type="checkbox" id="notif-smtp-tls" checked onchange="saveNotificationSettings()">
                             </div>
                         </div>
                     </div>
@@ -1742,31 +1791,30 @@
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Pod CrashLoopBackOff</div>
-                            </div><input type="checkbox" id="notif-evt-crash" checked>
+                            </div><input type="checkbox" id="notif-evt-crash" checked onchange="saveNotificationSettings()">
                         </div>
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Pod OOMKilled</div>
-                            </div><input type="checkbox" id="notif-evt-oom" checked>
+                            </div><input type="checkbox" id="notif-evt-oom" checked onchange="saveNotificationSettings()">
                         </div>
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Node Not Ready</div>
-                            </div><input type="checkbox" id="notif-evt-node" checked>
+                            </div><input type="checkbox" id="notif-evt-node" checked onchange="saveNotificationSettings()">
                         </div>
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Deployment Failed</div>
-                            </div><input type="checkbox" id="notif-evt-deploy" checked>
+                            </div><input type="checkbox" id="notif-evt-deploy" checked onchange="saveNotificationSettings()">
                         </div>
                         <div class="settings-row">
                             <div>
                                 <div class="settings-label">Image Pull Failed</div>
-                            </div><input type="checkbox" id="notif-evt-imagepull" checked>
+                            </div><input type="checkbox" id="notif-evt-imagepull" checked onchange="saveNotificationSettings()">
                         </div>
                     </div>
                     <div style="display:flex;gap:8px;margin-top:16px;">
-                        <button class="btn btn-primary" onclick="saveNotificationSettings()">Save</button>
                         <button class="btn btn-secondary" onclick="testNotification()">Send Test</button>
                     </div>
                     <div id="notif-test-result" style="margin-top:12px;padding:10px;border-radius:6px;display:none;">
@@ -1989,10 +2037,6 @@
                             </div>
                         </div>
                         <div style="margin-top:16px;">
-                            <button class="btn btn-primary" id="auth-save-btn" onclick="saveAuthSettings()" style="width:100%;"
-                                disabled title="Authentication provider settings are configured at startup in the current build.">
-                                Save Authentication Settings
-                            </button>
                         </div>
                     </div>
 
@@ -2005,9 +2049,7 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+            <div class="modal-footer" style="display:none;">
             </div>
         </div>
     </div>
@@ -2040,7 +2082,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeDetail()">Close</button>
-                <button class="btn btn-primary" onclick="analyzeWithAI()">🤖 Analyze with AI</button>
+                <button class="btn btn-primary" onclick="analyzeWithAI()"><i data-lucide="bot" style="width:16px;height:16px;vertical-align:middle"></i> Analyze with AI</button>
             </div>
         </div>
     </div>
@@ -2332,24 +2374,24 @@ spec:
             <!-- Summary Stats Grid -->
             <div class="metrics-dashboard-grid">
                 <div class="metrics-stat-card">
-                    <div class="stat-icon">⚡</div>
+                    <div class="stat-icon"><i data-lucide="cpu" style="width:24px;height:24px"></i></div>
                     <div class="stat-value" id="metrics-cpu-value">-</div>
                     <div class="stat-label">CPU Usage</div>
                     <div class="stat-trend" id="metrics-cpu-trend"></div>
                 </div>
                 <div class="metrics-stat-card">
-                    <div class="stat-icon">💾</div>
+                    <div class="stat-icon"><i data-lucide="memory-stick" style="width:24px;height:24px"></i></div>
                     <div class="stat-value" id="metrics-mem-value">-</div>
                     <div class="stat-label">Memory Usage</div>
                     <div class="stat-trend" id="metrics-mem-trend"></div>
                 </div>
                 <div class="metrics-stat-card">
-                    <div class="stat-icon">🖥️</div>
+                    <div class="stat-icon"><i data-lucide="server" style="width:24px;height:24px"></i></div>
                     <div class="stat-value" id="metrics-nodes-value">-/-</div>
                     <div class="stat-label">Nodes Ready</div>
                 </div>
                 <div class="metrics-stat-card">
-                    <div class="stat-icon">📦</div>
+                    <div class="stat-icon"><i data-lucide="box" style="width:24px;height:24px"></i></div>
                     <div class="stat-value" id="metrics-pods-value">-</div>
                     <div class="stat-label">Running Pods</div>
                     <div class="stat-trend" id="metrics-pods-trend"></div>
@@ -2452,53 +2494,6 @@ spec:
                     <p style="color: var(--text-secondary); text-align: center; padding: 20px;">No active port forwards
                     </p>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Audit Logs Modal -->
-    <div class="modal-overlay" id="audit-modal" role="dialog" aria-modal="true">
-        <div class="modal audit-modal">
-            <div class="modal-header">
-                <h2>Audit Logs</h2>
-                <button class="modal-close" onclick="closeAuditModal()" aria-label="Close audit logs">&times;</button>
-            </div>
-            <div class="audit-filters"
-                style="padding: 12px 24px; border-bottom: 1px solid var(--border-color); display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px;">
-                    <input type="checkbox" id="audit-filter-llm" onchange="toggleAuditFilter('onlyLLM')">
-                    <span>LLM Actions Only</span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 13px;">
-                    <input type="checkbox" id="audit-filter-errors" onchange="toggleAuditFilter('onlyErrors')">
-                    <span>Errors Only</span>
-                </label>
-                <span style="color: var(--text-secondary); margin-left: auto; font-size: 12px;"
-                    id="audit-entry-count"></span>
-                <button class="btn btn-secondary" onclick="loadAuditModalData()"
-                    style="padding: 4px 12px; font-size: 12px;">Refresh</button>
-            </div>
-            <div class="modal-body" style="max-height: 65vh; overflow-y: auto; padding: 0;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                    <thead id="audit-modal-header"
-                        style="position: sticky; top: 0; background: var(--bg-secondary); z-index: 1;">
-                        <tr>
-                            <th style="padding: 10px 12px; text-align: left;">TIME</th>
-                            <th style="padding: 10px 12px; text-align: left;">USER</th>
-                            <th style="padding: 10px 12px; text-align: left;">K8S USER</th>
-                            <th style="padding: 10px 12px; text-align: left;">ACTION</th>
-                            <th style="padding: 10px 12px; text-align: left;">RESOURCE</th>
-                            <th style="padding: 10px 12px; text-align: left;">SOURCE</th>
-                            <th style="padding: 10px 12px; text-align: center;">STATUS</th>
-                            <th style="padding: 10px 12px; text-align: left;">DETAILS</th>
-                        </tr>
-                    </thead>
-                    <tbody id="audit-modal-body"></tbody>
-                </table>
-            </div>
-            <div class="modal-footer"
-                style="padding: 12px 24px; border-top: 1px solid var(--border-color); text-align: right;">
-                <button class="btn btn-secondary" onclick="closeAuditModal()">Close</button>
             </div>
         </div>
     </div>

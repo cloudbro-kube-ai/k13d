@@ -13,6 +13,7 @@ import (
 	"github.com/cloudbro-kube-ai/k13d/pkg/db"
 	"github.com/cloudbro-kube-ai/k13d/pkg/i18n"
 	"github.com/cloudbro-kube-ai/k13d/pkg/log"
+	"github.com/cloudbro-kube-ai/k13d/pkg/mcp"
 )
 
 // ==========================================
@@ -679,4 +680,150 @@ func (s *Server) handleMCPTools(w http.ResponseWriter, r *http.Request) {
 		"mcp_tools":     tools,
 		"builtin_tools": builtinTools,
 	})
+}
+
+// handleMCPProfiles manages MCP profiles
+func (s *Server) handleMCPProfiles(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	switch r.Method {
+	case http.MethodGet:
+		// Return all available profiles with status
+		profiles := mcp.GetAvailableProfiles()
+		res := make([]map[string]interface{}, len(profiles))
+		for i, p := range profiles {
+			res[i] = map[string]interface{}{
+				"id":          p.ID,
+				"name":        p.Name,
+				"category":    p.Category,
+				"description": p.Description,
+				"required":    p.Required,
+				"tags":        p.Tags,
+				"installed":   mcp.IsProfileInstalled(s.cfg, p.ID),
+			}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"profiles": res,
+		})
+
+	case http.MethodPost:
+		// Install or uninstall profile
+		var req struct {
+			ProfileID string `json:"profile_id"`
+			Action    string `json:"action"` // "install", "uninstall"
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			WriteErrorSimple(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+
+		if req.ProfileID == "" || req.Action == "" {
+			WriteErrorSimple(w, http.StatusBadRequest, "Profile ID and Action are required")
+			return
+		}
+
+		profile := mcp.GetProfileByID(req.ProfileID)
+		if profile == nil {
+			WriteErrorSimple(w, http.StatusNotFound, "Profile not found")
+			return
+		}
+
+		username := r.Header.Get("X-Username")
+
+		switch req.Action {
+		case "install":
+			err := mcp.InstallProfile(s.cfg, req.ProfileID)
+			if err != nil {
+				WriteErrorSimple(w, http.StatusInternalServerError, fmt.Sprintf("Failed to install profile: %v", err))
+				return
+			}
+
+			// Enable the servers in the profile
+			for _, srv := range profile.Servers {
+				s.cfg.ToggleMCPServer(srv.Name, true)
+			}
+
+			if err := s.cfg.Save(); err != nil {
+				WriteErrorSimple(w, http.StatusInternalServerError, "Failed to save config")
+				return
+			}
+
+			// Connect to the enabled servers from the profile
+			var warnings []string
+			for _, srv := range profile.Servers {
+				var fullSrv config.MCPServer
+				for _, cfgSrv := range s.cfg.MCP.Servers {
+					if cfgSrv.Name == srv.Name {
+						fullSrv = cfgSrv
+						break
+					}
+				}
+				if fullSrv.Name != "" && fullSrv.Enabled {
+					ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+					if err := s.mcpClient.Connect(ctx, fullSrv); err != nil {
+						warnings = append(warnings, fmt.Sprintf("Server %s: %v", fullSrv.Name, err))
+					} else {
+						s.registerMCPTools(fullSrv.Name)
+					}
+					cancel()
+				}
+			}
+
+			// Record audit
+			_ = db.RecordAudit(db.AuditEntry{
+				User:     username,
+				Action:   "install_mcp_profile",
+				Resource: "mcp",
+				Details:  fmt.Sprintf("Installed MCP profile: %s", req.ProfileID),
+			})
+
+			resp := map[string]interface{}{
+				"status": "installed",
+				"id":     req.ProfileID,
+			}
+			if len(warnings) > 0 {
+				resp["warning"] = fmt.Sprintf("Installed but failed to connect some servers: %s", strings.Join(warnings, "; "))
+			}
+			_ = json.NewEncoder(w).Encode(resp)
+
+		case "uninstall":
+			err := mcp.UninstallProfile(s.cfg, req.ProfileID)
+			if err != nil {
+				WriteErrorSimple(w, http.StatusInternalServerError, fmt.Sprintf("Failed to uninstall profile: %v", err))
+				return
+			}
+
+			if err := s.cfg.Save(); err != nil {
+				WriteErrorSimple(w, http.StatusInternalServerError, "Failed to save config")
+				return
+			}
+
+			// Disconnect and unregister tools
+			for _, srv := range profile.Servers {
+				_ = s.mcpClient.Disconnect(srv.Name)
+				if s.aiClient != nil {
+					s.aiClient.GetToolRegistry().UnregisterMCPTools(srv.Name)
+				}
+			}
+
+			// Record audit
+			_ = db.RecordAudit(db.AuditEntry{
+				User:     username,
+				Action:   "uninstall_mcp_profile",
+				Resource: "mcp",
+				Details:  fmt.Sprintf("Uninstalled MCP profile: %s", req.ProfileID),
+			})
+
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"status": "uninstalled",
+				"id":     req.ProfileID,
+			})
+
+		default:
+			WriteErrorSimple(w, http.StatusBadRequest, "Invalid action (use: install, uninstall)")
+		}
+
+	default:
+		WriteErrorSimple(w, http.StatusMethodNotAllowed, "Method not allowed")
+	}
 }

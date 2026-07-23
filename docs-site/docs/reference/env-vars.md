@@ -16,6 +16,7 @@ Default config paths are:
 |----------|-------------|---------|
 | `K13D_CONFIG` | Override `config.yaml` path | `~/.config/k13d/config.yaml` on macOS, `<XDG config home>/k13d/config.yaml` otherwise |
 | `K13D_WEB` | Start in Web UI mode | `false` |
+|| `K13D_CLI` | Start in CLI REPL mode | `false` |
 | `K13D_PORT` | Web server port | `8080` |
 | `K13D_NAMESPACE` | Initial namespace | cluster default |
 | `K13D_ALL_NAMESPACES` | Start with all namespaces | `false` |

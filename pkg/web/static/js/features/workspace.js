@@ -671,6 +671,12 @@ async function createNewChat() {
 
             // Refresh list and show new chat
             await loadChatHistory();
+
+            // Close chat history sidebar after creating new session
+            const sidebar = document.getElementById('chat-history-sidebar');
+            if (sidebar && sidebar.classList.contains('open')) {
+                toggleChatHistory();
+            }
         }
     } catch (e) {
         console.error('Failed to create new chat:', e);
@@ -696,21 +702,27 @@ async function loadChat(chatId) {
             container.innerHTML = `
                     <div class="message assistant">
                         <div class="message-content">
-                            Welcome to k13d! I can help you manage your Kubernetes cluster.
+                            ${t('ai_welcome')}
                             <br><br>
-                            Try asking:
+                            ${t('ai_try_asking')}
                             <br>- "Show me all pods"
                             <br>- "Create an nginx pod"
                             <br>- "Scale deployment to 3 replicas"
                             <br><br>
-                            <strong>Tip:</strong> Click any resource row to add it as context for AI analysis!
+                            <strong>${t('ai_tip')}</strong> ${t('ai_tip_hint')}
                         </div>
                     </div>
                 `;
         } else {
             // Restore messages from backend
+            let assistantIndex = 0;
             session.messages.forEach(msg => {
-                addMessageToDOM(msg.content, msg.role === 'user', false);
+                if (msg.role === 'assistant') {
+                    addMessageToDOM(msg.content, false, false, chatId, assistantIndex);
+                    assistantIndex++;
+                } else {
+                    addMessageToDOM(msg.content, true, false);
+                }
             });
         }
 
@@ -914,7 +926,26 @@ function startRenameChat(chatId, event) {
 function toggleChatHistory() {
     const sidebar = document.getElementById('chat-history-sidebar');
     const panel = document.getElementById('ai-panel');
+    const isOpen = sidebar.classList.contains('open');
 
-    sidebar.classList.toggle('open');
-    panel.classList.toggle('history-open');
+    if (isOpen) {
+        sidebar.classList.remove('open');
+        panel.classList.remove('history-open');
+        document.removeEventListener('click', handleChatHistoryClickOutside);
+    } else {
+        sidebar.classList.add('open');
+        panel.classList.add('history-open');
+        setTimeout(() => {
+            document.addEventListener('click', handleChatHistoryClickOutside);
+        }, 0);
+    }
+}
+
+function handleChatHistoryClickOutside(e) {
+    const sidebar = document.getElementById('chat-history-sidebar');
+    const toggleBtn = document.getElementById('chat-history-toggle');
+
+    if (sidebar && !sidebar.contains(e.target) && e.target !== toggleBtn && !toggleBtn.contains(e.target)) {
+        toggleChatHistory();
+    }
 }

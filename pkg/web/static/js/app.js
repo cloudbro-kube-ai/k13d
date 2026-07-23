@@ -29,7 +29,7 @@ let currentUser = null;
 let sidebarCollapsed = localStorage.getItem('k13d_sidebar_collapsed') === 'true';
 let debugMode = localStorage.getItem('k13d_debug_mode') === 'true';
 let aiContextItems = []; // Resources added as context for AI
-let currentLanguage = 'ko'; // Default language (Korean)
+let currentLanguage = localStorage.getItem('k13d_language') || 'en'; // Load from localStorage, default English
 let currentLLMModel = ''; // Current LLM model name
 let llmConnected = false; // LLM connection status
 let currentSessionId = sessionStorage.getItem('k13d_session_id') || ''; // AI conversation session ID
@@ -274,6 +274,9 @@ let currentEventSource = null;
 
 // Reasoning effort setting (for Solar Pro2)
 let reasoningEffort = localStorage.getItem('k13d_reasoning_effort') || 'minimal'; // default minimal
+
+// Track last rendered items to prevent unnecessary re-renders
+const lastRenderedItems = {};
 const resourceCachePolicy = Object.freeze({
     ttlMs: 15 * 1000,
     maxStaleMs: 3 * 60 * 1000,
@@ -691,29 +694,38 @@ function onPageSizeChange() {
 
 // Theme toggle (dark/light)
 function initTheme() {
-    const saved = localStorage.getItem('k13d_theme') || 'light';
+    const saved = localStorage.getItem('k13d_theme') || 'ollama';
     document.documentElement.setAttribute('data-theme', saved);
     updateThemeIcon();
 }
 
-function toggleTheme() {
+function toggleDarkMode() {
     const current = document.documentElement.getAttribute('data-theme');
-    if (!current || current === 'light') {
-        // Switch to Tokyo Night
+    const isLight = !current || current === 'ollama';
+    if (isLight) {
         applyTheme('tokyo-night');
     } else {
-        // Switch to Light
-        applyTheme('light');
+        applyTheme('ollama');
     }
+    updateThemeIcon();
 }
 
 function updateThemeIcon() {
-    const btn = document.getElementById('theme-toggle');
-    if (!btn) return;
+    const lightIcon = document.getElementById('theme-icon-light');
+    const darkIcon = document.getElementById('theme-icon-dark');
+    const btn = document.getElementById('theme-toggle-btn');
+    
     const theme = document.documentElement.getAttribute('data-theme');
-    const isLight = !theme || theme === 'light';
-    btn.textContent = isLight ? '☀️' : '🌙';
-    btn.title = isLight ? 'Switch to dark theme' : 'Switch to light theme';
+    const isLight = !theme || theme === 'ollama';
+    
+    if (lightIcon && darkIcon) {
+        lightIcon.style.display = isLight ? 'none' : 'block';
+        darkIcon.style.display = isLight ? 'block' : 'none';
+    }
+    
+    if (btn) {
+        btn.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';
+    }
 }
 
 // Apply theme immediately (before DOM ready)
@@ -721,6 +733,10 @@ initTheme();
 
 // Initialize
 async function init() {
+    // Initialize Lucide icons
+    if (typeof initLucideIcons === 'function') {
+        initLucideIcons();
+    }
     if (authToken) {
         try {
             const health = await fetch('/api/health').then(r => r.json());
@@ -884,7 +900,7 @@ function showApp() {
     }
     loadClusterContexts();
     loadNamespaces();
-    switchResource('pods');
+    showOverviewPanel();
     initMobileNavSections();
     setupResizeHandle();
     setupHealthCheck();
@@ -898,6 +914,8 @@ function showApp() {
     updateAIStatus();
     // Load user permissions for feature gating
     loadUserPermissions();
+    // Apply saved language setting to UI
+    updateUILanguage();
 }
 
 // Login tab switching
@@ -1065,6 +1083,13 @@ function buildResourceRequest(resource) {
 }
 
 function renderTableLoadingState(resource) {
+    // Remove loading overlay if present (replaced by inline loading state)
+    const tableContainer = document.querySelector('.table-container');
+    if (tableContainer) {
+        const overlay = tableContainer.querySelector('.table-loading-overlay');
+        if (overlay) overlay.remove();
+    }
+
     renderTableHeaders(resource);
     const columns = tableHeaders[resource] || ['NAME'];
     const body = document.getElementById('table-body');
@@ -1171,7 +1196,21 @@ function applyResourcePayload(resource, data, meta, loadId) {
         return;
     }
 
-    renderTable(resource, data.items || []);
+    const items = data.items || [];
+    const prevItems = lastRenderedItems[resource];
+
+    if (prevItems && prevItems.length === items.length) {
+        const isSame = items.length === 0 ||
+            (items[0]?.metadata?.uid === prevItems[0]?.metadata?.uid &&
+             items[items.length - 1]?.metadata?.uid === prevItems[prevItems.length - 1]?.metadata?.uid);
+        if (isSame && !meta.revalidating) {
+            setDataFreshnessState(meta.cached ? 'cached' : 'live', meta.cached ? 'Cached' : 'Live');
+            return;
+        }
+    }
+
+    lastRenderedItems[resource] = items;
+    renderTable(resource, items);
 
     if (meta.error && meta.cached) {
         setDataFreshnessState('offline', 'Offline cache', 5000);
@@ -1206,6 +1245,7 @@ async function loadResourceSnapshot(resource, loadId, options = {}) {
         ...resourceCachePolicy,
         cacheKey: request.cacheKey,
         forceNetwork: !!options.forceNetwork,
+        useCachedWhileRefreshing: true,
     };
 
     const preview = K13D.SWR?.peekJSON(request.cacheKey, policy);
@@ -1226,6 +1266,9 @@ async function loadResourceSnapshot(resource, loadId, options = {}) {
 
         if (result.revalidatePromise) {
             result.revalidatePromise.then((revalidated) => {
+                if (!isDashboardLoadActive(loadId)) {
+                    return;
+                }
                 applyResourcePayload(resource, revalidated.data, {
                     cached: !!revalidated.cached,
                     stale: !!revalidated.stale,
@@ -1245,9 +1288,15 @@ async function loadResourceSnapshot(resource, loadId, options = {}) {
             return;
         }
         console.error(`Failed to load ${resource}:`, e);
-        clearResourceData(resource);
-        if (renderTarget) {
-            setDataFreshnessState('offline', 'Failed to refresh', 4500);
+        if (preview) {
+            if (renderTarget) {
+                setDataFreshnessState('offline', 'Refresh failed, showing cached', 5000);
+            }
+        } else {
+            clearResourceData(resource);
+            if (renderTarget) {
+                setDataFreshnessState('offline', 'Failed to refresh', 4500);
+            }
         }
     }
 }
@@ -1379,7 +1428,7 @@ async function switchToCRD(crdName) {
     currentResource = `crd:${crdName}`;
 
     // Update active nav item
-    document.querySelectorAll('.nav-item').forEach(item => {
+    document.querySelectorAll('.menu-item').forEach(item => {
         item.classList.remove('active');
     });
     document.querySelector(`[data-crd="${crdName}"]`)?.classList.add('active');
@@ -1585,10 +1634,19 @@ function switchResource(resource) {
     sortColumn = null;
     sortDirection = 'asc';
 
-    document.querySelectorAll('.nav-item').forEach(item => {
+    document.querySelectorAll('.menu-item').forEach(item => {
         item.classList.toggle('active', item.dataset.resource === resource);
     });
     document.getElementById('panel-title').textContent = resource.charAt(0).toUpperCase() + resource.slice(1);
+
+    // Expand the parent menu group if collapsed
+    const activeItem = document.querySelector(`.menu-item[data-resource="${resource}"]`);
+    if (activeItem) {
+        const parentGroup = activeItem.closest('.menu-group');
+        if (parentGroup && parentGroup.classList.contains('collapsed')) {
+            parentGroup.classList.remove('collapsed');
+        }
+    }
 
     // Hide topology view, custom views and overview panel, show main panel
     hideTopologyView();
@@ -1597,6 +1655,20 @@ function switchResource(resource) {
 
     // Update active column filters display
     updateActiveColumnFiltersDisplay();
+
+    // Show loading overlay on table container
+    const tableContainer = document.querySelector('.table-container');
+    if (tableContainer) {
+        // Remove any existing overlay
+        const existing = tableContainer.querySelector('.table-loading-overlay');
+        if (existing) existing.remove();
+        // Create and add loading overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'table-loading-overlay';
+        overlay.innerHTML = '<div class="loading-dots" style="justify-content:center;"><span></span><span></span><span></span></div><div class="loading-text">Loading ' + escapeHtml(resource) + '...</div>';
+        tableContainer.style.position = 'relative';
+        tableContainer.appendChild(overlay);
+    }
 
     loadData();
 }
@@ -1782,6 +1854,13 @@ function updateResourceSummary(resource, items) {
 }
 
 function renderTable(resource, items) {
+    // Remove loading overlay if present
+    const tableContainer = document.querySelector('.table-container');
+    if (tableContainer) {
+        const overlay = tableContainer.querySelector('.table-loading-overlay');
+        if (overlay) overlay.remove();
+    }
+
     // Standardize items and update state
     allItems = items || [];
     
@@ -2486,6 +2565,7 @@ async function sendMessageAgentic(message, context = '') {
 
     const contentEl = div.querySelector('.message-content');
     let fullContent = '';
+    const toolExecutions = [];
 
     aiAbortController = new AbortController();
     const signal = aiAbortController.signal;
@@ -2507,6 +2587,7 @@ async function sendMessageAgentic(message, context = '') {
         const decoder = new TextDecoder();
 
         let currentEventType = null;
+        let streamError = false;
 
         while (true) {
             const { done, value } = await reader.read();
@@ -2549,6 +2630,7 @@ async function sendMessageAgentic(message, context = '') {
                         try {
                             const execInfo = JSON.parse(data);
                             showToolExecution(execInfo, div, contentEl);
+                            toolExecutions.push(execInfo);
                         } catch (e) {
                             console.error('Failed to parse tool_execution:', e);
                         }
@@ -2595,6 +2677,18 @@ async function sendMessageAgentic(message, context = '') {
                     const text = data.replace(/\\n/g, '\n');
                     fullContent += text;
 
+                    // Check if this is an error message from the server
+                    if (text.startsWith('[ERROR] ')) {
+                        // Display error message with red styling
+                        div.classList.remove('streaming');
+                        div.id = '';
+                        contentEl.innerHTML = `<span style="color: var(--accent-red)">${escapeHtml(text.substring(8))}</span>`;
+                        aiScrollToBottom();
+                        // Mark error and break out of both loops
+                        streamError = true;
+                        break;
+                    }
+
                     let formatted = fullContent;
                     formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
                     formatted = formatted.replace(/\n/g, '<br>');
@@ -2604,28 +2698,44 @@ async function sendMessageAgentic(message, context = '') {
                     currentEventType = null;
                 }
             }
+            // Break outer loop if stream error occurred
+            if (streamError) break;
         }
 
-        // Finalize
-        div.classList.remove('streaming');
-        div.id = '';
-        let formatted = fullContent;
-        formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
-        formatted = formatResourceLinks(formatted);
-        formatted = formatted.replace(/\n/g, '<br>');
-        contentEl.innerHTML = formatted;
+        // Finalize (skip if stream error already handled)
+        if (!streamError) {
+            div.classList.remove('streaming');
+            div.id = '';
 
-        // AI response is saved by backend in handleAgenticChat
-        // Refresh chat history list to reflect updated title/message count
-        if (fullContent.trim()) {
-            loadChatHistory().catch(() => {});
+            // Store tool executions in sessionStorage for persistence
+            if (toolExecutions.length > 0 && currentSessionId) {
+                const storageKey = `k13d_tool_executions_${currentSessionId}`;
+                const existingData = JSON.parse(sessionStorage.getItem(storageKey) || '[]');
+                existingData.push({
+                    messageIndex: existingData.length,
+                    tools: toolExecutions
+                });
+                sessionStorage.setItem(storageKey, JSON.stringify(existingData));
+            }
+
+            let formatted = fullContent;
+            formatted = formatted.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+            formatted = formatResourceLinks(formatted);
+            formatted = formatted.replace(/\n/g, '<br>');
+            contentEl.innerHTML = formatted;
+
+            // AI response is saved by backend in handleAgenticChat
+            // Refresh chat history list to reflect updated title/message count
+            if (fullContent.trim()) {
+                loadChatHistory().catch(() => {});
+            }
+
+            // Parse AI response for dashboard commands and execute them
+            await handleAIDashboardCommands(fullContent, message);
+
+            // Refresh resource list after potential changes
+            await loadData();
         }
-
-        // Parse AI response for dashboard commands and execute them
-        await handleAIDashboardCommands(fullContent, message);
-
-        // Refresh resource list after potential changes
-        await loadData();
 
     } catch (e) {
         if (e.name === 'AbortError') {
@@ -2742,8 +2852,8 @@ function showApprovalModal(approval) {
     pendingApproval = approval;
 
     const isDangerous = approval.category === 'dangerous';
-    const icon = isDangerous ? '⚠️' : '🔧';
-    const title = isDangerous ? 'Dangerous Operation' : 'Decision Required';
+    const iconName = isDangerous ? 'alert-triangle' : 'wrench';
+    const title = isDangerous ? t('approval_dangerous_operation') : t('approval_decision_required');
     const warnings = Array.isArray(approval.warnings) ? approval.warnings : [];
     const warningsHtml = warnings.length > 0
         ? `<div class="approval-warnings" style="margin:12px 0 0 0;padding:10px 12px;border-radius:8px;background:rgba(255,184,0,0.12);border:1px solid rgba(255,184,0,0.28);font-size:12px;color:var(--text-secondary);">
@@ -2757,28 +2867,33 @@ function showApprovalModal(approval) {
     modal.innerHTML = `
                 <div class="approval-box ${isDangerous ? 'dangerous' : ''}">
                     <div class="approval-header">
-                        <span class="approval-icon">${icon}</span>
+                        <span class="approval-icon"><i data-lucide="${iconName}" style="width:20px;height:20px;color:${isDangerous ? 'var(--accent-yellow)' : 'var(--accent-blue)'}"></i></span>
                         <span class="approval-title">${title}</span>
                     </div>
                     <div class="approval-category ${approval.category}">${approval.category}</div>
-                    <p>The AI wants to execute the following command:</p>
+                    <p>${t('approval_wants_to_execute')}</p>
                     <div class="approval-command">${escapeHtml(approval.command)}</div>
                     <p style="font-size: 12px; color: var(--text-secondary);">
-                        Tool: <strong>${approval.tool_name}</strong>
+                        ${t('approval_tool')}: <strong>${approval.tool_name}</strong>
                     </p>
                     ${warningsHtml}
                     <div class="approval-buttons">
                         <button class="btn-reject" onclick="respondToApproval(false)">
-                            ✕ Reject
+                            <i data-lucide="x" style="width:14px;height:14px;vertical-align:middle"></i> ${t('approval_reject')}
                         </button>
                         <button class="btn-approve" onclick="respondToApproval(true)">
-                            ✓ Approve
+                            <i data-lucide="check" style="width:14px;height:14px;vertical-align:middle"></i> ${t('approval_approve')}
                         </button>
                     </div>
                 </div>
             `;
 
     document.body.appendChild(modal);
+
+    // Initialize Lucide icons in the modal
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons({ nodes: [modal] });
+    }
 
     // Add keyboard handlers
     document.addEventListener('keydown', handleApprovalKeypress);
@@ -3007,6 +3122,42 @@ function clearAiInput() {
     aiHistoryIndex = -1;
     aiCurrentDraft = '';
     input.focus();
+}
+
+function clearCurrentSession() {
+    if (!confirm(t('ai_confirm_clear_session'))) return;
+
+    // Clear messages from DOM
+    const container = document.getElementById('ai-messages');
+    container.innerHTML = '';
+
+    // Clear tool executions from sessionStorage
+    if (currentSessionId) {
+        sessionStorage.removeItem(`k13d_tool_executions_${currentSessionId}`);
+    }
+
+    // Reset session ID to start a new session
+    currentSessionId = null;
+    currentChatId = null;
+    sessionStorage.removeItem('k13d_session_id');
+
+    // Show welcome message
+    container.innerHTML = `
+        <div class="message assistant">
+            <div class="message-content">
+                ${t('ai_welcome')}
+                <br><br>
+                ${t('ai_try_asking')}
+                <br>- "Show me all pods"
+                <br>- "Create an nginx pod"
+                <br>- "Scale deployment to 3 replicas"
+                <br><br>
+                <strong>${t('ai_tip')}</strong> ${t('ai_tip_hint')}
+            </div>
+        </div>
+    `;
+
+    showToast(t('ai_session_cleared'), 'success');
 }
 
 function toggleAiExpand() {
@@ -3449,42 +3600,44 @@ function toggleAIPanel() {
     const panel = document.getElementById('ai-panel');
     const handle = document.getElementById('resize-handle');
     const btn = document.getElementById('ai-toggle-btn');
+    const headerBtn = document.getElementById('ai-header-toggle-btn');
     const isMobile = window.innerWidth <= 768;
+    let isOpen;
 
     if (isMobile) {
-        // Mobile: use class toggle (CSS transform-based)
-        const isOpen = panel.classList.contains('mobile-open');
+        isOpen = panel.classList.contains('mobile-open');
         panel.classList.toggle('mobile-open', !isOpen);
-        if (btn) btn.classList.toggle('active', !isOpen);
-        localStorage.setItem('k13d_ai_panel', !isOpen ? 'open' : 'closed');
     } else {
-        // Desktop: use display toggle
-        const isHidden = panel.style.display === 'none';
-        panel.style.display = isHidden ? 'flex' : 'none';
-        handle.style.display = isHidden ? 'block' : 'none';
-        if (btn) btn.classList.toggle('active', isHidden);
-        localStorage.setItem('k13d_ai_panel', isHidden ? 'open' : 'closed');
+        isOpen = panel.style.display === 'none';
+        panel.style.display = isOpen ? 'flex' : 'none';
+        handle.style.display = isOpen ? 'block' : 'none';
     }
+
+    if (btn) btn.classList.toggle('active', isOpen);
+    if (headerBtn) headerBtn.classList.toggle('active', isOpen);
+    localStorage.setItem('k13d_ai_panel', isOpen ? 'open' : 'closed');
 }
 
 // Restore AI panel state on load
 (function initAIPanelState() {
     const saved = localStorage.getItem('k13d_ai_panel');
+    const btn = document.getElementById('ai-toggle-btn');
+    const headerBtn = document.getElementById('ai-header-toggle-btn');
     if (saved === 'closed') {
         const panel = document.getElementById('ai-panel');
         const handle = document.getElementById('resize-handle');
-        const btn = document.getElementById('ai-toggle-btn');
         if (panel) panel.style.display = 'none';
         if (handle) handle.style.display = 'none';
         if (btn) btn.classList.remove('active');
+        if (headerBtn) headerBtn.classList.remove('active');
     } else {
-        const btn = document.getElementById('ai-toggle-btn');
         if (btn) btn.classList.add('active');
+        if (headerBtn) headerBtn.classList.add('active');
     }
 })();
 
 // Add message to DOM (without saving)
-function addMessageToDOM(content, isUser, scroll = true) {
+function addMessageToDOM(content, isUser, scroll = true, sessionId = null, assistantMessageIndex = -1) {
     const container = document.getElementById('ai-messages');
     const div = document.createElement('div');
     div.className = `message ${isUser ? 'user' : 'assistant'}`;
@@ -3495,6 +3648,20 @@ function addMessageToDOM(content, isUser, scroll = true) {
     }
 
     div.innerHTML = `<div class="message-content">${formattedContent}</div>`;
+
+    // Insert tool executions before the message content if available
+    if (!isUser && sessionId && assistantMessageIndex >= 0) {
+        const storageKey = `k13d_tool_executions_${sessionId}`;
+        const allToolExecutions = JSON.parse(sessionStorage.getItem(storageKey) || '[]');
+        const msgTools = allToolExecutions.find(t => t.messageIndex === assistantMessageIndex);
+        if (msgTools && msgTools.tools.length > 0) {
+            const contentEl = div.querySelector('.message-content');
+            msgTools.tools.forEach(execInfo => {
+                showToolExecution(execInfo, div, contentEl);
+            });
+        }
+    }
+
     container.appendChild(div);
 
     if (scroll) {
@@ -4814,41 +4981,30 @@ renderTable = function (resource, items) {
 // ==========================================
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
-    const hamburger = document.getElementById('hamburger-btn');
+    const toggleBtn = document.getElementById('sidebar-toggle-btn');
     const overlay = document.getElementById('sidebar-overlay');
-    const toggleIcon = document.getElementById('sidebar-toggle-icon');
     const isMobile = window.innerWidth <= 768;
 
     if (isMobile) {
         const isOpen = sidebar.classList.contains('mobile-open');
-        // Remove desktop collapsed class to prevent width:0/overflow:hidden conflict
         if (!isOpen && sidebar.classList.contains('collapsed')) {
             sidebar.classList.remove('collapsed');
         }
         sidebar.classList.toggle('mobile-open', !isOpen);
-        hamburger.classList.toggle('active', !isOpen);
-        hamburger.setAttribute('aria-expanded', String(!isOpen));
+        if (toggleBtn) toggleBtn.classList.toggle('active', !isOpen);
         if (overlay) overlay.classList.toggle('active', !isOpen);
-        // Auto-scroll to active nav item when opening
         if (!isOpen) {
             requestAnimationFrame(function () {
-                const activeItem = sidebar.querySelector('.nav-item.active');
+                const activeItem = sidebar.querySelector('.menu-item.active');
                 if (activeItem) {
                     activeItem.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                    // Expand the section containing the active item
-                    const section = activeItem.closest('.nav-section');
-                    if (section && section.classList.contains('collapsed')) {
-                        section.classList.remove('collapsed');
-                    }
                 }
             });
         }
     } else {
         sidebarCollapsed = !sidebarCollapsed;
         sidebar.classList.toggle('collapsed', sidebarCollapsed);
-        hamburger.classList.toggle('active', sidebarCollapsed);
-        hamburger.setAttribute('aria-expanded', String(!sidebarCollapsed));
-        if (toggleIcon) toggleIcon.textContent = sidebarCollapsed ? '»' : '«';
+        if (toggleBtn) toggleBtn.classList.toggle('active', sidebarCollapsed);
         localStorage.setItem('k13d_sidebar_collapsed', sidebarCollapsed);
     }
 }
@@ -4863,6 +5019,26 @@ function closeMobileSidebar() {
     }
 }
 
+// Toggle menu group expand/collapse
+function toggleMenuGroup(titleEl) {
+    const menuGroup = titleEl.closest('.menu-group');
+    if (menuGroup) {
+        menuGroup.classList.toggle('collapsed');
+        // Save state to localStorage
+        const groupTitle = titleEl.querySelector('.menu-group-title-text')?.textContent;
+        if (groupTitle) {
+            const collapsedGroups = JSON.parse(localStorage.getItem('k13d_collapsed_groups') || '[]');
+            const index = collapsedGroups.indexOf(groupTitle);
+            if (menuGroup.classList.contains('collapsed')) {
+                if (index === -1) collapsedGroups.push(groupTitle);
+            } else {
+                if (index > -1) collapsedGroups.splice(index, 1);
+            }
+            localStorage.setItem('k13d_collapsed_groups', JSON.stringify(collapsedGroups));
+        }
+    }
+}
+
 // Toggle nav section collapse (mobile only)
 function toggleNavSection(titleEl) {
     if (window.innerWidth > 768) return;
@@ -4870,22 +5046,38 @@ function toggleNavSection(titleEl) {
     if (section) section.classList.toggle('collapsed');
 }
 
+// Initialize menu groups state from localStorage
+function initMenuGroupsState() {
+    const collapsedGroups = JSON.parse(localStorage.getItem('k13d_collapsed_groups') || '[]');
+    collapsedGroups.forEach(groupTitle => {
+        const menuGroups = document.querySelectorAll('.menu-group');
+        menuGroups.forEach(group => {
+            const titleEl = group.querySelector('.menu-group-title-text');
+            if (titleEl && titleEl.textContent === groupTitle) {
+                group.classList.add('collapsed');
+            }
+        });
+    });
+}
+
 // Auto-collapse inactive nav sections on mobile load
 function initMobileNavSections() {
     if (window.innerWidth > 768) return;
     // Skip if no active item yet (will be called again after switchResource)
-    if (!document.querySelector('#sidebar .nav-item.active')) return;
-    document.querySelectorAll('#sidebar .nav-section').forEach(function (section) {
-        // Skip the overview section (no nav-title)
-        if (!section.querySelector('.nav-title')) return;
-        // Collapse sections that don't contain the active item
-        if (!section.querySelector('.nav-item.active')) {
-            section.classList.add('collapsed');
+    if (!document.querySelector('#sidebar .menu-item.active')) return;
+    document.querySelectorAll('#sidebar .menu-group').forEach(function (group) {
+        if (!group.querySelector('.menu-item.active')) {
+            group.classList.add('collapsed');
         }
     });
 }
 // Run on load and resize
-window.addEventListener('load', initMobileNavSections);
+window.addEventListener('load', function() {
+    initMenuGroupsState();
+    initMobileNavSections();
+    // Show overview panel on initial load
+    showOverviewPanel();
+});
 window.addEventListener('resize', function () {
     if (window.innerWidth > 768) {
         // Remove collapsed state when switching to desktop
@@ -6347,10 +6539,10 @@ setTimeout(() => {
     }
     if (monitoringSection && !document.querySelector('[onclick="showMetrics()"]')) {
         const metricsItem = document.createElement('div');
-        metricsItem.className = 'nav-item';
+        metricsItem.className = 'menu-item';
         metricsItem.onclick = showMetrics;
-        metricsItem.innerHTML = '<span>Metrics</span>';
-        const firstChild = monitoringSection.querySelector('.nav-item');
+        metricsItem.innerHTML = '<span class="menu-item-icon"><i data-lucide="bar-chart-2"></i></span><span class="menu-item-text">Metrics</span>';
+        const firstChild = monitoringSection.querySelector('.menu-item');
         if (firstChild) monitoringSection.insertBefore(metricsItem, firstChild);
     }
 }, 100);

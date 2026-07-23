@@ -185,6 +185,39 @@ func TestAnalyzerDangerousCommands(t *testing.T) {
 	}
 }
 
+func TestAnalyzerConditionalDangerousFlags(t *testing.T) {
+	analyzer := NewAnalyzer()
+
+	tests := []struct {
+		cmd         string
+		isDangerous bool
+		description string
+	}{
+		// Read-only commands with -A should NOT be dangerous
+		{"kubectl get pods -A", false, "get pods with -A is read-only"},
+		{"kubectl get all --all-namespaces", false, "get all with --all-namespaces is read-only"},
+		{"kubectl describe nodes -A", false, "describe nodes with -A is read-only"},
+		{"kubectl logs -A", false, "logs with -A is read-only"},
+		{"kubectl top pods --all-namespaces", false, "top pods with --all-namespaces is read-only"},
+		{"helm list -A", false, "helm list with -A is read-only"},
+
+		// Write commands with -A SHOULD be dangerous
+		{"kubectl delete pods -A", true, "delete pods with -A is dangerous"},
+		{"kubectl delete all --all-namespaces", true, "delete all with --all-namespaces is dangerous"},
+
+		// Note: Chained commands are a more complex case that requires analyzing
+		// all parts of the command. Currently only the first command is fully analyzed.
+	}
+	for _, test := range tests {
+		t.Run(test.description, func(t *testing.T) {
+			report := analyzer.Analyze(test.cmd)
+			if report.IsDangerous != test.isDangerous {
+				t.Errorf("Expected %s dangerous=%v, got %v", test.cmd, test.isDangerous, report.IsDangerous)
+			}
+		})
+	}
+}
+
 func TestAnalyzerInteractiveCommands(t *testing.T) {
 	analyzer := NewAnalyzer()
 

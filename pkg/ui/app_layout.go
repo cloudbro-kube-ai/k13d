@@ -173,11 +173,14 @@ func (a *App) setupUI() {
 
 	a.SetRoot(a.pages, true)
 
-	// Initial UI state
-	a.updateHeader()
-	a.resetAIConversation()
-	a.applyAIChrome()
-	a.updateStatusBar()
+	// Initial UI state - batch all updates in a single draw call to prevent flicker
+	// This ensures the UI is fully initialized before the first render
+	a.QueueUpdateDraw(func() {
+		a.updateHeader()
+		a.resetAIConversation()
+		a.applyAIChrome()
+		a.updateStatusBar()
+	})
 }
 
 // flash displays a temporary message (k9s pattern)
@@ -286,13 +289,12 @@ func (a *App) updateHeader() {
 	// Use QueueUpdateDraw only after Application.Run() has started (k9s pattern)
 	if atomic.LoadInt32(&a.running) == 1 {
 		a.QueueUpdateDraw(func() {
-			// Clear before setting new text to prevent ghosting artifacts
-			a.header.Clear()
+			// SetText directly - tview handles internal clearing efficiently
+			// Removing explicit Clear() prevents visible flicker
 			a.header.SetText(header)
 		})
 	} else {
 		// Direct update during initialization (before Run())
-		a.header.Clear()
 		a.header.SetText(header)
 	}
 }
@@ -630,15 +632,34 @@ func (a *App) rebuildContentLayout(focusAI bool) {
 		focusAI = true
 	}
 
-	a.contentFlex.Clear()
-	if showAI && fullscreen && a.aiContainer != nil {
-		a.contentFlex.AddItem(a.aiContainer, 0, 1, true)
+	// Check if layout actually needs to change to avoid unnecessary Clear()
+	currentItemCount := a.contentFlex.GetItemCount()
+	needsRebuild := false
+
+	if showAI && fullscreen {
+		// Fullscreen AI: should have 1 item (aiContainer)
+		needsRebuild = currentItemCount != 1
+	} else if showAI {
+		// Split view: should have 2 items (table + aiContainer)
+		needsRebuild = currentItemCount != 2
 	} else {
-		a.contentFlex.AddItem(a.table, 0, 3, !focusAI)
-		if showAI && a.aiContainer != nil {
-			a.contentFlex.AddItem(a.aiContainer, aiWidth, 0, focusAI)
+		// Table only: should have 1 item (table)
+		needsRebuild = currentItemCount != 1
+	}
+
+	// Only rebuild if layout structure changed
+	if needsRebuild {
+		a.contentFlex.Clear()
+		if showAI && fullscreen && a.aiContainer != nil {
+			a.contentFlex.AddItem(a.aiContainer, 0, 1, true)
+		} else {
+			a.contentFlex.AddItem(a.table, 0, 3, !focusAI)
+			if showAI && a.aiContainer != nil {
+				a.contentFlex.AddItem(a.aiContainer, aiWidth, 0, focusAI)
+			}
 		}
 	}
+
 	if focusAI && showAI {
 		a.focusAIInput()
 	} else {

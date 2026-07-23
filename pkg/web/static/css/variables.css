@@ -256,5 +256,80 @@
         --shadow-glow-blue: 0 0 20px rgba(122, 162, 247, 0.3);
         --shadow-glow-purple: 0 0 20px rgba(187, 154, 247, 0.3);
         --shadow-glow-green: 0 0 20px rgba(158, 206, 106, 0.3);
-    }
 }
+}
+
+/* ==========================================
+ * Ollama Theme - Minimalist Paper White
+ * Pure Black accents and Pill Geometry
+ * ========================================== */
+[data-theme="ollama"] {
+    /* 1. Core Surfaces (Paper-White) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #fafafa;
+    --bg-tertiary: #f5f5f5;
+    --bg-deep: #f0f0f0;
+
+    /* 2. Typography & Contrast (Pure Black / Charcoal / Muted) */
+    --text-primary: #000000;
+    --text-secondary: #525252;
+    --text-muted: #a3a3a3;
+
+    /* 3. Monochrome Accents */
+    --accent-blue: #000000;
+    --accent-purple: #171717;
+    --accent-cyan: #737373;
+
+    /* 4. Terminal Semantic Colors (Ollama traffic lights) */
+    --accent-red: #ff5f56;
+    --accent-yellow: #ffbd2e;
+    --accent-green: #059669;
+
+    /* 5. Utility & Borders */
+    --border-color: #e5e5e5;
+    --bg-hover: rgba(0, 0, 0, 0.04);
+    --text-on-accent: #ffffff;
+
+    /* 6. Layout Adjustments (Flattens shadows) */
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+    --shadow-glow-blue: none;
+    --shadow-glow-purple: none;
+    --shadow-glow-green: none;
+
+    /* 7. Border Radius Overrides */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 12px;
+}
+
+/* Ollama layout overrides for flat cards */
+html[data-theme="ollama"] button,
+html[data-theme="ollama"] input,
+html[data-theme="ollama"] select,
+html[data-theme="ollama"] textarea,
+html[data-theme="ollama"] .overview-action-btn,
+html[data-theme="ollama"] .ai-input,
+html[data-theme="ollama"] .context-chip,
+html[data-theme="ollama"] .tab {
+    border-radius: 8px !important;
+}
+
+html[data-theme="ollama"] .modal,
+html[data-theme="ollama"] .overview-card,
+html[data-theme="ollama"] .ai-panel,
+html[data-theme="ollama"] .settings-row,
+html[data-theme="ollama"] .overview-section,
+html[data-theme="ollama"] .k8s-detail-panel,
+html[data-theme="ollama"] .chat-session-item {
+    border-radius: 12px !important;
+    box-shadow: none !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+html[data-theme="ollama"] .resize-handle {
+    background: var(--border-color) !important;
+}
+

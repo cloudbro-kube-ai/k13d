@@ -60,7 +60,7 @@ func setupSettingsTestServer(t *testing.T) *Server {
 				{
 					Name:        "kubectl-server",
 					Command:     "npx",
-					Args:        []string{"@anthropic/mcp-server-kubernetes"},
+					Args:        []string{"mcp-server-kubernetes"},
 					Description: "Kubernetes MCP server",
 					Enabled:     true,
 				},
@@ -1062,5 +1062,73 @@ func TestAuditLogs_GET_NilDB(t *testing.T) {
 	// With nil DB, GetAuditLogsFiltered returns nil,nil - response should be 200 with null logs
 	if w.Code != http.StatusOK {
 		t.Errorf("GET /api/audit (nil DB): status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestMCPProfiles(t *testing.T) {
+	s := setupSettingsTestServer(t)
+
+	// GET profiles
+	req := httptest.NewRequest(http.MethodGet, "/api/mcp/profiles", nil)
+	w := httptest.NewRecorder()
+	s.handleMCPProfiles(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /api/mcp/profiles: status = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	var resp map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	profiles, ok := resp["profiles"].([]interface{})
+	if !ok {
+		t.Fatal("Expected 'profiles' array in response")
+	}
+	if len(profiles) == 0 {
+		t.Fatal("Expected at least one available profile")
+	}
+
+	// POST install profile
+	body := `{"profile_id":"docker","action":"install"}`
+	req = httptest.NewRequest(http.MethodPost, "/api/mcp/profiles", strings.NewReader(body))
+	w = httptest.NewRecorder()
+	s.handleMCPProfiles(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("POST /api/mcp/profiles (install): status = %d, want %d body=%s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	// Verify "docker" server is now in config
+	found := false
+	for _, srv := range s.cfg.MCP.Servers {
+		if srv.Name == "docker" {
+			found = true
+			if !srv.Enabled {
+				t.Error("Expected installed profile server to be enabled")
+			}
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected 'docker' server to be added to config")
+	}
+
+	// POST uninstall profile
+	body = `{"profile_id":"docker","action":"uninstall"}`
+	req = httptest.NewRequest(http.MethodPost, "/api/mcp/profiles", strings.NewReader(body))
+	w = httptest.NewRecorder()
+	s.handleMCPProfiles(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("POST /api/mcp/profiles (uninstall): status = %d, want %d body=%s", w.Code, http.StatusOK, w.Body.String())
+	}
+
+	// Verify "docker" server is removed from config
+	for _, srv := range s.cfg.MCP.Servers {
+		if srv.Name == "docker" {
+			t.Error("Expected 'docker' server to be removed from config")
+		}
 	}
 }

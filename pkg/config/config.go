@@ -342,6 +342,17 @@ type MCPServer struct {
 	Enabled     bool              `yaml:"enabled" json:"enabled"` // Whether this server is active
 }
 
+// MCPProfile represents a pre-configured MCP server bundle for DevOps use cases
+type MCPProfile struct {
+	ID          string      `yaml:"id" json:"id"`
+	Name        string      `yaml:"name" json:"name"`
+	Category    string      `yaml:"category" json:"category"`
+	Required    bool        `yaml:"required" json:"required"`
+	Description string      `yaml:"description" json:"description"`
+	Tags        []string    `yaml:"tags" json:"tags"`
+	Servers     []MCPServer `yaml:"servers" json:"servers"`
+}
+
 func GetConfigPath() string {
 	if path := strings.TrimSpace(os.Getenv("K13D_CONFIG")); path != "" {
 		return path

@@ -21,6 +21,7 @@ var CSSFiles = []string{
 	"css/views/theme-light.css",
 	"css/views/responsive.css",
 	"css/animations.css",
+	"css/views/cluster-visualizer.css",
 }
 
 // JSFiles defines the bundle order for JavaScript assets under pkg/web/static.
@@ -30,6 +31,8 @@ var JSFiles = []string{
 	"js/modules/VirtualScroller.js",
 	"js/modules/api.js",
 	"js/modules/swr.js",
+	"js/lucide.js",
+	"js/icons.js",
 	"js/app.js",
 	"js/features/custom-views/shared.js",
 	"js/features/custom-views/metrics.js",
@@ -41,6 +44,7 @@ var JSFiles = []string{
 	"js/features/notifications.js",
 	"js/features/insights.js",
 	"js/features/workspace.js",
+	"js/features/custom-views/cluster-visualizer.js",
 	"js/bootstrap.js",
 }
 

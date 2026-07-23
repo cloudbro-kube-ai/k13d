@@ -1,0 +1,3496 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>k13d 리뉴얼 프로젝트 발표 자료</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+        }
+
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            padding: 60px 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            page-break-after: always;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slide-number {
+            position: absolute;
+            bottom: 30px;
+            right: 50px;
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        /* Slide 1 - Title */
+        .slide-1 {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .slide-1::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(233, 69, 96, 0.1) 0%, transparent 70%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .title-logo {
+            font-size: 72px;
+            font-weight: 800;
+            letter-spacing: -2px;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-logo span {
+            color: #e94560;
+        }
+
+        .title-subtitle {
+            font-size: 28px;
+            font-weight: 300;
+            opacity: 0.9;
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-meta {
+            font-size: 16px;
+            opacity: 0.7;
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-badge {
+            display: inline-block;
+            background: rgba(233, 69, 96, 0.2);
+            border: 1px solid rgba(233, 69, 96, 0.5);
+            padding: 8px 20px;
+            border-radius: 20px;
+            margin-top: 30px;
+            font-size: 14px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Slide About - Introduction */
+        .slide-about {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+
+
+        .about-visual {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 30px;
+            flex: 1;
+            min-height: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Dual Screen Mockup */
+        .about-dual {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            justify-content: center;
+        }
+
+        .about-dual-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-bottom: 10px;
+        }
+        .about-dual-title .paradigm {
+            font-size: 22px;
+            font-weight: 800;
+            color: #333;
+            letter-spacing: -0.5px;
+        }
+        .about-dual-title .sub {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e94560;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .dual-screens {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .dual-screen {
+            background: rgba(0,0,0,0.02);
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        .dual-screen-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 14px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            font-size: 14px;
+            font-weight: 600;
+            color: rgba(0,0,0,0.7);
+        }
+
+        .dual-screen .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 3px;
+        }
+
+        .dual-screen .dot.red { background: #ff5f56; }
+        .dual-screen .dot.yellow { background: #ffbd2e; }
+        .dual-screen .dot.green { background: #27c93f; }
+
+        .dual-screen-content {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .dual-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            color: rgba(0,0,0,0.65);
+            padding: 6px 8px;
+            border-radius: 6px;
+        }
+
+        .dual-row .status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .dual-row .status.ok { background: #27c93f; }
+        .dual-row .status.bad { background: #e94560; }
+        .dual-row .status.warn { background: #ffbd2e; }
+
+        .dual-row .name {
+            flex: 1;
+        }
+
+        .dual-row .ns {
+            font-size: 11px;
+            color: rgba(0,0,0,0.35);
+        }
+
+        .dual-row.highlight {
+            background: rgba(233,69,96,0.15);
+            border: 1px solid rgba(233,69,96,0.3);
+            border-radius: 6px;
+        }
+
+        .dual-chat {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chat-bubble {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+            max-width: 85%;
+        }
+
+        .chat-bubble.user {
+            background: rgba(233,69,96,0.2);
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        .chat-bubble.ai {
+            background: rgba(0,0,0,0.04);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+
+        .chat-bubble .highlight-text {
+            color: #e94560;
+            font-weight: 600;
+        }
+
+        .about-connect {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 14px 20px;
+            background: rgba(233,69,96,0.08);
+            border: 1px solid rgba(233,69,96,0.2);
+            border-radius: 10px;
+            font-size: 15px;
+            color: rgba(0,0,0,0.75);
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .about-connect strong {
+            color: #e94560;
+        }
+
+        /* Right - Key Value */
+        .about-value {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 14px;
+        }
+
+        .about-namederiv {
+            font-size: 16px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .about-namederiv .code {
+            font-size: 24px;
+            font-weight: 800;
+            color: #e94560;
+            font-family: inherit;
+        }
+        .about-namederiv .op {
+            font-size: 13px;
+            color: rgba(0,0,0,0.35);
+        }
+        .about-namederiv .label {
+            font-size: 13px;
+            color: rgba(0,0,0,0.45);
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+        .about-namederiv .label span {
+            color: #e94560;
+            font-weight: 700;
+        }
+
+        .about-value-title {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.3;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+.about-value-title .paradigm {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+        }
+
+.about-value-title .sub {
+            font-size: 36px;
+            font-weight: 800;
+            color: #e94560;
+            letter-spacing: -1px;
+        }
+
+        .about-value-desc {
+            font-size: 17px;
+            line-height: 1.7;
+            color: rgba(0,0,0,0.65);
+        }
+
+        .about-compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .about-compare-item {
+            background: rgba(233,69,96,0.04);
+            border: 1px solid rgba(233,69,96,0.12);
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+        .about-compare-item .vs {
+            font-size: 12px;
+            font-weight: 700;
+            color: #e94560;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .about-compare-item .vs-label {
+            font-size: 12px;
+            color: rgba(0,0,0,0.5);
+            line-height: 1.4;
+            display: block;
+        }
+
+        .about-features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .about-feat {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background: rgba(0,0,0,0.02);
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 12px;
+            padding: 16px 18px;
+        }
+
+        .about-feat-icon {
+            font-size: 22px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .about-feat-text strong {
+            display: block;
+            font-size: 15px;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .about-feat-text {
+            font-size: 14px;
+            line-height: 1.5;
+            color: rgba(0,0,0,0.55);
+        }
+
+        /* Slide 3 - Overview */
+        .slide-2 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .slide-header {
+            margin-bottom: 50px;
+        }
+
+        .slide-header h2 {
+            font-size: 36px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+        }
+
+        .slide-header .accent-line {
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, #e94560, #0f3460);
+            border-radius: 2px;
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: 1fr 1fr;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .overview-card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border-left: 4px solid;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .overview-card .card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .overview-card .card-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+        .overview-card:nth-child(1) .card-icon { background: #ffe8ec; color: #e94560; }
+        .overview-card:nth-child(2) .card-icon { background: #e8f4fd; color: #0f3460; }
+        .overview-card:nth-child(3) .card-icon { background: #e8f8f5; color: #16a085; }
+        .overview-card:nth-child(4) .card-icon { background: #f4ecf7; color: #9b59b6; }
+        .overview-card:nth-child(1) { border-color: #e94560; }
+        .overview-card:nth-child(2) { border-color: #0f3460; }
+        .overview-card:nth-child(3) { border-color: #16a085; }
+        .overview-card:nth-child(4) { border-color: #9b59b6; }
+
+        .overview-card h3 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        .overview-card p {
+            font-size: 18px;
+            line-height: 1.6;
+            color: #555;
+            flex: 1;
+        }
+
+        .stat-row {
+            display: flex;
+            gap: 40px;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #e94560;
+        }
+
+        .stat-label {
+            font-size: 15px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .slide-arch {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+.arch-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            gap: 16px;
+            min-height: 0;
+            padding: 20px 40px;
+        }
+
+.arch-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 28px;
+            width: 100%;
+        }
+
+.arch-layer-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(0,0,0,0.35);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+
+.arch-box {
+            background: white;
+            border-radius: 14px;
+            padding: 16px 22px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+            border: 1px solid rgba(0,0,0,0.06);
+            text-align: center;
+            min-width: 120px;
+            position: relative;
+        }
+
+.arch-box .name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+.arch-box .sub {
+            font-size: 12px;
+            color: rgba(0,0,0,0.45);
+            margin-top: 2px;
+        }
+
+.arch-box .badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 8px;
+            border-radius: 10px;
+            margin-top: 4px;
+        }
+
+.arch-box-highlight {
+            border-color: #e94560;
+            border-width: 2px;
+            box-shadow: 0 4px 24px rgba(233,69,96,0.15);
+        }
+
+.arch-box-highlight .name {
+            color: #e94560;
+        }
+
+.arch-arrow-down {
+            width: 2px;
+            height: 20px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.06));
+            margin: 0 auto;
+        }
+
+.arch-arrow-down::after {
+            content: '';
+            display: block;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid rgba(0,0,0,0.15);
+            margin: 0 auto;
+            position: relative;
+            top: 2px;
+        }
+
+.arch-core {
+            background: linear-gradient(135deg, #1a1a2e, #0f3460);
+            border-radius: 16px;
+            padding: 20px 28px;
+            box-shadow: 0 4px 28px rgba(15,52,96,0.25);
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+.arch-core-item {
+            text-align: center;
+            padding: 8px 16px;
+        }
+
+.arch-core-item .name {
+            font-size: 14px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.9);
+        }
+
+.arch-core-item .sub {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            margin-top: 2px;
+        }
+
+.arch-core-divider {
+            width: 1px;
+            height: 30px;
+            background: rgba(255,255,255,0.15);
+        }
+
+.arch-external {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+        }
+
+.arch-external-item {
+            background: white;
+            border-radius: 12px;
+            padding: 14px 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.06);
+            text-align: center;
+            min-width: 110px;
+        }
+
+.arch-external-item .name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+        }
+
+.arch-external-item .sub {
+            font-size: 11px;
+            color: rgba(0,0,0,0.4);
+            margin-top: 2px;
+        }
+
+.arch-external-item .badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 8px;
+            border-radius: 10px;
+            margin-top: 3px;
+            background: #e8f4fd;
+            color: #0f3460;
+        }
+        /* Slide 4 - Web UI */
+        .slide-3 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            transition: transform 0.2s;
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+.feature-icon svg {
+            width: 26px;
+            height: 26px;
+        }
+
+        .feature-card:nth-child(1) .feature-icon { background: #ffe8ec; color: #e94560; }
+        .feature-card:nth-child(2) .feature-icon { background: #e8f4fd; color: #0f3460; }
+        .feature-card:nth-child(3) .feature-icon { background: #e8f8f5; color: #16a085; }
+        .feature-card:nth-child(4) .feature-icon { background: #f4ecf7; color: #9b59b6; }
+        .feature-card:nth-child(5) .feature-icon { background: #fef5e7; color: #f39c12; }
+        .feature-card:nth-child(6) .feature-icon { background: #fde8e8; color: #c0392b; }
+
+        .feature-card h4 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #1a1a2e;
+        }
+
+        .feature-card p {
+            font-size: 18px;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        /* Slide 5 - Feature Map */
+.slide-featmap {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 40px 50px;
+        }
+        .slide-5 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 40px 50px;
+        }
+
+        .feat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            flex: 1;
+            min-height: 0;
+            align-content: start;
+        }
+
+        .feat-group {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .feat-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            font-weight: 700;
+            font-size: 17px;
+            letter-spacing: -0.3px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .feat-header .badge {
+            margin-left: auto;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 2px 10px;
+            border-radius: 10px;
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .feat-body {
+            padding: 10px 16px 12px;
+            flex: 1;
+        }
+
+        .feat-item {
+            font-size: 14.5px;
+            line-height: 1.5;
+            color: #444;
+            padding: 3px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .feat-item::before {
+            content: '';
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: #ccc;
+        }
+
+        .feat-item strong {
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+
+        .feat-more {
+            font-size: 12px;
+            color: #999;
+            padding: 6px 0 2px;
+            font-style: italic;
+        }
+
+        .feat-group-1 .feat-header { background: linear-gradient(135deg, #0f3460, #1a5276); color: white; }
+        .feat-group-2 .feat-header { background: linear-gradient(135deg, #e94560, #c0392b); color: white; }
+        .feat-group-3 .feat-header { background: linear-gradient(135deg, #16a085, #1abc9c); color: white; }
+        .feat-group-4 .feat-header { background: linear-gradient(135deg, #9b59b6, #8e44ad); color: white; }
+        .feat-group-5 .feat-header { background: linear-gradient(135deg, #f39c12, #e67e22); color: white; }
+        .feat-group-6 .feat-header { background: linear-gradient(135deg, #c0392b, #96281b); color: white; }
+
+        .feat-group-1 .feat-header .badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+        .feat-group-2 .feat-header .badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+        .feat-group-3 .feat-header .badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+        .feat-group-4 .feat-header .badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+        .feat-group-5 .feat-header .badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+        .feat-group-6 .feat-header .badge { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9); }
+
+
+        .slide-5 .slide-header h2 {
+            font-size: 30px;
+        }
+
+        /* Slide 6 - Screenshots */
+        .slide-5 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .screenshot-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screenshot-card img {
+            width: 100%;
+            flex: 1;
+            object-fit: contain;
+            background: white;
+            padding: 8px;
+            min-height: 0;
+        }
+
+        .screenshot-card .caption {
+            padding: 14px 16px;
+            font-size: 17px;
+            color: #444;
+            font-weight: 500;
+            text-align: center;
+            border-top: 1px solid #f0f0f0;
+            background: white;
+        }
+
+        /* Slide 10 - CLI */
+        .slide-9 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .cli-layout {
+            display: grid;
+            grid-template-columns: 1fr 1.4fr;
+            gap: 30px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .cli-commands-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cli-commands-panel h3 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #1a1a2e;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .cli-cmd-group {
+            margin-bottom: 12px;
+        }
+
+        .cli-cmd-group-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            padding-left: 4px;
+        }
+
+        .cli-cmd-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .cli-cmd-table td {
+            padding: 4px 8px;
+            font-size: 11px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .cli-cmd-table td:first-child {
+            font-family: 'Monaco', 'Menlo', monospace;
+            color: #e94560;
+            font-weight: 600;
+            white-space: nowrap;
+            width: 110px;
+        }
+
+        .cli-cmd-table td:last-child {
+            color: #666;
+        }
+
+        .cli-cmd-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .cli-keys-panel {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 12px;
+        }
+
+        .cli-keys-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .cli-keys-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+        }
+
+        .cli-key-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            padding: 2px 0;
+        }
+
+        .cli-key-item kbd {
+            background: rgba(255,255,255,0.15);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 9px;
+            color: #00ff88;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .cli-main {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .cli-main h3 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cli-list {
+            list-style: none;
+        }
+
+        .cli-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: #444;
+        }
+
+        .cli-list li:last-child {
+            border-bottom: none;
+        }
+
+        .cli-badge {
+            display: inline-block;
+            background: #e94560;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .cli-code {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 24px;
+            color: #00ff88;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        .cli-code .comment {
+            color: #666;
+        }
+
+        .cli-code .highlight {
+            color: #e94560;
+        }
+
+        /* Slide 11 - CLI Screenshot */
+        .slide-10 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+.cli-screenshot {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+            padding: 0 20px;
+        }
+
+.cli-screenshot img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+        }
+
+        /* Slide 12 - TUI & Config */
+        .slide-11 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .split-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .split-section {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .split-section h3 {
+            font-size: 22px;
+            margin-bottom: 20px;
+            color: #1a1a2e;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .improvement-list {
+            list-style: none;
+        }
+
+        .improvement-list li {
+            padding: 10px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 17px;
+            color: #444;
+        }
+
+        .improvement-list li::before {
+            content: '✓';
+            color: #16a085;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        /* Slide 13 - TUI Screenshot */
+        .slide-12 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        /* Slide 14 - Technical */
+        .slide-13 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .tech-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .tech-card h4 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #1a1a2e;
+        }
+
+        .tech-card p {
+            font-size: 18px;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        .tech-tag {
+            display: inline-block;
+            background: #f0f2f5;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #666;
+            margin-top: 12px;
+        }
+        .slide-1 .slide-number {
+            bottom: 80px;
+        }
+
+.contributors {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+.contributors-label {
+            width: 100%;
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 2px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+.contributor {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            text-decoration: none;
+        }
+
+.contributor img {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.25);
+            transition: border-color 0.2s;
+        }
+
+.contributor:hover img {
+            border-color: #e94560;
+        }
+
+.contributor-name {
+            font-size: 10px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* Slide 15 - Direction */
+.slide-14 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+.slide-14 .tech-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* Slide 16 - Summary */
+        .slide-15 {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+        }
+
+        .summary-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+        }
+
+        .summary-left h3 {
+            font-size: 28px;
+            margin-bottom: 30px;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .summary-stat {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .summary-stat .number {
+            font-size: 32px;
+            font-weight: 700;
+            color: #e94560;
+        }
+
+        .summary-stat .label {
+            font-size: 18px;
+            font-weight: 500;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .summary-right h3 {
+            font-size: 28px;
+            margin-bottom: 30px;
+        }
+
+        .roadmap {
+            list-style: none;
+        }
+
+        .roadmap li {
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .roadmap li:last-child {
+            border-bottom: none;
+        }
+
+        .roadmap li span {
+            font-size: 18px;
+            line-height: 1.5;
+        }
+
+        .roadmap-phase {
+            background: rgba(233, 69, 96, 0.2);
+            border: 1px solid rgba(233, 69, 96, 0.5);
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .closing-message {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .closing-message p {
+            font-size: 17px;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+
+
+.slide-cli-ref {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+.cli-ref-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: 1fr 1fr;
+            gap: 24px;
+            flex: 1;
+            min-height: 0;
+        }
+
+.cli-ref-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+.cli-ref-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            border-radius: 8px;
+        }
+
+
+        /* Navigation */
+        .nav-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            opacity: 0.7;
+            z-index: 1000;
+        }
+
+        /* Print styles */
+        @media print {
+            .nav-hint {
+                display: none;
+            }
+            .pdf-download-btn {
+                display: none;
+            }
+            .slide {
+                page-break-after: always;
+                page-break-inside: avoid;
+                overflow: visible;
+                width: 100%;
+                height: 100vh;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+        .pdf-download-btn {
+            position: fixed;
+            top: 24px;
+            right: 30px;
+            z-index: 1001;
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 16px rgba(233, 69, 96, 0.35);
+            transition: all 0.25s ease;
+            font-family: inherit;
+            line-height: 1;
+        }
+        .pdf-download-btn:hover {
+            background: #d63851;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.45);
+        }
+        .pdf-download-btn:disabled {
+            opacity: 0.7;
+            cursor: wait;
+            transform: none;
+        }
+
+        /* Slide - LLM Provider Table */
+.slide-llm-table {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .llm-table-wrapper {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .llm-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            font-size: 14px;
+        }
+
+        .llm-table thead th {
+            background: linear-gradient(135deg, #1a1a2e, #0f3460);
+            color: white;
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.3px;
+        }
+
+        .llm-table thead th:first-child {
+            border-radius: 12px 0 0 0;
+        }
+
+        .llm-table thead th:last-child {
+            border-radius: 0 12px 0 0;
+        }
+
+        .llm-table tbody td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #444;
+            vertical-align: middle;
+        }
+
+        .llm-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .llm-table tbody tr:hover {
+            background: rgba(233, 69, 96, 0.03);
+        }
+
+        .llm-table .provider-name {
+            font-weight: 700;
+            color: #1a1a2e;
+            font-size: 14px;
+        }
+
+        .llm-table .provider-alias {
+            font-size: 11px;
+            color: #999;
+            font-style: italic;
+        }
+
+        .llm-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .llm-badge.yes {
+            background: #e8f8f5;
+            color: #16a085;
+        }
+
+        .llm-badge.no {
+            background: #f5f5f5;
+            color: #999;
+        }
+
+        .llm-badge.shim {
+            background: #fef5e7;
+            color: #f39c12;
+        }
+
+        .llm-badge.cloud {
+            background: #e8f4fd;
+            color: #0f3460;
+        }
+
+        .llm-badge.local {
+            background: #f4ecf7;
+            color: #9b59b6;
+        }
+
+        .llm-note {
+            font-size: 13px;
+            color: rgba(0,0,0,0.5);
+            line-height: 1.6;
+            padding: 12px 16px;
+            background: rgba(233, 69, 96, 0.04);
+            border: 1px solid rgba(233, 69, 96, 0.12);
+            border-radius: 10px;
+        }
+
+        .llm-note strong {
+            color: #e94560;
+        }
+
+    /* Slide 5 - Web UI Block Diagram */
+        .slide-4 {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .block-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* Top Bar Block */
+        .block-topbar {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .block-topbar-label {
+            color: rgba(255,255,255,0.5);
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            min-width: 60px;
+        }
+
+        .block-topbar-items {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .block-topbar-item {
+            font-size: 10px;
+            color: white;
+            background: rgba(255,255,255,0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .block-topbar-item.key {
+            background: #e94560;
+            font-weight: 600;
+        }
+
+        /* Main Content Area */
+        .block-main {
+            display: grid;
+            grid-template-columns: 200px 1fr 260px;
+            gap: 12px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* Sidebar Block */
+        .block-sidebar {
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow: hidden;
+        }
+
+        .block-sidebar-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #e94560;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 4px;
+        }
+
+        .block-sidebar-group {
+            font-size: 8px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.35);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            padding: 4px 0 2px;
+        }
+
+        .block-sidebar-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+        }
+
+        .block-sidebar-item {
+            font-size: 9px;
+            color: rgba(255,255,255,0.7);
+            background: rgba(255,255,255,0.08);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .block-sidebar-item.active {
+            background: rgba(233, 69, 96, 0.3);
+            color: #e94560;
+        }
+
+        /* Content Area */
+        .block-content {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .block-content-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .block-content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .block-content-section {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        .block-content-section h5 {
+            font-size: 10px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .block-content-section h5 .count {
+            font-size: 8px;
+            background: #0f3460;
+            color: white;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+
+        .block-content-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .block-content-list li {
+            font-size: 9px;
+            color: #555;
+            padding: 2px 0;
+        }
+
+        /* AI Panel Block */
+        .block-ai {
+            background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .block-ai-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #e94560;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .block-ai-title .badge {
+            font-size: 8px;
+            background: #e94560;
+            color: white;
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+
+        .block-ai-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .block-ai-section h6 {
+            font-size: 9px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 4px;
+        }
+
+        .block-ai-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+        }
+
+        .block-ai-item {
+            font-size: 8px;
+            color: rgba(255,255,255,0.8);
+            background: rgba(233, 69, 96, 0.2);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        /* Settings Block */
+        .block-settings {
+            background: white;
+            border-radius: 8px;
+            padding: 10px 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .block-settings-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #1a1a2e;
+            min-width: 80px;
+        }
+
+        .block-settings-tabs {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .block-settings-tab {
+            font-size: 9px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: #f0f2f5;
+            color: #666;
+        }
+
+        .block-settings-tab.key {
+            background: #0f3460;
+            color: white;
+        }
+
+    /* Slide - Context Collection Flow */
+.slide-context {
+        background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+    }
+
+.context-content {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        flex: 1;
+        min-height: 0;
+    }
+
+.context-flow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+.context-node {
+        background: white;
+        border-radius: 12px;
+        padding: 14px 18px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.06);
+        text-align: center;
+        min-width: 100px;
+    }
+
+.context-node .icon {
+        font-size: 20px;
+        margin-bottom: 4px;
+    }
+
+.context-node .label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1a1a2e;
+    }
+
+.context-node .sub {
+        font-size: 10px;
+        color: rgba(0,0,0,0.45);
+        margin-top: 2px;
+    }
+
+.context-node.key {
+        border-color: #e94560;
+        border-width: 2px;
+        background: rgba(233,69,96,0.04);
+    }
+
+.context-node.key .label {
+        color: #e94560;
+    }
+
+.context-arrow {
+        display: flex;
+        align-items: center;
+        color: rgba(0,0,0,0.25);
+        font-size: 18px;
+        font-weight: 300;
+    }
+
+.context-row {
+        display: flex;
+        align-items: stretch;
+        gap: 16px;
+    }
+
+.context-panel {
+        background: white;
+        border-radius: 12px;
+        padding: 18px 20px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        flex: 1;
+    }
+
+.context-panel-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #e94560;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+.context-code {
+        background: #1a1a2e;
+        border-radius: 8px;
+        padding: 12px 14px;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 9px;
+        line-height: 1.7;
+        color: #00ff88;
+        overflow-x: auto;
+        white-space: pre;
+    }
+
+.context-code .kw { color: #bb9af7; }
+.context-code .fn { color: #7dcfff; }
+.context-code .cm { color: #565f89; }
+.context-code .s { color: #9ece6a; }
+.context-code .hl { color: #e94560; }
+
+.context-feat-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+.context-feat-list li {
+        font-size: 12px;
+        color: #555;
+        padding: 4px 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        line-height: 1.5;
+    }
+
+.context-feat-list li::before {
+        content: '▸';
+        color: #e94560;
+        font-weight: bold;
+        flex-shrink: 0;
+    }
+
+.context-badge {
+        display: inline-block;
+        background: #e8f4fd;
+        color: #0f3460;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 600;
+        margin-right: 4px;
+    }
+
+.apispec-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        flex: 1;
+        min-height: 0;
+        align-content: start;
+    }
+
+.apispec-group {
+        background: white;
+        border-radius: 10px;
+        padding: 14px 16px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+.apispec-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+.apispec-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 800;
+        flex-shrink: 0;
+    }
+
+.apispec-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #1a1a2e;
+        flex: 1;
+    }
+
+.apispec-count {
+        font-size: 10px;
+        font-weight: 700;
+        color: #999;
+        background: #f5f5f5;
+        padding: 1px 7px;
+        border-radius: 8px;
+    }
+
+        .apispec-item {
+            font-size: 10px;
+            color: #555;
+            padding: 3px 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            line-height: 1.5;
+            padding: 3px 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            line-height: 1.5;
+        }
+
+        /* Slide - LLM Provider Table */
+        .slide-llm {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        .llm-table-wrapper {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+        }
+
+        .llm-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 15px;
+        }
+
+        .llm-table thead th {
+            background: linear-gradient(135deg, #1a1a2e, #0f3460);
+            color: white;
+            padding: 14px 18px;
+            text-align: left;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: -0.3px;
+            border-bottom: 2px solid #e94560;
+            white-space: nowrap;
+        }
+
+        .llm-table thead th:first-child {
+            border-radius: 10px 0 0 0;
+        }
+
+        .llm-table thead th:last-child {
+            border-radius: 0 10px 0 0;
+        }
+
+        .llm-table tbody td {
+            padding: 12px 18px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #444;
+            vertical-align: middle;
+        }
+
+        .llm-table tbody tr:nth-child(even) {
+            background: rgba(233, 69, 96, 0.02);
+        }
+
+        .llm-table tbody tr:hover {
+            background: rgba(233, 69, 96, 0.06);
+        }
+
+        .llm-table .provider-name {
+            font-weight: 700;
+            color: #1a1a2e;
+            font-size: 15px;
+        }
+
+        .llm-table .provider-type {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            color: #888;
+            background: #f5f5f5;
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .llm-table .check {
+            color: #16a085;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .llm-table .cross {
+            color: #ccc;
+            font-size: 16px;
+        }
+
+        .llm-table .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 1px 2px;
+        }
+
+        .llm-table .tag-cloud { background: #e8f4fd; color: #0f3460; }
+        .llm-table .tag-local { background: #e8f8f5; color: #16a085; }
+        .llm-table .tag-enterprise { background: #f4ecf7; color: #9b59b6; }
+        .llm-table .tag-proxy { background: #fef5e7; color: #f39c12; }
+
+        .llm-note {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 16px;
+            padding: 12px 18px;
+            background: rgba(233, 69, 96, 0.06);
+            border: 1px solid rgba(233, 69, 96, 0.15);
+            border-radius: 10px;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .llm-note strong {
+            color: #e94560;
+        }
+
+.aiflow-content {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        flex: 1;
+        min-height: 0;
+    }
+
+.aiflow-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+    }
+
+.aiflow-subrow {
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        gap: 14px;
+        background: rgba(0,0,0,0.02);
+        border-radius: 12px;
+        padding: 12px 18px;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+.aiflow-node {
+        background: white;
+        border-radius: 10px;
+        padding: 12px 16px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+        border: 1px solid rgba(0,0,0,0.06);
+        text-align: center;
+        min-width: 110px;
+    }
+
+.aiflow-node .aiflow-icon {
+        margin-bottom: 4px;
+        color: #0f3460;
+    }
+
+.aiflow-node .aiflow-label {
+        font-size: 19px;
+        font-weight: 700;
+        color: #1a1a2e;
+    }
+
+    .aiflow-node .aiflow-sub {
+        font-size: 14px;
+        color: rgba(0,0,0,0.45);
+        margin-top: 2px;
+    }
+
+.aiflow-node.aiflow-user { border-color: #0f3460; border-width: 2px; }
+    .aiflow-node.aiflow-user .aiflow-icon { color: #0f3460; }
+    .aiflow-node.aiflow-context { border-color: #3498db; border-width: 2.5px; }
+    .aiflow-node.aiflow-context .aiflow-icon { color: #3498db; }
+    .aiflow-node.aiflow-llm { border-color: #9b59b6; border-width: 2px; }
+.aiflow-node.aiflow-llm .aiflow-icon { color: #9b59b6; }
+.aiflow-node.aiflow-synth { border-color: #16a085; border-width: 2px; }
+.aiflow-node.aiflow-synth .aiflow-icon { color: #16a085; }
+.aiflow-node.aiflow-answer { border-color: #e94560; border-width: 2px; }
+.aiflow-node.aiflow-answer .aiflow-icon { color: #e94560; }
+
+.aiflow-arrow {
+        color: rgba(0,0,0,0.2);
+        font-size: 20px;
+        font-weight: 300;
+        flex-shrink: 0;
+    }
+
+.aiflow-arrow-v {
+        color: rgba(0,0,0,0.15);
+        font-size: 16px;
+        font-weight: 300;
+        display: flex;
+        align-items: center;
+        padding: 0 4px;
+    }
+
+.aiflow-group {
+        flex: 1;
+        background: white;
+        border-radius: 8px;
+        padding: 10px 12px;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+    }
+
+.aiflow-group-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: rgba(0,0,0,0.4);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+.aiflow-group-items {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+.aiflow-tool {
+        font-size: 14px;
+        color: #555;
+        line-height: 1.5;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .aiflow-tool-badge {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 13px;
+        font-weight: 700;
+        font-family: 'Monaco', 'Menlo', monospace;
+        flex-shrink: 0;
+    }
+.aiflow-tool-badge.kb { background: #e8f4fd; color: #0f3460; }
+.aiflow-tool-badge.bs { background: #e8f8f5; color: #16a085; }
+.aiflow-tool-badge.mcp { background: #f4ecf7; color: #9b59b6; }
+.aiflow-tool-badge.ok { background: #e8f8f5; color: #16a085; }
+.aiflow-tool-badge.warn { background: #fef5e7; color: #f39c12; }
+
+.aiflow-group.aiflow-approval {
+        border: 1px solid rgba(243,156,18,0.2);
+        background: rgba(254,245,231,0.3);
+    }
+
+.aiflow-info {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        background: #1a1a2e;
+        border-radius: 10px;
+        padding: 12px 16px;
+    }
+
+.aiflow-info-item {
+        font-size: 14px;
+        color: rgba(255,255,255,0.85);
+        line-height: 1.6;
+        font-family: 'Monaco', 'Menlo', monospace;
+    }
+
+.aiflow-info-item strong {
+        color: #bb9af7;
+        font-weight: 700;
+        margin-right: 6px;
+    }
+
+    </style>
+    
+</head>
+<body>
+    <!-- Slide 1: Title -->
+    <div class="slide slide-1">
+        <div class="title-logo">k<span>13</span>d</div>
+        <div class="title-subtitle">Kubernetes AI Dashboard</div>
+        <div class="title-meta">
+            <p>Reboot Project - Feature Branch Review</p>
+            <p style="margin-top: 10px;">2026.03 ~ 2026.06</p>
+        </div>
+        <div class="title-badge">37 Commits | 73 Files Changed | +9,169 Lines</div>
+        <div class="slide-number">1 / 20</div>
+        <div class="contributors">
+            <div class="contributors-label">Contributors</div>
+            <a class="contributor" href="https://github.com/fjvbn2003" target="_blank">
+                <img src="https://avatars.githubusercontent.com/u/19268960?v=4" alt="fjvbn2003">
+                <span class="contributor-name">fjvbn2003</span>
+            </a>
+            <a class="contributor" href="https://github.com/seoeunbae" target="_blank">
+                <img src="https://avatars.githubusercontent.com/u/71380240?v=4" alt="seoeunbae">
+                <span class="contributor-name">seoeunbae</span>
+            </a>
+            <a class="contributor" href="https://github.com/heung115" target="_blank">
+                <img src="https://avatars.githubusercontent.com/u/76578919?v=4" alt="heung115">
+                <span class="contributor-name">heung115</span>
+            </a>
+            <a class="contributor" href="https://github.com/nchime" target="_blank">
+                <img src="https://avatars.githubusercontent.com/u/5561391?v=4" alt="nchime">
+                <span class="contributor-name">nchime</span>
+            </a>
+            <a class="contributor" href="https://github.com/claude" target="_blank">
+                <img src="https://avatars.githubusercontent.com/u/81847?v=4" alt="claude">
+                <span class="contributor-name">claude</span>
+            </a>
+            <a class="contributor" href="https://github.com/vanillacake369" target="_blank">
+                <img src="https://avatars.githubusercontent.com/u/75259783?v=4" alt="vanillacake369">
+                <span class="contributor-name">vanillacake369</span>
+            </a>
+            <a href="https://github.com/cloudbro-kube-ai/k13d" target="_blank" style="width:100%;text-align:center;font-size:13px;color:rgba(255,255,255,0.5);margin-top:8px;text-decoration:none;font-family:'Monaco','Menlo',monospace;letter-spacing:0.5px;">
+                github.com/cloudbro-kube-ai/k13d
+            </a>
+        </div>
+    </div>
+
+    <!-- Slide About: K13D Introduction -->
+    <div class="slide slide-about">
+        <div class="slide-header">
+            <h2>K13D: 지능형 DevOps 플랫폼</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="about-visual">
+            <!-- Right: Value Props (swapped to left) -->
+            <div class="about-value">
+                <div class="about-value-title">
+                    <div class="about-namederiv">
+                        <span class="code">k</span>
+                        <span class="op">+ 13 letters +</span>
+                        <span class="code">d</span>
+                        <span class="op">=</span>
+                        <span class="label">kube<span>a</span>idashboar<span>d</span></span>
+                    </div>
+                    <span class="paradigm">K8s 운영의 새로운 패러다임</span>
+                    <span class="sub">Dashboard + AI Assistant</span>
+                </div>
+                <div class="about-value-desc">
+                    k9s, Kubernetes Dashboard, kubectl-ai — K8s 도구들이
+                    각각의 인터페이스에 갇혀 단편화된 불편함을
+                    <strong>하나의 바이너리</strong>로 해결합니다.<br>
+                    TUI와 Web UI를 동시에 제공하며, AI가 리소스 컨텍스트를
+                    이해하고 실제 kubectl 명령어를 직접 실행하는
+                    <strong>올인원 DevOps 플랫폼</strong>입니다.
+                </div>
+                <div class="about-compare">
+                    <div class="about-compare-item">
+                        <span class="vs">vs k9s</span>
+                        <span class="vs-label">TUI 전용 → TUI + Web + AI</span>
+                    </div>
+                    <div class="about-compare-item">
+                        <span class="vs">vs K8s Dashboard</span>
+                        <span class="vs-label">Web 전용 → Web + TUI + AI</span>
+                    </div>
+                    <div class="about-compare-item">
+                        <span class="vs">vs kubectl-ai</span>
+                        <span class="vs-label">CLI 전용 → Dashboard + TUI</span>
+                    </div>
+                    <div class="about-compare-item">
+                        <span class="vs">vs Lens</span>
+                        <span class="vs-label">Desktop IDE → 단일 바이너리 + AI</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Left: Dual Screen Mockup (swapped to right) -->
+            <div class="about-dual">
+                <div class="dual-screens">
+                    <!-- Dashboard Screen -->
+                    <div class="dual-screen">
+                        <div class="dual-screen-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            k13d dashboard
+                        </div>
+                        <div class="dual-screen-content">
+                            <div class="dual-row">
+                                <span class="status ok"></span>
+                                <span class="name">nginx-pod</span>
+                                <span class="ns">default</span>
+                                <span style="color:#27c93f;font-size:8px;">Running</span>
+                            </div>
+                            <div class="dual-row">
+                                <span class="status ok"></span>
+                                <span class="name">api-server</span>
+                                <span class="ns">prod</span>
+                                <span style="color:#27c93f;font-size:8px;">Running</span>
+                            </div>
+                            <div class="dual-row highlight">
+                                <span class="status bad"></span>
+                                <span class="name">redis-master</span>
+                                <span class="ns">prod</span>
+                                <span style="color:#e94560;font-size:8px;">CrashLoop</span>
+                            </div>
+                            <div class="dual-row">
+                                <span class="status ok"></span>
+                                <span class="name">gateway</span>
+                                <span class="ns">default</span>
+                            </div>
+                            <div class="dual-row">
+                                <span class="status warn"></span>
+                                <span class="name">worker-1</span>
+                                <span class="ns">data</span>
+                                <span style="color:#ffbd2e;font-size:8px;">OOMKill</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- AI Chat Screen -->
+                    <div class="dual-screen">
+                        <div class="dual-screen-header">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                            AI Assistant
+                        </div>
+                        <div class="dual-chat">
+                            <div class="chat-bubble user">
+                                왜 <span class="highlight-text">redis-master</span> pod가
+                                계속 CrashLoopBackOff인가요?
+                            </div>
+                            <div class="chat-bubble ai">
+                                redis-master의 리소스 사용량을
+                                분석한 결과, 메모리 제한이
+                                256Mi로 설정되어 있으나 최근
+                                트래픽 증가로 380Mi까지
+                                사용 중입니다.
+                            </div>
+                            <div class="chat-bubble ai" style="max-width:100%;">
+                                → <strong>kubectl</strong> 명령어로 메모리
+                                제한을 512Mi로 증가시키겠습니다.
+                                승인하시겠습니까?
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="about-connect">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;flex-shrink:0"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg> <strong>대시보드를 보면서</strong> 특정 리소스를 지목하여
+                    <strong>자연어로 질문</strong>하고 AI가 컨텍스트를 이해하여 실행
+                </div>
+            </div>
+        </div>
+
+
+        <div class="slide-number">2 / 20</div>
+    </div>
+
+    <!-- Slide 3: k13d Architecture -->
+    <div class="slide slide-arch">
+        <div class="slide-header">
+            <h2>k13D Architecture</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="arch-content">
+            <!-- Entry Points -->
+            <div class="arch-layer-label">User Interface</div>
+            <div class="arch-row">
+                <div class="arch-box">
+                    <div class="name">TUI</div>
+                    <div class="sub">tview · Terminal</div>
+                </div>
+                <div class="arch-box arch-box-highlight">
+                    <div class="name">Web UI</div>
+                    <div class="sub">HTTP · Browser</div>
+                </div>
+                <div class="arch-box">
+                    <div class="name">CLI</div>
+                    <div class="sub">REPL · stdio</div>
+                </div>
+            </div>
+            <div class="arch-arrow-down"></div>
+            <!-- Shared Core -->
+            <div class="arch-layer-label">Shared Core</div>
+            <div class="arch-core">
+                <div class="arch-core-item">
+                    <div class="name">AI Agent</div>
+                    <div class="sub">Providers · Tools · Safety</div>
+                </div>
+                <div class="arch-core-divider"></div>
+                <div class="arch-core-item">
+                    <div class="name">K8s Client</div>
+                    <div class="sub">client-go · Watcher</div>
+                </div>
+                <div class="arch-core-divider"></div>
+                <div class="arch-core-item">
+                    <div class="name">Config &amp; DB</div>
+                    <div class="sub">Settings · Audit · Session</div>
+                </div>
+                <div class="arch-core-divider"></div>
+                <div class="arch-core-item">
+                    <div class="name">Security</div>
+                    <div class="sub">Safety · Scanner</div>
+                </div>
+            </div>
+            <div class="arch-arrow-down"></div>
+            <!-- External Services -->
+            <div class="arch-layer-label">External Services</div>
+            <div class="arch-external">
+                <div class="arch-external-item">
+                    <div class="name">Kubernetes API</div>
+                    <div class="sub">Cluster Resources</div>
+                    <div class="badge">client-go</div>
+                </div>
+                <div class="arch-external-item">
+                    <div class="name">LLM Provider</div>
+                    <div class="sub">OpenAI / Ollama / ...</div>
+                    <div class="badge">REST API</div>
+                </div>
+                <div class="arch-external-item">
+                    <div class="name">MCP Server</div>
+                    <div class="sub">Extensible Tools</div>
+                    <div class="badge">JSON-RPC</div>
+                </div>
+                <div class="arch-external-item">
+                    <div class="name">SQLite</div>
+                    <div class="sub">Audit Log &amp; Settings</div>
+                    <div class="badge">Embedded</div>
+                </div>
+            </div>
+        </div>
+        <div class="slide-number">3 / 20</div>
+    </div>
+
+    <!-- Slide 4: K13D Feature Map (기능 구성도) -->
+    <div class="slide slide-featmap">
+        <div class="slide-header">
+            <h2>K13D 기능 구성도</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="feat-grid">
+            <!-- Group 1: K8s Resource Views -->
+            <div class="feat-group feat-group-1">
+                <div class="feat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M9 9h12"/><path d="M9 15h12"/></svg>
+                    K8s Resource Views
+                    <span class="badge">25+ types</span>
+                </div>
+                <div class="feat-body">
+                    <div class="feat-item"><strong>Core:</strong> Pods, Deployments, Services, Nodes, Namespaces, Events</div>
+                    <div class="feat-item"><strong>Config:</strong> ConfigMaps, Secrets, PV/PVC, StorageClasses</div>
+                    <div class="feat-item"><strong>Workloads:</strong> ReplicaSets, DaemonSets, StatefulSets, Jobs, CronJobs</div>
+                    <div class="feat-item"><strong>Networking:</strong> Ingresses, NetworkPolicies, Endpoints, IngressClasses</div>
+                    <div class="feat-item"><strong>RBAC:</strong> ServiceAccounts, Roles, RoleBindings, ClusterRoles, CRBs</div>
+                    <div class="feat-item"><strong>Policy &amp; CRDs:</strong> PDB, HPA, Quota, LimitRanges, CRDs</div>
+                </div>
+            </div>
+
+            <!-- Group 2: AI Assistant -->
+            <div class="feat-group feat-group-2">
+                <div class="feat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10"/><path d="M2 12a10 10 0 0 1 10-10 10 10 0 0 1 10 10"/><circle cx="12" cy="12" r="6"/></svg>
+                    AI Assistant
+                    <span class="badge">7+ providers</span>
+                </div>
+                <div class="feat-body">
+                    <div class="feat-item"><strong>NL Query:</strong> Natural language K8s 질의</div>
+                    <div class="feat-item"><strong>Context-Aware:</strong> YAML + Events + Logs 자동 수집</div>
+                    <div class="feat-item"><strong>Tool Use:</strong> kubectl 실행, bash 스크립트, MCP 서버 연동</div>
+                    <div class="feat-item"><strong>Safety:</strong> 위험 명령어 승인 모달, 명령어 분류/필터링</div>
+                    <div class="feat-item"><strong>Providers:</strong> OpenAI, Anthropic, Gemini, Ollama, Bedrock, Azure, LiteLLM</div>
+                    <div class="feat-item"><strong>MCP:</strong> JSON-RPC 2.0 기반 동적 도구 확장</div>
+                </div>
+            </div>
+
+            <!-- Group 3: TUI Operations -->
+            <div class="feat-group feat-group-3">
+                <div class="feat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+                    TUI Operations
+                    <span class="badge">k9s parity</span>
+                </div>
+                <div class="feat-body">
+                    <div class="feat-item"><strong>Navigation:</strong> Vim-style j/k/g/G, Ctrl+D/U/F/B, Tab/Shift+Tab</div>
+                    <div class="feat-item"><strong>Command Mode:</strong> :pods, :deploy, :svc, :ns, :ctx 등 30+ 명령어</div>
+                    <div class="feat-item"><strong>Resource Actions:</strong> describe(d), YAML(y), edit(e), delete, logs(l), shell(s)</div>
+                    <div class="feat-item"><strong>Workloads:</strong> scale(S), restart/rollout(R), port-forward, attach</div>
+                    <div class="feat-item"><strong>Filter &amp; Sort:</strong> / 필터, Shift+A/N/T/P/C/D 정렬, :sort</div>
+                    <div class="feat-item"><strong>Namespace:</strong> 0-9 단축키, :ns &lt;name&gt;, 컨텍스트 전환(c)</div>
+                </div>
+            </div>
+
+            <!-- Group 4: Web UI -->
+            <div class="feat-group feat-group-4">
+                <div class="feat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                    Web UI
+                    <span class="badge">full dashboard</span>
+                </div>
+                <div class="feat-body">
+                    <div class="feat-item"><strong>Dashboard:</strong> 리소스 대시보드, 클러스터 개요, 실시간 모니터링</div>
+                    <div class="feat-item"><strong>AI Chat:</strong> Web 환경에서 AI 비서와 대화, 컨텍스트 연동</div>
+                    <div class="feat-item"><strong>Multi-Cluster:</strong> 여러 클러스터 전환, 통합 관리</div>
+                    <div class="feat-item"><strong>Helm &amp; GitOps:</strong> Helm 차트 관리, ArgoCD/Flux 연동</div>
+                    <div class="feat-item"><strong>Terminal:</strong> Web 터미널, 토폴로지 뷰, 글로벌 검색</div>
+                    <div class="feat-item"><strong>Auth:</strong> Local/OIDC/LDAP 인증, 세션 관리</div>
+                </div>
+            </div>
+
+            <!-- Group 5: Monitoring & Analysis -->
+            <div class="feat-group feat-group-5">
+                <div class="feat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16h8"/><path d="M7 11h12"/><path d="M7 6h3"/></svg>
+                    Monitoring &amp; Analysis
+                    <span class="badge">deep insights</span>
+                </div>
+                <div class="feat-body">
+                    <div class="feat-item"><strong>Metrics:</strong> Pod/Node CPU/Memory 실시간 메트릭, 히스토리 트렌드</div>
+                    <div class="feat-item"><strong>Pulse:</strong> 클러스터 상태 Pulse 진단 (건강 점수)</div>
+                    <div class="feat-item"><strong>XRay:</strong> 리소스 계층 구조 분석, 의존성 시각화</div>
+                    <div class="feat-item"><strong>Analysis:</strong> AI 기반 Pod/Node/Service/Deployment 분석</div>
+                    <div class="feat-item"><strong>Security:</strong> 취약점 스캔, RBAC/네트워크 정책 시각화</div>
+                    <div class="feat-item"><strong>Audit:</strong> 감사 로그, 보고서 생성, 비용 추정</div>
+                </div>
+            </div>
+
+            <!-- Group 6: Operations -->
+            <div class="feat-group feat-group-6">
+                <div class="feat-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    Operations
+                    <span class="badge">enterprise</span>
+                </div>
+                <div class="feat-body">
+                    <div class="feat-item"><strong>GitOps:</strong> ArgoCD, Flux 연동, 선언형 배포 관리</div>
+                    <div class="feat-item"><strong>Backup:</strong> Velero 기반 백업/복구, 스케줄 관리</div>
+                    <div class="feat-item"><strong>Self-Healing:</strong> 이상 감지 시 자동 복구 워크플로우</div>
+                    <div class="feat-item"><strong>Config:</strong> config.yaml, hotkeys.yaml, plugins.yaml, aliases.yaml, views.yaml</div>
+                    <div class="feat-item"><strong>Audit:</strong> SQLite 기반 감사 로그, 세션 기록</div>
+                    <div class="feat-item"><strong>Integration:</strong> Webhook, Slack 알림, 커스텀 플러그인</div>
+                </div>
+            </div>
+        </div>
+        <div class="slide-number">4 / 20</div>
+    </div>
+
+    <!-- Slide 5: API Spec -->
+    <div class="slide slide-2">
+        <div class="slide-header">
+            <h2>K13D API Spec</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="apispec-grid">
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#e8f4fd;color:#0f3460;">S</span>
+                    <span class="apispec-title">System</span>
+                    <span class="apispec-count">4</span>
+                </div>
+                <div class="apispec-item">GET /api/health</div>
+                <div class="apispec-item">GET /api/version</div>
+                <div class="apispec-item">GET /api/features</div>
+                <div class="apispec-item">GET /api/metrics (Prometheus)</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#ffe8ec;color:#e94560;">A</span>
+                    <span class="apispec-title">Auth</span>
+                    <span class="apispec-count">12</span>
+                </div>
+                <div class="apispec-item">POST /api/auth/login</div>
+                <div class="apispec-item">POST /api/auth/logout</div>
+                <div class="apispec-item">POST /api/auth/kubeconfig</div>
+                <div class="apispec-item">GET /api/auth/status</div>
+                <div class="apispec-item">GET /api/auth/me</div>
+                <div class="apispec-item">GET /api/auth/permissions</div>
+                <div class="apispec-item">OIDC login/callback/status</div>
+                <div class="apispec-item">LDAP status/test</div>
+                <div class="apispec-item">GET/PUT /api/roles</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#e8f8f5;color:#16a085;">K</span>
+                    <span class="apispec-title">K8s Resources</span>
+                    <span class="apispec-count">10</span>
+                </div>
+                <div class="apispec-item">GET /api/k8s/{resource}</div>
+                <div class="apispec-item">POST /api/k8s/apply</div>
+                <div class="apispec-item">GET /api/crd/</div>
+                <div class="apispec-item">GET /api/overview</div>
+                <div class="apispec-item">GET /api/applications</div>
+                <div class="apispec-item">GET /api/search</div>
+                <div class="apispec-item">GET /api/pulse</div>
+                <div class="apispec-item">POST /api/xray</div>
+                <div class="apispec-item">POST /api/diff</div>
+                <div class="apispec-item">GET /api/resource/references</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#f4ecf7;color:#9b59b6;">W</span>
+                    <span class="apispec-title">Workload Ops</span>
+                    <span class="apispec-count">16</span>
+                </div>
+                <div class="apispec-item">PUT deployment/scale, POST restart</div>
+                <div class="apispec-item">POST pause/resume/rollback</div>
+                <div class="apispec-item">GET /api/deployment/history</div>
+                <div class="apispec-item">PUT statefulset/scale, POST restart</div>
+                <div class="apispec-item">POST daemonset/restart</div>
+                <div class="apispec-item">POST cronjob/trigger, POST suspend</div>
+                <div class="apispec-item">POST node/cordon, POST node/drain</div>
+                <div class="apispec-item">POST /api/portforward/start</div>
+                <div class="apispec-item">GET /api/portforward/list</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#fef5e7;color:#f39c12;">AI</span>
+                    <span class="apispec-title">AI &amp; LLM</span>
+                    <span class="apispec-count">18</span>
+                </div>
+                <div class="apispec-item">POST /api/chat/agentic</div>
+                <div class="apispec-item">POST /api/tool/approve</div>
+                <div class="apispec-item">GET /api/sessions, GET /api/sessions/{id}</div>
+                <div class="apispec-item">GET/PUT /api/settings, /api/settings/llm</div>
+                <div class="apispec-item">POST /api/llm/test, GET /api/llm/status</div>
+                <div class="apispec-item">GET /api/llm/ollama/status</div>
+                <div class="apispec-item">GET /api/models, GET /api/models/active</div>
+                <div class="apispec-item">GET /api/mcp/servers|tools|profiles</div>
+                <div class="apispec-item">POST /api/troubleshoot</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#fde8e8;color:#c0392b;">C</span>
+                    <span class="apispec-title">Cluster</span>
+                    <span class="apispec-count">12</span>
+                </div>
+                <div class="apispec-item">GET /api/contexts</div>
+                <div class="apispec-item">POST /api/contexts/switch</div>
+                <div class="apispec-item">GET /api/pods/{name}/logs</div>
+                <div class="apispec-item">GET /api/events/timeline</div>
+                <div class="apispec-item">GET /api/topology/{resource}</div>
+                <div class="apispec-item">WebSocket /api/terminal/{pod}</div>
+                <div class="apispec-item">GET /api/healing/rules|events</div>
+                <div class="apispec-item">GET /api/gitops/status</div>
+                <div class="apispec-item">GET /api/velero/backups|schedules</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#e8f4fd;color:#0f3460;">H</span>
+                    <span class="apispec-title">Helm</span>
+                    <span class="apispec-count">8</span>
+                </div>
+                <div class="apispec-item">GET /api/helm/releases</div>
+                <div class="apispec-item">POST install, PUT upgrade</div>
+                <div class="apispec-item">DELETE uninstall, POST rollback</div>
+                <div class="apispec-item">GET /api/helm/repos, search</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#e8f8f5;color:#16a085;">M</span>
+                    <span class="apispec-title">Metrics &amp; Audit</span>
+                    <span class="apispec-count">12</span>
+                </div>
+                <div class="apispec-item">GET /api/metrics/pods|nodes</div>
+                <div class="apispec-item">GET /api/metrics/history/cluster|nodes|pods</div>
+                <div class="apispec-item">POST prometheus/query</div>
+                <div class="apispec-item">GET /api/audit</div>
+                <div class="apispec-item">GET /api/reports</div>
+                <div class="apispec-item">POST /api/reports/preview</div>
+                <div class="apispec-item">GET /api/notifications/config|history|status</div>
+            </div>
+            <div class="apispec-group">
+                <div class="apispec-header">
+                    <span class="apispec-icon" style="background:#f4ecf7;color:#9b59b6;">S</span>
+                    <span class="apispec-title">Security</span>
+                    <span class="apispec-count">8</span>
+                </div>
+                <div class="apispec-item">POST /api/security/scan</div>
+                <div class="apispec-item">POST /api/security/scan/quick</div>
+                <div class="apispec-item">GET /api/security/scans, /scans/stats</div>
+                <div class="apispec-item">POST /api/safety/analyze</div>
+                <div class="apispec-item">GET /api/notifications/config</div>
+            </div>
+        </div>
+        <div class="slide-number">5 / 20</div>
+    </div>
+
+    <!-- Slide 6: LLM Providers -->
+    <div class="slide slide-llm">
+        <div class="slide-header">
+            <h2>k13d에서 사용가능한 LLM</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="llm-table-wrapper">
+            <table class="llm-table">
+                <thead>
+                    <tr>
+                        <th>Provider</th>
+                        <th>유형</th>
+                        <th>Tool Calling</th>
+                        <th>Streaming</th>
+                        <th>Multi-Model</th>
+                        <th>환경</th>
+                        <th>비고</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="provider-name">OpenAI</span><br><span class="provider-type">openai</span></td>
+                        <td>REST API</td>
+                        <td><span class="check">&#10003;</span> Function Call</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-cloud">Cloud</span></td>
+                        <td>GPT-4o, GPT-4, o-series 지원<br>reasoning_effort 설정 가능</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">Anthropic</span><br><span class="provider-type">anthropic</span></td>
+                        <td>REST API</td>
+                        <td><span class="check">&#10003;</span> Native Tool</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-cloud">Cloud</span></td>
+                        <td>Claude 4, Claude 3.5 Sonnet<br>Extended Thinking 지원</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">Google Gemini</span><br><span class="provider-type">gemini</span></td>
+                        <td>REST API</td>
+                        <td><span class="check">&#10003;</span> Function Call</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-cloud">Cloud</span></td>
+                        <td>Gemini 2.5 Flash/Pro<br>Google API Key 필요</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">AWS Bedrock</span><br><span class="provider-type">bedrock</span></td>
+                        <td>AWS SDK</td>
+                        <td><span class="check">&#10003;</span> Tool Use</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-enterprise">Enterprise</span></td>
+                        <td>Claude, Llama 등 다수 모델<br>AWS IAM 인증</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">Azure OpenAI</span><br><span class="provider-type">azopenai</span></td>
+                        <td>REST API</td>
+                        <td><span class="check">&#10003;</span> Function Call</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-enterprise">Enterprise</span></td>
+                        <td>Microsoft Azure 클라우드<br>커스텀 엔드포인트 지원</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">Ollama</span><br><span class="provider-type">ollama</span></td>
+                        <td>REST API</td>
+                        <td><span class="check">&#10003;</span> Native Tool</td>
+                        <td><span class="check">&#10003;</span> NDJSON</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-local">Local</span></td>
+                        <td>LLaMA, Mistral 등 로컬 실행<br>폐쇄망 환경 지원</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">LiteLLM</span><br><span class="provider-type">litellm</span></td>
+                        <td>Proxy</td>
+                        <td><span class="check">&#10003;</span> Delegate</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-proxy">Proxy</span></td>
+                        <td>100+ LLM 프록시 지원<br>OpenAI-compatible 인터페이스</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">OpenRouter</span><br><span class="provider-type">openrouter</span></td>
+                        <td>Proxy</td>
+                        <td><span class="check">&#10003;</span> Function Call</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-proxy">Proxy</span></td>
+                        <td>다수 모델 라우팅<br>OpenAI-compatible API</td>
+                    </tr>
+                    <tr>
+                        <td><span class="provider-name">Upstage Solar</span><br><span class="provider-type">solar</span></td>
+                        <td>REST API</td>
+                        <td><span class="check">&#10003;</span> Function Call</td>
+                        <td><span class="check">&#10003;</span> SSE</td>
+                        <td><span class="check">&#10003;</span></td>
+                        <td><span class="tag tag-cloud">Cloud</span></td>
+                        <td>한국형 LLM (Solar Pro2)<br>OpenAI-compatible API</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="llm-note">
+                <strong>Tip:</strong> 모든 Provider는 config.yaml에서 <code>llm.provider</code> 필드로 설정하며,
+                Tool Calling은 kubectl, bash, MCP 도구를 AI가 직접 실행할 때 필요합니다.
+                Ollama는 로컬/폐쇄망 환경에 최적화되어 있습니다.
+            </div>
+        </div>
+        <div class="slide-number">6 / 20</div>
+    </div>
+
+    <!-- Slide 7: AI Answering Flow -->
+    <div class="slide slide-arch">
+        <div class="slide-header">
+            <h2>K13D가 답변을 내는 과정</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="aiflow-content">
+            <!-- User Question -->
+            <div class="aiflow-row">
+                <div class="aiflow-node aiflow-user">
+                    <div class="aiflow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+                    <div class="aiflow-label">사용자 질문</div>
+                    <div class="aiflow-sub">"redis-master가 왜 CrashLoop인가요?"</div>
+                </div>
+                <div class="aiflow-arrow">→</div>
+                <div class="aiflow-node aiflow-context">
+                    <div class="aiflow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M9 9h12"/><path d="M9 15h12"/></svg></div>
+                    <div class="aiflow-label">컨텍스트 수집</div>
+                    <div class="aiflow-sub">YAML + Events + Logs</div>
+                </div>
+                <div class="aiflow-arrow">→</div>
+                <div class="aiflow-node aiflow-llm">
+                    <div class="aiflow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10"/><path d="M2 12a10 10 0 0 1 10-10 10 10 0 0 1 10 10"/><circle cx="12" cy="12" r="6"/></svg></div>
+                    <div class="aiflow-label">LLM 호출</div>
+                    <div class="aiflow-sub">Tool Call 요청</div>
+                </div>
+            </div>
+
+            <!-- Tool Execution Row -->
+            <div class="aiflow-subrow">
+                <div class="aiflow-group">
+                    <div class="aiflow-group-title">도구 실행</div>
+                    <div class="aiflow-group-items">
+                        <div class="aiflow-tool">
+                            <span class="aiflow-tool-badge kb">kubectl</span>
+                            <span>get pod, describe, logs, top</span>
+                        </div>
+                        <div class="aiflow-tool">
+                            <span class="aiflow-tool-badge bs">bash</span>
+                            <span>curl, system commands</span>
+                        </div>
+                        <div class="aiflow-tool">
+                            <span class="aiflow-tool-badge mcp">MCP</span>
+                            <span>확장 도구 (DB, HTTP 등)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="aiflow-arrow-v">→</div>
+                <div class="aiflow-group aiflow-approval">
+                    <div class="aiflow-group-title">안전 검증</div>
+                    <div class="aiflow-group-items">
+                        <div class="aiflow-tool">
+                            <span class="aiflow-tool-badge ok">✅ 명령어 분류</span>
+                        </div>
+                        <div class="aiflow-tool">
+                            <span class="aiflow-tool-badge ok">✅ 위험도 분석</span>
+                        </div>
+                        <div class="aiflow-tool">
+                            <span class="aiflow-tool-badge warn">⚠️ 위험 명령어 → 사용자 승인</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="aiflow-arrow-v">→</div>
+                <div class="aiflow-group">
+                    <div class="aiflow-group-title">실제 K8s API</div>
+                    <div class="aiflow-group-items" style="font-size:14px;color:#555;line-height:1.6;font-family:'Monaco','Menlo',monospace;">
+                        kubectl get pod redis-master -o yaml<br>
+                        kubectl logs redis-master --tail=50<br>
+                        kubectl describe pod redis-master
+                    </div>
+                </div>
+            </div>
+
+            <!-- Final Answer Row -->
+            <div class="aiflow-row" style="margin-top:6px;">
+                <div class="aiflow-arrow">→</div>
+                <div class="aiflow-node aiflow-synth">
+                    <div class="aiflow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></div>
+                    <div class="aiflow-label">결과 합성</div>
+                    <div class="aiflow-sub">Tool 결과 → LLM 재호출</div>
+                </div>
+                <div class="aiflow-arrow">→</div>
+                <div class="aiflow-node aiflow-answer">
+                    <div class="aiflow-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h.01"/><path d="M12 10h.01"/><path d="M16 10h.01"/></svg></div>
+                    <div class="aiflow-label">최종 답변</div>
+                    <div class="aiflow-sub">SSE 스트리밍 / TUI 출력</div>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="aiflow-info">
+                <div class="aiflow-info-item">
+                    <strong>질문</strong> redis-master의 메모리 제한이 256Mi로 설정되어 있으나 최근 트래픽 증가로 380Mi까지 사용 중입니다.
+                </div>
+                <div class="aiflow-info-item">
+                    <strong>실행</strong> kubectl set resources deployment/redis-master -c redis --limits=memory=512Mi
+                    <span class="aiflow-tool-badge warn" style="margin-left:6px;font-size:12px;">⚠️ 사용자 승인 필요</span>
+                </div>
+                <div class="aiflow-info-item">
+                    <strong>답변</strong> redis-master의 메모리 제한을 512Mi로 증가시켰습니다. 이제 정상 작동 중입니다.
+                </div>
+            </div>
+        </div>
+        <div class="slide-number">7 / 20</div>
+    </div>
+
+    <!-- Slide 8: Overview -->
+    <div class="slide slide-2">
+        <div class="slide-header">
+            <h2>주요 개선 작업</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="overview-grid">
+            <div class="overview-card">
+                <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></div>
+                <h3>Web UI 고도화</h3>
+                <p>Lucide 아이콘 시스템 교체, TailAdmin 스타일 사이드바, 다크모드 지원, 한글 i18n 전체 적용으로 사용자 경험 대폭 향상</p>
+            </div>
+            <div class="overview-card">
+                <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
+                <h3>CLI 신규 개발</h3>
+                <p>터미널 기반 REPL 인터페이스 구축, 한글 입력 지원, K8s 컨텍스트 인식 AI 명령어로 개발자 생산성 강화</p>
+            </div>
+            <div class="overview-card">
+                <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+                <h3>TUI 개선</h3>
+                <p>화면 깜빡임 3단계 개선, Diff 렌더링 구현, 웰컴 스크린 추가로 터미널 UI 품질 향상</p>
+            </div>
+            <div class="overview-card">
+                <div class="card-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="14" x="3" y="3" rx="2"/><circle cx="9" cy="11" r="1"/><circle cx="15" cy="11" r="1"/><path d="M9 11h6"/><path d="M8 19h8"/></svg></div>
+                <h3>AI 모델 설정 방식 개선</h3>
+                <p>AI 모델 설정 UI 개선, openrouter 제공 모델 연동 기능 추가</p>
+            </div>
+        </div>
+        <div class="stat-row">
+            <div class="stat-item">
+                <div class="stat-number">37</div>
+                <div class="stat-label">Total Commits</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">73</div>
+                <div class="stat-label">Files Changed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">+10,939</div>
+                <div class="stat-label">Lines Added</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">-1,770</div>
+                <div class="stat-label">Lines Removed</div>
+            </div>
+        </div>
+        <div class="slide-number">8 / 20</div>
+    </div>
+
+    <!-- Slide 9: Web UI Features -->
+    <div class="slide slide-3">
+        <div class="slide-header">
+            <h2>Web UI 주요 업데이트</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/></svg></div>
+                <h4>Lucide 아이콘 시스템</h4>
+                <p>기존 아이콘 → Lucide 전체 교체</p>
+                <p>상단 헤더 아이콘만 표시로 변경하여 사용성 개선</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg></div>
+                <h4>다크 모드 지원</h4>
+                <p>헤더 토글 버튼 추가, Sun/Moon 아이콘, Ollama 미니멀리스트 테마 방식</p>
+                <p>향후 awesome design 추가 적용 예정</p>
+                <p></p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></div>
+                <h4>한글 i18n</h4>
+                <p>전체 UI 번역, 언어 설정 영어/한국어 제한, AI 패널 번역</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 16h8"/><path d="M7 11h12"/><path d="M7 6h3"/></svg></div>
+                <h4>Cluster Visualizer</h4>
+                <p>Pod 간 통신 실시간 애니메이션 효과가 적용하여 K8S 전체 상태 시각화</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></div>
+                <h4>AI 어시스턴트 개선</h4>
+                <p>세션 지우기 버튼, 도구 실행 정보 유지, 팝업 한글 번역</p>
+                <p>openRouter 연동 추가</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+                <h4>로그인 화면</h4>
+                <p>브랜딩 정리, 미니멀리스트 디자인</p>
+            </div>
+        </div>
+        <div class="slide-number">9 / 20</div>
+    </div>
+
+    <!-- Slide 10: Web UI Screenshot 1 -->
+    <div class="slide slide-6">
+        <div class="slide-header">
+            <h2>Web UI 개선 화면</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-screenshot">
+            <img src="screenshot-web1.png" alt="Web UI Dashboard">
+        </div>
+        <div class="slide-number">10 / 20</div>
+    </div>
+
+    <!-- Slide 11: Web UI Screenshot 2 -->
+    <div class="slide slide-6">
+        <div class="slide-header">
+            <h2>Web UI 개선 화면</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-screenshot">
+            <img src="screenshot-web2.png" alt="AI Assistant Panel">
+        </div>
+        <div class="slide-number">11 / 20</div>
+    </div>
+
+    <!-- Slide 12: Web UI Screenshot 3 -->
+    <div class="slide slide-7">
+        <div class="slide-header">
+            <h2>Web UI 개선 화면</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-screenshot">
+            <img src="screenshot-web3.png" alt="Cluster Visualizer">
+        </div>
+        <div class="slide-number">12 / 20</div>
+    </div>
+
+    <!-- Slide 13: Web UI Screenshot 4 -->
+    <div class="slide slide-8">
+        <div class="slide-header">
+            <h2>Web UI 개선 화면</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-screenshot">
+            <img src="screenshot-web4.png" alt="Web UI Settings">
+        </div>
+        <div class="slide-number">13 / 20</div>
+    </div>
+
+    <!-- Slide 14: TUI Screenshot -->
+    <div class="slide slide-12">
+        <div class="slide-header">
+            <h2>TUI 개선 화면</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-screenshot">
+            <img src="screenshot-tui.png" alt="TUI Screenshot">
+        </div>
+        <div class="slide-number">14 / 20</div>
+    </div>
+
+    <!-- Slide 15: CLI Features -->
+    <div class="slide slide-9">
+        <div class="slide-header">
+            <h2>CLI 추가 (신규)</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-layout">
+            <!-- Left: Features + Code -->
+            <div>
+                <div class="cli-main" style="margin-bottom: 16px;">
+                    <h3>주요 기능</h3>
+                    <ul class="cli-list">
+                        <li><span class="cli-badge">NEW</span> REPL 구현 (1,554줄)</li>
+                        <li><span class="cli-badge">NEW</span> 한글(UTF-8) 입력 지원</li>
+                        <li><span class="cli-badge">NEW</span> Left/Right 커서 네비게이션</li>
+                        <li><span class="cli-badge">NEW</span> Ctrl+Enter 개행 입력</li>
+                        <li><span class="cli-badge">NEW</span> 도구 승인 프롬프트 (Y/A/n/q)</li>
+                        <li><span class="cli-badge">NEW</span> K8s 컨텍스트 인식 AI</li>
+                        <li><span class="cli-badge">NEW</span> Tab 자동 완성</li>
+                        <li><span class="cli-badge">NEW</span> 명령 히스토리 (Up/Down)</li>
+                    </ul>
+                </div>
+                <div class="cli-code">
+                    <div class="comment"># CLI 실행</div>
+                    <div>$ ./k13d --cli</div>
+                    <br>
+                    <div class="comment"># AI 명령어</div>
+                    <div>> <span class="highlight">:ai</span> 파드 상태 확인</div>
+                    <br>
+                    <div class="comment"># 리소스별 AI 분석</div>
+                    <div>> <span class="highlight">:ai</span> pod/nginx why failing?</div>
+                    <br>
+                    <div class="comment"># kubectl 패스스루</div>
+                    <div>> get pods -n production</div>
+                </div>
+            </div>
+
+            <!-- Right: Command List -->
+            <div class="cli-commands-panel">
+                <h3> 명령어 리스트</h3>
+
+                <div class="cli-cmd-group">
+                    <div class="cli-cmd-group-title">REPL 명령어</div>
+                    <table class="cli-cmd-table">
+                        <tr><td>:help</td><td>도움말 표시</td></tr>
+                        <tr><td>:ai &lt;질문&gt;</td><td>AI 어시스턴트에 질문</td></tr>
+                        <tr><td>:ai &lt;리소스&gt; &lt;질문&gt;</td><td>리소스별 AI 분석</td></tr>
+                        <tr><td>:model [&lt;이름&gt;]</td><td>LLM 모델 조회/전환</td></tr>
+                        <tr><td>:namespace [&lt;이름&gt;]</td><td>네임스페이스 조회/설정</td></tr>
+                        <tr><td>:context [&lt;이름&gt;]</td><td>K8s 컨텍스트 조회/전환</td></tr>
+                        <tr><td>:mcp [list|tools]</td><td>MCP 상태/도구 목록</td></tr>
+                        <tr><td>:history</td><td>명령 히스토리 표시</td></tr>
+                        <tr><td>:clear</td><td>화면 지우기</td></tr>
+                        <tr><td>:version</td><td>버전 정보 표시</td></tr>
+                        <tr><td>:quit / :exit</td><td>CLI 종료</td></tr>
+                    </table>
+                </div>
+
+                <div class="cli-cmd-group">
+                    <div class="cli-cmd-group-title">kubectl 패스스루</div>
+                    <table class="cli-cmd-table">
+                        <tr><td>&lt;명령어&gt;</td><td>: 접두사 없이 입력 시 kubectl 실행</td></tr>
+                        <tr><td style="color: #666; font-style: italic;">예: get pods -n ns</td><td>네임스페이스 자동 추가</td></tr>
+                    </table>
+                </div>
+
+                <div class="cli-cmd-group">
+                    <div class="cli-cmd-group-title">도구 승인 (Tool Approval)</div>
+                    <table class="cli-cmd-table">
+                        <tr><td style="color: #16a085;">Y / Enter</td><td>현재 명령어 승인</td></tr>
+                        <tr><td style="color: #e94560;">A / all</td><td>세션 전체 자동 승인</td></tr>
+                        <tr><td style="color: #666;">N</td><td>명령어 거부</td></tr>
+                        <tr><td style="color: #666;">Q / quit</td><td>승인 프롬프트 종료</td></tr>
+                    </table>
+                </div>
+
+                <div class="cli-keys-panel">
+                    <div class="cli-keys-title">단축키</div>
+                    <div class="cli-keys-grid">
+                        <div class="cli-key-item"><kbd>Ctrl+C</kbd> 취소/종료</div>
+                        <div class="cli-key-item"><kbd>Ctrl+D</kbd> EOF 종료</div>
+                        <div class="cli-key-item"><kbd>Ctrl+L</kbd> 화면 지우기</div>
+                        <div class="cli-key-item"><kbd>Ctrl+Enter</kbd> 개행 입력</div>
+                        <div class="cli-key-item"><kbd>↑ / ↓</kbd> 히스토리 탐색</div>
+                        <div class="cli-key-item"><kbd>← / →</kbd> 커서 이동</div>
+                        <div class="cli-key-item"><kbd>Tab</kbd> 자동 완성</div>
+                        <div class="cli-key-item"><kbd>ESC</kbd> 입력 초기화</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="slide-number">15 / 20</div>
+    </div>
+
+    <!-- Slide 16: CLI Screenshot -->
+    <div class="slide slide-10">
+        <div class="slide-header">
+            <h2>CLI 실제 구현 화면</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-screenshot">
+            <img src="screenshot-cli.png" alt="CLI Screenshot">
+        </div>
+        <div class="slide-number">16 / 20</div>
+    </div>
+
+    <!-- Slide 17: Technical -->
+    <div class="slide slide-13">
+        <div class="slide-header">
+            <h2>기술적 도전과 해결</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="tech-grid">
+            <div class="tech-card">
+                <h4>한글 입력 처리</h4>
+                <p>CLI 터미널에서 다중바이트 UTF-8 문자의 정확한 입력과 커서 이동 처리 구현</p>
+                <p>readLine 함수 개선으로 한국어 사용자 지원 강화</p>                
+                <span class="tech-tag">UTF-8</span>
+                <span class="tech-tag">Terminal</span>
+            </div>
+            <div class="tech-card">
+                <h4>AI 도구 승인 플로우</h4>
+                <p>stdin 기반 세션 자동 승인(A all)</p>
+                <p>구현safety.PolicyEnforcer와 연동하여 안전한 도구 실행 보장</p>
+                <span class="tech-tag">CLI</span>
+                <span class="tech-tag">Safety</span>
+            </div>
+            <div class="tech-card">
+                <h4>K8s 컨텍스트 수집 방식 개선</h4>
+                <p>네임스페이스/리소스 현황 자동 조회</p>
+                <p>YAML/Events/Logs 통합 제공으로 AI 분석 품질 향상</p>
+                <span class="tech-tag">Kubernetes</span>
+                <span class="tech-tag">AI</span>
+            </div>
+            <div class="tech-card">
+                <h4>Web UI 번역 시스템</h4>
+                <p>i18n.js 734줄 대폭 개선. AI 패널</p>
+                <p>Decision 팝업, Cluster Overview 등 핵심 UI 한글 번역 완성</p>
+                <span class="tech-tag">i18n</span>
+                <span class="tech-tag">Korean</span>
+            </div>
+        </div>
+        <div class="slide-number">17 / 20</div>
+    </div>
+
+    <!-- Slide 18: Direction -->
+    <div class="slide slide-14">
+        <div class="slide-header">
+            <h2>K13D의 방향성 고민</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="tech-grid">
+            <div class="tech-card">
+                <h4>타겟 유저</h4>
+                <p>Kubernetes를 운영하는 플랫폼 엔지니어, AI로 K8s 운영을 자동화하려는 DevOps 팀, CLI · TUI를 선호하는 개발자</p>
+                <span class="tech-tag">Platform Engineer</span>
+                <span class="tech-tag">DevOps</span>
+                <span class="tech-tag">Developer</span>
+            </div>
+            <div class="tech-card">
+                <h4>공략할 틈새 시장</h4>
+                <p>오픈소스 K8s AI 네이티브 전용 도구 특화, Air-gapped(폐쇄망)/온프레미스 보안 환경용 도구, k8s 자격증 대비 테스트 도구</p>
+                <span class="tech-tag">Open Source</span>
+                <span class="tech-tag">Air-gapped</span>
+                <span class="tech-tag">Kubernetes Exam</span>
+            </div>
+            <div class="tech-card">
+                <h4>CLI 기능 확대 전략</h4>
+                <p>AI 기반 문제 진단 및 자동 수정, 반복 작업 자동화 스크립트 지원, MCP 기반 플러그인 생태계 구축</p>
+                <span class="tech-tag">AI</span>
+                <span class="tech-tag">Automation</span>
+                <span class="tech-tag">MCP</span>
+            </div>
+            <div class="tech-card">
+                <h4>실무 활용 예시 발굴</h4>
+                <p>장애 상황 AI 자동 진단 · 복구, 배포 전 영향도 분석 리포트, 인시던트 기반 사후 분석</p>
+                <span class="tech-tag">Diagnosis</span>
+                <span class="tech-tag">Impact Analysis</span>
+                <span class="tech-tag">Postmortem</span>
+            </div>
+        </div>
+        <div class="slide-number">18 / 20</div>
+    </div>
+    <!-- Slide 19: Summary -->
+    <div class="slide slide-15">
+        <div class="summary-content">
+            <div class="summary-left">
+                <h3>총 정리</h3>
+                <div class="summary-stats">
+                    <div class="summary-stat">
+                        <div class="number">14</div>
+                        <div class="label">Web UI 커밋</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="number">9</div>
+                        <div class="label">CLI 커밋</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="number">4</div>
+                        <div class="label">TUI 커밋</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="number">10</div>
+                        <div class="label">버그 수정/문서화</div>
+                    </div>
+                </div>
+            </div>
+            <div class="summary-right">
+                <h3>향후 계획</h3>
+                <ul class="roadmap">
+                    <li>
+                        <span class="roadmap-phase">Phase 1</span>
+                        <span>Web UI 성능 최적화 및 반응형 디자인 지속 보완</span>
+                    </li>
+                    <li>
+                        <span class="roadmap-phase">Phase 2</span>
+                        <span>사용 가능한 AI 모델과의 최적 연동성 강화</span>
+                    </li>
+                    <li>
+                        <span class="roadmap-phase">Phase 3</span>
+                        <span>다양한 WebUI / CLI 기능 발굴 및 개선</span>
+                    </li>
+                    <li>
+                        <span class="roadmap-phase">Phase 4</span>
+                        <span>기존 사용중인 도구에 부착해서 사용 가능한 플러그인 사업 모델 개발</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="closing-message">
+            <p>k13d - Kubernetes Management, Reimagined</p>
+        </div>
+        <div class="slide-number">19 / 20</div>
+    </div>
+
+
+    <!-- Slide 20: CLI Reference UI -->
+    <div class="slide slide-cli-ref">
+        <div class="slide-header">
+            <h2>참고용 CLI UI</h2>
+            <div class="accent-line"></div>
+        </div>
+        <div class="cli-ref-grid">
+            <div class="cli-ref-card">
+                <img src="hermes.png" alt="Hermes CLI">
+            </div>
+            <div class="cli-ref-card">
+                <img src="ibmbob.png" alt="IBM BOP CLI">
+            </div>
+            <div class="cli-ref-card">
+                <img src="mimo.png" alt="Mimo CLI">
+            </div>
+            <div class="cli-ref-card">
+                <img src="opencode.png" alt="OpenCode CLI">
+            </div>
+        </div>
+        <div class="slide-number">20 / 20</div>
+    </div>
+    <div class="nav-hint">&larr; &rarr; 키로 슬라이드 이동 | Ctrl+P로 인쇄</div>
+
+    <button class="pdf-download-btn" onclick="downloadPDF()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+        </svg>
+        PDF 다운로드
+    </button>
+
+    <script>
+        // PDF Download - uses browser's native print-to-PDF
+        function downloadPDF() {
+            const btn = document.querySelector('.pdf-download-btn');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '인쇄 대화상자 열기...';
+
+            const slides = document.querySelectorAll('.slide');
+            const navHint = document.querySelector('.nav-hint');
+            const currentIdx = currentSlide;
+
+            // Show all slides for printing
+            slides.forEach(function(s) { s.style.display = 'flex'; });
+            navHint.style.display = 'none';
+            btn.style.display = 'none';
+
+            requestAnimationFrame(function () {
+                window.print();
+
+                // Restore after print dialog closes
+                slides.forEach(function(s, j) {
+                    s.style.display = j === currentIdx ? 'flex' : 'none';
+                });
+                navHint.style.display = '';
+                btn.style.display = '';
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            });
+        }
+
+        // Simple keyboard navigation
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide(index) {
+            slides.forEach((slide, i) => {
+                if (i === index) {
+                    slide.style.display = 'flex';
+                } else {
+                    slide.style.display = 'none';
+                }
+            });
+        }
+
+        // Initialize
+        showSlide(0);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (currentSlide < totalSlides - 1) {
+                    currentSlide++;
+                    showSlide(currentSlide);
+                }
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (currentSlide > 0) {
+                    currentSlide--;
+                    showSlide(currentSlide);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -107,6 +107,19 @@
     transform: translateY(-1px);
 }
 
+.ai-header-toggle {
+    border-color: rgba(187, 154, 247, 0.3);
+    color: var(--accent-purple);
+}
+.ai-header-toggle:hover {
+    background: rgba(187, 154, 247, 0.1);
+    border-color: var(--accent-purple);
+}
+.ai-header-toggle.active {
+    background: rgba(187, 154, 247, 0.2);
+    border-color: var(--accent-purple);
+}
+
 .refresh-btn {
     background: linear-gradient(135deg, rgba(122, 162, 247, 0.1) 0%, rgba(125, 207, 255, 0.1) 100%);
     border: 1px solid rgba(122, 162, 247, 0.2);
@@ -207,7 +220,6 @@
     gap: 8px;
 }
 
-.ai-clear-btn,
 .ai-expand-btn {
     background: transparent;
     border: 1px solid var(--border-color);
@@ -223,7 +235,6 @@
     transition: all 0.2s ease;
 }
 
-.ai-clear-btn:hover,
 .ai-expand-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
@@ -233,13 +244,13 @@
 /* AI Panel Expanded State */
 .ai-panel.expanded {
     position: fixed !important;
-    top: 0;
+    top: 50px;
     left: 0;
     right: 0;
     bottom: 0;
     width: 100% !important;
     max-width: 100% !important;
-    height: 100% !important;
+    height: calc(100% - 50px) !important;
     z-index: 999; /* Below --z-modal (1000) */
     display: flex;
     flex-direction: column;
@@ -487,6 +498,7 @@ tbody tr:hover {
     display: flex;
     align-items: center;
     gap: 6px;
+    cursor: pointer;
 }
 
 .user-badge::before {
@@ -750,6 +762,38 @@ tbody tr:hover {
 .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
 
 /* ==========================================
+ * Table Loading Overlay
+ * ========================================== */
+.table-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    opacity: 0.85;
+    z-index: 10;
+    border-radius: 8px;
+}
+
+.table-loading-overlay .loading-dots span {
+    width: 8px;
+    height: 8px;
+}
+
+.table-loading-overlay .loading-text {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* ==========================================
+ * Health Indicator
+ * ========================================== */
  * Health Indicator
  * ========================================== */
 
