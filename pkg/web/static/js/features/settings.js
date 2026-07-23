@@ -121,6 +121,7 @@ async function autoSaveGeneralSettings() {
                 appTimezone = newTimezone;
                 localStorage.setItem('k13d_timezone', appTimezone);
                 currentLanguage = document.getElementById('setting-language').value;
+                localStorage.setItem('k13d_language', currentLanguage);
                 updateUILanguage();
                 showToast('Settings saved', 'success');
             }
@@ -1613,7 +1614,8 @@ async function loadSettings() {
     try {
         const resp = await fetchWithAuth('/api/settings');
         const data = await resp.json();
-        currentLanguage = data.language || 'ko';
+        currentLanguage = data.language || 'en';
+        localStorage.setItem('k13d_language', currentLanguage);
         document.getElementById('setting-language').value = currentLanguage;
         document.getElementById('setting-log-level').value = data.log_level || 'info';
         // Load timezone setting
@@ -2247,6 +2249,7 @@ async function saveSettings() {
 
         // Update current language for AI responses
         currentLanguage = document.getElementById('setting-language').value;
+        localStorage.setItem('k13d_language', currentLanguage);
         updateUILanguage();
 
         // Update AI status (model name and connection status)

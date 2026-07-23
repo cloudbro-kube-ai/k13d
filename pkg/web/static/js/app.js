@@ -29,7 +29,7 @@ let currentUser = null;
 let sidebarCollapsed = localStorage.getItem('k13d_sidebar_collapsed') === 'true';
 let debugMode = localStorage.getItem('k13d_debug_mode') === 'true';
 let aiContextItems = []; // Resources added as context for AI
-let currentLanguage = 'ko'; // Default language (Korean)
+let currentLanguage = localStorage.getItem('k13d_language') || 'en'; // Load from localStorage, default English
 let currentLLMModel = ''; // Current LLM model name
 let llmConnected = false; // LLM connection status
 let currentSessionId = sessionStorage.getItem('k13d_session_id') || ''; // AI conversation session ID
@@ -701,7 +701,7 @@ function initTheme() {
 
 function toggleDarkMode() {
     const current = document.documentElement.getAttribute('data-theme');
-    const isLight = !current || current === 'light' || current === 'ollama';
+    const isLight = !current || current === 'ollama';
     if (isLight) {
         applyTheme('tokyo-night');
     } else {
@@ -716,7 +716,7 @@ function updateThemeIcon() {
     const btn = document.getElementById('theme-toggle-btn');
     
     const theme = document.documentElement.getAttribute('data-theme');
-    const isLight = !theme || theme === 'light' || theme === 'ollama';
+    const isLight = !theme || theme === 'ollama';
     
     if (lightIcon && darkIcon) {
         lightIcon.style.display = isLight ? 'none' : 'block';
@@ -914,6 +914,8 @@ function showApp() {
     updateAIStatus();
     // Load user permissions for feature gating
     loadUserPermissions();
+    // Apply saved language setting to UI
+    updateUILanguage();
 }
 
 // Login tab switching
