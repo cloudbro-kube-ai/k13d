@@ -24,14 +24,14 @@ const (
 // WelcomeScreen is the initial screen shown when k13d starts
 type WelcomeScreen struct {
 	*tview.Flex
-	app          *App
-	logo         *tview.TextView
-	subtitle     *tview.TextView
-	menu         *tview.List
-	inputLabel   *tview.TextView
-	input        *tview.InputField
-	hintBar      *tview.TextView
-	onComplete   func(cmd string)
+	app        *App
+	logo       *tview.TextView
+	subtitle   *tview.TextView
+	menu       *tview.List
+	inputLabel *tview.TextView
+	input      *tview.InputField
+	hintBar    *tview.TextView
+	onComplete func(cmd string)
 }
 
 // NewWelcomeScreen creates a new welcome screen
