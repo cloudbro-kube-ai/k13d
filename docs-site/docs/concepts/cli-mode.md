@@ -50,13 +50,15 @@ The CLI mode follows a REPL pattern:
 | `k13d> :version` | Shows k13d version |
 | `k13d> :namespace default` | Sets default namespace for subsequent commands |
 | `k13d> :context my-cluster` | Switches Kubernetes context |
+| `k13d> :model` | Shows AI model profile selector |
+| `k13d> :model gpt-4o` | Switches to a named AI model profile directly |
 | `k13d> :history` | Shows command history |
 | `↑` / `↓` | Navigate command history |
+| `←` / `→` | Move cursor within the current input line for editing |
 | `Tab` | Auto-complete commands and resource names |
-| `Ctrl+C` | Cancel current command / exit |
+| `Ctrl+C` or `Esc` | Cancel current command / exit |
 | `Ctrl+L` | Clear screen |
 | `Ctrl+D` | Exit (on empty prompt) |
-
 All `kubectl` commands are forwarded to the underlying `kubectl` binary or Kubernetes client API. Output is printed directly to stdout.
 
 ### Output
@@ -149,7 +151,7 @@ The REPL loop:
 - Parses it into a command (either `:builtin` or raw kubectl)
 - Executes via the appropriate handler
 - Prints output
-- Loops until `:quit`, `:exit`, or `Ctrl+D`/`Ctrl+C`
+- Loops until `:quit`, `:exit`, or `Ctrl+D`/`Ctrl+C`/`Esc`
 
 #### 2. Splash Screen (`pkg/cli/splash.go`)
 

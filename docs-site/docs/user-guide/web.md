@@ -6,7 +6,7 @@ The Web Dashboard provides a modern browser-based interface for Kubernetes manag
 
 The Web UI offers:
 
-- **Modern Interface**: Responsive design with dark/light themes
+- **Modern Interface**: Responsive dark-themed design with customizable accent colors
 - **Real-time Updates**: Stale-first dashboard refresh with background revalidation
 - **AI Assistant**: Integrated chat interface
 - **GitHub Automation Receiver**: Optional webhook endpoint for issue-driven dev/review jobs
@@ -151,9 +151,9 @@ Some requests never reach approval. k13d blocks unsupported interactive kubectl 
 
 ## Features
 
-### Dark/Light Theme
+### Dark Theme
 
-Toggle theme in Settings or click the theme icon in the header.
+The Web UI uses a dark theme by default. Theme can be changed in Settings > General.
 
 ### Real-time Updates
 

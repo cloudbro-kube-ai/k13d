@@ -2,6 +2,42 @@
 
 All notable changes to k13d are documented here.
 
+## [Unreleased]
+
+## [1.1.0] - 2026-07-24
+
+### Added
+- **Screen Ghosting Fix**: Eliminated TUI visual artifacts during modal transitions and AI streaming
+- **AI Chat History Preservation**: Previous Q&A sessions preserved with visual dividers within TUI session
+- **Autocomplete Dropdown**: k9s-style dropdown overlay when 2+ command completions match
+- **Configurable Resource Aliases** (`aliases.yaml`): Custom command shortcuts with `:alias` viewer
+- **Per-Resource Sort Defaults** (`views.yaml`): Remember sort column and direction per resource type
+- **LLM Model Switching** (`:model` command): Switch AI model profiles, `:model <name>` for direct switch
+- **Plugin System TUI Integration**: Plugins from `plugins.yaml` via keyboard shortcuts and `:plugins` command
+
+### Changed
+- All modal open/close calls migrated to `showModal()`/`closeModal()` helpers with screen sync
+- Command handling refactored for prefix matching (`:model <name>`)
+
+### Fixed
+- TUI screen ghosting (visual artifacts) during modal transitions and AI streaming
+- AI chat history lost when new response arrives
+
+---
+
+## [1.0.1] - 2026-04-13
+
+### Security
+- **Go Standard Library**: Upgraded Go version from `1.25.8` to `1.25.9` to resolve standard library vulnerabilities:
+  - [GO-2026-4869](https://pkg.go.dev/vuln/GO-2026-4869): Unbounded allocation in `archive/tar`
+  - Multiple TLS-related vulnerabilities affecting standard HTTP/LDAP clients
+
+### Changed
+- **CI/CD**: Updated GitHub Action workflows and Docker base image to Go `1.25.9`
+- **Linting**: Added `golangci-lint` to pre-commit hooks for consistent local quality checks
+
+---
+
 ## [1.0.0] - 2026-04-03
 
 ### Added
@@ -21,8 +57,6 @@ All notable changes to k13d are documented here.
 - AI decision execution path to avoid shell indirection
 - Local-auth settings stability and legacy Ollama settings cleanup
 - Port-forward shutdown cleanup and additional web handler hardening
-
----
 
 ## [0.8.5] - 2026-02-16
 
