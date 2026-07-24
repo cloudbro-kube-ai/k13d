@@ -6,7 +6,7 @@
 4. Web UI 실행
 
 !!! success "실습 권장 시작 방법"
-    [Release v1.0.1](https://github.com/cloudbro-kube-ai/k13d/releases/tag/v1.0.1) 의 **단일 바이너리**를 바로 실행하세요.
+    [Release v1.1.0](https://github.com/cloudbro-kube-ai/k13d/releases/tag/v1.1.0) 의 **단일 바이너리**를 바로 실행하세요.
     전체 릴리즈와 자산 목록은 [GitHub Releases 페이지](https://github.com/cloudbro-kube-ai/k13d/releases) 에서 한 번에 볼 수 있습니다.
 
     - 접속 주소: `http://localhost:9090`
@@ -14,8 +14,8 @@
     - 비밀번호: k13d 실행 후 터미널에 출력됨
 
 !!! info "무엇을 받으면 되나요?"
-    실습은 `k13d_v1.0.1_<os>_<arch>` 자산을 받으면 됩니다.
-    `k13d-plugin_v1.0.1_<os>_<arch>` 는 `kubectl k13d` 형태로 쓰고 싶을 때만 선택하세요.
+    실습은 `k13d_v1.1.0_<os>_<arch>` 자산을 받으면 됩니다.
+    `k13d-plugin_v1.1.0_<os>_<arch>` 는 `kubectl k13d` 형태로 쓰고 싶을 때만 선택하세요.
 
 ## 가장 많이 쓰는 실행 명령
 
@@ -46,11 +46,11 @@ kubectl get nodes
 === "macOS (Apple Silicon)"
 
     ```bash
-    curl -L -o k13d_v1.0.1_darwin_arm64.tar.gz \
-      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.1/k13d_v1.0.1_darwin_arm64.tar.gz
+    curl -L -o k13d_v1.1.0_darwin_arm64.tar.gz \
+      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.1.0/k13d_v1.1.0_darwin_arm64.tar.gz
 
-    tar -zxvf k13d_v1.0.1_darwin_arm64.tar.gz
-    cd k13d_v1.0.1_darwin_arm64
+    tar -zxvf k13d_v1.1.0_darwin_arm64.tar.gz
+    cd k13d_v1.1.0_darwin_arm64
     chmod +x ./k13d
 
     # Remove quarantine and provenance attributes
@@ -63,11 +63,11 @@ kubectl get nodes
 === "macOS (Intel)"
 
     ```bash
-    curl -L -o k13d_v1.0.1_darwin_amd64.tar.gz \
-      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.1/k13d_v1.0.1_darwin_amd64.tar.gz
+    curl -L -o k13d_v1.1.0_darwin_amd64.tar.gz \
+      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.1.0/k13d_v1.1.0_darwin_amd64.tar.gz
 
-    tar -zxvf k13d_v1.0.1_darwin_amd64.tar.gz
-    cd k13d_v1.0.1_darwin_amd64
+    tar -zxvf k13d_v1.1.0_darwin_amd64.tar.gz
+    cd k13d_v1.1.0_darwin_amd64
     chmod +x ./k13d
 
     # Remove quarantine and provenance attributes
@@ -80,11 +80,11 @@ kubectl get nodes
 === "Linux (amd64)"
 
     ```bash
-    curl -L -o k13d_v1.0.1_linux_amd64.tar.gz \
-      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.1/k13d_v1.0.1_linux_amd64.tar.gz
+    curl -L -o k13d_v1.1.0_linux_amd64.tar.gz \
+      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.1.0/k13d_v1.1.0_linux_amd64.tar.gz
 
-    tar -zxvf k13d_v1.0.1_linux_amd64.tar.gz
-    cd k13d_v1.0.1_linux_amd64
+    tar -zxvf k13d_v1.1.0_linux_amd64.tar.gz
+    cd k13d_v1.1.0_linux_amd64
     chmod +x ./k13d
 
     ./k13d --web --port 9090 --auth-mode local
@@ -93,11 +93,11 @@ kubectl get nodes
 === "Linux (arm64)"
 
     ```bash
-    curl -L -o k13d_v1.0.1_linux_arm64.tar.gz \
-      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.1/k13d_v1.0.1_linux_arm64.tar.gz
+    curl -L -o k13d_v1.1.0_linux_arm64.tar.gz \
+      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.1.0/k13d_v1.1.0_linux_arm64.tar.gz
 
-    tar -zxvf k13d_v1.0.1_linux_arm64.tar.gz
-    cd k13d_v1.0.1_linux_arm64
+    tar -zxvf k13d_v1.1.0_linux_arm64.tar.gz
+    cd k13d_v1.1.0_linux_arm64
     chmod +x ./k13d
 
     ./k13d --web --port 9090 --auth-mode local
@@ -106,11 +106,11 @@ kubectl get nodes
 === "Windows (amd64)"
 
     ```powershell
-    curl.exe -L -o k13d_v1.0.1_windows_amd64.zip `
-      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.1/k13d_v1.0.1_windows_amd64.zip
+    curl.exe -L -o k13d_v1.1.0_windows_amd64.zip `
+      https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.1.0/k13d_v1.1.0_windows_amd64.zip
 
-    Expand-Archive .\k13d_v1.0.1_windows_amd64.zip -DestinationPath .
-    cd .\k13d_v1.0.1_windows_amd64
+    Expand-Archive .\k13d_v1.1.0_windows_amd64.zip -DestinationPath .
+    cd .\k13d_v1.1.0_windows_amd64
 
     .\k13d.exe --web --port 9090 --auth-mode local
     ```
@@ -157,10 +157,10 @@ kubectl get nodes
 예시: **macOS Apple Silicon**
 
 ```bash
-curl -L -o k13d-plugin_v1.0.1_darwin_arm64.tar.gz \
-  https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.0.1/k13d-plugin_v1.0.1_darwin_arm64.tar.gz
+curl -L -o k13d-plugin_v1.1.0_darwin_arm64.tar.gz \
+  https://github.com/cloudbro-kube-ai/k13d/releases/download/v1.1.0/k13d-plugin_v1.1.0_darwin_arm64.tar.gz
 
-tar -zxvf k13d-plugin_v1.0.1_darwin_arm64.tar.gz
+tar -zxvf k13d-plugin_v1.1.0_darwin_arm64.tar.gz
 chmod +x ./kubectl-k13d
 sudo mv ./kubectl-k13d /usr/local/bin/
 
