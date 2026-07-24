@@ -420,7 +420,7 @@ Create and manage user accounts:
 
 ### Theme / Skin Selector
 
-Choose from 5 color themes in Settings > General:
+Choose from 4 dark color themes in Settings > General:
 
 | Theme | Description |
 |-------|-------------|
@@ -428,10 +428,8 @@ Choose from 5 color themes in Settings > General:
 | **Production** | Red-accented dark theme (warns you're in production) |
 | **Staging** | Yellow-accented dark theme |
 | **Development** | Green-accented dark theme |
-| **Light** | Clean light theme with professional colors |
 
-Theme selection persists in localStorage and auto-detects system preference.
-
+Theme selection persists in localStorage.
 ### Authentication Control
 
 ![Auth Control](../images/webui-settings-admin-user-authentication-controll.png)
