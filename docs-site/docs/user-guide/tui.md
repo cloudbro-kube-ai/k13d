@@ -263,13 +263,13 @@ For the exact file persistence behavior, including when TUI updates `llm`, when 
 When AI requests to execute a command:
 
 ```
-┌──────────────────────────────────────────────┐
-│ Decision Required                            │
-│                                              │
-│ kubectl get pods -n production               │
-│                                              │
-│ Reject (N / Esc)      Approve (Y / Enter)    │
-└──────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│ Decision Required                                        │
+│                                                          │
+│ kubectl get pods -n production                           │
+│                                                          │
+│ Reject (N)    Approve (Y)    Always Approve R/O (A)     │
+└──────────────────────────────────────────────────────────┘
 ```
 
 The request opens as a centered modal, matching the Web UI approval flow more closely.
@@ -278,7 +278,7 @@ The request opens as a centered modal, matching the Web UI approval flow more cl
 |-----|--------|
 | ++y++ / ++enter++ | Approve this command |
 | ++n++ / ++esc++ | Reject this command |
-
+| ++a++ | Approve all pending and future read-only commands |
 ## Filtering and Search
 
 ### Filter Syntax
