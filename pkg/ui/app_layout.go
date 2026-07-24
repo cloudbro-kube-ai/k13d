@@ -647,7 +647,7 @@ func (a *App) rebuildContentLayout(focusAI bool) {
 		needsRebuild = currentItemCount != 1
 	}
 
-	// Only rebuild if layout structure changed
+	// Only rebuild if layout structure changed or AI panel needs resizing
 	if needsRebuild {
 		a.contentFlex.Clear()
 		if showAI && fullscreen && a.aiContainer != nil {
@@ -658,6 +658,9 @@ func (a *App) rebuildContentLayout(focusAI bool) {
 				a.contentFlex.AddItem(a.aiContainer, aiWidth, 0, focusAI)
 			}
 		}
+	} else if showAI && !fullscreen && a.aiContainer != nil && currentItemCount == 2 {
+		// Resize AI panel width without rebuilding the entire layout
+		a.contentFlex.ResizeItem(a.aiContainer, aiWidth, 0)
 	}
 
 	if focusAI && showAI {
