@@ -282,6 +282,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-24
+
 ### Added
 - **Screen Ghosting Fix**: Eliminated TUI visual artifacts during modal transitions and AI streaming
   - Added 50ms draw throttle for AI streaming callbacks to prevent goroutine contention
