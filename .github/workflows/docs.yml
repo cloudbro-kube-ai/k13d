@@ -74,9 +74,9 @@ jobs:
       - name: Get k13d version
         id: version
         run: |
-          VERSION=$(grep -m1 'version:' docs-site/mkdocs.yml | awk '{print $2}' || echo "latest")
+          # Extract first version from CHANGELOG.md, fall back to git tag
+          VERSION=$(grep -m1 '^## \[[0-9]' CHANGELOG.md | sed 's/.*\[\([^]]*\)\].*/\1/' || echo "")
           if [ -z "$VERSION" ]; then
-            # Try to get version from git tag
             VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "latest")
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
