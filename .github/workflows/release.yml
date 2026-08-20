@@ -100,7 +100,7 @@ jobs:
 
       - name: Build and push
         if: env.DOCKERHUB_USER != ''
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/docker/Dockerfile
