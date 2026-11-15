@@ -1,19 +1,23 @@
 package web
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/cloudbro-kube-ai/k13d/pkg/ai"
 	"github.com/cloudbro-kube-ai/k13d/pkg/ai/session"
 	"github.com/cloudbro-kube-ai/k13d/pkg/config"
 	"github.com/cloudbro-kube-ai/k13d/pkg/db"
+	"github.com/cloudbro-kube-ai/k13d/tests/mocks/llmhttp"
 )
 
 // setupAITestServer creates a test server for AI handler tests.
@@ -123,11 +127,14 @@ func TestLLMStatus_DefaultEndpointHints(t *testing.T) {
 		expectedEndpoint string
 	}{
 		{"openai", "https://api.openai.com/v1"},
+		{"upstage", "https://api.upstage.ai/v1"},
+		{"openrouter", "https://openrouter.ai/api/v1"},
 		{"litellm", "http://localhost:4000"},
 		{"ollama", "http://localhost:11434"},
 		{"anthropic", "https://api.anthropic.com"},
 		{"gemini", "https://generativelanguage.googleapis.com/v1beta"},
 		{"azure", "(Azure OpenAI endpoint required)"},
+		{"azopenai", "(Azure OpenAI endpoint required)"},
 	}
 
 	for _, p := range providers {
@@ -170,6 +177,161 @@ func TestLLMStatus_MethodNotAllowed(t *testing.T) {
 	}
 }
 
+func TestLLMStatus_DoesNotExposeAPIKey(t *testing.T) {
+	s := setupAITestServer(t, false)
+	s.cfg.LLM.APIKey = "sk-super-secret"
+
+	req := httptest.NewRequest(http.MethodGet, "/api/llm/status", nil)
+	w := httptest.NewRecorder()
+
+	s.handleLLMStatus(w, req)
+
+	var body map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+
+	if _, exists := body["api_key"]; exists {
+		t.Error("raw api_key must not be exposed by GET /api/llm/status")
+	}
+	if body["has_api_key"] != true {
+		t.Errorf("has_api_key = %v, want true", body["has_api_key"])
+	}
+}
+
+// ==================== handleAvailableModels Tests ====================
+
+func TestHandleAvailableModels_MethodNotAllowed(t *testing.T) {
+	s := setupAITestServer(t, false)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/llm/available-models", nil)
+	w := httptest.NewRecorder()
+
+	s.handleAvailableModels(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("Expected 405, got %d", w.Code)
+	}
+}
+
+// The UI never receives the raw API key, so it POSTs an empty api_key. The
+// handler must fall back to the stored key, follow Gemini pagination, and
+// apply the gemini- prefix filter.
+func TestHandleAvailableModels_GeminiStoredKeyFallbackAndPagination(t *testing.T) {
+	mock := llmhttp.NewMockProviderServer("gemini", "ok")
+	defer mock.Close()
+
+	s := setupAITestServer(t, false)
+	s.cfg.LLM = config.LLMConfig{
+		Provider: "gemini",
+		Model:    "gemini-2.5-flash",
+		Endpoint: mock.URL(),
+		APIKey:   "stored-secret-key",
+	}
+
+	body, _ := json.Marshal(map[string]string{
+		"provider": "gemini",
+		"api_key":  "", // empty: must fall back to the stored key
+		"endpoint": mock.URL(),
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/llm/available-models", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	s.handleAvailableModels(w, req)
+
+	var resp struct {
+		Models []string `json:"models"`
+		Error  string   `json:"error"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v (body: %s)", err, w.Body.String())
+	}
+	if resp.Error != "" {
+		t.Fatalf("unexpected error: %s", resp.Error)
+	}
+
+	want := []string{"gemini-2.5-flash", "gemini-2.0-flash"}
+	if !reflect.DeepEqual(resp.Models, want) {
+		t.Errorf("models = %v, want %v", resp.Models, want)
+	}
+	// Two pages were requested (page 1 + pageToken page 2).
+	if mock.RequestCount() < 2 {
+		t.Errorf("expected at least 2 paginated requests, got %d", mock.RequestCount())
+	}
+}
+
+func TestHandleAvailableModels_NoClientNoProvider(t *testing.T) {
+	s := setupAITestServer(t, false)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/llm/available-models", nil)
+	w := httptest.NewRecorder()
+
+	s.handleAvailableModels(w, req)
+
+	var resp struct {
+		Models []string `json:"models"`
+		Error  string   `json:"error"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+	if resp.Error == "" {
+		t.Error("expected an error when no provider and no AI client are configured")
+	}
+}
+
+// ==================== handleLLMTest Tests ====================
+
+// With the raw API key no longer delivered to the browser, an empty api_key
+// in the test request must use the stored key for the same provider.
+func TestHandleLLMTest_EmptyAPIKeyFallsBackToStoredKey(t *testing.T) {
+	dbPath := "test_llm_test_fallback.db"
+	defer os.Remove(dbPath)
+	if err := db.Init(dbPath); err != nil {
+		t.Fatalf("Failed to init DB: %v", err)
+	}
+	defer db.Close()
+
+	mock := llmhttp.NewMockProviderServer("gemini", "ok")
+	defer mock.Close()
+
+	s := setupAITestServer(t, false)
+	s.cfg.LLM = config.LLMConfig{
+		Provider: "gemini",
+		Model:    "gemini-2.5-flash",
+		Endpoint: mock.URL(),
+		APIKey:   "stored-secret-key",
+	}
+
+	body, _ := json.Marshal(map[string]string{
+		"provider": "gemini",
+		"model":    "gemini-2.5-flash",
+		"endpoint": mock.URL(),
+		"api_key":  "", // empty: must fall back to the stored key
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/llm/test", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	s.handleLLMTest(w, req)
+
+	var resp struct {
+		Connected bool   `json:"connected"`
+		Error     string `json:"error"`
+		Message   string `json:"message"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v (body: %s)", err, w.Body.String())
+	}
+	if !resp.Connected {
+		t.Fatalf("expected connected=true via stored-key fallback; error=%q message=%q", resp.Error, resp.Message)
+	}
+	if mock.RequestCount() == 0 {
+		t.Error("expected the mock provider to receive the connection test request")
+	}
+}
+
 // ==================== handleAIPing Tests ====================
 
 func TestAIPing_NilClient(t *testing.T) {
@@ -193,6 +355,52 @@ func TestAIPing_NilClient(t *testing.T) {
 	}
 	if code, ok := body["code"].(string); !ok || code != ErrCodeLLMNotConfigured {
 		t.Errorf("Expected code=%s, got %v", ErrCodeLLMNotConfigured, body["code"])
+	}
+}
+
+// A cached ping result belongs to the client that produced it; after a
+// settings change swaps the client, the new one must be pinged for real.
+func TestAIPing_CacheNotReusedAcrossClientSwap(t *testing.T) {
+	mock := llmhttp.NewMockProviderServer("openai", "OK")
+	defer mock.Close()
+
+	s := setupAITestServer(t, false)
+	newClient := func() *ai.Client {
+		c, err := ai.NewClient(mock.LLMConfig())
+		if err != nil {
+			t.Fatalf("failed to create AI client: %v", err)
+		}
+		return c
+	}
+	ping := func() map[string]interface{} {
+		w := httptest.NewRecorder()
+		s.handleAIPing(w, httptest.NewRequest(http.MethodGet, "/api/ai/ping", nil))
+		var body map[string]interface{}
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+			t.Fatalf("failed to parse response: %v", err)
+		}
+		return body
+	}
+
+	s.aiClient = newClient()
+	if got := ping()["status"]; got != "ok" {
+		t.Fatalf("expected first ping status=ok, got %v", got)
+	}
+	afterFirst := mock.RequestCount()
+
+	// Same client: served from cache.
+	ping()
+	if mock.RequestCount() != afterFirst {
+		t.Fatalf("expected cached ping for the same client, requests went %d -> %d", afterFirst, mock.RequestCount())
+	}
+
+	// Swapped client: must hit the provider again.
+	s.aiClient = newClient()
+	if got := ping()["status"]; got != "ok" {
+		t.Fatalf("expected ping after swap status=ok, got %v", got)
+	}
+	if mock.RequestCount() == afterFirst {
+		t.Fatal("expected a fresh provider round-trip after the client was swapped")
 	}
 }
 

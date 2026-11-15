@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -71,6 +72,7 @@ type geminiModelsResponse struct {
 	Models []struct {
 		Name string `json:"name"`
 	} `json:"models"`
+	NextPageToken string `json:"nextPageToken"`
 }
 
 const geminiSystemPrompt = "You are a helpful Kubernetes assistant. Help users manage Kubernetes clusters using natural language. When users ask to create resources, generate the appropriate kubectl commands."
@@ -253,34 +255,50 @@ func (p *GeminiProvider) AskNonStreaming(ctx context.Context, prompt string) (st
 }
 
 func (p *GeminiProvider) ListModels(ctx context.Context) ([]string, error) {
-	endpoint := fmt.Sprintf("%s/models", p.endpoint)
+	var models []string
+	pageToken := ""
+	// Guard against a misbehaving API returning the same token forever.
+	const maxPages = 20
 
-	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("x-goog-api-key", p.config.APIKey)
+	// Follow nextPageToken until exhausted (the API pages model lists).
+	for page := 0; page < maxPages; page++ {
+		endpoint := fmt.Sprintf("%s/models", p.endpoint)
+		if pageToken != "" {
+			endpoint = fmt.Sprintf("%s?pageToken=%s", endpoint, url.QueryEscape(pageToken))
+		}
 
-	resp, err := p.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
+		req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+		req.Header.Set("x-goog-api-key", p.config.APIKey)
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to list models: status %d", resp.StatusCode)
-	}
+		resp, err := p.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("request failed: %w", err)
+		}
 
-	var modelsResp geminiModelsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&modelsResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, fmt.Errorf("failed to list models: status %d", resp.StatusCode)
+		}
 
-	models := make([]string, len(modelsResp.Models))
-	for i, m := range modelsResp.Models {
-		// Strip "models/" prefix
-		name := strings.TrimPrefix(m.Name, "models/")
-		models[i] = name
+		var modelsResp geminiModelsResponse
+		err = json.NewDecoder(resp.Body).Decode(&modelsResp)
+		resp.Body.Close()
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+
+		for _, m := range modelsResp.Models {
+			// Strip "models/" prefix
+			models = append(models, strings.TrimPrefix(m.Name, "models/"))
+		}
+
+		if modelsResp.NextPageToken == "" {
+			break
+		}
+		pageToken = modelsResp.NextPageToken
 	}
 	return models, nil
 }

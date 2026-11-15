@@ -1149,62 +1149,109 @@
                                 <div>
                                     <div id="llm-status-text" style="font-weight:500;" data-i18n="settings_connection_status">Connection Status: Unknown</div>
                                     <div id="llm-status-detail" style="font-size:12px;color:var(--text-secondary);"
-                                        data-i18n="settings_save_to_test">Save to test connection</div>
+                                        data-i18n="settings_connection_status_detail">연결 상태를 확인하려면 설정을 저장하세요</div>
                                 </div>
-                            </div>
-                            <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-                                <button id="llm-test-btn" onclick="testLLMConnection()"
-                                    style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid var(--accent-blue);background:transparent;color:var(--accent-blue);cursor:pointer;font-size:13px;transition:all 0.2s;"
-                                    onmouseover="this.style.background='var(--accent-blue)';this.style.color='#fff'"
-                                    onmouseout="this.style.background='transparent';this.style.color='var(--accent-blue)'">
-                                    <span id="llm-test-btn-text" data-i18n="settings_test_connection">Test Connection</span>
-                                </button>
                             </div>
                         </div>
                     </div>
 
                     <!-- Current LLM Configuration -->
-                    <div class="settings-section">
+                    <div class="settings-section ai-settings-section">
                         <h4 data-i18n="settings_llm_config">LLM Configuration</h4>
-                        <div class="form-group">
-                            <label data-i18n="settings_provider">Provider</label>
-                            <select id="setting-llm-provider" onchange="updateEndpointPlaceholder(); autoSaveLLMSettings()">
-                                <option value="upstage">Upstage Solar</option>
-                                <option value="openai">OpenAI</option>
-                                <option value="openrouter">OpenRouter</option>
-                                <option value="litellm">LiteLLM Gateway</option>
-                                <option value="ollama">Ollama</option>
-                                <option value="gemini">Google Gemini</option>
-                                <option value="anthropic">Anthropic Claude</option>
-                                <option value="bedrock">AWS Bedrock</option>
-                                <option value="azopenai">Azure OpenAI</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label data-i18n="settings_model">Model <button type="button" id="fetch-models-btn" onclick="fetchAvailableModels()"
-                                    style="font-size:11px;color:var(--accent-blue);background:none;border:1px solid var(--accent-blue);border-radius:4px;padding:1px 8px;margin-left:8px;cursor:pointer;display:none;"><span data-i18n="settings_fetch_models">Fetch Models</span></button><span id="fetch-models-status"
-                                    style="font-size:11px;color:var(--text-secondary);margin-left:6px;"></span></label>
-                            <select id="setting-llm-model-select"
-                                onchange="document.getElementById('setting-llm-model').value=this.value; updateLLMToolSupportWarning(); autoSaveLLMSettings()"
-                                style="display:none;margin-bottom:4px;"></select>
-                            <input type="text" id="setting-llm-model" placeholder="solar-pro2"
-                                oninput="updateLLMToolSupportWarning()" onchange="autoSaveLLMSettings()">
-                            <div id="llm-tool-support-warning"
-                                style="display:none;margin-top:8px;font-size:12px;line-height:1.5;color:var(--accent-yellow);">
+
+                        <!-- Step 1: Provider Selection -->
+                        <div class="ai-settings-step" id="ai-step-provider">
+                            <div class="ai-step-header">
+                                <span class="ai-step-number">1</span>
+                                <span data-i18n="settings_step_provider">Provider</span>
+                            </div>
+                            <div class="form-group">
+                                <label data-i18n="settings_provider">Provider</label>
+                                <select id="setting-llm-provider" onchange="onProviderChanged()">
+                                    <option value="upstage">Upstage Solar</option>
+                                    <option value="openai">OpenAI</option>
+                                    <option value="openrouter">OpenRouter</option>
+                                    <option value="litellm">LiteLLM Gateway</option>
+                                    <option value="ollama">Ollama</option>
+                                    <option value="gemini">Google Gemini</option>
+                                    <option value="anthropic">Anthropic Claude</option>
+                                    <option value="bedrock">AWS Bedrock</option>
+                                    <option value="azopenai">Azure OpenAI</option>
+                                </select>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label data-i18n="settings_endpoint">Endpoint <span id="endpoint-hint"
-                                    style="font-size:11px;color:var(--text-secondary);"></span></label>
-                            <input type="text" id="setting-llm-endpoint" placeholder="https://api.upstage.ai/v1"
-                                onchange="autoSaveLLMSettings()">
+
+                        <!-- Step 2: API Key Input -->
+                        <div class="ai-settings-step" id="ai-step-apikey">
+                            <div class="ai-step-header">
+                                <span class="ai-step-number">2</span>
+                                <span data-i18n="settings_step_api_key">API Key</span>
+                            </div>
+                            <div class="form-group ai-apikey-group">
+                                <label data-i18n="settings_api_key">API Key</label>
+                                <div class="ai-apikey-input-wrapper">
+                                    <input type="password" id="setting-llm-apikey" placeholder="sk-... / up_... / AIza..."
+                                        oninput="onApiKeyInput()">
+                                    <button type="button" id="ai-apikey-toggle" onclick="toggleApiKeyVisibility()" class="ai-btn-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-off"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.06M9.9 4.24A9.12 9.12 0 0 1 5.64 0.5 18.45 18.45 0 0 1 12.8 9.9M18.16 14.34A18.45 18.45 0 0 1 14.8 12.8 9.12 9.12 0 0 1 20.5 5.64"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-off hidden"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.06M9.9 4.24A9.12 9.12 0 0 1 5.64 0.5 18.45 18.45 0 0 1 12.8 9.9M18.16 14.34A18.45 18.45 0 0 1 14.8 12.8 9.12 9.12 0 0 1 20.5 5.64"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                                    </button>
+                                </div>
+                                <div class="ai-apikey-hint" id="ai-apikey-hint" data-i18n="settings_api_key_placeholder">Enter your API key</div>
+                                <div id="ai-apikey-link-container" style="font-size:11px;margin-top:4px;"></div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label data-i18n="settings_api_key">API Key <a href="https://console.upstage.ai/api-keys" target="_blank"
-                                    style="font-size:11px;color:var(--accent-blue);margin-left:8px;"><span data-i18n="settings_get_api_key">Get API Key</span>
-                                    →</a></label>
-                            <input type="password" id="setting-llm-apikey" placeholder="up_..."
-                                onchange="autoSaveLLMSettings()">
+
+                        <!-- Step 3: Model Selection -->
+                        <div class="ai-settings-step" id="ai-step-model">
+                            <div class="ai-step-header">
+                                <span class="ai-step-number">3</span>
+                                <span data-i18n="settings_step_model">Model</span>
+                            </div>
+                            <div class="form-group ai-model-group">
+                                <label data-i18n="settings_model">Model</label>
+                                <div class="ai-model-select-wrapper">
+                                    <select id="setting-llm-model-select"
+                                        onchange="document.getElementById('setting-llm-model').value=this.value; updateLLMToolSupportWarning(); onModelSelected()"
+                                        style="flex:1;"></select>
+                                    <button type="button" id="fetch-models-btn" onclick="fetchAvailableModels()" class="ai-btn-fetch">
+                                        <span data-i18n="settings_fetch_models">Fetch Models</span>
+                                    </button>
+                                </div>
+                                <input type="text" id="setting-llm-model" placeholder="solar-pro2"
+                                    oninput="updateLLMToolSupportWarning(); onModelInput()">
+                                <div id="fetch-models-status" style="font-size:11px;color:var(--text-secondary);margin-top:4px;"></div>
+                                <div id="llm-tool-support-warning"
+                                    style="display:none;margin-top:8px;font-size:12px;line-height:1.5;color:var(--accent-yellow);">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 4: Endpoint -->
+                        <div class="ai-settings-step" id="ai-step-endpoint">
+                            <div class="ai-step-header">
+                                <span class="ai-step-number">4</span>
+                                <span data-i18n="settings_step_endpoint">Endpoint</span>
+                            </div>
+                            <div class="form-group">
+                                <label data-i18n="settings_endpoint">Endpoint <span id="endpoint-hint"
+                                        style="font-size:11px;color:var(--text-secondary);"></span></label>
+                                <input type="text" id="setting-llm-endpoint" placeholder="https://api.upstage.ai/v1"
+                                    onchange="onEndpointChanged()">
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="ai-settings-actions">
+                            <button type="button" id="ai-test-connection-btn" onclick="testLLMConnection()" class="ai-btn-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="24"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                                <span id="ai-test-btn-text" data-i18n="settings_test_connection">Test Connection</span>
+                            </button>
+                            <button type="button" id="ai-save-btn" onclick="saveLLMSettings()" class="ai-btn-save">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                <span data-i18n="settings_save_llm">Save LLM Settings</span>
+                            </button>
+                            <div id="ai-action-status" style="font-size:11px;color:var(--text-secondary);margin-left:auto;"></div>
                         </div>
                     </div>
 
