@@ -167,6 +167,16 @@ const translations = {
         settings_response_time: 'Response time',
         settings_save_llm_confirm: 'Do you want to save these LLM settings?',
         settings_llm_saved: 'LLM settings saved successfully!',
+        settings_llm_configured: 'LLM Configured',
+        settings_llm_not_configured: 'LLM Not Configured',
+        settings_llm_config_incomplete: 'Configuration Incomplete',
+        settings_click_test_to_verify: 'Click \'Test Connection\' to verify',
+        settings_checking_connection: 'Checking connection...',
+        settings_configure_below: 'Configure provider, model, and API key below',
+        settings_missing_prefix: 'Missing: ',
+        settings_check_configuration: 'Check configuration',
+        settings_testing_connection: 'Testing Connection...',
+        settings_please_wait: 'Please wait...',
         settings_ollama_tools_required: 'Ollama Tools Support Required',
         settings_tool_calling_not_supported: 'Tool Calling Not Supported',
         settings_tool_calling_required: 'Tool calling model is required',
@@ -199,9 +209,36 @@ const translations = {
         settings_theme_light: 'Light',
         settings_connection_status: 'Connection Status: Unknown',
         settings_save_to_test: 'Save to test connection',
+        settings_connection_status_detail: 'Connection status will appear after saving',
         settings_llm_config: 'LLM Configuration',
         settings_fetch_models: 'Fetch Models',
+        settings_fetching_models: 'Fetching...',
+        settings_no_models: 'No models found',
+        settings_models_available: '{n} models available',
+        settings_failed_fetch: 'Failed to fetch',
         settings_get_api_key: 'Get API Key',
+        settings_api_key_link_upstage: 'Get Upstage API Key →',
+        settings_api_key_link_openai: 'Get OpenAI API Key →',
+        settings_api_key_link_openrouter: 'Get OpenRouter API Key →',
+        settings_api_key_link_anthropic: 'Get Anthropic API Key →',
+        settings_api_key_link_gemini: 'Get Gemini API Key →',
+        settings_api_key_link_bedrock: 'AWS Bedrock Console →',
+        settings_api_key_link_azopenai: 'Azure OpenAI Portal →',
+        settings_api_key_link_litellm: 'LiteLLM Docs →',
+        settings_step_provider: 'Step 1: Provider',
+        settings_step_api_key: 'Step 2: API Key',
+        settings_step_model: 'Step 3: Model',
+        settings_step_endpoint: 'Step 4: Endpoint',
+        settings_api_key_placeholder: 'Enter your API key',
+        settings_provider_model_required: 'Provider and model are required',
+        settings_api_key_required: 'API key is required for this provider',
+        settings_saving: 'Saving...',
+        settings_saving_llm: 'Saving LLM settings...',
+        settings_save_llm: 'Save LLM Settings',
+        settings_save_failed: 'Failed to save settings',
+        settings_invalid_api_key: 'Invalid API key. Please check your key and try again.',
+        settings_api_key_forbidden: 'API key is forbidden. Please check your key permissions.',
+        settings_gemini_key_format: 'Gemini API keys start with "AIza"',
         settings_reasoning_effort: 'Reasoning Effort (Solar Pro2)',
         settings_reasoning_effort_desc: 'Control reasoning depth for complex tasks',
         settings_enable_high_reasoning: 'Enable High Reasoning',
@@ -520,6 +557,16 @@ const translations = {
         settings_response_time: '응답 시간',
         settings_save_llm_confirm: '이 LLM 설정을 저장하시겠습니까?',
         settings_llm_saved: 'LLM 설정이 성공적으로 저장되었습니다!',
+        settings_llm_configured: 'LLM 설정됨',
+        settings_llm_not_configured: 'LLM 미설정',
+        settings_llm_config_incomplete: '설정 불완전',
+        settings_click_test_to_verify: '\'연결 테스트\'를 클릭하여 확인',
+        settings_checking_connection: '연결 상태 확인 중...',
+        settings_configure_below: '아래에서 제공자, 모델, API 키를 설정하세요',
+        settings_missing_prefix: '누락: ',
+        settings_check_configuration: '설정 확인 필요',
+        settings_testing_connection: '연결 테스트 중...',
+        settings_please_wait: '잠시만 기다려주세요...',
         settings_ollama_tools_required: 'Ollama 도구 지원 필요',
         settings_tool_calling_not_supported: '도구 호출 미지원',
         settings_tool_calling_required: '도구 호출 모델이 필요합니다',
@@ -552,9 +599,36 @@ const translations = {
         settings_theme_light: '라이트',
         settings_connection_status: '연결 상태: 알 수 없음',
         settings_save_to_test: '저장 후 연결 테스트',
+        settings_connection_status_detail: '설정을 저장한 후 연결 상태를 확인하세요',
         settings_llm_config: 'LLM 설정',
         settings_fetch_models: '모델 가져오기',
+        settings_fetching_models: '조회 중...',
+        settings_no_models: '모델을 찾을 수 없음',
+        settings_models_available: '{n}개의 모델 사용 가능',
+        settings_failed_fetch: '조회 실패',
         settings_get_api_key: 'API 키 받기',
+        settings_api_key_link_upstage: 'Upstage API 키 받기 →',
+        settings_api_key_link_openai: 'OpenAI API 키 받기 →',
+        settings_api_key_link_openrouter: 'OpenRouter API 키 받기 →',
+        settings_api_key_link_anthropic: 'Anthropic API 키 받기 →',
+        settings_api_key_link_gemini: 'Gemini API 키 받기 →',
+        settings_api_key_link_bedrock: 'AWS Bedrock 콘솔 →',
+        settings_api_key_link_azopenai: 'Azure OpenAI 포털 →',
+        settings_api_key_link_litellm: 'LiteLLM 문서 →',
+        settings_step_provider: '1단계: 제공자',
+        settings_step_api_key: '2단계: API 키',
+        settings_step_model: '3단계: 모델',
+        settings_step_endpoint: '4단계: 엔드포인트',
+        settings_api_key_placeholder: 'API 키를 입력하세요',
+        settings_provider_model_required: '제공자와 모델이 필요합니다',
+        settings_api_key_required: '이 제공자에는 API 키가 필요합니다',
+        settings_saving: '저장 중...',
+        settings_saving_llm: 'LLM 설정 저장 중...',
+        settings_save_llm: 'LLM 설정 저장',
+        settings_save_failed: '설정 저장에 실패했습니다',
+        settings_invalid_api_key: '유효하지 않은 API 키입니다. 키를 확인하고 다시 시도하세요.',
+        settings_api_key_forbidden: 'API 키가 금지되었습니다. 키 권한을 확인하세요.',
+        settings_gemini_key_format: 'Gemini API 키는 "AIza"로 시작합니다',
         settings_reasoning_effort: '추론 effort (Solar Pro2)',
         settings_reasoning_effort_desc: '복잡한 작업에 대한 추론 깊이 제어',
         settings_enable_high_reasoning: '높은 추론 활성화',
@@ -746,7 +820,20 @@ function updateUILanguage() {
     // Update sidebar navigation (dynamic elements need special handling)
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
-        el.textContent = t(key);
+        const translated = t(key);
+        if (el.children.length === 0) {
+            el.textContent = translated;
+        } else if (/<[a-z][^>]*>/i.test(translated)) {
+            // Translation carries inline markup (e.g. about_description).
+            el.innerHTML = translated;
+        } else {
+            // Preserve child elements (e.g. buttons/hints inside labels):
+            // replace only the element's direct text nodes.
+            Array.from(el.childNodes).forEach(node => {
+                if (node.nodeType === Node.TEXT_NODE) node.remove();
+            });
+            el.insertBefore(document.createTextNode(translated + ' '), el.firstChild);
+        }
     });
 
     // Update titles

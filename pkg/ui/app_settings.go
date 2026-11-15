@@ -60,7 +60,7 @@ func (a *App) showSettings() {
 		)
 	}
 
-	providers := []string{"openai", "ollama", "upstage", "gemini", "anthropic", "bedrock", "azopenai"}
+	providers := []string{"openai", "ollama", "upstage", "gemini", "anthropic", "bedrock", "azopenai", "openrouter", "litellm"}
 	providerIndex := 0
 	for i, p := range providers {
 		if p == provider {
@@ -121,6 +121,43 @@ func (a *App) showSettings() {
 				if item := form.GetFormItemByLabel("Model"); item != nil {
 					if input, ok := item.(*tview.InputField); ok {
 						input.SetText(model)
+					}
+				}
+			}
+		case "gemini":
+			if endpoint == "" || endpoint == "https://api.openai.com/v1" {
+				endpoint = "https://generativelanguage.googleapis.com/v1beta"
+				if item := form.GetFormItemByLabel("Endpoint"); item != nil {
+					if input, ok := item.(*tview.InputField); ok {
+						input.SetText(endpoint)
+					}
+				}
+			}
+			// Gemini rejects non-gemini model names at client creation, so
+			// always replace a model inherited from another provider.
+			if model == "" || !strings.HasPrefix(model, "gemini-") {
+				model = "gemini-2.5-flash"
+				if item := form.GetFormItemByLabel("Model"); item != nil {
+					if input, ok := item.(*tview.InputField); ok {
+						input.SetText(model)
+					}
+				}
+			}
+		case "openrouter":
+			if endpoint == "" || endpoint == "https://api.openai.com/v1" {
+				endpoint = "https://openrouter.ai/api/v1"
+				if item := form.GetFormItemByLabel("Endpoint"); item != nil {
+					if input, ok := item.(*tview.InputField); ok {
+						input.SetText(endpoint)
+					}
+				}
+			}
+		case "litellm":
+			if endpoint == "" || endpoint == "https://api.openai.com/v1" {
+				endpoint = "http://localhost:4000"
+				if item := form.GetFormItemByLabel("Endpoint"); item != nil {
+					if input, ok := item.(*tview.InputField); ok {
+						input.SetText(endpoint)
 					}
 				}
 			}

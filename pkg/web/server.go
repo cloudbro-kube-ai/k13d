@@ -61,6 +61,10 @@ type Server struct {
 	// Protects concurrent access to aiClient and cfg.LLM
 	aiMu sync.RWMutex
 
+	// Cached result of the minimal /api/ai/ping provider round-trip
+	aiPingMu    sync.Mutex
+	aiPingCache aiPingCacheEntry
+
 	// Tool approval management
 	pendingApprovals     map[string]*PendingToolApproval
 	pendingApprovalMutex sync.RWMutex

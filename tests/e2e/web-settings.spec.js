@@ -25,12 +25,24 @@ async function login(page) {
 }
 
 async function openSettings(page) {
-  await page.getByRole('button', { name: 'Settings' }).click();
+  // Language-agnostic: the button title is localized (data-i18n-title).
+  await page.locator('button[onclick="showSettings()"]').click();
   await expect(page.locator('#settings-modal')).toBeVisible();
 }
 
 async function switchTab(page, name, selector) {
-  await page.getByRole('tab', { name }).click();
+  // Match by onclick target so the helper keeps working in any UI language.
+  const tabIds = {
+    General: 'general',
+    AI: 'ai',
+    MCP: 'mcp',
+    Security: 'security',
+    Metrics: 'metrics',
+    Notifications: 'notifications',
+    Admin: 'admin',
+    About: 'about'
+  };
+  await page.locator(`.tab[onclick="switchSettingsTab('${tabIds[name]}')"]`).click();
   await expect(page.locator(selector)).toBeVisible();
 }
 
@@ -86,6 +98,14 @@ async function setCheckbox(page, selector, checked) {
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }, checked);
+}
+
+async function setInputValue(page, selector, value) {
+  await page.locator(selector).evaluate((el, nextValue) => {
+    el.value = nextValue;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }, value);
 }
 
 async function installDialogStubs(page) {
@@ -149,7 +169,6 @@ function normalizeNotificationRestore(original) {
 
 test('settings modal exercises each tab and persists configurable state', async ({ page, request }) => {
   const unique = Date.now();
-  const tempModelName = `pw-e2e-model-${unique}`;
   const tempMCPName = `pw-e2e-mcp-${unique}`;
   const tempUser = `pw_e2e_user_${unique}`;
   const tempRole = `pw_e2e_role_${unique}`;
@@ -188,13 +207,27 @@ test('settings modal exercises each tab and persists configurable state', async 
     await page.selectOption('#setting-refresh-interval', '120');
     await page.selectOption('#setting-theme', 'tokyo-night');
 
-    await page.locator('#settings-modal .modal-footer').getByRole('button', { name: 'Save' }).click();
+    // General settings auto-save on change (debounced); close and verify persistence.
+    await page.getByRole('button', { name: 'Close settings' }).click();
     await expect(page.locator('#settings-modal')).toBeHidden();
-
+    await expect
+      .poll(async () => (await fetchJSON(page, '/api/settings')).data.language, { timeout: 10000 })
+      .toBe(desiredLanguage);
     const savedSettings = (await fetchJSON(page, '/api/settings')).data;
-    expect(savedSettings.language).toBe(desiredLanguage);
     expect(savedSettings.log_level).toBe(desiredLogLevel);
     expect(savedSettings.timezone).toBe(desiredTimezone);
+
+    // Keep the remainder of the journey in English: later sections use
+    // text-based locators (button names) that are localized when the UI
+    // language is Korean. The original language is restored in finally.
+    if (desiredLanguage !== 'en') {
+      await putJSON(page, '/api/settings', { language: 'en' });
+      await page.evaluate(() => {
+        currentLanguage = 'en';
+        localStorage.setItem('k13d_language', 'en');
+        updateUILanguage();
+      });
+    }
 
     const currentLocalState = await page.evaluate(() => ({
       theme: localStorage.getItem('k13d_theme'),
@@ -213,49 +246,42 @@ test('settings modal exercises each tab and persists configurable state', async 
     await expect(page.locator('#ollama-setup-section')).toHaveCount(0);
     await expect(page.locator('#setting-llm-provider')).not.toHaveValue('');
     await expect.poll(async () => page.locator('#setting-llm-model').inputValue()).not.toBe('');
-
-    await page.getByRole('button', { name: /Add Model Profile/i }).click();
-    await page.fill('#new-model-name', tempModelName);
-    await page.selectOption('#new-model-provider', 'ollama');
-    await page.fill('#new-model-model', 'llama3.2');
-    await page.fill('#new-model-endpoint', 'http://localhost:11434');
-    await page.fill('#new-model-description', 'Playwright temporary model');
-    await page.evaluate(() => window.updateNewModelToolSupportWarning && window.updateNewModelToolSupportWarning());
-    await expect(page.locator('#new-model-tool-support-warning')).toContainText(/tools\/function calling/i);
-    await page.locator('#add-model-form').getByRole('button', { name: 'Add Profile' }).click();
-    await expect(page.locator('#models-list')).toContainText(tempModelName);
-
-    const modelRow = page.locator('#models-list .settings-row').filter({ hasText: tempModelName });
-    await modelRow.getByRole('button', { name: 'Delete' }).click();
-    await expect(page.locator('#models-list')).not.toContainText(tempModelName);
+    await expect(page.locator('#fetch-models-btn')).toBeVisible();
+    await expect(page.locator('#setting-llm-apikey')).toHaveAttribute('placeholder', /./);
 
     await setClassToggle(page, '#ta-auto-approve-ro', true);
     await setClassToggle(page, '#ta-require-write', false);
     await setClassToggle(page, '#ta-block-dangerous', true);
     await setClassToggle(page, '#ta-require-unknown', false);
-    await page.fill('#ta-timeout', '120');
-    await page.fill('#ta-blocked-patterns', 'kubectl delete ns.*\nrm -rf.*');
-    await page.getByRole('button', { name: 'Save Tool Approval Settings' }).click();
+    await setInputValue(page, '#ta-timeout', '120');
+    await setInputValue(page, '#ta-blocked-patterns', 'kubectl delete ns.*\nrm -rf.*');
 
-    const toolApproval = (await fetchJSON(page, '/api/settings/tool-approval')).data;
-    expect(toolApproval.auto_approve_read_only).toBe(true);
-    expect(toolApproval.require_approval_for_write).toBe(false);
-    expect(toolApproval.block_dangerous).toBe(true);
-    expect(toolApproval.require_approval_for_unknown).toBe(false);
-    expect(toolApproval.approval_timeout_seconds).toBe(120);
-    expect(toolApproval.blocked_patterns).toEqual(['kubectl delete ns.*', 'rm -rf.*']);
+    // Tool approval settings auto-save on change (debounced).
+    await expect
+      .poll(async () => (await fetchJSON(page, '/api/settings/tool-approval')).data, { timeout: 10000 })
+      .toMatchObject({
+        auto_approve_read_only: true,
+        require_approval_for_write: false,
+        block_dangerous: true,
+        require_approval_for_unknown: false,
+        approval_timeout_seconds: 120,
+        blocked_patterns: ['kubectl delete ns.*', 'rm -rf.*']
+      });
 
     await setRangeValue(page, '#agent-max-iterations', 7);
     await page.selectOption('#agent-reasoning-effort', 'high');
     await setRangeValue(page, '#agent-temperature', 120);
-    await page.fill('#agent-max-tokens', '8192');
-    await page.getByRole('button', { name: 'Save Agent Settings' }).click();
+    await setInputValue(page, '#agent-max-tokens', '8192');
 
-    const agentSettings = (await fetchJSON(page, '/api/settings/agent')).data;
-    expect(agentSettings.max_iterations).toBe(7);
-    expect(agentSettings.reasoning_effort).toBe('high');
-    expect(agentSettings.temperature).toBe(1.2);
-    expect(agentSettings.max_tokens).toBe(8192);
+    // Agent settings auto-save on change (debounced).
+    await expect
+      .poll(async () => (await fetchJSON(page, '/api/settings/agent')).data, { timeout: 10000 })
+      .toMatchObject({
+        max_iterations: 7,
+        reasoning_effort: 'high',
+        temperature: 1.2,
+        max_tokens: 8192
+      });
 
     await setClassToggle(page, '#guardrails-toggle', false);
     await setClassToggle(page, '#guardrails-strict-toggle', true);
@@ -309,7 +335,7 @@ test('settings modal exercises each tab and persists configurable state', async 
     await page.selectOption('#prometheus-retention-days', '14');
     await page.locator('#settings-metrics').getByRole('button', { name: 'Test Connection' }).click();
     await expect(page.locator('#prometheus-test-result')).toContainText(/Please enter a Prometheus URL/i);
-    await page.locator('#settings-metrics').getByRole('button', { name: 'Save Prometheus Settings' }).click();
+    // Prometheus settings auto-save on change (debounced); assert persistence below.
 
     await expect.poll(async () => (await fetchJSON(page, '/api/prometheus/settings')).data.expose_metrics).toBe(true);
     const prometheusSettings = (await fetchJSON(page, '/api/prometheus/settings')).data;
@@ -331,8 +357,7 @@ test('settings modal exercises each tab and persists configurable state', async 
 
     console.log('[settings] admin');
     await switchTab(page, 'Admin', '#settings-admin');
-    await expect(page.locator('#auth-save-btn')).toBeDisabled();
-    await expect(page.locator('#auth-runtime-note')).toContainText(/read-only/i);
+    await expect(page.locator('#auth-runtime-note')).toContainText(/startup/i);
 
     await page.getByRole('button', { name: /Add User/i }).click();
     await page.fill('#new-user-username', tempUser);
@@ -391,7 +416,6 @@ test('settings modal exercises each tab and persists configurable state', async 
     await page.getByRole('button', { name: 'Close settings' }).click();
     await expect(page.locator('#settings-modal')).toBeHidden();
   } finally {
-    await fetchJSON(page, `/api/models?name=${encodeURIComponent(tempModelName)}`, { method: 'DELETE' });
     await fetchJSON(page, `/api/mcp/servers?name=${encodeURIComponent(tempMCPName)}`, { method: 'DELETE' });
     await fetchJSON(page, `/api/admin/users/${encodeURIComponent(tempUser)}`, { method: 'DELETE' });
     await fetchJSON(page, `/api/roles/${encodeURIComponent(tempRole)}`, { method: 'DELETE' });

@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 
 const username = process.env.K13D_E2E_USERNAME;
 const password = process.env.K13D_E2E_PASSWORD;
-const expectedProvider = process.env.K13D_E2E_EXPECT_PROVIDER || 'openai';
+const expectedProvider = process.env.K13D_E2E_EXPECT_PROVIDER || 'upstage';
 const expectedModel = process.env.K13D_E2E_EXPECT_MODEL || 'test-model';
 
 async function login(page) {
@@ -15,6 +15,13 @@ async function login(page) {
   });
   expect(loginResp.ok()).toBeTruthy();
   const loginData = await loginResp.json();
+  // Force English for this session: the default config language is Korean,
+  // and this spec uses text-based locators (tab names, button labels).
+  const langResp = await page.request.put('/api/settings', {
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${loginData.token}` },
+    data: { language: 'en' }
+  });
+  expect(langResp.ok()).toBeTruthy();
   await page.evaluate((token) => {
     localStorage.setItem('k13d_token', token);
   }, loginData.token);
@@ -26,7 +33,7 @@ async function login(page) {
 }
 
 async function openCustomView(page, resource, containerSelector, functionName) {
-  const nav = page.locator(`.nav-item[data-resource="${resource}"]`);
+  const nav = page.locator(`.menu-item[data-resource="${resource}"]`);
   const container = page.locator(containerSelector);
 
   await expect(nav).toBeVisible();
@@ -60,12 +67,17 @@ async function fetchResourceCount(page, resource) {
 test('local auth browser journey covers main web workflows', async ({ page }) => {
   await login(page);
 
+  // The app boots into the Overview view where #main-panel is hidden;
+  // open a resource view so the filter bar becomes visible.
+  await page.locator('.menu-item[data-resource="pods"]').click({ force: true });
+  await expect(page.locator('#main-panel')).toBeVisible();
+
   await expect(page.locator('#namespace-select option')).not.toHaveCount(0);
   await page.fill('#filter-input', 'zzz-no-match');
   await expect(page.locator('#filter-input')).toHaveValue('zzz-no-match');
   await page.fill('#filter-input', '');
 
-  const deploymentsNav = page.locator('.nav-item[data-resource="deployments"]');
+  const deploymentsNav = page.locator('.menu-item[data-resource="deployments"]');
   await expect(deploymentsNav).toBeVisible();
   await deploymentsNav.click({ force: true });
   await expect(page.locator('#panel-title')).toHaveText(/Deployments/i);
@@ -152,7 +164,10 @@ test('local auth browser journey covers main web workflows', async ({ page }) =>
     applyFilterAndSort();
   });
 
-  await openCustomView(page, 'overview', '#overview-container', 'showOverviewPanel');
+  // Overview has no dedicated sidebar item anymore; the app opens it via
+  // showOverviewPanel() (also bound to the sidebar logo).
+  await page.evaluate(() => showOverviewPanel());
+  await expect(page.locator('#overview-container')).toBeVisible();
 
   await openCustomView(page, 'applications', '#applications-container', 'showApplicationsView');
 
@@ -182,12 +197,6 @@ test('local auth browser journey covers main web workflows', async ({ page }) =>
   await page.fill('#setting-llm-model', 'gpt-oss:20b');
   await page.evaluate(() => window.updateLLMToolSupportWarning && window.updateLLMToolSupportWarning());
   await expect(page.locator('#llm-tool-support-warning')).toContainText(/tools\/function calling/i);
-  await page.getByRole('button', { name: /Add Model Profile/i }).click();
-  await page.selectOption('#new-model-provider', 'ollama');
-  await page.fill('#new-model-model', 'llama3.2');
-  await page.evaluate(() => window.updateNewModelToolSupportWarning && window.updateNewModelToolSupportWarning());
-  await expect(page.locator('#new-model-tool-support-warning')).toContainText(/gpt-oss:20b/i);
-  await page.locator('#add-model-form').getByRole('button', { name: 'Cancel' }).click();
 
   await expect(page.locator('#admin-tab')).toBeVisible();
   await page.locator('#admin-tab').click();
@@ -200,7 +209,7 @@ test('local auth browser journey covers main web workflows', async ({ page }) =>
 
   const aiPanel = page.locator('#ai-panel');
   if (!(await aiPanel.isVisible())) {
-    await page.locator('#ai-toggle-btn').click();
+    await page.locator('#ai-header-toggle-btn').click();
   }
   await expect(aiPanel).toBeVisible();
 
@@ -213,7 +222,7 @@ test('local auth browser journey covers main web workflows', async ({ page }) =>
   await page.reload();
   await expect(page.locator('.top-bar')).toBeVisible();
   if (!(await aiPanel.isVisible())) {
-    await page.locator('#ai-toggle-btn').click();
+    await page.locator('#ai-header-toggle-btn').click();
   }
   await expect(aiPanel).toBeVisible();
 

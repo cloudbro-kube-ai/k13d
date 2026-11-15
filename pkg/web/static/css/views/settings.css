@@ -32,3 +32,243 @@
     color: var(--accent-blue);
     background: rgba(122, 162, 247, 0.1);
 }
+
+/* ===== AI Settings Redesign ===== */
+
+.ai-settings-section {
+    margin-top: 4px;
+}
+
+.ai-settings-step {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ai-settings-step.highlight {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(122, 162, 247, 0.1);
+}
+
+.ai-step-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.ai-step-number {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ai-settings-step.active .ai-step-number {
+    background: var(--accent-blue);
+    color: var(--bg-primary);
+}
+
+.ai-settings-step.completed .ai-step-number {
+    background: var(--accent-green);
+    color: var(--bg-primary);
+}
+
+/* API Key Input Group */
+.ai-apikey-group {
+    position: relative;
+}
+
+.ai-apikey-input-wrapper {
+    display: flex;
+    gap: 6px;
+}
+
+.ai-apikey-input-wrapper input {
+    flex: 1;
+    padding-right: 34px; /* room for toggle button */
+}
+
+.ai-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.ai-btn-icon:hover {
+    background: var(--accent-blue);
+    color: var(--bg-primary);
+    border-color: var(--accent-blue);
+}
+
+.ai-btn-icon svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+
+.ai-btn-icon svg.hidden {
+    display: none;
+}
+
+.ai-apikey-hint {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin-top: 6px;
+    height: 14px;
+}
+
+/* Model Select Wrapper */
+.ai-model-select-wrapper {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.ai-model-select-wrapper select {
+    flex: 1;
+    min-width: 0;
+}
+
+.ai-btn-fetch {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 14px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.ai-btn-fetch:hover {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: var(--bg-primary);
+}
+
+.ai-btn-fetch:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: var(--bg-tertiary);
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+/* Action Buttons Row */
+.ai-settings-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.ai-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: var(--accent-blue);
+    border: none;
+    border-radius: 8px;
+    color: var(--bg-primary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.ai-btn-primary:hover {
+    background: var(--accent-blue-hover, #5b8def);
+    transform: translateY(-1px);
+}
+
+.ai-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.ai-btn-save {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.ai-btn-save:hover {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+    color: var(--bg-primary);
+    transform: translateY(-1px);
+}
+
+.ai-btn-save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Loading animation for buttons */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Connection Status Indicator enhancements */
+#llm-status-indicator {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Responsive adjustments for AI settings */
+@media (max-width: 640px) {
+    .ai-settings-actions {
+        flex-direction: column;
+    }
+    .ai-btn-primary, .ai-btn-save {
+        width: 100%;
+        justify-content: center;
+    }
+    .ai-model-select-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .ai-btn-fetch {
+        width: 100%;
+        justify-content: center;
+    }
+}

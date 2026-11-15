@@ -101,7 +101,9 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 				"model":            s.cfg.LLM.Model,
 				"endpoint":         s.cfg.LLM.Endpoint,
 				"reasoning_effort": s.cfg.LLM.ReasoningEffort,
-				"api_key":          s.cfg.LLM.APIKey,
+				// Raw API key is never returned; an empty api_key on save
+				// means "keep the stored key".
+				"has_api_key": s.cfg.LLM.APIKey != "",
 			},
 		})
 

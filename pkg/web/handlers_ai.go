@@ -235,6 +235,17 @@ func (s *Server) handleLLMTest(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == http.MethodPost && r.Body != nil {
 		if err := json.NewDecoder(r.Body).Decode(&testConfig); err == nil && testConfig.Provider != "" {
+			// An empty api_key means "use the stored key" (the UI no longer
+			// receives the raw key after save). Only fall back when the
+			// provider matches, so a provider switch can't test with a
+			// foreign credential.
+			if testConfig.APIKey == "" {
+				s.aiMu.RLock()
+				if s.cfg.LLM.Provider == testConfig.Provider {
+					testConfig.APIKey = s.cfg.LLM.APIKey
+				}
+				s.aiMu.RUnlock()
+			}
 			// Create temporary client with form values
 			tempConfig := config.LLMConfig{
 				Provider: testConfig.Provider,
@@ -340,7 +351,6 @@ func (s *Server) handleLLMStatus(w http.ResponseWriter, r *http.Request) {
 		"model":         s.cfg.LLM.Model,
 		"endpoint":      s.cfg.LLM.Endpoint,
 		"has_api_key":   s.cfg.LLM.APIKey != "",
-		"api_key":       s.cfg.LLM.APIKey,
 		"use_json_mode": s.cfg.LLM.UseJSONMode,
 	}
 
@@ -349,6 +359,10 @@ func (s *Server) handleLLMStatus(w http.ResponseWriter, r *http.Request) {
 		switch s.cfg.LLM.Provider {
 		case "openai":
 			status["default_endpoint"] = "https://api.openai.com/v1"
+		case "upstage":
+			status["default_endpoint"] = "https://api.upstage.ai/v1"
+		case "openrouter":
+			status["default_endpoint"] = "https://openrouter.ai/api/v1"
 		case "litellm":
 			status["default_endpoint"] = "http://localhost:4000"
 		case "gemini":
@@ -357,7 +371,7 @@ func (s *Server) handleLLMStatus(w http.ResponseWriter, r *http.Request) {
 			status["default_endpoint"] = "http://localhost:11434"
 		case "anthropic":
 			status["default_endpoint"] = "https://api.anthropic.com"
-		case "azure":
+		case "azopenai", "azure":
 			status["default_endpoint"] = "(Azure OpenAI endpoint required)"
 		}
 	}
@@ -1093,15 +1107,20 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var client *ai.Client
-	// Create temporary client if provider is specified
-	// For Ollama, API key is not required
-	noKeyProviders := map[string]bool{
-		"ollama":  true,
-		"litellm": true,
+	// An empty api_key means "use the stored key" (the UI no longer receives
+	// the raw key). Factory-level env fallbacks (e.g. GOOGLE_API_KEY) still
+	// apply when neither is available.
+	if apiKey == "" && provider != "" {
+		s.aiMu.RLock()
+		if s.cfg.LLM.Provider == provider {
+			apiKey = s.cfg.LLM.APIKey
+		}
+		s.aiMu.RUnlock()
 	}
 	switch {
-	case provider != "" && (apiKey != "" || noKeyProviders[provider]):
-		// Create temporary client with provided config
+	case provider != "":
+		// Create temporary client with provided config (env fallbacks apply
+		// inside the factory when no key is available anywhere).
 		tempConfig := config.LLMConfig{
 			Provider: provider,
 			// Model left empty on purpose for discovery; providers may apply defaults.
@@ -1134,9 +1153,16 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 
 	models, err := client.ListModels(ctx)
 	if err != nil {
+		// Extract HTTP status code from provider errors for better client-side messaging.
+		statusCode := 0
+		if errStr := err.Error(); errStr != "" {
+			fmt.Sscanf(errStr, "failed to list models: status %d", &statusCode)
+		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"models": []string{},
-			"error":  fmt.Sprintf("Failed to list models: %v", err),
+			"models":     []string{},
+			"error":      err.Error(),
+			"status":     statusCode,
+			"statusText": http.StatusText(statusCode),
 		})
 		return
 	}
@@ -1162,21 +1188,82 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleAIPing checks if the AI client is configured and can connect
+// aiPingCacheEntry is the cached result of the minimal LLM round-trip.
+type aiPingCacheEntry struct {
+	at     time.Time
+	client *ai.Client // the client the result belongs to; a settings change swaps it
+	ok     bool
+	detail string
+}
+
+const aiPingCacheTTL = time.Minute
+
+// handleAIPing performs a minimal real request to the configured LLM so the
+// UI's "connected" indicator reflects an actual provider round-trip instead
+// of mere client existence. Results are cached briefly so page loads and
+// auto-saves don't hammer the provider.
 func (s *Server) handleAIPing(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if s.aiClient == nil {
-		WriteError(w, NewAPIError(ErrCodeLLMNotConfigured, "AI client not configured"))
+	client := s.aiClient
+	if client == nil {
+		// AI client not yet initialized in memory (e.g. server just started
+		// or settings were loaded from disk). Create a temporary client from
+		// the saved configuration so the connection test can still run.
+		if s.cfg == nil || strings.TrimSpace(s.cfg.LLM.Provider) == "" || strings.TrimSpace(s.cfg.LLM.Model) == "" {
+			WriteError(w, NewAPIError(ErrCodeLLMNotConfigured, "AI client not configured"))
+			return
+		}
+		tmpClient, ready, err := createUsableAIClient(&s.cfg.LLM)
+		if err != nil || !ready {
+			WriteError(w, NewAPIError(ErrCodeLLMNotConfigured, "AI client not configured"))
+			return
+		}
+		client = tmpClient
+	}
+
+	// Serve a recent result without touching the network.
+	s.aiPingMu.Lock()
+	if s.aiPingCache.client == client && time.Since(s.aiPingCache.at) < aiPingCacheTTL {
+		cached := s.aiPingCache
+		s.aiPingMu.Unlock()
+		s.writePingResult(w, client, cached.ok, cached.detail)
+		return
+	}
+	s.aiPingMu.Unlock()
+
+	if !client.IsReady() {
+		s.writePingResult(w, client, false, "provider not ready")
 		return
 	}
 
-	// Simple ping - just check if the client exists and is configured
-	// A more thorough check could send a minimal request to the LLM
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	_, err := client.AskNonStreaming(ctx, "Reply with only the word OK.")
+	ok := err == nil
+	detail := "ok"
+	if err != nil {
+		detail = err.Error()
+	}
+
+	s.aiPingMu.Lock()
+	s.aiPingCache = aiPingCacheEntry{at: time.Now(), client: client, ok: ok, detail: detail}
+	s.aiPingMu.Unlock()
+
+	s.writePingResult(w, client, ok, detail)
+}
+
+func (s *Server) writePingResult(w http.ResponseWriter, client *ai.Client, ok bool, detail string) {
+	status := "ok"
+	if !ok {
+		status = "error"
+	}
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":   "ok",
-		"provider": s.cfg.LLM.Provider,
-		"model":    s.cfg.LLM.Model,
+		"status":   status,
+		"provider": client.GetProvider(),
+		"model":    client.GetModel(),
+		"detail":   detail,
 	})
 }
 

@@ -152,6 +152,12 @@ func TestSettings_GET(t *testing.T) {
 	if llm["model"] != "gpt-4" {
 		t.Errorf("llm.model = %v, want gpt-4", llm["model"])
 	}
+	if _, exists := llm["api_key"]; exists {
+		t.Error("raw llm.api_key must not be exposed by GET /api/settings")
+	}
+	if llm["has_api_key"] != true {
+		t.Errorf("llm.has_api_key = %v, want true", llm["has_api_key"])
+	}
 }
 
 func TestSettings_GET_NormalizesLegacyEmbeddedProvider(t *testing.T) {

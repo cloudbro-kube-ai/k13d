@@ -145,6 +145,11 @@ func (s *MockProviderServer) handleOllama(w http.ResponseWriter, r *http.Request
 }
 
 func (s *MockProviderServer) handleGemini(w http.ResponseWriter, r *http.Request) {
+	// Model listing (used by ListModels / /api/llm/available-models).
+	if strings.HasSuffix(r.URL.Path, "/models") {
+		s.handleGeminiModels(w, r)
+		return
+	}
 	if !strings.Contains(r.URL.Path, ":generateContent") && !strings.Contains(r.URL.Path, ":streamGenerateContent") {
 		http.NotFound(w, r)
 		return
@@ -175,6 +180,33 @@ func (s *MockProviderServer) handleGemini(w http.ResponseWriter, r *http.Request
 				},
 			},
 		},
+	})
+}
+
+// handleGeminiModels serves a two-page model list to exercise pagination.
+// Page 1 requires an API key and returns a nextPageToken; page 2 is returned
+// only when that token is echoed back.
+func (s *MockProviderServer) handleGeminiModels(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("x-goog-api-key") == "" {
+		http.Error(w, "missing gemini api key", http.StatusUnauthorized)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if r.URL.Query().Get("pageToken") == "page-2" {
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"models": []map[string]string{
+				{"name": "models/gemini-2.0-flash"},
+			},
+		})
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"models": []map[string]string{
+			{"name": "models/gemini-2.5-flash"},
+			{"name": "models/gemma-3-27b"}, // filtered out by the gemini- prefix rule
+		},
+		"nextPageToken": "page-2",
 	})
 }
 

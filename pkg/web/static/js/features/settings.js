@@ -1,4 +1,4 @@
-// Auto-save debounce timers
+// Auto-save debounce timers (kept for other settings; LLM now uses explicit save)
 const autoSaveTimers = {};
 
 function debounceAutoSave(key, fn, delay = 500) {
@@ -8,7 +8,192 @@ function debounceAutoSave(key, fn, delay = 500) {
     autoSaveTimers[key] = setTimeout(fn, delay);
 }
 
-// Auto-save functions for immediate save on change
+// --- LLM Settings: Explicit Save Flow ---
+
+// Called when the user changes the provider. Resets model/endpoint defaults
+// and shows/hides the API key step appropriately.
+function onProviderChanged() {
+    updateEndpointPlaceholder(false); // false = don't overwrite typed values
+    const provider = document.getElementById('setting-llm-provider')?.value;
+
+    // Clear model selection when provider changes
+    const modelSelect = document.getElementById('setting-llm-model-select');
+    const modelInput = document.getElementById('setting-llm-model');
+    if (modelSelect) {
+        modelSelect.style.display = 'none';
+        modelSelect.innerHTML = '';
+    }
+    if (modelInput) modelInput.value = '';
+
+    // Clear fetch status
+    const status = document.getElementById('fetch-models-status');
+    if (status) status.textContent = '';
+
+    // Reasoning effort UI
+    updateReasoningEffortUI();
+
+    // Update action status
+    const actionStatus = document.getElementById('ai-action-status');
+    if (actionStatus) actionStatus.textContent = '';
+
+    // Auto-fill endpoint with provider default.
+    // If the field is empty, or contains the previous provider's default,
+    // replace it with the new provider's default. Otherwise keep the
+    // user's custom value.
+    const endpointInput = document.getElementById('setting-llm-endpoint');
+    const endpointDefaults = {
+        'upstage': 'https://api.upstage.ai/v1',
+        'openai': 'https://api.openai.com/v1',
+        'openrouter': 'https://openrouter.ai/api/v1',
+        'litellm': 'http://localhost:4000',
+        'ollama': 'http://localhost:11434',
+        'gemini': 'https://generativelanguage.googleapis.com/v1beta',
+        'anthropic': 'https://api.anthropic.com',
+        'bedrock': '',
+        'azopenai': 'https://your-resource.openai.azure.com'
+    };
+    const newDefault = endpointDefaults[provider] || '';
+    const prevDefault = endpointInput?.dataset.defaultEndpoint || '';
+    const currentValue = endpointInput?.value || '';
+
+    if (endpointInput && (!currentValue || currentValue === prevDefault)) {
+        endpointInput.value = newDefault;
+        endpointInput.dataset.defaultEndpoint = newDefault;
+    }
+
+    // Store the selected provider so the model/endpoint defaults are tied to it
+    endpointInput?.dataset.setProvider = provider;
+}
+
+// Toggle API key visibility (password ↔ text)
+function toggleApiKeyVisibility() {
+    const input = document.getElementById('setting-llm-apikey');
+    const btn = document.getElementById('ai-apikey-toggle');
+    if (!input || !btn) return;
+
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+
+    const eyeOff = btn.querySelector('.lucide-eye-off');
+    const eye = btn.querySelector('.lucide-eye:not(.hidden)') || btn.querySelector('.lucide-eye');
+    // Lucide icons: we toggle visibility by class on the svg wrappers
+    const svgEls = btn.querySelectorAll('svg');
+    svgEls.forEach(s => s.classList.toggle('hidden'));
+}
+
+// Called when user types in the API key field
+function onApiKeyInput() {
+    const apiKeyInput = document.getElementById('setting-llm-apikey');
+    const hint = document.getElementById('ai-apikey-hint');
+    if (apiKeyInput && hint) {
+        if (apiKeyInput.value) {
+            hint.style.display = 'none';
+        } else {
+            hint.style.display = 'block';
+        }
+    }
+    // Clear any previous fetch status
+    const status = document.getElementById('fetch-models-status');
+    if (status) status.textContent = '';
+
+    // Debounced auto-fetch when a key is entered
+    onLLMAutoFetchModels();
+}
+
+// Called when user types in the model text input
+function onModelInput() {
+    const modelSelect = document.getElementById('setting-llm-model-select');
+    if (modelSelect) {
+        // When user types, hide the select and let the text input drive
+        modelSelect.style.display = 'none';
+    }
+    updateLLMToolSupportWarning();
+}
+
+// Called when user selects a model from the dropdown
+function onModelSelected() {
+    const modelSelect = document.getElementById('setting-llm-model-select');
+    const modelInput = document.getElementById('setting-llm-model');
+    if (modelSelect && modelInput) {
+        modelInput.value = modelSelect.value;
+    }
+    updateLLMToolSupportWarning();
+}
+
+// Called when endpoint changes
+function onEndpointChanged() {
+    const actionStatus = document.getElementById('ai-action-status');
+    if (actionStatus) actionStatus.textContent = '';
+}
+
+// Save LLM settings explicitly (replaces auto-save)
+async function saveLLMSettings() {
+    const provider = document.getElementById('setting-llm-provider').value;
+    const model = document.getElementById('setting-llm-model').value;
+    const endpoint = document.getElementById('setting-llm-endpoint').value;
+    const apiKey = document.getElementById('setting-llm-apikey').value;
+    const btn = document.getElementById('ai-save-btn');
+    const btnText = btn.querySelector('span');
+    const actionStatus = document.getElementById('ai-action-status');
+
+    if (!provider || !model) {
+        if (actionStatus) {
+            actionStatus.textContent = t('settings_provider_model_required');
+            actionStatus.style.color = 'var(--accent-red)';
+        }
+        return;
+    }
+
+    // Set saving state
+    if (btn) {
+        btn.disabled = true;
+        const origText = btnText.textContent;
+        btnText.textContent = t('settings_saving');
+    }
+    if (actionStatus) {
+        actionStatus.textContent = t('settings_saving_llm');
+        actionStatus.style.color = 'var(--text-secondary)';
+    }
+
+    try {
+        const resp = await fetchWithAuth('/api/settings/llm', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                provider,
+                model,
+                endpoint,
+                api_key: apiKey,
+                reasoning_effort: reasoningEffort
+            })
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.message || `Save failed (${resp.status})`);
+        }
+        if (actionStatus) {
+            actionStatus.textContent = t('settings_llm_saved');
+            actionStatus.style.color = 'var(--accent-green)';
+        }
+        showToast(t('settings_llm_saved'), 'success');
+        await updateAIStatus();
+        await loadLLMStatus();
+    } catch (e) {
+        if (actionStatus) {
+            actionStatus.textContent = e.message || t('settings_save_failed');
+            actionStatus.style.color = 'var(--accent-red)';
+        }
+        showToast(t('settings_save_failed'), 'error');
+        console.error('Failed to save LLM settings:', e);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btnText.textContent = t('settings_save_llm');
+        }
+    }
+}
+
+// Keep autoSaveLLMSettings for backward compatibility (other callers)
 async function autoSaveLLMSettings() {
     debounceAutoSave('llm', async () => {
         try {
@@ -24,8 +209,8 @@ async function autoSaveLLMSettings() {
                 })
             });
             if (resp.ok) {
-                showToast('LLM settings saved', 'success');
                 await updateAIStatus();
+                await loadLLMStatus();
             }
         } catch (e) {
             console.error('Auto-save LLM settings failed:', e);
@@ -62,11 +247,11 @@ async function autoSaveToolApprovalSettings() {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    auto_approve_readonly: document.getElementById('ta-auto-approve-ro').classList.contains('active'),
-                    require_approval_write: document.getElementById('ta-require-write').classList.contains('active'),
+                    auto_approve_read_only: document.getElementById('ta-auto-approve-ro').classList.contains('active'),
+                    require_approval_for_write: document.getElementById('ta-require-write').classList.contains('active'),
                     block_dangerous: document.getElementById('ta-block-dangerous').classList.contains('active'),
-                    require_approval_unknown: document.getElementById('ta-require-unknown').classList.contains('active'),
-                    timeout: parseInt(document.getElementById('ta-timeout').value),
+                    require_approval_for_unknown: document.getElementById('ta-require-unknown').classList.contains('active'),
+                    approval_timeout_seconds: parseInt(document.getElementById('ta-timeout').value),
                     blocked_patterns: document.getElementById('ta-blocked-patterns').value.split('\n').filter(p => p.trim())
                 })
             });
@@ -82,7 +267,7 @@ async function autoSaveToolApprovalSettings() {
 async function autoSavePrometheusSettings() {
     debounceAutoSave('prometheus', async () => {
         try {
-            const resp = await fetchWithAuth('/api/settings/prometheus', {
+            const resp = await fetchWithAuth('/api/prometheus/settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -90,9 +275,9 @@ async function autoSavePrometheusSettings() {
                     external_url: document.getElementById('prometheus-external-url').value,
                     username: document.getElementById('prometheus-username').value,
                     password: document.getElementById('prometheus-password').value,
-                    collect_k8s: document.getElementById('prometheus-collect-k8s').checked,
+                    collect_k8s_metrics: document.getElementById('prometheus-collect-k8s').checked,
                     collection_interval: parseInt(document.getElementById('prometheus-collection-interval').value),
-                    retention_days: parseInt(document.getElementById('prometheus-retention-days').value)
+                    metrics_retention_days: parseInt(document.getElementById('prometheus-retention-days').value)
                 })
             });
             if (resp.ok) {
@@ -170,7 +355,9 @@ function switchSettingsTab(tab) {
 
     // Load data for specific tabs
     if (tab === 'ai') {
-        updateEndpointPlaceholder();
+        // setDefaults=false: never overwrite saved model/endpoint with hardcoded defaults on tab open
+        updateEndpointPlaceholder(false);
+        loadLLMSettingsIntoForm();
         loadLLMStatus();
         onLLMTabOpened();
         loadToolApprovalSettings();
@@ -443,28 +630,100 @@ async function runQuickSecurityScan() {
 }
 
 // LLM Connection Test Functions
+// Last explicit connection test result (provider/model matched), so a fresh
+// green/red state survives saveSettings and tab reloads instead of being
+// replaced by a misleading "Connected" ping or an amber "Configured" state.
+let lastLLMTestResult = null; // { ok, provider, model, detail, at }
+const LLM_TEST_RESULT_TTL_MS = 5 * 60 * 1000;
+
+function freshLLMTestResult(provider, model) {
+    if (!lastLLMTestResult) return null;
+    if (Date.now() - lastLLMTestResult.at > LLM_TEST_RESULT_TTL_MS) return null;
+    if (provider && lastLLMTestResult.provider !== provider) return null;
+    if (model && lastLLMTestResult.model !== model) return null;
+    return lastLLMTestResult;
+}
+
+function renderLLMTestResult(result) {
+    const indicator = document.getElementById('llm-status-indicator');
+    const statusText = document.getElementById('llm-status-text');
+    const statusDetail = document.getElementById('llm-status-detail');
+    if (!indicator || !statusText || !statusDetail) return;
+
+    if (result.ok) {
+        indicator.style.background = '#10b981';
+        indicator.style.boxShadow = '0 0 12px rgba(16,185,129,0.8)';
+        indicator.style.animation = '';
+        statusText.textContent = t('settings_connection_successful');
+        statusText.style.color = 'var(--accent-green)';
+        statusDetail.textContent = result.detail || '';
+    } else {
+        indicator.style.background = '#ef4444';
+        indicator.style.boxShadow = '0 0 12px rgba(239,68,68,0.8)';
+        indicator.style.animation = '';
+        statusText.textContent = t('settings_connection_failed');
+        statusText.style.color = 'var(--accent-red)';
+        statusDetail.textContent = result.detail || '';
+    }
+}
+
 async function testLLMConnection() {
     const btn = document.getElementById('llm-test-btn');
     const btnText = document.getElementById('llm-test-btn-text');
     const indicator = document.getElementById('llm-status-indicator');
     const statusText = document.getElementById('llm-status-text');
     const statusDetail = document.getElementById('llm-status-detail');
+    const actionStatus = document.getElementById('ai-action-status');
 
-    // Show testing state
-    btn.disabled = true;
-    btnText.textContent = 'Testing...';
+    const provider = document.getElementById('setting-llm-provider').value;
+    const model = document.getElementById('setting-llm-model').value;
+    const endpoint = document.getElementById('setting-llm-endpoint').value;
+    const apiKey = document.getElementById('setting-llm-apikey').value;
+
+    // Validate required fields
+    if (!provider || !model) {
+        if (actionStatus) {
+            actionStatus.textContent = t('settings_provider_model_required');
+            actionStatus.style.color = 'var(--accent-red)';
+        }
+        return;
+    }
+
+    const providerNeedsKey = !['ollama', 'bedrock', 'litellm'].includes(provider);
+    const apiKeyInput = document.getElementById('setting-llm-apikey');
+    const hasSavedKey = apiKeyInput && apiKeyInput.dataset.savedKey === '1';
+    if (providerNeedsKey && !apiKey && !hasSavedKey) {
+        if (actionStatus) {
+            actionStatus.textContent = t('settings_api_key_required');
+            actionStatus.style.color = 'var(--accent-red)';
+        }
+        return;
+    }
+
+    // Show testing state; supersede any in-flight saved-config ping
+    llmStatusSeq++;
+    if (btn) {
+        btn.disabled = true;
+        btnText.textContent = t('settings_testing_connection');
+    }
     indicator.style.background = '#888';
     indicator.style.boxShadow = '0 0 8px rgba(136,136,136,0.5)';
     indicator.style.animation = 'pulse 1s infinite';
-    statusText.textContent = 'Testing Connection...';
-    statusDetail.textContent = 'Please wait...';
+    if (statusText) {
+        statusText.textContent = t('settings_testing_connection');
+        statusText.style.color = 'var(--text-secondary)';
+    }
+    if (statusDetail) statusDetail.textContent = t('settings_please_wait');
+    if (actionStatus) {
+        actionStatus.textContent = t('settings_testing_connection');
+        actionStatus.style.color = 'var(--text-secondary)';
+    }
 
-    // Get current form values to test
     const testConfig = {
-        provider: document.getElementById('setting-llm-provider').value,
-        model: document.getElementById('setting-llm-model').value,
-        endpoint: document.getElementById('setting-llm-endpoint').value,
-        api_key: document.getElementById('setting-llm-apikey').value
+        provider,
+        model,
+        endpoint,
+        api_key: apiKey
     };
 
     try {
@@ -479,97 +738,220 @@ async function testLLMConnection() {
         const status = await resp.json();
 
         if (status.connected) {
-            // Success - green light
-            indicator.style.background = '#10b981';
-            indicator.style.boxShadow = '0 0 12px rgba(16,185,129,0.8)';
-            indicator.style.animation = '';
-            statusText.textContent = t('settings_connection_successful');
-            statusText.style.color = 'var(--accent-green)';
-            statusDetail.textContent = `${status.provider} / ${status.model} - ${t('settings_response_time')}: ${status.response_time_ms}ms`;
+            const detail = `${status.provider} / ${status.model} - ${t('settings_response_time')}: ${status.response_time_ms}ms`
+                + (status.warning ? ` - ${status.warning}` : '');
+            lastLLMTestResult = { ok: true, provider, model, detail, at: Date.now() };
+            renderLLMTestResult(lastLLMTestResult);
 
-            // Ask to save the configuration
-            const shouldSave = confirm(
-                `${t('settings_connection_successful')}!\n\n` +
-                `Provider: ${testConfig.provider}\n` +
-                `Model: ${testConfig.model}\n` +
-                `Endpoint: ${testConfig.endpoint}\n\n` +
-                `${t('settings_save_llm_confirm')}`
-            );
-
-            if (shouldSave) {
-                await saveSettings();
-                showToast(t('settings_llm_saved'), 'success');
+            if (actionStatus) {
+                actionStatus.textContent = t('settings_connection_successful');
+                actionStatus.style.color = 'var(--accent-green)';
             }
+            showToast(`${t('settings_connection_successful')} - ${provider} / ${model}`, 'success');
         } else {
-            // Failure - red light
             indicator.style.background = '#ef4444';
             indicator.style.boxShadow = '0 0 12px rgba(239,68,68,0.8)';
             indicator.style.animation = '';
-            statusText.textContent = t('settings_connection_failed');
-            statusText.style.color = 'var(--accent-red)';
+
+            let detail = status.error || 'Unknown error';
+            if (status.message) detail += ' - ' + status.message;
 
             if (status.error === "tool calling 모델이 필요함") {
-                statusText.textContent = testConfig.provider === 'ollama'
-                    ? t('settings_ollama_tools_required')
-                    : t('settings_tool_calling_not_supported');
-
-                const extraNote = testConfig.provider === 'ollama'
-                    ? `<br>${escapeHtml(getOllamaToolSupportWarning(testConfig.model))}`
-                    : '';
-
-                statusDetail.innerHTML = `<strong>${t('settings_tool_calling_required')}</strong><br>${escapeHtml(status.message || t('settings_tool_calling_hint'))}${extraNote}`;
-            } else {
-                statusDetail.textContent = status.error || 'Unknown error';
-                if (status.message) {
-                    statusDetail.textContent += ' - ' + status.message;
+                if (statusText) {
+                    statusText.textContent = provider === 'ollama'
+                        ? t('settings_ollama_tools_required')
+                        : t('settings_tool_calling_not_supported');
+                    statusText.style.color = 'var(--accent-red)';
                 }
+                const extraNote = provider === 'ollama'
+                    ? `<br>${escapeHtml(getOllamaToolSupportWarning(model))}`
+                    : '';
+                if (statusDetail) {
+                    statusDetail.innerHTML = `<strong>${t('settings_tool_calling_required')}</strong><br>${escapeHtml(status.message || t('settings_tool_calling_hint'))}${extraNote}`;
+                }
+                detail = (statusText ? statusText.textContent : '') + ': ' + (status.message || t('settings_tool_calling_hint'));
+            } else {
+                if (statusText) {
+                    statusText.textContent = t('settings_connection_failed');
+                    statusText.style.color = 'var(--accent-red)';
+                }
+                if (statusDetail) statusDetail.textContent = detail;
             }
+            if (actionStatus) {
+                actionStatus.textContent = t('settings_connection_failed');
+                actionStatus.style.color = 'var(--accent-red)';
+            }
+            lastLLMTestResult = { ok: false, provider, model, detail, at: Date.now() };
+            showToast(t('settings_connection_failed'), 'error');
         }
     } catch (e) {
-        // Error - red light
         indicator.style.background = '#ef4444';
         indicator.style.boxShadow = '0 0 12px rgba(239,68,68,0.8)';
         indicator.style.animation = '';
-        statusText.textContent = t('settings_connection_error');
-        statusText.style.color = 'var(--accent-red)';
-        statusDetail.textContent = e.message || t('settings_connection_test_failed');
+        if (statusText) {
+            statusText.textContent = t('settings_connection_error');
+            statusText.style.color = 'var(--accent-red)';
+        }
+        if (statusDetail) statusDetail.textContent = e.message || t('settings_connection_test_failed');
+        if (actionStatus) {
+            actionStatus.textContent = t('settings_connection_test_failed');
+            actionStatus.style.color = 'var(--accent-red)';
+        }
+        lastLLMTestResult = { ok: false, provider, model, detail: e.message || t('settings_connection_test_failed'), at: Date.now() };
+        showToast(t('settings_connection_test_failed'), 'error');
     } finally {
-        btn.disabled = false;
-        btnText.textContent = t('settings_test_connection');
+        if (btn) {
+            btn.disabled = false;
+            btnText.textContent = t('settings_test_connection');
+        }
+    }
+}
+
+// Guards against an older status/ping response overwriting a newer one
+// (tab re-opened, settings saved while a ping is in flight).
+let llmStatusSeq = 0;
+
+// Verifies the saved LLM config with a real (server-cached) provider round-trip
+// and renders the result as connected / failed.
+async function verifySavedLLMConnection(status, seq) {
+    const indicator = document.getElementById('llm-status-indicator');
+    const statusText = document.getElementById('llm-status-text');
+    const statusDetail = document.getElementById('llm-status-detail');
+    if (!indicator || !statusText || !statusDetail) return;
+
+    indicator.style.background = '#888';
+    indicator.style.boxShadow = '0 0 8px rgba(136,136,136,0.5)';
+    indicator.style.animation = 'pulse 1s infinite';
+    statusText.textContent = t('settings_checking_connection');
+    statusText.style.color = 'var(--text-secondary)';
+    statusDetail.textContent = `${status.provider} / ${status.model}`;
+
+    let ok = false;
+    let detail = '';
+    try {
+        const resp = await fetchWithAuth('/api/ai/ping');
+        const data = await resp.json().catch(() => null);
+        ok = resp.ok && data && data.status === 'ok';
+        detail = (data && (data.detail || data.message)) || (resp.ok ? '' : `Server error (${resp.status})`);
+    } catch (e) {
+        detail = e.message || t('settings_connection_test_failed');
+    }
+    if (seq !== llmStatusSeq) return;
+
+    renderLLMTestResult({
+        ok,
+        detail: ok
+            ? `${status.provider} / ${status.model}`
+            : `${status.provider} / ${status.model} - ${detail || t('settings_connection_failed')}`,
+    });
+}
+
+// Load saved LLM settings into the form when the AI settings tab is opened
+async function loadLLMSettingsIntoForm() {
+    try {
+        const resp = await fetchWithAuth('/api/settings');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const llm = data.llm;
+        if (!llm) return;
+
+        // Populate provider first
+        const providerSelect = document.getElementById('setting-llm-provider');
+        if (providerSelect && llm.provider) {
+            providerSelect.value = llm.provider;
+        }
+
+        // Trigger provider change UI updates (this clears model input, so set model/endpoint after)
+        if (providerSelect) {
+            onProviderChanged();
+        }
+
+        // Populate model (after onProviderChanged cleared it)
+        const modelInput = document.getElementById('setting-llm-model');
+        if (modelInput && llm.model) {
+            modelInput.value = llm.model;
+        }
+
+        // Populate endpoint — fall back to provider default (already set by
+        // onProviderChanged) when none saved
+        const endpointInput = document.getElementById('setting-llm-endpoint');
+        if (endpointInput && llm.endpoint) {
+            endpointInput.value = llm.endpoint;
+        }
+
+        // Update API key placeholder to indicate a saved key exists
+        const apiKeyInput = document.getElementById('setting-llm-apikey');
+        if (apiKeyInput) {
+            if (llm.has_api_key) {
+                apiKeyInput.dataset.savedKey = '1';
+                apiKeyInput.placeholder = '•••••••• (saved)';
+            } else {
+                delete apiKeyInput.dataset.savedKey;
+            }
+        }
+
+        // Update reasoning effort toggle if present
+        const reasoningToggle = document.getElementById('reasoning-effort-toggle');
+        if (reasoningToggle && llm.reasoning_effort) {
+            const isHigh = llm.reasoning_effort === 'high';
+            reasoningToggle.classList.toggle('active', isHigh);
+            const statusEl = document.getElementById('reasoning-effort-status');
+            if (statusEl) {
+                statusEl.innerHTML = '<span data-i18n="settings_current">Current</span>: ' +
+                    (isHigh ? 'high' : 'minimal') + ' (default)';
+            }
+        }
+
+    } catch (e) {
+        console.error('Failed to load LLM settings into form:', e);
     }
 }
 
 async function loadLLMStatus() {
+    const seq = ++llmStatusSeq;
     try {
         const resp = await fetchWithAuth('/api/llm/status');
         const status = await resp.json();
+        if (seq !== llmStatusSeq) return;
+
+        // A recent explicit connection test (same provider/model) is the most
+        // trustworthy signal — keep it visible instead of downgrading to amber.
+        const freshTest = freshLLMTestResult(status.provider, status.model);
+        if (freshTest) {
+            renderLLMTestResult(freshTest);
+            return;
+        }
 
         const indicator = document.getElementById('llm-status-indicator');
         const statusText = document.getElementById('llm-status-text');
         const statusDetail = document.getElementById('llm-status-detail');
 
+        indicator.style.animation = '';
         if (status.configured && status.ready) {
-            indicator.style.background = '#f59e0b';
-            indicator.style.boxShadow = '0 0 8px rgba(245,158,11,0.5)';
-            statusText.textContent = 'LLM Configured';
-            statusText.style.color = 'var(--accent-yellow)';
-            statusDetail.textContent = `${status.provider} / ${status.model} - Click 'Test Connection' to verify`;
+            await verifySavedLLMConnection(status, seq);
+        } else if (status.provider && status.model) {
+            // Saved configuration exists (provider + model) but AI client may
+            // not be initialized on the server yet. Attempt a real connection
+            // test so the status reflects the actual provider state.
+            await verifySavedLLMConnection(status, seq);
         } else if (!status.configured) {
             indicator.style.background = '#888';
             indicator.style.boxShadow = '0 0 8px rgba(136,136,136,0.5)';
-            statusText.textContent = 'LLM Not Configured';
+            statusText.textContent = t('settings_llm_not_configured');
             statusText.style.color = 'var(--text-secondary)';
-            statusDetail.textContent = 'Configure provider, model, and API key below';
+            statusDetail.textContent = t('settings_configure_below');
         } else {
             indicator.style.background = '#888';
             indicator.style.boxShadow = '0 0 8px rgba(136,136,136,0.5)';
-            statusText.textContent = 'Configuration Incomplete';
+            statusText.textContent = t('settings_llm_config_incomplete');
             statusText.style.color = 'var(--text-secondary)';
             const missing = [];
             const providerNeedsAPIKey = !['ollama', 'bedrock', 'litellm'].includes(status.provider);
             if (providerNeedsAPIKey && !status.has_api_key) missing.push('API key');
             if (!status.endpoint && !status.default_endpoint) missing.push('endpoint');
-            statusDetail.textContent = missing.length > 0 ? 'Missing: ' + missing.join(', ') : 'Check configuration';
+            statusDetail.textContent = missing.length > 0
+                ? t('settings_missing_prefix') + missing.join(', ')
+                : t('settings_check_configuration');
         }
     } catch (e) {
         console.error('Failed to load LLM status:', e);
@@ -595,7 +977,7 @@ function updateEndpointPlaceholder(setDefaults = true) {
 
     const config = defaults[provider] || { placeholder: '', hint: '', model: '', apiKeyHint: '' };
     endpointInput.placeholder = config.placeholder;
-    hint.textContent = config.hint;
+    if (hint) hint.textContent = config.hint;
 
     // Update model placeholder; only overwrite value when user switches provider
     const modelInput = document.getElementById('setting-llm-model');
@@ -613,32 +995,37 @@ function updateEndpointPlaceholder(setDefaults = true) {
 
     // Update API key placeholder
     const apiKeyInput = document.getElementById('setting-llm-apikey');
-    if (apiKeyInput && config.apiKeyHint) {
-        apiKeyInput.placeholder = config.apiKeyHint;
+    if (apiKeyInput) {
+        if (!apiKeyInput.value && apiKeyInput.dataset.savedKey === '1') {
+            apiKeyInput.placeholder = '•••••••• (saved)';
+        } else if (config.apiKeyHint) {
+            apiKeyInput.placeholder = config.apiKeyHint;
+        }
     }
 
     // Update API key link based on provider
-    const apiKeyLabel = apiKeyInput?.parentElement?.querySelector('label');
-    if (apiKeyLabel) {
-        const existingLink = apiKeyLabel.querySelector('a');
-        if (existingLink) existingLink.remove();
+    const linkContainer = document.getElementById('ai-apikey-link-container');
+    if (linkContainer) {
+        linkContainer.innerHTML = '';
 
         const links = {
-            'upstage': { url: 'https://console.upstage.ai/api-keys', text: 'Get API Key →' },
-            'openai': { url: 'https://platform.openai.com/api-keys', text: 'Get API Key →' },
-            'openrouter': { url: 'https://openrouter.ai/keys', text: 'Get API Key →' },
-            'anthropic': { url: 'https://console.anthropic.com/settings/keys', text: 'Get API Key →' },
-            'gemini': { url: 'https://aistudio.google.com/app/apikey', text: 'Get API Key →' },
-            'litellm': { url: 'https://docs.litellm.ai/docs/proxy/quick_start', text: 'Gateway Docs →' }
+            'upstage': { url: 'https://console.upstage.ai/api-keys', textKey: 'settings_api_key_link_upstage' },
+            'openai': { url: 'https://platform.openai.com/api-keys', textKey: 'settings_api_key_link_openai' },
+            'openrouter': { url: 'https://openrouter.ai/keys', textKey: 'settings_api_key_link_openrouter' },
+            'anthropic': { url: 'https://console.anthropic.com/settings/keys', textKey: 'settings_api_key_link_anthropic' },
+            'gemini': { url: 'https://aistudio.google.com/app/apikey', textKey: 'settings_api_key_link_gemini' },
+            'bedrock': { url: 'https://us-east-1.console.aws.amazon.com/bedrock/home', textKey: 'settings_api_key_link_bedrock' },
+            'azopenai': { url: 'https://portal.azure.com/#view/Microsoft_Azure_OpenAI/OpenAIMenuBlade', textKey: 'settings_api_key_link_azopenai' },
+            'litellm': { url: 'https://docs.litellm.ai/docs/proxy/quick_start', textKey: 'settings_api_key_link_litellm' }
         };
 
         if (links[provider]) {
             const link = document.createElement('a');
             link.href = links[provider].url;
             link.target = '_blank';
-            link.style.cssText = 'font-size:11px;color:var(--accent-blue);margin-left:8px;';
-            link.textContent = links[provider].text;
-            apiKeyLabel.appendChild(link);
+            link.style.cssText = 'font-size:11px;color:var(--accent-blue);margin-left:4px;';
+            link.textContent = t(links[provider].textKey);
+            linkContainer.appendChild(link);
         }
     }
 
@@ -686,15 +1073,8 @@ function updateLLMToolSupportWarning() {
     );
 }
 
-function updateNewModelToolSupportWarning() {
-    updateOllamaToolSupportWarning(
-        'new-model-tool-support-warning',
-        document.getElementById('new-model-provider')?.value,
-        document.getElementById('new-model-model')?.value
-    );
-}
-
-async function fetchAvailableModels() {
+async function fetchAvailableModels(options = {}) {
+    const overwrite = options.overwrite !== false;
     const provider = document.getElementById('setting-llm-provider').value;
     const apiKey = document.getElementById('setting-llm-apikey').value;
     const endpoint = document.getElementById('setting-llm-endpoint').value;
@@ -703,15 +1083,31 @@ async function fetchAvailableModels() {
     const modelInput = document.getElementById('setting-llm-model');
     const btn = document.getElementById('fetch-models-btn');
 
-    if (!apiKey && !['ollama', 'litellm'].includes(provider)) {
-        status.textContent = 'API key required';
-        status.style.color = 'var(--accent-red)';
+    // Validate: need API key for providers that require it
+    const providerNeedsKey = !['ollama', 'bedrock', 'litellm'].includes(provider);
+    const apiKeyInput = document.getElementById('setting-llm-apikey');
+    const hasSavedKey = apiKeyInput && apiKeyInput.dataset.savedKey === '1';
+    if (providerNeedsKey && !apiKey && !hasSavedKey) {
+        if (status) {
+            status.textContent = t('settings_api_key_required');
+            status.style.color = 'var(--accent-red)';
+        }
         return;
     }
 
+    // Gemini API keys start with "AIza" — warn if format looks wrong
+    if (provider === 'gemini' && apiKey && !apiKey.startsWith('AIza')) {
+        if (status) {
+            status.textContent = t('settings_gemini_key_format');
+            status.style.color = 'var(--accent-yellow)';
+        }
+    }
+
     btn.disabled = true;
-    status.textContent = 'Fetching...';
-    status.style.color = 'var(--text-secondary)';
+    if (status) {
+        status.textContent = t('settings_fetching_models');
+        status.style.color = 'var(--text-secondary)';
+    }
 
     try {
         const resp = await fetchWithAuth('/api/llm/available-models', {
@@ -719,18 +1115,36 @@ async function fetchAvailableModels() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ provider, api_key: apiKey, endpoint })
         });
+        if (!resp.ok) {
+            if (status) {
+                let msg = `${t('settings_failed_fetch')} (${resp.status})`;
+                if (resp.status === 401) msg = t('settings_invalid_api_key');
+                else if (resp.status === 403) msg = t('settings_api_key_forbidden');
+                status.textContent = msg;
+                status.style.color = 'var(--accent-red)';
+            }
+            return;
+        }
         const data = await resp.json();
 
         if (data.error) {
-            status.textContent = data.error;
-            status.style.color = 'var(--accent-red)';
+            if (status) {
+                let msg = data.error;
+                // Surface status code hints from backend
+                if (data.status === 401) msg = t('settings_invalid_api_key');
+                else if (data.status === 403) msg = t('settings_api_key_forbidden');
+                status.textContent = msg;
+                status.style.color = 'var(--accent-red)';
+            }
             return;
         }
 
         const models = data.models || [];
         if (models.length === 0) {
-            status.textContent = 'No models found';
-            status.style.color = 'var(--accent-yellow)';
+            if (status) {
+                status.textContent = t('settings_no_models');
+                status.style.color = 'var(--accent-yellow)';
+            }
             return;
         }
 
@@ -744,22 +1158,49 @@ async function fetchAvailableModels() {
         }).join('');
         modelSelect.style.display = 'block';
 
-        // Auto-select: keep current model if it exists in the list, otherwise use first model
         if (models.includes(currentModel)) {
             modelSelect.value = currentModel;
-        } else {
+        } else if (!currentModel || overwrite) {
             modelSelect.value = models[0];
             modelInput.value = models[0];
+            updateLLMToolSupportWarning();
+        } else {
+            const escaped = escapeHtml(currentModel);
+            modelSelect.insertAdjacentHTML('beforeend', `<option value="${escaped}" selected>${escaped}</option>`);
+            modelSelect.value = currentModel;
         }
 
-        status.textContent = `${models.length} models available`;
-        status.style.color = 'var(--accent-green)';
+        if (status) {
+            status.textContent = t('settings_models_available').replace('{n}', models.length);
+            status.style.color = 'var(--accent-green)';
+        }
     } catch (e) {
-        status.textContent = 'Failed to fetch';
-        status.style.color = 'var(--accent-red)';
+        if (status) {
+            status.textContent = t('settings_failed_fetch');
+            status.style.color = 'var(--accent-red)';
+        }
     } finally {
         btn.disabled = false;
     }
+}
+
+// Debounced auto-fetch of the model list when the user enters an API key
+let llmAutoFetchTimer = null;
+function onLLMAutoFetchModels() {
+    clearTimeout(llmAutoFetchTimer);
+    llmAutoFetchTimer = setTimeout(() => {
+        const provider = document.getElementById('setting-llm-provider')?.value;
+        if (!provider || ['bedrock', 'azopenai'].includes(provider)) return;
+        const apiKeyInput = document.getElementById('setting-llm-apikey');
+        const apiKey = apiKeyInput?.value || '';
+        const hasKey = apiKey
+            || (apiKeyInput && apiKeyInput.dataset.savedKey === '1')
+            || ['ollama', 'litellm'].includes(provider);
+        if (!hasKey) return;
+        // For Gemini, only auto-fetch once the key looks valid (starts with "AIza")
+        if (provider === 'gemini' && apiKey && !apiKey.startsWith('AIza')) return;
+        fetchAvailableModels({ overwrite: false });
+    }, 700);
 }
 
 // MCP Management Functions
@@ -1642,7 +2083,11 @@ async function loadSettings() {
 
             document.getElementById('setting-llm-model').value = data.llm.model || providerDefaults.model;
             document.getElementById('setting-llm-endpoint').value = data.llm.endpoint || providerDefaults.endpoint;
-            document.getElementById('setting-llm-apikey').value = data.llm.api_key || '';
+            // The raw API key is intentionally not returned by the server.
+            // An empty field means "keep the stored key" on save (backend preserves it).
+            const apiKeyInput = document.getElementById('setting-llm-apikey');
+            apiKeyInput.value = data.llm.api_key || '';
+            apiKeyInput.dataset.savedKey = (data.llm.has_api_key || data.llm.api_key) ? '1' : '';
             currentLLMModel = data.llm.model || providerDefaults.model;
 
             // Load reasoning effort setting
@@ -1655,11 +2100,13 @@ async function loadSettings() {
             document.getElementById('setting-llm-provider').value = 'upstage';
             document.getElementById('setting-llm-model').value = 'solar-pro2';
             document.getElementById('setting-llm-endpoint').value = 'https://api.upstage.ai/v1';
+            const apiKeyInput = document.getElementById('setting-llm-apikey');
+            apiKeyInput.value = '';
+            apiKeyInput.dataset.savedKey = '';
             currentLLMModel = 'solar-pro2';
         }
         // Update endpoint placeholder/hints without overwriting loaded values
         updateEndpointPlaceholder(false);
-        syncNewModelProviderOptions();
         updateLLMToolSupportWarning();
         // Load local settings
         updateSettingsUI();
@@ -1915,15 +2362,17 @@ async function updateAIStatus() {
             return;
         }
 
-        // Ping test - try to check LLM connection
+        // Real ping: the server performs (and caches) a minimal provider
+        // round-trip, so status "ok" means an actual connection succeeded.
         const pingResp = await fetchWithAuth('/api/ai/ping');
-        if (pingResp.ok) {
+        const pingData = pingResp.ok ? await pingResp.json().catch(() => null) : null;
+        if (pingResp.ok && pingData && pingData.status === 'ok') {
             statusDot.className = 'ai-status-dot connected';
             statusDot.title = 'Connected';
             llmConnected = true;
         } else {
             statusDot.className = 'ai-status-dot disconnected';
-            statusDot.title = 'Connection failed';
+            statusDot.title = pingData && pingData.detail ? `Connection failed: ${pingData.detail}` : 'Connection failed';
             llmConnected = false;
         }
     } catch (e) {
@@ -2255,33 +2704,22 @@ async function saveSettings() {
         // Update AI status (model name and connection status)
         await updateAIStatus();
 
-        // Auto-test connection after save
         showToast(t('msg_settings_saved'), 'success');
-        
-        // Test connection automatically
+
+        // Refresh the connection status card honestly: keep a fresh explicit
+        // test result, otherwise show the configured/not-configured state.
+        // (Never display "Connected" based on the client-exists-only ping.)
         const statusIndicator = document.getElementById('llm-status-indicator');
-        const statusText = document.getElementById('llm-status-text');
-        const statusDetail = document.getElementById('llm-status-detail');
-        
-        if (statusIndicator) statusIndicator.style.background = '#f59e0b';
-        if (statusText) statusText.textContent = 'Connection Status: Testing...';
-        if (statusDetail) statusDetail.textContent = 'Verifying connection...';
-        
-        try {
-            const pingResp = await fetchWithAuth('/api/ai/ping');
-            if (pingResp.ok) {
-                if (statusIndicator) statusIndicator.style.background = '#22c55e';
-                if (statusText) statusText.textContent = 'Connection Status: Connected';
-                if (statusDetail) statusDetail.textContent = 'Successfully connected to LLM provider';
+        if (statusIndicator) {
+            const freshTest = freshLLMTestResult(
+                document.getElementById('setting-llm-provider')?.value,
+                document.getElementById('setting-llm-model')?.value
+            );
+            if (freshTest) {
+                renderLLMTestResult(freshTest);
             } else {
-                if (statusIndicator) statusIndicator.style.background = '#ef4444';
-                if (statusText) statusText.textContent = 'Connection Status: Failed';
-                if (statusDetail) statusDetail.textContent = 'Connection test failed - check your configuration';
+                await loadLLMStatus();
             }
-        } catch (e) {
-            if (statusIndicator) statusIndicator.style.background = '#ef4444';
-            if (statusText) statusText.textContent = 'Connection Status: Error';
-            if (statusDetail) statusDetail.textContent = 'Connection test error: ' + e.message;
         }
     } catch (e) {
         alert('Failed to save settings');
