@@ -1156,7 +1156,8 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 		// Extract HTTP status code from provider errors for better client-side messaging.
 		statusCode := 0
 		if errStr := err.Error(); errStr != "" {
-			fmt.Sscanf(errStr, "failed to list models: status %d", &statusCode)
+			if _, err := fmt.Sscanf(errStr, "failed to list models: status %d", &statusCode); err != nil {
+				log.Warnf("Failed to parse status code from error: %v", err)
 		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"models":     []string{},
