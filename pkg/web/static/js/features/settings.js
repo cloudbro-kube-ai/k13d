@@ -62,7 +62,7 @@ function onProviderChanged() {
     }
 
     // Store the selected provider so the model/endpoint defaults are tied to it
-    endpointInput?.dataset.setProvider = provider;
+    if (endpointInput) endpointInput.dataset.setProvider = provider;
 }
 
 // Toggle API key visibility (password ↔ text)
