@@ -42,7 +42,7 @@ run_unit_tests() {
     docker run --rm \
         -v "$PROJECT_DIR:/app" \
         -w /app \
-        golang:1.25-alpine \
+        golang:1.26-alpine \
         sh -c "
             apk add --no-cache git &&
             go test -v -race -coverprofile=coverage.out ./... 2>&1
@@ -77,7 +77,7 @@ run_integration_tests() {
         -e POSTGRES_PASSWORD=testpassword \
         -e POSTGRES_DB=k13d_test \
         -e MOCK_OPENAI_URL=http://mock-openai:8080 \
-        golang:1.25-alpine \
+        golang:1.26-alpine \
         sh -c "
             apk add --no-cache git curl &&
             go test -v -tags=integration ./tests/integration/... 2>&1 || true
@@ -124,7 +124,7 @@ run_ollama_tests() {
         -e OLLAMA_HOST=http://ollama:11434 \
         -e K13S_LLM_PROVIDER=ollama \
         -e K13S_LLM_MODEL=qwen2.5:3b \
-        golang:1.25-alpine \
+        golang:1.26-alpine \
         sh -c "
             apk add --no-cache git curl &&
             go test -v -tags=ollama ./pkg/ai/... 2>&1 || true
@@ -140,7 +140,7 @@ run_benchmark() {
     docker run --rm \
         -v "$PROJECT_DIR:/app" \
         -w /app \
-        golang:1.25-alpine \
+        golang:1.26-alpine \
         sh -c "
             apk add --no-cache git &&
             go build -o .build/k13d-bench ./cmd/bench/main.go
@@ -166,7 +166,7 @@ run_benchmark() {
         docker run --rm \
             -v "$PROJECT_DIR:/app" \
             -w /app \
-            golang:1.25-alpine \
+            golang:1.26-alpine \
             sh -c "
                 apk add --no-cache git &&
                 go run ./cmd/bench/main.go list --task-dir benchmarks/tasks
@@ -182,7 +182,7 @@ show_coverage() {
     docker run --rm \
         -v "$PROJECT_DIR:/app" \
         -w /app \
-        golang:1.25-alpine \
+        golang:1.26-alpine \
         sh -c "
             apk add --no-cache git &&
             go test -coverprofile=coverage.out ./... 2>/dev/null &&
