@@ -1158,6 +1158,7 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 		if errStr := err.Error(); errStr != "" {
 			if _, err := fmt.Sscanf(errStr, "failed to list models: status %d", &statusCode); err != nil {
 				log.Warnf("Failed to parse status code from error: %v", err)
+			}
 		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"models":     []string{},
