@@ -30,6 +30,8 @@ report-*.html
 # SQLite databases
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
 
 # IDEs
 .vscode/
