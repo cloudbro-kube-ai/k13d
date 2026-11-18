@@ -1156,7 +1156,9 @@ func (s *Server) handleAvailableModels(w http.ResponseWriter, r *http.Request) {
 		// Extract HTTP status code from provider errors for better client-side messaging.
 		statusCode := 0
 		if errStr := err.Error(); errStr != "" {
-			fmt.Sscanf(errStr, "failed to list models: status %d", &statusCode)
+			if _, err := fmt.Sscanf(errStr, "failed to list models: status %d", &statusCode); err != nil {
+				log.Warnf("Failed to parse status code from error: %v", err)
+			}
 		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"models":     []string{},
@@ -1207,19 +1209,8 @@ func (s *Server) handleAIPing(w http.ResponseWriter, r *http.Request) {
 
 	client := s.aiClient
 	if client == nil {
-		// AI client not yet initialized in memory (e.g. server just started
-		// or settings were loaded from disk). Create a temporary client from
-		// the saved configuration so the connection test can still run.
-		if s.cfg == nil || strings.TrimSpace(s.cfg.LLM.Provider) == "" || strings.TrimSpace(s.cfg.LLM.Model) == "" {
-			WriteError(w, NewAPIError(ErrCodeLLMNotConfigured, "AI client not configured"))
-			return
-		}
-		tmpClient, ready, err := createUsableAIClient(&s.cfg.LLM)
-		if err != nil || !ready {
-			WriteError(w, NewAPIError(ErrCodeLLMNotConfigured, "AI client not configured"))
-			return
-		}
-		client = tmpClient
+		WriteError(w, NewAPIError(ErrCodeLLMNotConfigured, "AI client not configured"))
+		return
 	}
 
 	// Serve a recent result without touching the network.

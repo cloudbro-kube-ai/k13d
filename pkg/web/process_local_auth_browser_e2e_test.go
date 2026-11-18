@@ -104,7 +104,7 @@ func setupPlaywrightWorkspace(t *testing.T, repoRoot string) string {
   "name": "k13d-browser-e2e",
   "private": true,
   "devDependencies": {
-    "@playwright/test": "1.58.2"
+    "@playwright/test": "1.65.1"
   }
 }
 `
