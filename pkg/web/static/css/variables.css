@@ -80,34 +80,33 @@
     --z-tooltip: 3000;
 }
 
-/* Tokyo Night Theme — improved contrast (WCAG AA compliant)
- * Backgrounds lifted slightly, text brightened for readability.
- * Inspired by Grafana/Lens/Rancher dark palette conventions. */
+/* Tokyo Night Theme — darker, more saturated palette
+ * Uses deeper official Tokyo Night surfaces while preserving readable contrast. */
 [data-theme="tokyo-night"] {
-    --bg-primary: #1e2030;
-    --bg-secondary: #282d42;
-    --bg-tertiary: #4a5272;
-    --text-primary: #d5ddf8;
-    --text-secondary: #b8c0de;
+    --bg-primary: #1a1b26;
+    --bg-secondary: #24283b;
+    --bg-tertiary: #414868;
+    --text-primary: #c0caf5;
+    --text-secondary: #a9b1d6;
     --accent-blue: #7aa2f7;
     --accent-green: #9ece6a;
     --accent-red: #f7768e;
     --accent-yellow: #e0af68;
     --accent-purple: #bb9af7;
     --accent-cyan: #7dcfff;
-    --bg-hover: rgba(122, 162, 247, 0.12);
-    --text-muted: #9098be;
-    --border-color: #4f5680;
+    --bg-hover: rgba(122, 162, 247, 0.16);
+    --text-muted: #737aa2;
+    --border-color: #565f89;
 
-    --bg-deep: #161722;
-    --surface-primary: rgba(40, 45, 66, 0.95);
-    --surface-secondary: rgba(30, 32, 48, 0.9);
-    --surface-tertiary: rgba(74, 82, 114, 0.65);
-    --surface-input: rgba(30, 32, 48, 0.8);
-    --surface-input-solid: rgba(30, 32, 48, 1);
-    --surface-elevated: rgba(74, 82, 114, 0.8);
+    --bg-deep: #16161e;
+    --surface-primary: rgba(36, 40, 59, 0.95);
+    --surface-secondary: rgba(26, 27, 38, 0.92);
+    --surface-tertiary: rgba(65, 72, 104, 0.72);
+    --surface-input: rgba(26, 27, 38, 0.85);
+    --surface-input-solid: rgba(26, 27, 38, 1);
+    --surface-elevated: rgba(65, 72, 104, 0.82);
     --surface-code: rgba(0, 0, 0, 0.25);
-    --text-on-accent: #1e2030;
+    --text-on-accent: #1a1b26;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
@@ -225,30 +224,30 @@
 /* Auto-detect system preference when no explicit theme is set */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme]) {
-        --bg-primary: #1e2030;
-        --bg-secondary: #282d42;
-        --bg-tertiary: #4a5272;
-        --text-primary: #d5ddf8;
-        --text-secondary: #b8c0de;
+        --bg-primary: #1a1b26;
+        --bg-secondary: #24283b;
+        --bg-tertiary: #414868;
+        --text-primary: #c0caf5;
+        --text-secondary: #a9b1d6;
         --accent-blue: #7aa2f7;
         --accent-green: #9ece6a;
         --accent-red: #f7768e;
         --accent-yellow: #e0af68;
         --accent-purple: #bb9af7;
         --accent-cyan: #7dcfff;
-        --bg-hover: rgba(122, 162, 247, 0.12);
-        --text-muted: #9098be;
-        --border-color: #4f5680;
+        --bg-hover: rgba(122, 162, 247, 0.16);
+        --text-muted: #737aa2;
+        --border-color: #565f89;
 
-        --bg-deep: #161722;
-        --surface-primary: rgba(40, 45, 66, 0.95);
-        --surface-secondary: rgba(30, 32, 48, 0.9);
-        --surface-tertiary: rgba(74, 82, 114, 0.65);
-        --surface-input: rgba(30, 32, 48, 0.8);
-        --surface-input-solid: rgba(30, 32, 48, 1);
-        --surface-elevated: rgba(74, 82, 114, 0.8);
+        --bg-deep: #16161e;
+        --surface-primary: rgba(36, 40, 59, 0.95);
+        --surface-secondary: rgba(26, 27, 38, 0.92);
+        --surface-tertiary: rgba(65, 72, 104, 0.72);
+        --surface-input: rgba(26, 27, 38, 0.85);
+        --surface-input-solid: rgba(26, 27, 38, 1);
+        --surface-elevated: rgba(65, 72, 104, 0.82);
         --surface-code: rgba(0, 0, 0, 0.25);
-        --text-on-accent: #1e2030;
+        --text-on-accent: #1a1b26;
 
         --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
         --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
