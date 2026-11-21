@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,8 +18,18 @@ import (
 
 const githubAPIVersion = "2022-11-28"
 
+const (
+	issueAutomationInProgressLabel            = "codex:running"
+	issueAutomationInProgressLabelColor       = "fbca04"
+	issueAutomationInProgressLabelDescription = "k13d automation is working on this issue"
+)
+
 type GitHubReporter interface {
 	PostIssueComment(ctx context.Context, repo string, issueNumber int, body string) error
+	PostPullRequestComment(ctx context.Context, repo string, prNumber int, body string) error
+	AddIssueCommentReaction(ctx context.Context, repo string, commentID int64, content string) error
+	MarkIssueInProgress(ctx context.Context, repo string, issueNumber int) error
+	ClearIssueInProgress(ctx context.Context, repo string, issueNumber int) error
 	AssignIssue(ctx context.Context, repo string, issueNumber int, assignees []string) error
 	FindOpenPullRequestByHead(ctx context.Context, repo, head string) (*PullRequestInfo, error)
 	CreatePullRequest(ctx context.Context, repo, title, head, base, body string, draft bool) (*PullRequestInfo, error)
@@ -51,6 +62,67 @@ func (c *GitHubClient) PostIssueComment(ctx context.Context, repo string, issueN
 	}
 	payload := map[string]string{"body": body}
 	return c.post(ctx, fmt.Sprintf("/repos/%s/issues/%d/comments", repo, issueNumber), payload, nil)
+}
+
+func (c *GitHubClient) PostPullRequestComment(ctx context.Context, repo string, prNumber int, body string) error {
+	return c.PostIssueComment(ctx, repo, prNumber, body)
+}
+
+func (c *GitHubClient) AddIssueCommentReaction(ctx context.Context, repo string, commentID int64, content string) error {
+	content = strings.TrimSpace(content)
+	if commentID <= 0 || content == "" {
+		return nil
+	}
+	payload := map[string]string{"content": content}
+	return c.post(ctx, fmt.Sprintf("/repos/%s/issues/comments/%d/reactions", repo, commentID), payload, nil)
+}
+
+func (c *GitHubClient) MarkIssueInProgress(ctx context.Context, repo string, issueNumber int) error {
+	if issueNumber <= 0 {
+		return nil
+	}
+	ensureErr := c.ensureIssueAutomationLabel(ctx, repo)
+	addErr := c.addIssueLabels(ctx, repo, issueNumber, []string{issueAutomationInProgressLabel})
+	if addErr == nil {
+		return nil
+	}
+	if ensureErr != nil {
+		return fmt.Errorf("failed to ensure issue automation label: %w; failed to add label: %v", ensureErr, addErr)
+	}
+	return addErr
+}
+
+func (c *GitHubClient) ClearIssueInProgress(ctx context.Context, repo string, issueNumber int) error {
+	if issueNumber <= 0 {
+		return nil
+	}
+	err := c.delete(ctx, fmt.Sprintf("/repos/%s/issues/%d/labels/%s", repo, issueNumber, url.PathEscape(issueAutomationInProgressLabel)), nil)
+	if isGitHubAPIStatus(err, http.StatusNotFound) {
+		return nil
+	}
+	return err
+}
+
+func (c *GitHubClient) ensureIssueAutomationLabel(ctx context.Context, repo string) error {
+	payload := map[string]string{
+		"name":        issueAutomationInProgressLabel,
+		"color":       issueAutomationInProgressLabelColor,
+		"description": issueAutomationInProgressLabelDescription,
+	}
+	err := c.post(ctx, fmt.Sprintf("/repos/%s/labels", repo), payload, nil)
+	if isGitHubAPIStatus(err, http.StatusUnprocessableEntity) {
+		return nil
+	}
+	return err
+}
+
+func (c *GitHubClient) addIssueLabels(ctx context.Context, repo string, issueNumber int, labels []string) error {
+	labels = sanitizeGitHubLogins(labels)
+	if issueNumber <= 0 || len(labels) == 0 {
+		return nil
+	}
+	payload := map[string][]string{"labels": labels}
+	return c.post(ctx, fmt.Sprintf("/repos/%s/issues/%d/labels", repo, issueNumber), payload, nil)
 }
 
 func (c *GitHubClient) AssignIssue(ctx context.Context, repo string, issueNumber int, assignees []string) error {
@@ -390,23 +462,33 @@ func (c *GitHubClient) patch(ctx context.Context, path string, payload interface
 	return c.doJSON(ctx, http.MethodPatch, path, payload, out)
 }
 
+func (c *GitHubClient) delete(ctx context.Context, path string, out interface{}) error {
+	return c.doJSON(ctx, http.MethodDelete, path, nil, out)
+}
+
 func (c *GitHubClient) doJSON(ctx context.Context, method, path string, payload interface{}, out interface{}) error {
 	if strings.TrimSpace(c.token) == "" {
 		return fmt.Errorf("github automation token is not configured")
 	}
 
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return err
+	var body io.Reader
+	if payload != nil {
+		payloadBody, err := json.Marshal(payload)
+		if err != nil {
+			return err
+		}
+		body = bytes.NewReader(payloadBody)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, body)
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("Content-Type", "application/json")
+	if payload != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	req.Header.Set("X-GitHub-Api-Version", githubAPIVersion)
 	req.Header.Set("User-Agent", "k13d-github-automation")
 
@@ -418,7 +500,7 @@ func (c *GitHubClient) doJSON(ctx context.Context, method, path string, payload 
 
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("github api %s returned %d: %s", path, resp.StatusCode, strings.TrimSpace(string(respBody)))
+		return &githubAPIError{path: path, statusCode: resp.StatusCode, body: strings.TrimSpace(string(respBody))}
 	}
 
 	if out != nil && len(respBody) > 0 {
@@ -451,7 +533,7 @@ func (c *GitHubClient) get(ctx context.Context, path string, out interface{}) er
 
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("github api %s returned %d: %s", path, resp.StatusCode, strings.TrimSpace(string(respBody)))
+		return &githubAPIError{path: path, statusCode: resp.StatusCode, body: strings.TrimSpace(string(respBody))}
 	}
 	if out != nil && len(respBody) > 0 {
 		if err := json.Unmarshal(respBody, out); err != nil {
@@ -459,6 +541,21 @@ func (c *GitHubClient) get(ctx context.Context, path string, out interface{}) er
 		}
 	}
 	return nil
+}
+
+type githubAPIError struct {
+	path       string
+	statusCode int
+	body       string
+}
+
+func (e *githubAPIError) Error() string {
+	return fmt.Sprintf("github api %s returned %d: %s", e.path, e.statusCode, e.body)
+}
+
+func isGitHubAPIStatus(err error, statusCode int) bool {
+	var apiErr *githubAPIError
+	return errors.As(err, &apiErr) && apiErr.statusCode == statusCode
 }
 
 func VerifyGitHubSignature(secret string, payload []byte, signatureHeader string) bool {
@@ -554,18 +651,31 @@ func ParseIssueCommentEvent(eventName string, body []byte) (*IssueCommentEvent, 
 			PullRequest *struct{} `json:"pull_request"`
 		} `json:"issue"`
 		Comment struct {
+			ID                int64  `json:"id"`
 			Body              string `json:"body"`
 			AuthorAssociation string `json:"author_association"`
 			User              struct {
 				Login string `json:"login"`
 			} `json:"user"`
 		} `json:"comment"`
+		Sender struct {
+			Login string `json:"login"`
+		} `json:"sender"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return nil, err
 	}
 	if payload.Issue.PullRequest != nil {
 		return nil, fmt.Errorf("issue_comment events on pull requests are not supported")
+	}
+
+	commentAuthor := payload.Comment.User.Login
+	commentAssociation := payload.Comment.AuthorAssociation
+	if sender := strings.TrimSpace(payload.Sender.Login); sender != "" {
+		commentAuthor = sender
+		if !strings.EqualFold(sender, payload.Comment.User.Login) {
+			commentAssociation = ""
+		}
 	}
 
 	event := &IssueCommentEvent{
@@ -579,9 +689,10 @@ func ParseIssueCommentEvent(eventName string, body []byte) (*IssueCommentEvent, 
 		IssueURL:                 payload.Issue.HTMLURL,
 		IssueAuthor:              payload.Issue.User.Login,
 		IssueAuthorAssociation:   payload.Issue.AuthorAssociation,
+		CommentID:                payload.Comment.ID,
 		CommentBody:              payload.Comment.Body,
-		CommentAuthor:            payload.Comment.User.Login,
-		CommentAuthorAssociation: payload.Comment.AuthorAssociation,
+		CommentAuthor:            commentAuthor,
+		CommentAuthorAssociation: commentAssociation,
 	}
 	for _, label := range payload.Issue.Labels {
 		event.Labels = append(event.Labels, label.Name)

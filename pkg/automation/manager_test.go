@@ -15,6 +15,7 @@ import (
 )
 
 type fakeExecutor struct {
+	mu           sync.Mutex
 	result       *ExecutionResult
 	deployResult *PreviewDeployment
 	reviewLog    string
@@ -22,9 +23,15 @@ type fakeExecutor struct {
 	deployErr    error
 	reviewErr    error
 	block        chan struct{}
+	jobs         []Job
 }
 
 func (f *fakeExecutor) Execute(ctx context.Context, job *Job) (*ExecutionResult, error) {
+	if job != nil {
+		f.mu.Lock()
+		f.jobs = append(f.jobs, *job)
+		f.mu.Unlock()
+	}
 	if f.block != nil {
 		<-f.block
 	}
@@ -39,9 +46,17 @@ func (f *fakeExecutor) DeployPreview(ctx context.Context, job *Job, result *Exec
 	return f.deployResult, f.deployErr
 }
 
+func (f *fakeExecutor) executedJobs() []Job {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]Job(nil), f.jobs...)
+}
+
 type fakeReporter struct {
 	mu            sync.Mutex
 	issueComments []string
+	prComments    []string
+	reactions     []commentReaction
 	assignees     []string
 	reviewers     []string
 	prBody        string
@@ -50,6 +65,8 @@ type fakeReporter struct {
 	reviewCreated bool
 	mergedPR      bool
 	issueClosed   bool
+	issueMarked   bool
+	issueCleared  bool
 	closeReason   string
 	closeErr      error
 	existingPR    *PullRequestInfo
@@ -60,10 +77,43 @@ type fakeReporter struct {
 	orgMembersErr error
 }
 
+type commentReaction struct {
+	CommentID int64
+	Content   string
+}
+
 func (f *fakeReporter) PostIssueComment(ctx context.Context, repo string, issueNumber int, body string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.issueComments = append(f.issueComments, body)
+	return nil
+}
+
+func (f *fakeReporter) PostPullRequestComment(ctx context.Context, repo string, prNumber int, body string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.prComments = append(f.prComments, body)
+	return nil
+}
+
+func (f *fakeReporter) AddIssueCommentReaction(ctx context.Context, repo string, commentID int64, content string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reactions = append(f.reactions, commentReaction{CommentID: commentID, Content: content})
+	return nil
+}
+
+func (f *fakeReporter) MarkIssueInProgress(ctx context.Context, repo string, issueNumber int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.issueMarked = true
+	return nil
+}
+
+func (f *fakeReporter) ClearIssueInProgress(ctx context.Context, repo string, issueNumber int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.issueCleared = true
 	return nil
 }
 
@@ -143,10 +193,10 @@ func (f *fakeReporter) ListOrganizationMembers(ctx context.Context, org string, 
 	return append([]string(nil), f.orgMembers...), nil
 }
 
-func (f *fakeReporter) snapshot() (bool, bool, bool, int) {
+func (f *fakeReporter) snapshot() (bool, bool, bool, int, int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.prCreated, f.reviewCreated, f.waitedForCI, len(f.issueComments)
+	return f.prCreated, f.reviewCreated, f.waitedForCI, len(f.issueComments), len(f.prComments)
 }
 
 func (f *fakeReporter) assignedAndReviewers() ([]string, []string) {
@@ -159,6 +209,24 @@ func (f *fakeReporter) mergeSnapshot() (bool, bool, string, []string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.mergedPR, f.issueClosed, f.closeReason, append([]string(nil), f.issueComments...)
+}
+
+func (f *fakeReporter) completionComments() ([]string, []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.issueComments...), append([]string(nil), f.prComments...)
+}
+
+func (f *fakeReporter) progressSnapshot() (bool, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.issueMarked, f.issueCleared
+}
+
+func (f *fakeReporter) reactionSnapshot() []commentReaction {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]commentReaction(nil), f.reactions...)
 }
 
 func TestVerifyGitHubSignature(t *testing.T) {
@@ -219,7 +287,8 @@ func TestManagerQueueIssueEvent_DedupesActiveIssue(t *testing.T) {
 	defer manager.Close()
 	block := make(chan struct{})
 	manager.executor = &fakeExecutor{result: &ExecutionResult{}, block: block}
-	manager.reporter = &fakeReporter{}
+	reporter := &fakeReporter{}
+	manager.reporter = reporter
 
 	event := &IssueEvent{
 		EventName:              "issues",
@@ -237,6 +306,13 @@ func TestManagerQueueIssueEvent_DedupesActiveIssue(t *testing.T) {
 	if !first.Accepted {
 		t.Fatalf("first queue result = %#v", first)
 	}
+	marked, cleared := reporter.progressSnapshot()
+	if !marked {
+		t.Fatal("expected issue to be marked in progress when automation is queued")
+	}
+	if cleared {
+		t.Fatal("did not expect in-progress marker to be cleared while job is still blocked")
+	}
 	second := manager.QueueIssueEvent(event)
 	if !second.Ignored || second.Reason == "" {
 		t.Fatalf("second queue result = %#v, want ignored duplicate", second)
@@ -253,6 +329,7 @@ func TestManagerRunJob_CreatesPRAndReview(t *testing.T) {
 	cfg.AutoCreatePR = true
 	cfg.WaitForCI = true
 	cfg.AutoDeployPreview = true
+	cfg.AllowIssueMerge = true
 
 	manager, err := NewManager(cfg)
 	if err != nil {
@@ -302,9 +379,13 @@ func TestManagerRunJob_CreatesPRAndReview(t *testing.T) {
 			if job.Status != JobStatusSucceeded {
 				t.Fatalf("job status = %s, error = %s", job.Status, job.Error)
 			}
-			prCreated, reviewCreated, waitedForCI, issueComments := reporter.snapshot()
+			prCreated, reviewCreated, waitedForCI, issueCommentCount, prCommentCount := reporter.snapshot()
 			if !prCreated {
 				t.Fatal("expected PR creation")
+			}
+			marked, cleared := reporter.progressSnapshot()
+			if !marked || !cleared {
+				t.Fatalf("issue progress labels marked=%v cleared=%v, want both true after completion", marked, cleared)
 			}
 			if !waitedForCI {
 				t.Fatal("expected CI wait")
@@ -312,8 +393,11 @@ func TestManagerRunJob_CreatesPRAndReview(t *testing.T) {
 			if !reviewCreated {
 				t.Fatal("expected PR review creation")
 			}
-			if issueComments == 0 {
+			if issueCommentCount == 0 {
 				t.Fatal("expected issue completion comment")
+			}
+			if prCommentCount == 0 {
+				t.Fatal("expected pull request verification comment")
 			}
 			assignees, reviewers := reporter.assignedAndReviewers()
 			if strings.Join(assignees, ",") != "alice" {
@@ -322,11 +406,31 @@ func TestManagerRunJob_CreatesPRAndReview(t *testing.T) {
 			if strings.Join(reviewers, ",") != "alice,bob" {
 				t.Fatalf("reviewers = %#v, want organization members", reviewers)
 			}
-			if !strings.Contains(reporter.issueComments[0], "@alice @bob") {
-				t.Fatalf("acceptance comment = %q, want org mentions", reporter.issueComments[0])
+			issueComments, prComments := reporter.completionComments()
+			if !strings.Contains(issueComments[0], "@alice @bob") {
+				t.Fatalf("acceptance comment = %q, want org mentions", issueComments[0])
 			}
-			if !strings.Contains(reporter.issueComments[len(reporter.issueComments)-1], "배포 확인 링크") {
-				t.Fatalf("completion comment = %q, want Korean preview link", reporter.issueComments[len(reporter.issueComments)-1])
+			if !containsString(issueComments, "배포 확인 링크") {
+				t.Fatalf("issue comments = %#v, want Korean preview link", issueComments)
+			}
+			controlPanel := issueComments[len(issueComments)-1]
+			if !strings.Contains(controlPanel, "확인 및 병합 컨트롤") {
+				t.Fatalf("control panel = %q, want Korean control heading", controlPanel)
+			}
+			if !strings.Contains(controlPanel, "- [ ] Codex 코드 리뷰 요청") {
+				t.Fatalf("control panel = %q, want unchecked review request control", controlPanel)
+			}
+			if !strings.Contains(controlPanel, "- [ ] Preview 확인 완료") {
+				t.Fatalf("control panel = %q, want unchecked merge control", controlPanel)
+			}
+			if !strings.Contains(controlPanel, "https://fingerscore.net/previews/codex-issue-101-automate/") {
+				t.Fatalf("control panel = %q, want preview URL", controlPanel)
+			}
+			if !strings.Contains(prComments[len(prComments)-1], "CI/CD 확인 경로") {
+				t.Fatalf("PR comment = %q, want Korean CI/CD verification heading", prComments[len(prComments)-1])
+			}
+			if !strings.Contains(prComments[len(prComments)-1], "https://fingerscore.net/previews/codex-issue-101-automate/") {
+				t.Fatalf("PR comment = %q, want preview URL", prComments[len(prComments)-1])
 			}
 			if !strings.Contains(reporter.prBody, "## 요약") {
 				t.Fatalf("PR body = %q, want Korean body", reporter.prBody)
@@ -346,6 +450,15 @@ func TestManagerRunJob_CreatesPRAndReview(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("timed out waiting for automation job to finish")
+}
+
+func containsString(values []string, needle string) bool {
+	for _, value := range values {
+		if strings.Contains(value, needle) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestManagerRunJob_ReusesExistingPullRequestForIssueBranch(t *testing.T) {
@@ -472,6 +585,219 @@ func TestManagerHandleIssueCommentEvent_MergesExistingIssuePR(t *testing.T) {
 	t.Fatal("timed out waiting for merge command")
 }
 
+func TestManagerHandleIssueCommentEvent_MergesFromCheckedIssueControl(t *testing.T) {
+	cfg := config.NewDefaultConfig().GitHub
+	cfg.Enabled = true
+	cfg.AllowIssueMerge = true
+	cfg.AllowedRepositories = []string{"cloudbro-kube-ai/k13d"}
+
+	manager, err := NewManager(cfg)
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	defer manager.Close()
+
+	reporter := &fakeReporter{
+		existingPR: &PullRequestInfo{Number: 88, URL: "https://github.com/example/repo/pull/88"},
+		orgMember:  true,
+	}
+	manager.reporter = reporter
+
+	result := manager.HandleIssueCommentEvent(&IssueCommentEvent{
+		EventName:     "issue_comment",
+		Action:        "edited",
+		Repository:    "cloudbro-kube-ai/k13d",
+		DefaultBranch: "main",
+		IssueNumber:   105,
+		IssueTitle:    "Ship it",
+		IssueBody:     "ship the change",
+		IssueURL:      "https://github.com/cloudbro-kube-ai/k13d/issues/105",
+		IssueAuthor:   "alice",
+		CommentBody:   "## k13d 확인 및 병합 컨트롤\n\n- [x] Preview 확인 완료, PR 병합 요청 (`k13d merge 해줘`)\n",
+		CommentAuthor: "alice",
+		Labels:        []string{"codex:auto"},
+	})
+	if !result.Accepted {
+		t.Fatalf("HandleIssueCommentEvent() = %#v, want accepted", result)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		merged, issueClosed, _, comments := reporter.mergeSnapshot()
+		if merged && issueClosed && len(comments) >= 2 {
+			if !strings.Contains(comments[len(comments)-1], "병합 완료") {
+				t.Fatalf("completion comment = %q, want Korean merge success", comments[len(comments)-1])
+			}
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("timed out waiting for checked merge control")
+}
+
+func TestManagerHandleIssueCommentEvent_IgnoresUncheckedIssueControl(t *testing.T) {
+	cfg := config.NewDefaultConfig().GitHub
+	cfg.Enabled = true
+	cfg.AllowIssueMerge = true
+	cfg.AllowedRepositories = []string{"cloudbro-kube-ai/k13d"}
+
+	manager, err := NewManager(cfg)
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	defer manager.Close()
+
+	reporter := &fakeReporter{
+		existingPR: &PullRequestInfo{Number: 88, URL: "https://github.com/example/repo/pull/88"},
+		orgMember:  true,
+	}
+	manager.reporter = reporter
+
+	result := manager.HandleIssueCommentEvent(&IssueCommentEvent{
+		EventName:     "issue_comment",
+		Action:        "edited",
+		Repository:    "cloudbro-kube-ai/k13d",
+		IssueNumber:   105,
+		IssueTitle:    "Ship it",
+		IssueURL:      "https://github.com/cloudbro-kube-ai/k13d/issues/105",
+		CommentBody:   "## k13d 확인 및 병합 컨트롤\n\n- [ ] Preview 확인 완료, PR 병합 요청 (`k13d merge 해줘`)\n",
+		CommentAuthor: "alice",
+	})
+	if !result.Ignored {
+		t.Fatalf("HandleIssueCommentEvent() = %#v, want ignored unchecked control", result)
+	}
+	merged, _, _, _ := reporter.mergeSnapshot()
+	if merged {
+		t.Fatal("unchecked merge control must not merge")
+	}
+}
+
+func TestManagerHandleIssueCommentEvent_QueuesFollowUpDevelopment(t *testing.T) {
+	cfg := config.NewDefaultConfig().GitHub
+	cfg.Enabled = true
+	cfg.AllowIssueMerge = true
+	cfg.AutoPush = true
+	cfg.AutoCreatePR = true
+	cfg.AllowedRepositories = []string{"cloudbro-kube-ai/k13d"}
+	cfg.DevelopmentCommand = []string{"./scripts/run-agent-dev.sh"}
+
+	manager, err := NewManager(cfg)
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	defer manager.Close()
+
+	executor := &fakeExecutor{
+		result: &ExecutionResult{
+			Branch:         "codex/issue-108",
+			WorktreePath:   "/tmp/worktree",
+			CommitSHA:      "followup-sha",
+			HasChanges:     true,
+			DevelopmentLog: "continued change",
+			DiffStat:       " app.go | 4 ++--",
+		},
+		deployResult: &PreviewDeployment{
+			Slug:      "codex-issue-108",
+			PublicURL: "https://fingerscore.net/previews/codex-issue-108/",
+			TargetURL: "http://127.0.0.1:18108",
+		},
+	}
+	reporter := &fakeReporter{
+		existingPR: &PullRequestInfo{Number: 90, URL: "https://github.com/example/repo/pull/90"},
+		orgMember:  true,
+	}
+	manager.executor = executor
+	manager.reporter = reporter
+
+	result := manager.HandleIssueCommentEvent(&IssueCommentEvent{
+		EventName:                "issue_comment",
+		Action:                   "created",
+		Repository:               "cloudbro-kube-ai/k13d",
+		DefaultBranch:            "main",
+		IssueNumber:              108,
+		IssueTitle:               "Preview polish",
+		IssueBody:                "Initial request body",
+		IssueURL:                 "https://github.com/cloudbro-kube-ai/k13d/issues/108",
+		IssueAuthor:              "alice",
+		IssueAuthorAssociation:   "MEMBER",
+		CommentID:                12345,
+		CommentBody:              "k13d 수정해줘: 프리뷰에서 버튼 문구를 더 자연스럽게 바꿔줘",
+		CommentAuthor:            "bob",
+		CommentAuthorAssociation: "MEMBER",
+		Labels:                   []string{"codex:auto"},
+	})
+	if !result.Accepted {
+		t.Fatalf("HandleIssueCommentEvent() = %#v, want accepted", result)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		job, ok := manager.GetJob(result.JobID)
+		if ok && (job.Status == JobStatusSucceeded || job.Status == JobStatusFailed) {
+			if job.Status != JobStatusSucceeded {
+				t.Fatalf("job status = %s, error = %s", job.Status, job.Error)
+			}
+			if job.PullRequestNumber != 90 || job.PullRequestURL != "https://github.com/example/repo/pull/90" {
+				t.Fatalf("job PR = #%d %q, want reused PR", job.PullRequestNumber, job.PullRequestURL)
+			}
+			jobs := executor.executedJobs()
+			if len(jobs) != 1 {
+				t.Fatalf("executed jobs = %d, want 1", len(jobs))
+			}
+			if jobs[0].RequestAuthor != "bob" {
+				t.Fatalf("RequestAuthor = %q, want follow-up commenter", jobs[0].RequestAuthor)
+			}
+			if !strings.Contains(jobs[0].IssueBody, "Follow-up Development Request") ||
+				!strings.Contains(jobs[0].IssueBody, "프리뷰에서 버튼 문구") ||
+				!strings.Contains(jobs[0].IssueBody, "Continue on the same issue branch") {
+				t.Fatalf("IssueBody = %q, want follow-up instructions", jobs[0].IssueBody)
+			}
+			issueComments, _ := reporter.completionComments()
+			if !containsString(issueComments, "후속 개발 요청 접수") {
+				t.Fatalf("issue comments = %#v, want follow-up acceptance comment", issueComments)
+			}
+			reactions := reporter.reactionSnapshot()
+			if len(reactions) != 1 || reactions[0].CommentID != 12345 || reactions[0].Content != "rocket" {
+				t.Fatalf("reactions = %#v, want rocket reaction on follow-up comment", reactions)
+			}
+			if !strings.Contains(issueComments[len(issueComments)-1], "계속 개발해줘") {
+				t.Fatalf("control panel = %q, want follow-up guidance", issueComments[len(issueComments)-1])
+			}
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("timed out waiting for follow-up development")
+}
+
+func TestManagerHandleIssueCommentEvent_IgnoresNonCommandIssueComment(t *testing.T) {
+	cfg := config.NewDefaultConfig().GitHub
+	cfg.Enabled = true
+	cfg.AllowedRepositories = []string{"cloudbro-kube-ai/k13d"}
+	cfg.DevelopmentCommand = []string{"./scripts/run-agent-dev.sh"}
+
+	manager, err := NewManager(cfg)
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	defer manager.Close()
+	manager.reporter = &fakeReporter{orgMember: true}
+
+	result := manager.HandleIssueCommentEvent(&IssueCommentEvent{
+		EventName:                "issue_comment",
+		Action:                   "created",
+		Repository:               "cloudbro-kube-ai/k13d",
+		IssueNumber:              109,
+		IssueTitle:               "Chat only",
+		CommentBody:              "Preview 확인했습니다. 잠시만요.",
+		CommentAuthor:            "alice",
+		CommentAuthorAssociation: "MEMBER",
+	})
+	if !result.Ignored {
+		t.Fatalf("HandleIssueCommentEvent() = %#v, want ignored", result)
+	}
+}
+
 func TestManagerHandleIssueCommentEvent_MergeSuccessReportsCloseFailure(t *testing.T) {
 	cfg := config.NewDefaultConfig().GitHub
 	cfg.Enabled = true
@@ -571,6 +897,7 @@ func TestManagerHandleIssueCommentEvent_RunsCodexReview(t *testing.T) {
 		IssueNumber:              107,
 		IssueTitle:               "Review it",
 		IssueURL:                 "https://github.com/cloudbro-kube-ai/k13d/issues/107",
+		CommentID:                98765,
 		CommentBody:              "k13d 코드리뷰 해줘",
 		CommentAuthor:            "alice",
 		CommentAuthorAssociation: "MEMBER",
@@ -585,6 +912,7 @@ func TestManagerHandleIssueCommentEvent_RunsCodexReview(t *testing.T) {
 		reviewCreated := reporter.reviewCreated
 		reviewBody := reporter.reviewBody
 		comments := append([]string(nil), reporter.issueComments...)
+		reactions := append([]commentReaction(nil), reporter.reactions...)
 		reporter.mu.Unlock()
 		if reviewCreated && len(comments) >= 2 {
 			if !strings.Contains(comments[0], "코드 리뷰 요청 접수") {
@@ -596,11 +924,72 @@ func TestManagerHandleIssueCommentEvent_RunsCodexReview(t *testing.T) {
 			if !strings.Contains(reviewBody, "## 자동 코드 리뷰") || !strings.Contains(reviewBody, "발견사항 없음") {
 				t.Fatalf("review body = %q, want Codex review body", reviewBody)
 			}
+			if len(reactions) != 1 || reactions[0].CommentID != 98765 || reactions[0].Content != "eyes" {
+				t.Fatalf("reactions = %#v, want eyes reaction on review request comment", reactions)
+			}
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("timed out waiting for review command")
+}
+
+func TestManagerHandleIssueCommentEvent_RunsCodexReviewFromCheckedControl(t *testing.T) {
+	cfg := config.NewDefaultConfig().GitHub
+	cfg.Enabled = true
+	cfg.AllowedRepositories = []string{"cloudbro-kube-ai/k13d"}
+	cfg.ReviewCommand = []string{"./scripts/run-agent-review.sh"}
+
+	manager, err := NewManager(cfg)
+	if err != nil {
+		t.Fatalf("NewManager() error = %v", err)
+	}
+	defer manager.Close()
+
+	reporter := &fakeReporter{
+		existingPR: &PullRequestInfo{Number: 90, URL: "https://github.com/example/repo/pull/90"},
+	}
+	manager.executor = &fakeExecutor{reviewLog: "보안/동시성 관점에서 추가 발견사항은 없습니다."}
+	manager.reporter = reporter
+
+	result := manager.HandleIssueCommentEvent(&IssueCommentEvent{
+		EventName:                "issue_comment",
+		Action:                   "edited",
+		Repository:               "cloudbro-kube-ai/k13d",
+		IssueNumber:              108,
+		IssueTitle:               "Review from control",
+		IssueURL:                 "https://github.com/cloudbro-kube-ai/k13d/issues/108",
+		CommentID:                56789,
+		CommentBody:              "## k13d 확인 및 병합 컨트롤\n\n- [x] Codex 코드 리뷰 요청 (`k13d 코드리뷰 해줘`)\n- [ ] Preview 확인 완료, PR 병합 요청 (`k13d merge 해줘`)\n",
+		CommentAuthor:            "alice",
+		CommentAuthorAssociation: "MEMBER",
+	})
+	if !result.Accepted {
+		t.Fatalf("HandleIssueCommentEvent() = %#v, want accepted", result)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		reporter.mu.Lock()
+		reviewCreated := reporter.reviewCreated
+		comments := append([]string(nil), reporter.issueComments...)
+		reactions := append([]commentReaction(nil), reporter.reactions...)
+		reporter.mu.Unlock()
+		if reviewCreated && len(comments) >= 2 {
+			if !strings.Contains(comments[0], "코드 리뷰 요청 접수") {
+				t.Fatalf("accepted comment = %q, want Korean review accepted", comments[0])
+			}
+			if !strings.Contains(comments[len(comments)-1], "코드 리뷰 완료") {
+				t.Fatalf("completion comment = %q, want Korean review success", comments[len(comments)-1])
+			}
+			if len(reactions) != 1 || reactions[0].CommentID != 56789 || reactions[0].Content != "eyes" {
+				t.Fatalf("reactions = %#v, want eyes reaction on review control comment", reactions)
+			}
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("timed out waiting for checked review control")
 }
 
 func TestManagerQueueIssueEvent_RequiresOrgMember(t *testing.T) {
